@@ -2120,6 +2120,12 @@ static void executeEndOfStudyEvents()
   lastStudySubdirectoryPathAndName.clear();
 }
 
+#ifdef _WIN32
+#define DATE_FORMAT_YEAR_TO_SECOND "%Y-%m-%d %H:%M:%S"
+#else
+#define DATE_FORMAT_YEAR_TO_SECOND "%F %T"
+#endif
+
 static void executeOnReception()
     /*
      * This function deals with the execution of the command line which was passed
@@ -2164,7 +2170,7 @@ static void executeOnReception()
   cmd = replaceChars( cmd, OFString(CALLING_PRESENTATION_ADDRESS_PLACEHOLDER), callingpresentationaddress );
 
   // perform substitution for placeholder #d (received date)
-  if ( tmp && strftime(outstr, sizeof(outstr), "%F %T", tmp ) )
+  if ( tmp && strftime(outstr, sizeof(outstr), DATE_FORMAT_YEAR_TO_SECOND, tmp ) )
   {
     cmd = replaceChars( cmd, OFString(RECEIVED_DATE_PLACEHOLDER), outstr );
   }
@@ -2288,7 +2294,7 @@ static void executeOnEndOfStudy()
   cmd = replaceChars( cmd, OFString(CALLING_PRESENTATION_ADDRESS_PLACEHOLDER), callingpresentationaddress );
 
   // perform substitution for placeholder #d (received date)
-  if ( tmp && strftime(outstr, sizeof(outstr), "%F %T", tmp ) )
+  if ( tmp && strftime(outstr, sizeof(outstr), DATE_FORMAT_YEAR_TO_SECOND, tmp ) )
   {
     cmd = replaceChars( cmd, OFString(RECEIVED_DATE_PLACEHOLDER), outstr );
   }
