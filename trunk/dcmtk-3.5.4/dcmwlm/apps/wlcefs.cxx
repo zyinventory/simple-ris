@@ -126,6 +126,7 @@ WlmConsoleEngineFileSystem::WlmConsoleEngineFileSystem( int argc, char *argv[], 
   cmd->addGroup("returned character set options:", LONGCOL, SHORTCOL+2);
     cmd->addOption("--return-no-char-set",        "-cs0",       "return no specific character set (default)");
     cmd->addOption("--return-iso-ir-100",         "-cs1",       "return specific character set ISO IR 100");
+    cmd->addOption("--return-from-data",          "-cs2",       "return specific character set data specified");  // zy modified, add
 
   cmd->addGroup("network options:");
     cmd->addSubGroup("preferred network transfer syntaxes:");
@@ -221,6 +222,7 @@ WlmConsoleEngineFileSystem::WlmConsoleEngineFileSystem( int argc, char *argv[], 
     cmd->beginOptionBlock();
     if( cmd->findOption("--return-no-char-set") )  opt_returnedCharacterSet = RETURN_NO_CHARACTER_SET;
     if( cmd->findOption("--return-iso-ir-100") )  opt_returnedCharacterSet = RETURN_CHARACTER_SET_ISO_IR_100;
+    if( cmd->findOption("--return-from-data") )  opt_returnedCharacterSet = RETURN_CHARACTER_SET_FROMDATA;	//zy modified, add
     cmd->endOptionBlock();
     cmd->beginOptionBlock();
     if( cmd->findOption("--prefer-uncompr") )  opt_networkTransferSyntax = EXS_Unknown;

@@ -1567,6 +1567,7 @@ OFBool WlmDataSource::IsSupportedReturnKeyAttribute( DcmElement *element, DcmSeq
         elementKey == DCM_PatientID                                         ||
         elementKey == DCM_PatientsBirthDate                                 ||
         elementKey == DCM_PatientsSex                                       ||
+        elementKey == DCM_PatientsAge                                       ||    //zy modified, add patient age
         elementKey == DCM_PatientsWeight                                    ||
         elementKey == DCM_ConfidentialityConstraintOnPatientDataDescription ||
         elementKey == DCM_PatientState                                      ||

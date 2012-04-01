@@ -412,6 +412,34 @@ WlmDataSourceStatusType WlmDataSourceFileSystem::StartFindRequest( DcmDataset &f
           delete elem;
         }
       }
+	  // zy modified begin, add char set specification support
+	  else if(returnedCharacterSet == RETURN_CHARACTER_SET_FROMDATA)
+	  {
+		  if( specificCharacterSetElement != NULL )
+          {
+		    char* charSetValue = NULL;
+			if( specificCharacterSetElement->getString(charSetValue).good() )
+			{
+			  char csBuffer[17];
+			  size_t len = 0;
+			  if(charSetValue == NULL)
+			  {  // no charset value in data, use default value:"ISO_IR 100"
+			    OFCondition cond = specificCharacterSetElement->putString( "ISO_IR 100" );
+			    if( cond.bad() )
+			      DumpMessage( "WlmDataSourceDatabase::StartFindRequest: Could not set value in result element.\n" );
+			  }
+			  else
+			  {
+				len = strlen(charSetValue);
+			    strncpy(csBuffer, charSetValue, len + 1);
+			    OFCondition cond = specificCharacterSetElement->putString( csBuffer ); //using value in dump
+			    if( cond.bad() )
+				  DumpMessage( "WlmDataSourceDatabase::StartFindRequest: Could not set value in result element.\n" );
+			  }
+		    }
+          }
+	  }
+	  //zy modified end, add char set specification support
       else
       {
         // if it shall be contained in the returned data set, check if it is not already included
@@ -549,7 +577,8 @@ void WlmDataSourceFileSystem::HandleNonSequenceElementInResultDataset( DcmElemen
   // check if the current element is the "Specific Character Set" (0008,0005) attribute;
   // we do not want to deal with this attribute here, this attribute will be taken care
   // of when the entire result dataset is completed.
-  if( tag != DCM_SpecificCharacterSet )
+  //zy modified, add "returnedCharacterSet == RETURN_CHARACTER_SET_FROMDATA || "
+  if( returnedCharacterSet == RETURN_CHARACTER_SET_FROMDATA || tag != DCM_SpecificCharacterSet )
   {
     // in case the current element is not the "Specific Character Set" (0008,0005) attribute,
     // get a value for the current element from database; note that all values for return key
