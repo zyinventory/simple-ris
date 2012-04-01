@@ -1,14 +1,20 @@
-<?xml version="1.0" encoding = "Windows-1252"?>
+<?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
 	Name="ofstd"
 	ProjectGUID="{140C0096-4C8B-4854-A76D-DF0B659A6C52}"
-	Keyword="Win32Proj">
+	RootNamespace="ofstd"
+	Keyword="Win32Proj"
+	TargetFrameworkVersion="0"
+	>
 	<Platforms>
 		<Platform
-			Name="Win32"/>
+			Name="Win32"
+		/>
 	</Platforms>
+	<ToolFiles>
+	</ToolFiles>
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
@@ -16,51 +22,80 @@
 			IntermediateDirectory="ofstd.dir\Debug"
 			ConfigurationType="4"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
 			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;"
-				CompileAs="2"
-				DebugInformationFormat="1"
-				EnableFunctionLevelLinking="TRUE"
-				ExceptionHandling="1"
-				Optimization="0"
-				RuntimeLibrary="1"
-				SuppressStartupBanner="TRUE"
-				WarningLevel="3"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
-				AssemblerListingLocation="Debug"
-				ObjectFile="$(IntDir)\"
-				ProgramDataBaseFileName="Debug/ofstd.pdb"
-/>
+				Name="VCPreBuildEventTool"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCCustomBuildTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"/>
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
-				MkTypLibCompatible="FALSE"
+				MkTypLibCompatible="false"
 				TargetEnvironment="1"
-				GenerateStublessProxies="TRUE"
+				GenerateStublessProxies="true"
 				TypeLibraryName="$(InputName).tlb"
 				OutputDirectory="$(IntDir)"
 				HeaderFileName="$(InputName).h"
 				DLLDataFileName=""
 				InterfaceIdentifierFileName="$(InputName)_i.c"
-				ProxyFileName="$(InputName)_p.c"/>
+				ProxyFileName="$(InputName)_p.c"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
+				ExceptionHandling="1"
+				RuntimeLibrary="1"
+				EnableFunctionLevelLinking="true"
+				AssemblerListingLocation="Debug"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="Debug/ofstd.pdb"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				DebugInformationFormat="1"
+				CompileAs="2"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="Debug\ofstd.lib"/>
+				OutputFile="Debug\ofstd.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
@@ -68,50 +103,79 @@
 			IntermediateDirectory="ofstd.dir\Release"
 			ConfigurationType="4"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
 			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;"
-				CompileAs="2"
-				EnableFunctionLevelLinking="TRUE"
-				ExceptionHandling="1"
-				Optimization="2"
-				RuntimeLibrary="0"
-				SuppressStartupBanner="TRUE"
-				WarningLevel="3"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
-				AssemblerListingLocation="Release"
-				ObjectFile="$(IntDir)\"
-				ProgramDataBaseFileName="Release/ofstd.pdb"
-/>
+				Name="VCPreBuildEventTool"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCCustomBuildTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"/>
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
-				MkTypLibCompatible="FALSE"
+				MkTypLibCompatible="false"
 				TargetEnvironment="1"
-				GenerateStublessProxies="TRUE"
+				GenerateStublessProxies="true"
 				TypeLibraryName="$(InputName).tlb"
 				OutputDirectory="$(IntDir)"
 				HeaderFileName="$(InputName).h"
 				DLLDataFileName=""
 				InterfaceIdentifierFileName="$(InputName)_i.c"
-				ProxyFileName="$(InputName)_p.c"/>
+				ProxyFileName="$(InputName)_p.c"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
+				ExceptionHandling="1"
+				RuntimeLibrary="0"
+				EnableFunctionLevelLinking="true"
+				AssemblerListingLocation="Release"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="Release/ofstd.pdb"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				CompileAs="2"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="Release\ofstd.lib"/>
+				OutputFile="Release\ofstd.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 		<Configuration
 			Name="MinSizeRel|Win32"
@@ -119,50 +183,79 @@
 			IntermediateDirectory="ofstd.dir\MinSizeRel"
 			ConfigurationType="4"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
 			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;"
-				CompileAs="2"
-				EnableFunctionLevelLinking="TRUE"
-				ExceptionHandling="1"
-				Optimization="2"
-				RuntimeLibrary="0"
-				SuppressStartupBanner="TRUE"
-				WarningLevel="3"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"
-				AssemblerListingLocation="MinSizeRel"
-				ObjectFile="$(IntDir)\"
-				ProgramDataBaseFileName="MinSizeRel/ofstd.pdb"
-/>
+				Name="VCPreBuildEventTool"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCCustomBuildTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"/>
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"
-				MkTypLibCompatible="FALSE"
+				MkTypLibCompatible="false"
 				TargetEnvironment="1"
-				GenerateStublessProxies="TRUE"
+				GenerateStublessProxies="true"
 				TypeLibraryName="$(InputName).tlb"
 				OutputDirectory="$(IntDir)"
 				HeaderFileName="$(InputName).h"
 				DLLDataFileName=""
 				InterfaceIdentifierFileName="$(InputName)_i.c"
-				ProxyFileName="$(InputName)_p.c"/>
+				ProxyFileName="$(InputName)_p.c"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"
+				ExceptionHandling="1"
+				RuntimeLibrary="0"
+				EnableFunctionLevelLinking="true"
+				AssemblerListingLocation="MinSizeRel"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="MinSizeRel/ofstd.pdb"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				CompileAs="2"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="MinSizeRel\ofstd.lib"/>
+				OutputFile="MinSizeRel\ofstd.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 		<Configuration
 			Name="RelWithDebInfo|Win32"
@@ -170,101 +263,271 @@
 			IntermediateDirectory="ofstd.dir\RelWithDebInfo"
 			ConfigurationType="4"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
 			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;"
-				CompileAs="2"
-				DebugInformationFormat="1"
-				EnableFunctionLevelLinking="TRUE"
-				ExceptionHandling="1"
-				Optimization="0"
-				RuntimeLibrary="1"
-				SuppressStartupBanner="TRUE"
-				WarningLevel="3"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"
-				AssemblerListingLocation="RelWithDebInfo"
-				ObjectFile="$(IntDir)\"
-				ProgramDataBaseFileName="RelWithDebInfo/ofstd.pdb"
-/>
+				Name="VCPreBuildEventTool"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCCustomBuildTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"/>
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"
-				MkTypLibCompatible="FALSE"
+				MkTypLibCompatible="false"
 				TargetEnvironment="1"
-				GenerateStublessProxies="TRUE"
+				GenerateStublessProxies="true"
 				TypeLibraryName="$(InputName).tlb"
 				OutputDirectory="$(IntDir)"
 				HeaderFileName="$(InputName).h"
 				DLLDataFileName=""
 				InterfaceIdentifierFileName="$(InputName)_i.c"
-				ProxyFileName="$(InputName)_p.c"/>
+				ProxyFileName="$(InputName)_p.c"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"
+				ExceptionHandling="1"
+				RuntimeLibrary="1"
+				EnableFunctionLevelLinking="true"
+				AssemblerListingLocation="RelWithDebInfo"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="RelWithDebInfo/ofstd.pdb"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				DebugInformationFormat="1"
+				CompileAs="2"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="RelWithDebInfo\ofstd.lib"/>
+				OutputFile="RelWithDebInfo\ofstd.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 	</Configurations>
+	<References>
+	</References>
 	<Files>
 		<Filter
 			Name="Source Files"
-			Filter="">
+			>
 			<File
-				RelativePath="ofcmdln.cxx">
+				RelativePath="ofcmdln.cxx"
+				>
 			</File>
 			<File
-				RelativePath="ofconapp.cxx">
+				RelativePath="ofconapp.cxx"
+				>
 			</File>
 			<File
-				RelativePath="ofcond.cxx">
+				RelativePath="ofcond.cxx"
+				>
 			</File>
 			<File
-				RelativePath="ofconfig.cxx">
+				RelativePath="ofconfig.cxx"
+				>
 			</File>
 			<File
-				RelativePath="ofconsol.cxx">
+				RelativePath="ofconsol.cxx"
+				>
 			</File>
 			<File
-				RelativePath="ofcrc32.cxx">
+				RelativePath="ofcrc32.cxx"
+				>
 			</File>
 			<File
-				RelativePath="ofdate.cxx">
+				RelativePath="ofdate.cxx"
+				>
 			</File>
 			<File
-				RelativePath="ofdatime.cxx">
+				RelativePath="ofdatime.cxx"
+				>
 			</File>
 			<File
-				RelativePath="offname.cxx">
+				RelativePath="offname.cxx"
+				>
 			</File>
 			<File
-				RelativePath="oflist.cxx">
+				RelativePath="oflist.cxx"
+				>
 			</File>
 			<File
-				RelativePath="oflogfil.cxx">
+				RelativePath="oflogfil.cxx"
+				>
 			</File>
 			<File
-				RelativePath="ofstd.cxx">
+				RelativePath="ofstd.cxx"
+				>
 			</File>
 			<File
-				RelativePath="ofstring.cxx">
+				RelativePath="ofstring.cxx"
+				>
 			</File>
 			<File
-				RelativePath="ofthread.cxx">
+				RelativePath="ofthread.cxx"
+				>
 			</File>
 			<File
-				RelativePath="oftime.cxx">
+				RelativePath="oftime.cxx"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="Header Files"
+			>
+			<File
+				RelativePath="..\..\config\include\dcmtk\config\cfwin32.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofalgo.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofbmanip.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofcast.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofcmdln.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofconapp.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofcond.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofconfig.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofconsol.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofcrc32.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofdate.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofdatime.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\offname.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofglobal.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\oflist.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\oflogfil.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofoset.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofset.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofsetit.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofstack.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofstd.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofstdinc.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofstream.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofstring.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofthread.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\oftime.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\oftimer.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\oftypes.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofuoset.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\config\include\dcmtk\config\osconfig.h"
+				>
 			</File>
 		</Filter>
 	</Files>

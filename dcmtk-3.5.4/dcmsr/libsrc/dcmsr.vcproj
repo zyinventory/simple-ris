@@ -1,14 +1,20 @@
-<?xml version="1.0" encoding = "Windows-1252"?>
+<?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
 	Name="dcmsr"
 	ProjectGUID="{7476BF81-B6CD-44BC-9C03-2663D197DEFD}"
-	Keyword="Win32Proj">
+	RootNamespace="dcmsr"
+	Keyword="Win32Proj"
+	TargetFrameworkVersion="0"
+	>
 	<Platforms>
 		<Platform
-			Name="Win32"/>
+			Name="Win32"
+		/>
 	</Platforms>
+	<ToolFiles>
+	</ToolFiles>
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
@@ -16,51 +22,80 @@
 			IntermediateDirectory="dcmsr.dir\Debug"
 			ConfigurationType="4"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
 			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
-				CompileAs="2"
-				DebugInformationFormat="1"
-				EnableFunctionLevelLinking="TRUE"
-				ExceptionHandling="1"
-				Optimization="0"
-				RuntimeLibrary="1"
-				SuppressStartupBanner="TRUE"
-				WarningLevel="3"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
-				AssemblerListingLocation="Debug"
-				ObjectFile="$(IntDir)\"
-				ProgramDataBaseFileName="Debug/dcmsr.pdb"
-/>
+				Name="VCPreBuildEventTool"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCCustomBuildTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"/>
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
-				MkTypLibCompatible="FALSE"
+				MkTypLibCompatible="false"
 				TargetEnvironment="1"
-				GenerateStublessProxies="TRUE"
+				GenerateStublessProxies="true"
 				TypeLibraryName="$(InputName).tlb"
 				OutputDirectory="$(IntDir)"
 				HeaderFileName="$(InputName).h"
 				DLLDataFileName=""
 				InterfaceIdentifierFileName="$(InputName)_i.c"
-				ProxyFileName="$(InputName)_p.c"/>
+				ProxyFileName="$(InputName)_p.c"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
+				ExceptionHandling="1"
+				RuntimeLibrary="1"
+				EnableFunctionLevelLinking="true"
+				AssemblerListingLocation="Debug"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="Debug/dcmsr.pdb"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				DebugInformationFormat="1"
+				CompileAs="2"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="Debug\dcmsr.lib"/>
+				OutputFile="Debug\dcmsr.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
@@ -68,50 +103,79 @@
 			IntermediateDirectory="dcmsr.dir\Release"
 			ConfigurationType="4"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
 			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
-				CompileAs="2"
-				EnableFunctionLevelLinking="TRUE"
-				ExceptionHandling="1"
-				Optimization="2"
-				RuntimeLibrary="0"
-				SuppressStartupBanner="TRUE"
-				WarningLevel="3"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
-				AssemblerListingLocation="Release"
-				ObjectFile="$(IntDir)\"
-				ProgramDataBaseFileName="Release/dcmsr.pdb"
-/>
+				Name="VCPreBuildEventTool"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCCustomBuildTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"/>
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
-				MkTypLibCompatible="FALSE"
+				MkTypLibCompatible="false"
 				TargetEnvironment="1"
-				GenerateStublessProxies="TRUE"
+				GenerateStublessProxies="true"
 				TypeLibraryName="$(InputName).tlb"
 				OutputDirectory="$(IntDir)"
 				HeaderFileName="$(InputName).h"
 				DLLDataFileName=""
 				InterfaceIdentifierFileName="$(InputName)_i.c"
-				ProxyFileName="$(InputName)_p.c"/>
+				ProxyFileName="$(InputName)_p.c"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
+				ExceptionHandling="1"
+				RuntimeLibrary="0"
+				EnableFunctionLevelLinking="true"
+				AssemblerListingLocation="Release"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="Release/dcmsr.pdb"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				CompileAs="2"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="Release\dcmsr.lib"/>
+				OutputFile="Release\dcmsr.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 		<Configuration
 			Name="MinSizeRel|Win32"
@@ -119,50 +183,79 @@
 			IntermediateDirectory="dcmsr.dir\MinSizeRel"
 			ConfigurationType="4"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
 			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
-				CompileAs="2"
-				EnableFunctionLevelLinking="TRUE"
-				ExceptionHandling="1"
-				Optimization="2"
-				RuntimeLibrary="0"
-				SuppressStartupBanner="TRUE"
-				WarningLevel="3"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"
-				AssemblerListingLocation="MinSizeRel"
-				ObjectFile="$(IntDir)\"
-				ProgramDataBaseFileName="MinSizeRel/dcmsr.pdb"
-/>
+				Name="VCPreBuildEventTool"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCCustomBuildTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"/>
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"
-				MkTypLibCompatible="FALSE"
+				MkTypLibCompatible="false"
 				TargetEnvironment="1"
-				GenerateStublessProxies="TRUE"
+				GenerateStublessProxies="true"
 				TypeLibraryName="$(InputName).tlb"
 				OutputDirectory="$(IntDir)"
 				HeaderFileName="$(InputName).h"
 				DLLDataFileName=""
 				InterfaceIdentifierFileName="$(InputName)_i.c"
-				ProxyFileName="$(InputName)_p.c"/>
+				ProxyFileName="$(InputName)_p.c"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"
+				ExceptionHandling="1"
+				RuntimeLibrary="0"
+				EnableFunctionLevelLinking="true"
+				AssemblerListingLocation="MinSizeRel"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="MinSizeRel/dcmsr.pdb"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				CompileAs="2"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="MinSizeRel\dcmsr.lib"/>
+				OutputFile="MinSizeRel\dcmsr.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 		<Configuration
 			Name="RelWithDebInfo|Win32"
@@ -170,203 +263,487 @@
 			IntermediateDirectory="dcmsr.dir\RelWithDebInfo"
 			ConfigurationType="4"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
 			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
-				CompileAs="2"
-				DebugInformationFormat="1"
-				EnableFunctionLevelLinking="TRUE"
-				ExceptionHandling="1"
-				Optimization="0"
-				RuntimeLibrary="1"
-				SuppressStartupBanner="TRUE"
-				WarningLevel="3"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"
-				AssemblerListingLocation="RelWithDebInfo"
-				ObjectFile="$(IntDir)\"
-				ProgramDataBaseFileName="RelWithDebInfo/dcmsr.pdb"
-/>
+				Name="VCPreBuildEventTool"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCCustomBuildTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"/>
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"
-				MkTypLibCompatible="FALSE"
+				MkTypLibCompatible="false"
 				TargetEnvironment="1"
-				GenerateStublessProxies="TRUE"
+				GenerateStublessProxies="true"
 				TypeLibraryName="$(InputName).tlb"
 				OutputDirectory="$(IntDir)"
 				HeaderFileName="$(InputName).h"
 				DLLDataFileName=""
 				InterfaceIdentifierFileName="$(InputName)_i.c"
-				ProxyFileName="$(InputName)_p.c"/>
+				ProxyFileName="$(InputName)_p.c"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"
+				ExceptionHandling="1"
+				RuntimeLibrary="1"
+				EnableFunctionLevelLinking="true"
+				AssemblerListingLocation="RelWithDebInfo"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="RelWithDebInfo/dcmsr.pdb"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				DebugInformationFormat="1"
+				CompileAs="2"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="RelWithDebInfo\dcmsr.lib"/>
+				OutputFile="RelWithDebInfo\dcmsr.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 	</Configurations>
+	<References>
+	</References>
 	<Files>
 		<Filter
 			Name="Source Files"
-			Filter="">
+			>
 			<File
-				RelativePath="dsrcitem.cxx">
+				RelativePath="dsrbascc.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrcodtn.cxx">
+				RelativePath="dsrchecc.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrcodvl.cxx">
+				RelativePath="dsrcitem.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrcomtn.cxx">
+				RelativePath="dsrcodtn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrcomvl.cxx">
+				RelativePath="dsrcodvl.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrcontn.cxx">
+				RelativePath="dsrcomcc.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrcsidl.cxx">
+				RelativePath="dsrcomtn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrdattn.cxx">
+				RelativePath="dsrcomvl.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrdoc.cxx">
+				RelativePath="dsrcontn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrdoctn.cxx">
+				RelativePath="dsrcsidl.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrdoctr.cxx">
+				RelativePath="dsrdattn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrdtitn.cxx">
+				RelativePath="dsrdoc.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrimgfr.cxx">
+				RelativePath="dsrdoctn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrimgtn.cxx">
+				RelativePath="dsrdoctr.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrimgvl.cxx">
+				RelativePath="dsrdtitn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrnumtn.cxx">
+				RelativePath="dsrenhcc.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrnumvl.cxx">
+				RelativePath="dsrimgfr.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrpnmtn.cxx">
+				RelativePath="dsrimgtn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrreftn.cxx">
+				RelativePath="dsrimgvl.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrscogr.cxx">
+				RelativePath="dsriodcc.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrscotn.cxx">
+				RelativePath="dsrkeycc.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrscovl.cxx">
+				RelativePath="dsrmamcc.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrsoprf.cxx">
+				RelativePath="dsrnumtn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrstrvl.cxx">
+				RelativePath="dsrnumvl.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrtcodt.cxx">
+				RelativePath="dsrpnmtn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrtcosp.cxx">
+				RelativePath="dsrprocc.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrtcotn.cxx">
+				RelativePath="dsrreftn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrtcoto.cxx">
+				RelativePath="dsrscogr.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrtcovl.cxx">
+				RelativePath="dsrscotn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrtextn.cxx">
+				RelativePath="dsrscovl.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrtimtn.cxx">
+				RelativePath="dsrsoprf.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrtncsr.cxx">
+				RelativePath="dsrstrvl.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrtree.cxx">
+				RelativePath="dsrtcodt.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrtypes.cxx">
+				RelativePath="dsrtcosp.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsruidtn.cxx">
+				RelativePath="dsrtcotn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrwavch.cxx">
+				RelativePath="dsrtcoto.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrwavtn.cxx">
+				RelativePath="dsrtcovl.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrwavvl.cxx">
+				RelativePath="dsrtextn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrxmlc.cxx">
+				RelativePath="dsrtimtn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrxmld.cxx">
+				RelativePath="dsrtncsr.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsriodcc.cxx">
+				RelativePath="dsrtree.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrbascc.cxx">
+				RelativePath="dsrtypes.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrenhcc.cxx">
+				RelativePath="dsruidtn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrcomcc.cxx">
+				RelativePath="dsrwavch.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrkeycc.cxx">
+				RelativePath="dsrwavtn.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrmamcc.cxx">
+				RelativePath="dsrwavvl.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrchecc.cxx">
+				RelativePath="dsrxmlc.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrprocc.cxx">
+				RelativePath="dsrxmld.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dsrxrdcc.cxx">
+				RelativePath="dsrxrdcc.cxx"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="Header Files"
+			>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrbascc.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrchecc.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrcitem.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrcodtn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrcodvl.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrcomcc.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrcomtn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrcomvl.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrcontn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrcsidl.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrdattn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrdoc.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrdoctn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrdoctr.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrdtitn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrenhcc.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrimgfr.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrimgtn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrimgvl.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsriodcc.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrkeycc.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrmamcc.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrnumtn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrnumvl.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrpnmtn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrprocc.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrreftn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrscogr.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrscotn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrscovl.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrsoprf.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrstrvl.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrtcodt.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrtcosp.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrtcotn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrtcoto.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrtcovl.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrtextn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrtimtn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrtlist.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrtncsr.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrtree.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrtypes.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsruidtn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrwavch.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrwavtn.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrwavvl.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrxmlc.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrxmld.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmsr\dsrxrdcc.h"
+				>
 			</File>
 		</Filter>
 	</Files>

@@ -1,14 +1,20 @@
-<?xml version="1.0" encoding = "Windows-1252"?>
+<?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
 	Name="dcmjpeg"
 	ProjectGUID="{9D800639-F50B-4832-A06C-4055784B1A4D}"
-	Keyword="Win32Proj">
+	RootNamespace="dcmjpeg"
+	Keyword="Win32Proj"
+	TargetFrameworkVersion="0"
+	>
 	<Platforms>
 		<Platform
-			Name="Win32"/>
+			Name="Win32"
+		/>
 	</Platforms>
+	<ToolFiles>
+	</ToolFiles>
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
@@ -16,51 +22,80 @@
 			IntermediateDirectory="dcmjpeg.dir\Debug"
 			ConfigurationType="4"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
 			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
-				CompileAs="2"
-				DebugInformationFormat="1"
-				EnableFunctionLevelLinking="TRUE"
-				ExceptionHandling="1"
-				Optimization="0"
-				RuntimeLibrary="1"
-				SuppressStartupBanner="TRUE"
-				WarningLevel="3"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
-				AssemblerListingLocation="Debug"
-				ObjectFile="$(IntDir)\"
-				ProgramDataBaseFileName="Debug/dcmjpeg.pdb"
-/>
+				Name="VCPreBuildEventTool"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCCustomBuildTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"/>
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
-				MkTypLibCompatible="FALSE"
+				MkTypLibCompatible="false"
 				TargetEnvironment="1"
-				GenerateStublessProxies="TRUE"
+				GenerateStublessProxies="true"
 				TypeLibraryName="$(InputName).tlb"
 				OutputDirectory="$(IntDir)"
 				HeaderFileName="$(InputName).h"
 				DLLDataFileName=""
 				InterfaceIdentifierFileName="$(InputName)_i.c"
-				ProxyFileName="$(InputName)_p.c"/>
+				ProxyFileName="$(InputName)_p.c"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
+				ExceptionHandling="1"
+				RuntimeLibrary="1"
+				EnableFunctionLevelLinking="true"
+				AssemblerListingLocation="Debug"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="Debug/dcmjpeg.pdb"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				DebugInformationFormat="1"
+				CompileAs="2"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="Debug\dcmjpeg.lib"/>
+				OutputFile="Debug\dcmjpeg.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
@@ -68,50 +103,79 @@
 			IntermediateDirectory="dcmjpeg.dir\Release"
 			ConfigurationType="4"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
 			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
-				CompileAs="2"
-				EnableFunctionLevelLinking="TRUE"
-				ExceptionHandling="1"
-				Optimization="2"
-				RuntimeLibrary="0"
-				SuppressStartupBanner="TRUE"
-				WarningLevel="3"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
-				AssemblerListingLocation="Release"
-				ObjectFile="$(IntDir)\"
-				ProgramDataBaseFileName="Release/dcmjpeg.pdb"
-/>
+				Name="VCPreBuildEventTool"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCCustomBuildTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"/>
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
-				MkTypLibCompatible="FALSE"
+				MkTypLibCompatible="false"
 				TargetEnvironment="1"
-				GenerateStublessProxies="TRUE"
+				GenerateStublessProxies="true"
 				TypeLibraryName="$(InputName).tlb"
 				OutputDirectory="$(IntDir)"
 				HeaderFileName="$(InputName).h"
 				DLLDataFileName=""
 				InterfaceIdentifierFileName="$(InputName)_i.c"
-				ProxyFileName="$(InputName)_p.c"/>
+				ProxyFileName="$(InputName)_p.c"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
+				ExceptionHandling="1"
+				RuntimeLibrary="0"
+				EnableFunctionLevelLinking="true"
+				AssemblerListingLocation="Release"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="Release/dcmjpeg.pdb"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				CompileAs="2"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="Release\dcmjpeg.lib"/>
+				OutputFile="Release\dcmjpeg.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 		<Configuration
 			Name="MinSizeRel|Win32"
@@ -119,50 +183,79 @@
 			IntermediateDirectory="dcmjpeg.dir\MinSizeRel"
 			ConfigurationType="4"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
 			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
-				CompileAs="2"
-				EnableFunctionLevelLinking="TRUE"
-				ExceptionHandling="1"
-				Optimization="2"
-				RuntimeLibrary="0"
-				SuppressStartupBanner="TRUE"
-				WarningLevel="3"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"
-				AssemblerListingLocation="MinSizeRel"
-				ObjectFile="$(IntDir)\"
-				ProgramDataBaseFileName="MinSizeRel/dcmjpeg.pdb"
-/>
+				Name="VCPreBuildEventTool"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCCustomBuildTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"/>
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"
-				MkTypLibCompatible="FALSE"
+				MkTypLibCompatible="false"
 				TargetEnvironment="1"
-				GenerateStublessProxies="TRUE"
+				GenerateStublessProxies="true"
 				TypeLibraryName="$(InputName).tlb"
 				OutputDirectory="$(IntDir)"
 				HeaderFileName="$(InputName).h"
 				DLLDataFileName=""
 				InterfaceIdentifierFileName="$(InputName)_i.c"
-				ProxyFileName="$(InputName)_p.c"/>
+				ProxyFileName="$(InputName)_p.c"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"
+				ExceptionHandling="1"
+				RuntimeLibrary="0"
+				EnableFunctionLevelLinking="true"
+				AssemblerListingLocation="MinSizeRel"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="MinSizeRel/dcmjpeg.pdb"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				CompileAs="2"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;MinSizeRel\&quot;"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="MinSizeRel\dcmjpeg.lib"/>
+				OutputFile="MinSizeRel\dcmjpeg.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 		<Configuration
 			Name="RelWithDebInfo|Win32"
@@ -170,140 +263,323 @@
 			IntermediateDirectory="dcmjpeg.dir\RelWithDebInfo"
 			ConfigurationType="4"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
 			<Tool
-				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
-				CompileAs="2"
-				DebugInformationFormat="1"
-				EnableFunctionLevelLinking="TRUE"
-				ExceptionHandling="1"
-				Optimization="0"
-				RuntimeLibrary="1"
-				SuppressStartupBanner="TRUE"
-				WarningLevel="3"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"
-				AssemblerListingLocation="RelWithDebInfo"
-				ObjectFile="$(IntDir)\"
-				ProgramDataBaseFileName="RelWithDebInfo/dcmjpeg.pdb"
-/>
+				Name="VCPreBuildEventTool"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCCustomBuildTool"
+			/>
 			<Tool
-				Name="VCResourceCompilerTool"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"/>
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
 			<Tool
 				Name="VCMIDLTool"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"
-				MkTypLibCompatible="FALSE"
+				MkTypLibCompatible="false"
 				TargetEnvironment="1"
-				GenerateStublessProxies="TRUE"
+				GenerateStublessProxies="true"
 				TypeLibraryName="$(InputName).tlb"
 				OutputDirectory="$(IntDir)"
 				HeaderFileName="$(InputName).h"
 				DLLDataFileName=""
 				InterfaceIdentifierFileName="$(InputName)_i.c"
-				ProxyFileName="$(InputName)_p.c"/>
+				ProxyFileName="$(InputName)_p.c"
+			/>
 			<Tool
-				Name="VCPreBuildEventTool"/>
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"
+				ExceptionHandling="1"
+				RuntimeLibrary="1"
+				EnableFunctionLevelLinking="true"
+				AssemblerListingLocation="RelWithDebInfo"
+				ObjectFile="$(IntDir)\"
+				ProgramDataBaseFileName="RelWithDebInfo/dcmjpeg.pdb"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				DebugInformationFormat="1"
+				CompileAs="2"
+			/>
 			<Tool
-				Name="VCPreLinkEventTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;RelWithDebInfo\&quot;"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="RelWithDebInfo\dcmjpeg.lib"/>
+				OutputFile="RelWithDebInfo\dcmjpeg.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
 		</Configuration>
 	</Configurations>
+	<References>
+	</References>
 	<Files>
 		<Filter
 			Name="Source Files"
-			Filter="">
+			>
 			<File
-				RelativePath="ddpiimpl.cxx">
+				RelativePath="ddpiimpl.cxx"
+				>
 			</File>
 			<File
-				RelativePath="dipijpeg.cxx">
+				RelativePath="dipijpeg.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djcodecd.cxx">
+				RelativePath="djcodecd.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djcodece.cxx">
+				RelativePath="djcodece.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djcparam.cxx">
+				RelativePath="djcparam.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djdecbas.cxx">
+				RelativePath="djdecbas.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djdecext.cxx">
+				RelativePath="djdecext.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djdeclol.cxx">
+				RelativePath="djdeclol.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djdecode.cxx">
+				RelativePath="djdecode.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djdecpro.cxx">
+				RelativePath="djdecpro.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djdecsps.cxx">
+				RelativePath="djdecsps.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djdecsv1.cxx">
+				RelativePath="djdecsv1.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djdijg12.cxx">
+				RelativePath="djdijg12.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djdijg8.cxx">
+				RelativePath="djdijg16.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djdijg16.cxx">
+				RelativePath="djdijg8.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djeijg12.cxx">
+				RelativePath="djeijg12.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djeijg8.cxx">
+				RelativePath="djeijg16.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djeijg16.cxx">
+				RelativePath="djeijg8.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djencbas.cxx">
+				RelativePath="djencbas.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djencext.cxx">
+				RelativePath="djencext.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djenclol.cxx">
+				RelativePath="djenclol.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djencode.cxx">
+				RelativePath="djencode.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djencpro.cxx">
+				RelativePath="djencpro.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djencsps.cxx">
+				RelativePath="djencsps.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djencsv1.cxx">
+				RelativePath="djencsv1.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djrplol.cxx">
+				RelativePath="djrplol.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djrploss.cxx">
+				RelativePath="djrploss.cxx"
+				>
 			</File>
 			<File
-				RelativePath="djutils.cxx">
+				RelativePath="djutils.cxx"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="Header Files"
+			>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\ddpiimpl.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\dipijpeg.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djcodecd.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djcodece.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djcparam.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djdecabs.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djdecbas.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djdecext.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djdeclol.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djdecode.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djdecpro.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djdecsps.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djdecsv1.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djdijg12.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djdijg16.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djdijg8.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djeijg12.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djeijg16.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djeijg8.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djencabs.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djencbas.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djencext.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djenclol.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djencode.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djencpro.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djencsps.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djencsv1.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djrplol.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djrploss.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmjpeg\djutils.h"
+				>
 			</File>
 		</Filter>
 	</Files>
