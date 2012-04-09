@@ -1,0 +1,239 @@
+#include "stdafx.h"
+#include <oci.h>
+#include <ofdatime.h>
+#include <ofstring.h>
+#include <dcdatset.h>
+#include "bridge.h"
+
+EXEC SQL BEGIN DECLARE SECTION;
+unsigned char connection[] = "dicom/dicom";
+char oldStudyUid[65] = "";
+char imageManageNumber[15];
+int dateNumber;
+
+//dataset begin
+char paramHddRoot[65];
+char paramPath[65];
+char paramImgManageNum[15];
+int paramFileDate, paramFileTime, paramInsertDate, paramInsertTime;
+unsigned __int64 paramFileSize;
+char paramTransferSyntaxUid[65];
+char paramSopClaUid[65];
+char paramSopInsUid[65];
+int paramStuDat;
+int paramSerDat;
+int paramStuTim;
+int paramSerTim;
+char paramAccNum[17];
+char paramSeriesModality[17];
+char paramStudyModality[65];
+char paramManufacturer[65];
+char paramInstNam[65];
+char paramRefPhyNam[65];
+char paramStationName[17];
+char paramStuDes[65];
+char paramSerDes[65];
+char paramInstDepartName[65];
+char paramPhyRecNam[65];
+char paramPerformPhyName[65];
+char paramPhyReadStuName[65];
+char paramOperateName[65];
+char paramManufactModNam[65];
+char paramPatNam[65];
+char paramPatNamKan[65];
+char paramPatNamKat[65];
+char paramPatId[65];
+int paramPatBirDat;
+char paramPatSex[17];
+char paramPatAge[5];
+char paramPatSiz[17];
+char paramPatWei[17];
+char paramContBolus[65];
+char paramBodParExam[17];
+char paramProtocolNam[65];
+char paramPatPos[17];
+char paramViewPos[17];
+char paramStuInsUid[65];
+char paramSerInsUid[65];
+char paramStuId[17];
+char paramSerNum[13];
+char paramImaNum[13];
+char paramReqPhysician[65];
+char paramReqService[65];
+//dataset end
+int packageId;
+EXEC SQL END DECLARE SECTION;
+
+EXEC SQL INCLUDE SQLCA.H;
+
+bool SqlError( char* moduleName )
+{
+	OFString errorMsg = moduleName;
+  errorMsg.append(" : ").append(sqlca.sqlerrm.sqlerrmc).append("\n");
+
+  ::OutputDebugString( errorMsg.c_str() );
+
+	EXEC SQL ROLLBACK RELEASE;
+  return FALSE;
+}
+
+bool connectDicomDB()
+{
+  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( "bridge" ) );
+  EXEC SQL CONNECT :connection;
+  return TRUE;
+}
+
+bool commitDicomDB()
+{
+  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( "bridge" ) );
+  EXEC SQL COMMIT WORK RELEASE;
+  return TRUE;
+}
+
+bool rollbackDicomDB()
+{
+  EXEC SQL ROLLBACK RELEASE;
+  return TRUE;
+}
+
+bool getManageNumber(char * const outImageManageNum, const char * const studyUid, int currentStudyDateNumber)
+{
+  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( "bridge" ) ); 
+  if(studyUid)
+  {
+    strncpy(oldStudyUid, studyUid, sizeof(oldStudyUid));
+    EXEC SQL WHENEVER NOT FOUND GOTO NODATA;
+    EXEC SQL SELECT STU_IMGMANAGENUM INTO :imageManageNumber FROM STUDYLEVEL WHERE STU_STUINSUID=:oldStudyUid;
+    EXEC SQL WHENEVER NOT FOUND continue;
+    goto ReturnOutputString;
+    return TRUE;
+NODATA:
+    ;
+  }
+
+  if(currentStudyDateNumber > 0)
+  {
+    dateNumber = currentStudyDateNumber;
+    EXEC SQL SELECT TO_CHAR(:dateNumber) || TO_CHAR(LOCIMGDIRSEQ.NEXTVAL, 'FM000000') INTO :imageManageNumber FROM DUAL;
+  }
+  else
+  {
+    EXEC SQL SELECT TO_CHAR(SYSDATE, 'YYYYMMDD') || TO_CHAR(LOCIMGDIRSEQ.NEXTVAL, 'FM000000') INTO :imageManageNumber FROM DUAL;
+  }
+
+ReturnOutputString:
+  strncpy(outImageManageNum, imageManageNumber, sizeof(imageManageNumber));
+  return TRUE;
+}
+
+bool insertImageInfoToDB(PImgDataset pimg)
+{
+  strncpy(paramHddRoot, pimg->pHddRoot, sizeof(paramHddRoot)); paramHddRoot[sizeof(paramHddRoot) - 1] = '\0';
+  strncpy(paramPath, pimg->pPath, sizeof(paramPath)); paramPath[sizeof(paramPath) - 1] = '\0';
+  strncpy(paramImgManageNum, pimg->pImgManageNum, sizeof(paramImgManageNum)); paramImgManageNum[sizeof(paramImgManageNum) - 1] = '\0';
+  paramFileDate = pimg->fileDate;
+  paramFileTime = pimg->fileTime;
+  paramInsertDate = pimg->insertDate;
+  paramInsertTime = pimg->insertTime;
+  paramFileSize = pimg->fileSize.QuadPart;
+  strncpy(paramTransferSyntaxUid, pimg->pTransferSyntaxUid, sizeof(paramTransferSyntaxUid)); paramTransferSyntaxUid[sizeof(paramTransferSyntaxUid) - 1] = '\0';
+  strncpy(paramSopClaUid, pimg->pSopClaUid, sizeof(paramSopClaUid)); paramSopClaUid[sizeof(paramSopClaUid) - 1] = '\0';
+  strncpy(paramSopInsUid, pimg->pSopInsUid, sizeof(paramSopInsUid)); paramSopInsUid[sizeof(paramSopInsUid) - 1] = '\0';
+  paramStuDat = pimg->stuDat;
+  paramSerDat = pimg->serDat;
+  paramStuTim = pimg->stuTim;
+  paramSerTim = pimg->serTim;
+  strncpy(paramAccNum, pimg->pAccNum, sizeof(paramAccNum)); paramAccNum[sizeof(paramAccNum) - 1] = '\0';
+  strncpy(paramSeriesModality, pimg->pSeriesModality, sizeof(paramSeriesModality)); paramSeriesModality[sizeof(paramSeriesModality) - 1] = '\0';
+  strncpy(paramStudyModality, pimg->pStudyModality, sizeof(paramStudyModality)); paramStudyModality[sizeof(paramStudyModality) - 1] = '\0';
+  strncpy(paramManufacturer, pimg->pManufacturer, sizeof(paramManufacturer)); paramManufacturer[sizeof(paramManufacturer) - 1] = '\0';
+  strncpy(paramInstNam, pimg->pInstNam, sizeof(paramInstNam)); paramInstNam[sizeof(paramInstNam) - 1] = '\0';
+  strncpy(paramRefPhyNam, pimg->pRefPhyNam, sizeof(paramRefPhyNam)); paramRefPhyNam[sizeof(paramRefPhyNam) - 1] = '\0';
+  strncpy(paramStationName, pimg->pStationName, sizeof(paramStationName)); paramStationName[sizeof(paramStationName) - 1] = '\0';
+  strncpy(paramStuDes, pimg->pStuDes, sizeof(paramStuDes)); paramStuDes[sizeof(paramStuDes) - 1] = '\0';
+  strncpy(paramSerDes, pimg->pSerDes, sizeof(paramSerDes)); paramSerDes[sizeof(paramSerDes) - 1] = '\0';
+  strncpy(paramInstDepartName, pimg->pInstDepartName, sizeof(paramInstDepartName)); paramInstDepartName[sizeof(paramInstDepartName) - 1] = '\0';
+  strncpy(paramPhyRecNam, pimg->pPhyRecNam, sizeof(paramPhyRecNam)); paramPhyRecNam[sizeof(paramPhyRecNam) - 1] = '\0';
+  strncpy(paramPerformPhyName, pimg->pPerformPhyName, sizeof(paramPerformPhyName)); paramPerformPhyName[sizeof(paramPerformPhyName) - 1] = '\0';
+  strncpy(paramPhyReadStuName, pimg->pPhyReadStuName, sizeof(paramPhyReadStuName)); paramPhyReadStuName[sizeof(paramPhyReadStuName) - 1] = '\0';
+  strncpy(paramOperateName, pimg->pOperateName, sizeof(paramOperateName)); paramOperateName[sizeof(paramOperateName) - 1] = '\0';
+  strncpy(paramManufactModNam, pimg->pManufactModNam, sizeof(paramManufactModNam)); paramManufactModNam[sizeof(paramManufactModNam) - 1] = '\0';
+  strncpy(paramPatNam, pimg->pPatNam, sizeof(paramPatNam)); paramPatNam[sizeof(paramPatNam) - 1] = '\0';
+  strncpy(paramPatNamKan, pimg->pPatNamKan, sizeof(paramPatNamKan)); paramPatNamKan[sizeof(paramPatNamKan) - 1] = '\0';
+  strncpy(paramPatNamKan, pimg->pPatNamKat, sizeof(paramPatNamKat)); paramPatNamKat[sizeof(paramPatNamKat) - 1] = '\0';
+  strncpy(paramPatId, pimg->pPatId, sizeof(paramPatId)); paramPatId[sizeof(paramPatId) - 1] = '\0';
+  paramPatBirDat = pimg->patBirDat;
+  strncpy(paramPatSex, pimg->pPatSex, sizeof(paramPatSex)); paramPatSex[sizeof(paramPatSex) - 1] = '\0';
+  strncpy(paramPatAge, pimg->pPatAge, sizeof(paramPatAge)); paramPatAge[sizeof(paramPatAge) - 1] = '\0';
+  strncpy(paramPatSiz, pimg->pPatSiz, sizeof(paramPatSiz)); paramPatSiz[sizeof(paramPatSiz) - 1] = '\0';
+  strncpy(paramPatWei, pimg->pPatWei, sizeof(paramPatWei)); paramPatWei[sizeof(paramPatWei) - 1] = '\0';
+  strncpy(paramContBolus, pimg->pContBolus, sizeof(paramContBolus)); paramContBolus[sizeof(paramContBolus) - 1] = '\0';
+  strncpy(paramBodParExam, pimg->pBodParExam, sizeof(paramBodParExam)); paramBodParExam[sizeof(paramBodParExam) - 1] = '\0';
+  strncpy(paramProtocolNam, pimg->pProtocolNam, sizeof(paramProtocolNam)); paramProtocolNam[sizeof(paramProtocolNam) - 1] = '\0';
+  strncpy(paramPatPos, pimg->pPatPos, sizeof(paramPatPos)); paramPatPos[sizeof(paramPatPos) - 1] = '\0';
+  strncpy(paramViewPos, pimg->pViewPos, sizeof(paramViewPos)); paramViewPos[sizeof(paramViewPos) - 1] = '\0';
+  strncpy(paramStuInsUid, pimg->pStuInsUid, sizeof(paramStuInsUid)); paramStuInsUid[sizeof(paramStuInsUid) - 1] = '\0';
+  strncpy(paramSerInsUid, pimg->pSerInsUid, sizeof(paramSerInsUid)); paramSerInsUid[sizeof(paramSerInsUid) - 1] = '\0';
+  strncpy(paramStuId, pimg->pStuId, sizeof(paramStuId)); paramStuId[sizeof(paramStuId) - 1] = '\0';
+  strncpy(paramSerNum, pimg->pSerNum, sizeof(paramSerNum)); paramSerNum[sizeof(paramSerNum) - 1] = '\0';
+  strncpy(paramImaNum, pimg->pImaNum, sizeof(paramImaNum)); paramImaNum[sizeof(paramImaNum) - 1] = '\0';
+  strncpy(paramReqPhysician, pimg->pReqPhysician, sizeof(paramReqPhysician)); paramReqPhysician[sizeof(paramReqPhysician) - 1] = '\0';
+  strncpy(paramReqService, pimg->pReqService, sizeof(paramReqService)); paramReqService[sizeof(paramReqService) - 1] = '\0';
+
+  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( "bridge" ) ); 
+  EXEC SQL EXECUTE BEGIN :packageId := INSERTIMAGE(
+    paramHddRoot => :paramHddRoot,
+    paramPath => :paramPath,
+    paramImgManageNum => :paramImgManageNum,
+    paramFileDate => :paramFileDate,
+    paramFileTime => :paramFileTime,
+    paramInsertDate => :paramInsertDate,
+    paramInsertTime => :paramInsertTime,
+    paramFileSize => :paramFileSize,
+    paramTransferSyntaxUid => :paramTransferSyntaxUid,
+    paramSopClaUid => :paramSopClaUid,
+    paramSopInsUid => :paramSopInsUid,
+    paramStuDat => :paramStuDat,
+    paramSerDat => :paramSerDat,
+    paramStuTim => :paramStuTim,
+    paramSerTim => :paramSerTim,
+    paramAccNum => :paramAccNum,
+    paramSeriesModality => :paramSeriesModality,
+    paramStudyModality => :paramStudyModality,
+    paramManufacturer => :paramManufacturer,
+    paramInstNam => :paramInstNam,
+    paramRefPhyNam => :paramRefPhyNam,
+    paramStationName => :paramStationName,
+    paramStuDes => :paramStuDes,
+    paramSerDes => :paramSerDes,
+    paramInstDepartName => :paramInstDepartName,
+    paramPhyRecNam => :paramPhyRecNam,
+    paramPerformPhyName => :paramPerformPhyName,
+    paramPhyReadStuName => :paramPhyReadStuName,
+    paramOperateName => :paramOperateName,
+    paramManufactModNam => :paramManufactModNam,
+    paramPatNam => :paramPatNam,
+    paramPatNamKan => :paramPatNamKan,
+    paramPatNamKat => :paramPatNamKat,
+    paramPatId => :paramPatId,
+    paramPatBirDat => :paramPatBirDat,
+    paramPatSex => :paramPatSex,
+    paramPatAge => :paramPatAge,
+    paramPatSiz => :paramPatSiz,
+    paramPatWei => :paramPatWei,
+    paramContBolus => :paramContBolus,
+    paramBodParExam => :paramBodParExam,
+    paramProtocolNam => :paramProtocolNam,
+    paramPatPos => :paramPatPos,
+    paramViewPos => :paramViewPos,
+    paramStuInsUid => :paramStuInsUid,
+    paramSerInsUid => :paramSerInsUid,
+    paramStuId => :paramStuId,
+    paramSerNum => :paramSerNum,
+    paramImaNum => :paramImaNum,
+    paramReqPhysician => :paramReqPhysician,
+    paramReqService => :paramReqService
+    ); END; END-EXEC;
+  return TRUE;
+}

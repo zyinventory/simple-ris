@@ -1,0 +1,111 @@
+create or replace type strcat_type as object (
+  cat_string varchar2(4000),
+  static function ODCIAggregateInitialize
+  (cs_ctx In Out strcat_type) return number,
+  member function ODCIAggregateIterate
+  (self In Out strcat_type ,value in varchar2) return number, 
+  member function ODCIAggregateMerge 
+  (self In Out strcat_type, ctx2 In Out strcat_type) return number, 
+  member function ODCIAggregateTerminate 
+  (self In Out strcat_type, returnValue Out varchar2, flags in number) return number 
+);
+
+create or replace FUNCTION strcat(input varchar2) RETURN varchar2 PARALLEL_ENABLE AGGREGATE USING strcat_type;
+
+CREATE OR REPLACE FUNCTION DICOM.InsertImage(paramSopInsUid VARCHAR2, paramSerInsUid varchar2, paramStuInsUid varchar2, 
+  paramTransferSyntaxUid varchar2, paramSopClaUID VARCHAR2, paramPatID VARCHAR2, paramImaNum VARCHAR2, 
+  paramHddRoot VARCHAR2, paramPath varchar2, paramFileSize NUMBER, paramFileDate number, paramFileTime number,
+  --series
+  paramSerNum VARCHAR2, paramSerDat number, paramSerTim number, paramSeriesModality varchar2, paramManufacturer varchar2,
+  paramManufactModNam varchar2, paramOperateName varchar2, paramProtocolNam varchar2, paramSerDes varchar2, paramBodParExam varchar2,
+  paramViewPos varchar2, paramContBolus varchar2, paramPatPos varchar2, paramInsertDate number, paramInsertTime number, 
+  --study
+  paramStuId VARCHAR2, paramStuDat number, paramStuTim NUMBER, paramAccNum number, paramRefPhyNam varchar2, paramPhyRecNam varchar2, 
+  paramPhyReadStuName varchar2, paramStuDes varchar2, paramPatAge varchar2, paramPatSiz varchar2, paramPatWei varchar2,
+  paramReqPhysician varchar2, paramReqService varchar2, paramInstNam varchar2, paramInstDepartName varchar2, 
+  paramStationName varchar2, paramStudyModality varchar2, paramPerformPhyName varchar2, paramImgManageNum varchar2,
+  paramPatNam varchar2, paramPatNamKan varchar2, paramPatNamKat varchar2, paramPatBirDat number, paramPatSex varchar2
+  ) RETURN NUMBER IS
+imageIncrease NUMBER;
+seriesIncrease NUMBER;
+allStuBodParExa varchar2(256);
+examPackageId number;
+numStuRelIma NUMBER;
+numStuRelSer NUMBER;
+numAccNum NUMBER;
+BEGIN
+  imageIncrease := 0;
+  numAccNum := to_number(paramAccNum);
+  update ImageLevel set HDDRoot=paramHddRoot, Path=paramPath, nSize=paramFileSize, InsertDate=paramFileDate, 
+    InsertTime=paramFileTime, ImaNum=paramImaNum, SOPClaUID=paramSopClaUID, PatID=paramPatID, 
+    StuInsUID=paramStuInsUid, SerInsUID=paramSerInsUid, Transfer=paramTransferSyntaxUid where SOPInsUID=paramSopInsUID;
+  if sql%rowcount=0 then
+    INSERT INTO ImageLevel (
+      SOPInsUID,      ImaNum,     SOPClaUID,      HDDRoot,      Path,     nSize,
+      InsertDate,     InsertTime,   PatID,      StuInsUID,      SerInsUID,Transfer)
+      VALUES (
+      paramSopInsUID, paramImaNum,paramSopClaUID, paramHddRoot, paramPath,      paramFileSize, 
+      paramFileDate,  paramFileTime,paramPatID, paramStuInsUID, paramSerInsUID, paramTransferSyntaxUid);
+    imageIncrease := 1;
+  end if;
+
+  seriesIncrease := 0;
+  if imageIncrease=1 then
+    UPDATE SeriesLevel SET Modality=paramSeriesModality, NumSerRelIma=NumSerRelIma+1 WHERE SerInsUID=paramSerInsUid;
+    if sql%rowcount=0 then
+      INSERT INTO SeriesLevel (
+        SerInsUID,      SerNum,       SerDate,      SerTime,      Modality,             Manufacturer,       ManufactModNm,  
+        OperateName,      ProNam,       SerDes,       BodParExa,      ViePos,       ContBolus,      PatPos,       NumSerRelIma,
+        InsertDate,       InsertTime,       PatID,      StuInsUID )
+        VALUES (
+        paramSerInsUID, paramSerNum,  paramSerDat,  paramSerTim,  paramSeriesModality,  paramManufacturer,  paramManufactModNam,
+        paramOperateName, paramProtocolNam,paramSerDes,  paramBodParExam, paramViewPos,  paramContBolus, paramPatPos,  1,
+        paramInsertDate,  paramInsertTime,  paramPatID, paramStuInsUid );
+      seriesIncrease := 1;
+    end if;
+  end if;
+  
+  -- concat STU_BODPAREXA(…„”∞≤øŒª)
+  select replace(substr(strcat(BodParExa), 0, 256), ',', '^') into allStuBodParExa from 
+    (select distinct BodParExa from SeriesLevel where StuInsUID=paramStuInsUid);
+  
+  begin -- link exam and study with package
+    SELECT NVL(EXAM_PACKAGE_ID, 0) INTO examPackageId FROM EXAM_STUDY WHERE ID=numAccNum;
+    UPDATE EXAM_STUDY SET PROCEDURE_STATUS_ID = 5 WHERE ID=numAccNum AND PROCEDURE_STATUS_ID < 5;
+    if examPackageId = 0 then --if exam no package, create new package
+      SELECT EXAM_PACKAGE_SEQ.NEXTVAL INTO examPackageId FROM DUAL;
+      INSERT INTO EXAM_PACKAGE(ID) VALUES(examPackageId);
+      UPDATE EXAM_STUDY SET EXAM_PACKAGE_ID=examPackageId WHERE ID=numAccNum; --shall not raise no_data_found
+    end if;
+  EXCEPTION
+    WHEN no_data_found then
+      SELECT EXAM_PACKAGE_SEQ.NEXTVAL INTO examPackageId FROM DUAL;
+      INSERT INTO EXAM_PACKAGE(ID) VALUES(examPackageId);
+    when others then raise_application_error(-20002, 'find exam package error', true);
+  end;
+  
+  UPDATE StudyLevel SET Pat_PatID=paramPatID, Pat_PatNam=paramPatNam, Pat_PatNamKan=paramPatNamKan,
+    Pat_PatNamKat=paramPatNamKat, Pat_PatBirDat=paramPatBirDat, Pat_PatSex=paramPatSex, Stu_DeleteFlg=0, 
+    Stu_Modality=paramStudyModality, Stu_NumStuRelIma=Stu_NumStuRelIma + imageincrease, 
+    Stu_NumStuRelSer=Stu_NumStuRelSer + seriesincrease, Stu_InsertDate=paramInsertDate, 
+    Stu_ImgManageNum=paramImgManageNum, Stu_DVD_Status=0, BackUp_RootDevice=NULL,
+    BackUp_VolumeName=NULL, BackUp_Date=NULL, BackUp_Time=NULL, Stu_StuStatusID=0,
+    Stu_InsertTime=paramInsertTime, STU_BODPAREXA=allStuBodParExa
+    WHERE Stu_StuInsUID=paramStuInsUID;
+  if sql%rowcount=0 then
+    INSERT INTO StudyLevel (
+      PACKAGEID,  Stu_StuInsUID,    Stu_StuID,  Stu_StuDat, Stu_StuTim, Stu_AccNum, Stu_RefPhyNam,  Stu_PhyRecName, 
+      Stu_PhyReadStuName, Stu_StuDes, Stu_PatAge, Stu_PatSiz, Stu_PatWei, Stu_ReqPhysician, Stu_ReqService, Stu_InstNam,
+      Stu_InstDepartName, Stu_StationName,  Stu_Modality,       Stu_PerformPhyName, Stu_NumStuRelSer, Stu_NumStuRelIma,
+      Stu_InsertDate, Stu_InsertTime, Stu_ImgManageNum, Stu_DeleteFlg,  Stu_DVD_Status, Stu_StuStatusID,
+      Pat_PatID,  Pat_PatNam,   Pat_PatNamKan,  Pat_PatNamKat,  Pat_PatBirDat,  Pat_PatSex, STU_BODPAREXA )
+      VALUES (
+		  examPackageId,paramStuInsUID, paramStuID, paramStuDat,paramStuTim,paramAccNum,paramRefPhyNam, paramPhyRecNam,
+			paramPhyReadStuName,paramStuDes,paramPatAge,paramPatSiz,paramPatWei,paramReqPhysician,paramReqService,paramInstNam,
+			paramInstDepartName,paramStationName, paramStudyModality, paramPerformPhyName,1,                1,
+      paramInsertDate,paramInsertTime,paramImgManageNum,0,              0,              0,
+      paramPatID,  paramPatNam, paramPatNamKan, paramPatNamKat, paramPatBirDat, paramPatSex,allStuBodParExa);
+  end if;
+  RETURN examPackageId;
+END InsertImage;
+/
