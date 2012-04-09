@@ -100,7 +100,7 @@ extern "C" {
 int mkstemp(char *);
 }
 #endif
-
+#include "extension.h"
 
 #ifdef PRIVATE_STORESCP_DECLARATIONS
 PRIVATE_STORESCP_DECLARATIONS
@@ -1768,7 +1768,7 @@ storeSCPCallback(
     // is present and the options opt_bitPreserving and opt_ignore are not set.
     if ((imageDataSet)&&(*imageDataSet)&&(!opt_bitPreserving)&&(!opt_ignore))
     {
-      OFString fileName;
+      OFString fileName, relateFilePathName, imageManageNumber;
 
       // in case option --sort-conc-studies is set, we need to perform some particular
       // steps to determine the actual name of the output file
@@ -1794,7 +1794,7 @@ storeSCPCallback(
         // if this is the first DICOM object that was received or if the study instance UID in the
         // current DICOM object does not equal the last object's study instance UID we need to create
         // a new subdirectory in which the current DICOM object will be stored
-        if( lastStudyInstanceUID.empty() || lastStudyInstanceUID != currentStudyInstanceUID)
+        //if( lastStudyInstanceUID.empty() || lastStudyInstanceUID != currentStudyInstanceUID) // can't skip it, must generate image file path to fill imagelevel in DB
         {
           // if lastStudyInstanceUID is non-empty, we have just completed receiving all objects for one
           // study. In such a case, we need to set a certain indicator variable (lastStudySubdirectoryPathAndName),
@@ -1810,36 +1810,36 @@ storeSCPCallback(
           // create the new lastStudyInstanceUID value according to the value in the current DICOM object
           lastStudyInstanceUID = currentStudyInstanceUID;
 
-          // get the current time (needed for subdirectory name)
-          OFDateTime dateTime;
-          dateTime.setCurrentDateTime();
-          // create a name for the new subdirectory. pattern: "[opt_sortConcerningStudies]_[YYYYMMDD]_[HHMMSSMMM]" (use current datetime)
-          char buf[32];
-          sprintf(buf, "_%04u%02u%02u_%02u%02u%02u%03u",
-            dateTime.getDate().getYear(), dateTime.getDate().getMonth(), dateTime.getDate().getDay(),
-            dateTime.getTime().getHour(), dateTime.getTime().getMinute(), dateTime.getTime().getIntSecond(), dateTime.getTime().getMilliSecond());
+
+          
+          
+          
+          
+          
+          
+          // create a name for the new subdirectory. pattern: "[opt_sortConcerningStudies][YYMM]/[YYYYMMDDXXXXXX]"
           OFString subdirectoryName = opt_sortConcerningStudies;
-          subdirectoryName += buf;
+          generateImageStoreDirectory(imageDataSet, subdirectoryName, imageManageNumber);
 
           // create subdirectoryPathAndName (string with full path to new subdirectory)
           subdirectoryPathAndName = cbdata->imageFileName;
+          relateFilePathName = subdirectoryPathAndName;
           size_t position = subdirectoryPathAndName.rfind(PATH_SEPARATOR);
           if (position != OFString_npos) subdirectoryPathAndName.erase(position+1);
           subdirectoryPathAndName += subdirectoryName;
+          if (position != OFString_npos) relateFilePathName.erase(0, position);
+          relateFilePathName = subdirectoryName + relateFilePathName;
 
           // check if the subdirectory is already existent
-          // if it is already existent dump a warning
-          if( OFStandard::dirExists(subdirectoryPathAndName) )
-          {
-            fprintf(stderr, "storescp: Warning: Subdirectory for studies already existent. (%s)\n", subdirectoryPathAndName.c_str() );
-          }
 
-          // if it is not existent create it
-#ifdef HAVE_WINDOWS_H
-          if( _mkdir( subdirectoryPathAndName.c_str() ) == -1 )
-#else
-          if( mkdir( subdirectoryPathAndName.c_str(), S_IRWXU | S_IRWXG | S_IRWXO ) == -1 )
-#endif
+
+
+
+
+
+
+
+          if( mkdirRecursive( subdirectoryPathAndName ) != STATUS_Success )
           {
             fprintf(stderr, "storescp: Could not create subdirectory %s.\n", subdirectoryPathAndName.c_str() );
             rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
@@ -1886,7 +1886,7 @@ storeSCPCallback(
         fprintf(stderr, "storescp: Cannot write image file: %s\n", fileName.c_str());
         rsp->DimseStatus = STATUS_STORE_Refused_OutOfResources;
       }
-
+      if(insertImage(*imageDataSet, imageManageNumber, opt_outputDirectory, relateFilePathName)) commitToDB();
       // check the image to make sure it is consistent, i.e. that its sopClass and sopInstance correspond
       // to those mentioned in the request. If not, set the status in the response message variable.
       if ((rsp->DimseStatus == STATUS_Success)&&(!opt_ignore))
