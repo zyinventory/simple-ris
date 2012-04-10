@@ -59,8 +59,8 @@ END_EXTERN_C
 
 #ifdef HAVE_WINDOWS_H
 #include <direct.h>        /* for _mkdir() */
+#include <Winsock2.h>
 #endif
-
 
 #include "dcmtk/dcmnet/dimse.h"
 #include "dcmtk/dcmnet/diutil.h"
@@ -960,17 +960,17 @@ int main(int argc, char *argv[])
     // child process
     DUL_markProcessAsForkedChild();
 
-    char buf[256];
+    WSAPROTOCOL_INFO protoInfo;
     DWORD bytesRead = 0;
     HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
 
     // read socket handle number from stdin, i.e. the anonymous pipe
 	// to which our parent process has written the handle number.
-    if (ReadFile(hStdIn, buf, sizeof(buf), &bytesRead, NULL))
+    if (ReadFile(hStdIn, &protoInfo, sizeof(WSAPROTOCOL_INFO), &bytesRead, NULL))
 	{
         // make sure buffer is zero terminated
-		buf[bytesRead] = '\0';
-        dcmExternalSocketHandle.set(atoi(buf));
+		SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, &protoInfo, 0 , 0);
+        dcmExternalSocketHandle.set((int)sock);
     }
     else
 	{

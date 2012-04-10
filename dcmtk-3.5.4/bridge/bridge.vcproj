@@ -97,7 +97,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy $(OutDir)\$(ProjectName).dll $(SolutionDir)dcmnet\apps\Debug"
+				CommandLine="copy $(OutDir)\$(ProjectName).dll $(SolutionDir)dcmnet\apps\$(ConfigurationName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -105,7 +105,7 @@
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
-			CharacterSet="1"
+			CharacterSet="2"
 			WholeProgramOptimization="1"
 			>
 			<Tool
@@ -130,10 +130,11 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
+				AdditionalIncludeDirectories="&quot;$(Pro_C_Path)\OCI\include&quot;;..\config\include;..\ofstd\include;..\ofstd\include\dcmtk\ofstd;..\dcmdata\include;..\dcmdata\include\dcmtk\dcmdata"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;BRIDGE_EXPORTS"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
-				UsePrecompiledHeader="2"
+				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="3"
 			/>
@@ -148,7 +149,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="$(Pro_C_Path)\precomp\LIB\orasql11.lib netapi32.lib wsock32.lib zlib_o.lib"
 				LinkIncremental="1"
+				AdditionalLibraryDirectories="&quot;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib&quot;"
+				IgnoreDefaultLibraryNames="msvcprt.lib,LIBCMT.LIB"
 				ModuleDefinitionFile="bridge.def"
 				GenerateDebugInformation="true"
 				SubSystem="2"
@@ -176,6 +180,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="copy $(OutDir)\$(ProjectName).dll $(SolutionDir)dcmnet\apps\$(ConfigurationName)"
 			/>
 		</Configuration>
 	</Configurations>

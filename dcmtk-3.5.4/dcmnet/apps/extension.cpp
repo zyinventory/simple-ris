@@ -12,6 +12,8 @@
 #include "dcmtk/dcmnet/dicom.h"
 #include "bridge.h"
 
+extern OFBool opt_debug;
+
 static bool connected = FALSE;
 DcmTagKey keyTransferSyntaxUid(0x2, 0x10);
 DcmTagKey keySopClaUid(0x8, 0x16), keySopInsUid(0x8, 0x18), keyStuDat(0x8, 0x20), keySerDat(0x8, 0x21), keyStuTim(0x8, 0x30), 
@@ -29,7 +31,7 @@ void getValue(DcmDataset *imageDataSet, const char **pValue, DcmTagKey& key, OFS
 {
   imageDataSet->findAndGetOFString(key, value);
   *pValue = value.c_str();
-  printf("%s : %s\n", key.toString().c_str(), *pValue);
+  if (opt_debug) printf("%s : %s\n", key.toString().c_str(), *pValue);
 }
 
 void getNameValue(DcmDataset *imageDataSet, PImgDataset pDataset, DcmTagKey& key, OFString& value, OFString& valueKan, OFString& valueKat)
@@ -52,7 +54,7 @@ void getNameValue(DcmDataset *imageDataSet, PImgDataset pDataset, DcmTagKey& key
   pDataset->pPatNam = value.c_str();
   pDataset->pPatNamKan = valueKan.c_str();
   pDataset->pPatNamKat = valueKat.c_str();
-  printf("%s : %s\n", key.toString().c_str(), temp.c_str());
+  if (opt_debug) printf("%s : %s\n", key.toString().c_str(), temp.c_str());
 }
 
 void getDateNumberValue(DcmDataset *imageDataSet, int &intValue, DcmTagKey& key, OFString& value)
@@ -66,7 +68,7 @@ void getDateNumberValue(DcmDataset *imageDataSet, int &intValue, DcmTagKey& key,
   {
     intValue = atoi(value.c_str());
   }
-  printf("%s : DA %d\n", key.toString().c_str(), intValue);
+  if (opt_debug) printf("%s : DA %d\n", key.toString().c_str(), intValue);
 }
 
 void getTimeNumberValue(DcmDataset *imageDataSet, int &intValue, DcmTagKey& key, OFString& value)
@@ -82,7 +84,7 @@ void getTimeNumberValue(DcmDataset *imageDataSet, int &intValue, DcmTagKey& key,
     int temp = atof(value.c_str());
     intValue = temp / 10000 * 3600 + temp % 10000 /100 * 60 + temp % 100;
   }
-  printf("%s : TM %d\n", key.toString().c_str(), intValue);
+  if (opt_debug) printf("%s : TM %d\n", key.toString().c_str(), intValue);
 }
 
 void commitToDB()
