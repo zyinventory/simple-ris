@@ -124,7 +124,7 @@ END_EXTERN_C
 #ifdef HAVE_GUSI_H
 #include <GUSI.h>       /* Use the Grand Unified Sockets Interface (GUSI) on Macintosh */
 #endif
-
+#include <Winsock2.h>
 #include "dcmtk/ofstd/ofstream.h"
 #include "dcmtk/dcmnet/dcompat.h"
 #include "dcmtk/dcmnet/dicom.h"
@@ -1526,8 +1526,8 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
       len = sizeof(from);
       if (getsockname(sock, &from, &len))
       {
-          char buf3[256];
-          sprintf(buf3, "TCP Initialization Error: %s, getsockname failed on socket %d", strerror(errno), sock);
+          char buf3[256]; int wsaError = WSAGetLastError();
+          sprintf(buf3, "TCP Initialization Error: %d %s, getsockname failed on socket %d", wsaError, strerror(wsaError), sock);
           return makeDcmnetCondition(DULC_TCPINITERROR, OF_error, buf3);
       }
     }
@@ -1681,13 +1681,13 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 		// the child uses the same stdout and stderr as the parent, but
 		// stdin is the read end of our anonymous pipe.
         si.cb = sizeof(si);
-        si.dwFlags |= STARTF_USESTDHANDLES;
+        si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
         si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
         si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
         si.hStdInput = hChildStdInRead;
-
+		si.wShowWindow |= SW_MINIMIZE;
 		// create child process. 
-        if (!CreateProcess(NULL,OFconst_cast(char *,cmdLine.c_str()),NULL,NULL,TRUE,0,NULL,NULL,&si,&pi))
+        if (!CreateProcess(NULL,OFconst_cast(char *,cmdLine.c_str()),NULL,NULL,TRUE,CREATE_NEW_CONSOLE,NULL,NULL,&si,&pi))
         {
             char buf4[256];
             sprintf(buf4, "CreateProcess failed: (%i)",(int)GetLastError());
@@ -1698,8 +1698,8 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
             // PROCESS_INFORMATION pi now contains various handles for the new process.
 			// Now that we have a handle to the new process, we can duplicate the
 			// socket handle into the new child process.
-			if (DuplicateHandle(GetCurrentProcess(), (HANDLE)sock, pi.hProcess, 
-                &childSocketHandle, 0, TRUE, DUPLICATE_CLOSE_SOURCE)) 
+            WSAPROTOCOL_INFO protoInfo;
+			if (WSADuplicateSocket((SOCKET)sock, pi.dwProcessId, &protoInfo) != SOCKET_ERROR) 
             {
                 // close handles in PROCESS_INFORMATION structure
 				// and our local copy of the socket handle.
@@ -1709,9 +1709,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 
 				// send number of socket handle in child process over anonymous pipe
                 DWORD bytesWritten;
-                char buf5[20];
-                sprintf(buf5,"%i",(int)childSocketHandle);
-                if (!WriteFile(hChildStdInWriteDup, buf5, strlen(buf5)+1, &bytesWritten, NULL)) 
+                if (!WriteFile(hChildStdInWriteDup, (BYTE*)&protoInfo, sizeof(WSAPROTOCOL_INFO), &bytesWritten, NULL))
 				{
                     CloseHandle(hChildStdInWriteDup);
                     return makeDcmnetCondition (DULC_CANNOTFORK, OF_error, "error while writing to anonymous pipe");
