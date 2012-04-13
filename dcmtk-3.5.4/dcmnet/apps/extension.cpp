@@ -231,13 +231,13 @@ bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString
   {
     valueSeriesModality = valueStudyModality;
     dataset.pSeriesModality = valueSeriesModality.c_str();
-    printf("%s : %s\n", keySeriesModality.toString().c_str(), dataset.pSeriesModality);
+    if(opt_debug) printf("%s : %s\n", keySeriesModality.toString().c_str(), dataset.pSeriesModality);
   }
   else if(!valueSeriesModality.empty() && valueStudyModality.empty())
   {
     valueStudyModality = valueSeriesModality;
     dataset.pStudyModality = valueStudyModality.c_str();
-    printf("%s : %s\n", keyStudyModality.toString().c_str(), dataset.pStudyModality);
+    if(opt_debug) printf("%s : %s\n", keyStudyModality.toString().c_str(), dataset.pStudyModality);
   }
 
   if(connected ? connected : connectDicomDB())

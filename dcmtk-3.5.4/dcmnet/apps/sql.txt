@@ -1,4 +1,7 @@
-create or replace type strcat_type as object (
+--
+-- STRCAT_TYPE  (Type) 
+--
+CREATE OR REPLACE TYPE DICOM.strcat_type as object (
   cat_string varchar2(4000),
   static function ODCIAggregateInitialize
   (cs_ctx In Out strcat_type) return number,
@@ -9,8 +12,56 @@ create or replace type strcat_type as object (
   member function ODCIAggregateTerminate 
   (self In Out strcat_type, returnValue Out varchar2, flags in number) return number 
 );
+/
+
+
+--
+-- STRCAT_TYPE  (Type Body) 
+--
+--  Dependencies: 
+--   STANDARD (Package)
+--   STANDARD (Package)
+--   ODCICONST (Synonym)
+--
+CREATE OR REPLACE TYPE BODY DICOM.strcat_type is
+  static function ODCIAggregateInitialize(cs_ctx IN OUT strcat_type)
+  return number
+  is
+  begin
+      cs_ctx := strcat_type(null);
+      return ODCIConst.Success;
+  end;
+  
+  member function ODCIAggregateIterate(self IN OUT strcat_type, value IN varchar2)
+  return number
+  is
+  begin
+        /*字符串已""，""分别 */
+      self.cat_string := self.cat_string || ',' || value;
+      return ODCIConst.Success;
+  end;
+  
+  member function ODCIAggregateTerminate(self IN Out strcat_type, returnValue OUT varchar2, flags IN number)
+  return number
+  is
+  begin
+        /*去除空(is null)*/
+      returnValue := ltrim(rtrim(self.cat_string, ','), ',');
+      return ODCIConst.Success;
+  end;
+  
+  member function ODCIAggregateMerge(self IN OUT strcat_type, ctx2 IN Out strcat_type)
+  return number
+  is
+  begin
+      self.cat_string := self.cat_string || ',' || ctx2.cat_string;
+      return ODCIConst.Success;
+  end;
+end;
+/
 
 create or replace FUNCTION strcat(input varchar2) RETURN varchar2 PARALLEL_ENABLE AGGREGATE USING strcat_type;
+/
 
 CREATE OR REPLACE FUNCTION DICOM.InsertImage(paramSopInsUid VARCHAR2, paramSerInsUid varchar2, paramStuInsUid varchar2, 
   paramTransferSyntaxUid varchar2, paramSopClaUID VARCHAR2, paramPatID VARCHAR2, paramImaNum VARCHAR2, 
