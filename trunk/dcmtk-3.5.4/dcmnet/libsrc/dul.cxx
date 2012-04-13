@@ -1699,7 +1699,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 			// Now that we have a handle to the new process, we can duplicate the
 			// socket handle into the new child process.
             WSAPROTOCOL_INFO protoInfo;
-			if (WSADuplicateSocket((SOCKET)sock, pi.dwProcessId, &protoInfo) != SOCKET_ERROR) 
+			if (WSADuplicateSocket((SOCKET)sock, pi.dwProcessId, &protoInfo) == 0) 
             {
                 // close handles in PROCESS_INFORMATION structure
 				// and our local copy of the socket handle.

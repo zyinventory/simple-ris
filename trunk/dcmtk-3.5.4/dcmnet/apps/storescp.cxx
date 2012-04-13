@@ -1170,10 +1170,10 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
 
   if (cond.code() == DULC_FORKEDCHILD)
   {
-      // if (opt_verbose) DimseCondition::dump(cond);
+      if (opt_verbose) DimseCondition::dump(cond);
+	  else printf("%s\n", cond.text());
       goto cleanup;
   }
-
   // if some kind of error occured, take care of it
   if (cond.bad())
   {
@@ -1226,9 +1226,9 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
 #if defined(HAVE_FORK) || defined(_WIN32)
       if (opt_forkMode)
       {
-        printf("Association Received in %s process (pid: %ld)\n", (DUL_processIsForkedChild() ? "child" : "parent") , OFstatic_cast(long, getpid()));
+        printf("Association Received in %s process (pid: %ld) from %s\n", (DUL_processIsForkedChild() ? "child" : "parent") , OFstatic_cast(long, getpid()), assoc->params->DULparams.callingAPTitle);
       }
-      else printf("Association Received\n");
+	  else printf("Association Received from %s\n", assoc->params->DULparams.callingAPTitle);
 #else
       printf("Association Received\n");
 #endif
@@ -1830,7 +1830,7 @@ storeSCPCallback(
           if (position != OFString_npos) relateFilePathName.erase(0, position);
           relateFilePathName = subdirectoryName + relateFilePathName;
 
-          // check if the subdirectory is already existent
+		  printf("%s image save path: %s\n", currentStudyInstanceUID.c_str(), relateFilePathName.c_str());
 
 
 
@@ -1838,7 +1838,7 @@ storeSCPCallback(
 
 
 
-
+		  // check if the subdirectory is already existent
           if( mkdirRecursive( subdirectoryPathAndName ) != STATUS_Success )
           {
             fprintf(stderr, "storescp: Could not create subdirectory %s.\n", subdirectoryPathAndName.c_str() );
