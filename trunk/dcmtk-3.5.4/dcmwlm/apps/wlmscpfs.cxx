@@ -40,14 +40,14 @@
 #include "dcmtk/ofstd/ofconapp.h"
 #include "wlcefs.h"
 #include "dcmtk/dcmwlm/wlds.h"
-#include "dcmtk/dcmwlm/wldsfs.h"
+#include "dcmtk/dcmwlm/wldsdb.h"
 
 #define OFFIS_CONSOLE_APPLICATION "wlmscpfs"
 
 int main( int argc, char *argv[] )
 {
   // Initialize object which provides a connection to the data source
-  WlmDataSourceFileSystem *dataSource = new WlmDataSourceFileSystem();
+  WlmDataSourceDB *dataSource = new WlmDataSourceDB();
 
   // Initialize and provide service. After having terminated free memory.
   WlmConsoleEngineFileSystem *consoleEngine = new WlmConsoleEngineFileSystem( argc, argv, OFFIS_CONSOLE_APPLICATION, dataSource );

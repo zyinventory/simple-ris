@@ -350,6 +350,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\wldsdb.cxx"
+				>
+			</File>
+			<File
 				RelativePath="wldsfs.cxx"
 				>
 			</File>
@@ -359,6 +363,10 @@
 			</File>
 			<File
 				RelativePath="wlmactmg.cxx"
+				>
+			</File>
+			<File
+				RelativePath=".\wlmdbim.cxx"
 				>
 			</File>
 		</Filter>
@@ -374,6 +382,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\include\dcmtk\dcmwlm\wldsdb.h"
+				>
+			</File>
+			<File
 				RelativePath="..\include\dcmtk\dcmwlm\wldsfs.h"
 				>
 			</File>
@@ -383,6 +395,10 @@
 			</File>
 			<File
 				RelativePath="..\include\dcmtk\dcmwlm\wlmactmg.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\dcmwlm\wlmdbim.h"
 				>
 			</File>
 			<File

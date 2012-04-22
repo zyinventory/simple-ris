@@ -68,8 +68,8 @@ enum WlmDatabaseType
 enum WlmReturnedCharacterSetType
 {
   RETURN_NO_CHARACTER_SET,
-  RETURN_CHARACTER_SET_ISO_IR_100,	//zy modified, add ","
-  RETURN_CHARACTER_SET_FROMDATA		//zy modified, add new enum value
+  RETURN_CHARACTER_SET_ISO_IR_100,
+  RETURN_CHARACTER_SET_DEFAULT_GB18030
 };
 
   /// name of lockfile for worklist management based on file system
