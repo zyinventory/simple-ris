@@ -327,10 +327,12 @@ void WlmDataSource::CheckNonSequenceElementInSearchMask( DcmDataset *searchMask,
       delete elem;
     }
 
-    // dump a warning
-    if( verbose )
-      DumpMessage( "  - Unsupported (non-sequence) attribute encountered in the search mask. \n    This attribute will not be existent in any result dataset." );
-
+    if( verbose ) // dump a warning
+	{
+	  OFString key = tag.getXTag().toString();
+	  sprintf(msg, "  - Unsupported (non-sequence) attribute %s[ %s ] encountered in the search mask. \n    This attribute will not be existent in any result dataset.", key.c_str(), tag.getTagName());
+	  DumpMessage( msg );
+	}
     // remember this attribute's tag in the list of error elements
     foundUnsupportedOptionalKey = OFTrue;
     PutErrorElements( tag );
@@ -461,11 +463,12 @@ void WlmDataSource::CheckSequenceElementInSearchMask( DcmDataset *searchMask, in
       elem = searchMask->remove( element );
       delete elem;
     }
-
-    // dump a warning
-    if( verbose )
-      DumpMessage( "  - Unsupported (sequence) attribute encountered in the search mask. \n    This attribute will not be existent in any result dataset." );
-
+    if( verbose ) // dump a warning
+	{
+	  OFString key = tag.getXTag().toString();
+	  sprintf(msg, "  - Unsupported (sequence) attribute %s[ %s ] encountered in the search mask. \n    This attribute will not be existent in any result dataset.", key.c_str(), tag.getTagName());
+	  DumpMessage( msg );
+	}
     // remember this attribute's tag in the list of error elements
     foundUnsupportedOptionalKey = OFTrue;
     PutErrorElements( tag );
@@ -1466,6 +1469,7 @@ OFBool WlmDataSource::IsSupportedReturnKeyAttribute( DcmElement *element, DcmSeq
 //                   DCM_LastMenstrualDate                                 (0010,21d0)  DA  O  3  (from the Patient Medical Module)
 //                   DCM_InstitutionAddress                                (0008,0081)  ST  O  3  (from the Visit Identification Module)
 //                   DCM_OtherPatientNames                                 (0010,1001)  PN  O  3  (from the Patient Identification Module)
+//                   DCM_PatientsAge                                       (0010,1010)  AS  O  3  (from the Patient Demographic Module)
 //                   DCM_PatientsAddress                                   (0010,1040)  LO  O  3  (from the Patient Demographic Module)
 //                   DCM_MilitaryRank                                      (0010,1080)  LO  O  3  (from the Patient Demographic Module)
 //                   DCM_SmokingStatus                                     (0010,21a0)  CS  O  3  (from the Patient Medical Module)
@@ -1607,7 +1611,6 @@ OFBool WlmDataSource::IsSupportedReturnKeyAttribute( DcmElement *element, DcmSeq
         elementKey == DCM_ImagingServiceRequestComments                     ||
         elementKey == DCM_RequestedProcedureCodeSequence )
       isSupportedReturnKeyAttribute = OFTrue;
-	  CERR << "TEST Output" << endl;
   }
 
   // return result
