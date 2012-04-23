@@ -35,6 +35,11 @@
 // ----------------------------------------------------------------------------
 
 #include "dcmtk/config/osconfig.h"
+
+#ifdef HAVE_WINDOWS_H
+#include <Winsock2.h>
+#endif
+
 #include "dcmtk/dcmnet/dicom.h"
 #include "dcmtk/ofstd/ofcmdln.h"
 #include "dcmtk/dcmwlm/wltypdef.h"
@@ -65,7 +70,7 @@
 
 // ----------------------------------------------------------------------------
 
-WlmConsoleEngineFileSystem::WlmConsoleEngineFileSystem( int argc, char *argv[], const char *applicationName, WlmDataSource *dataSourcev )
+WlmConsoleEngineFileSystem::WlmConsoleEngineFileSystem( int paramArgc, char *paramArgv[], const char *applicationName, WlmDataSource *dataSourcev )
 // Date         : December 17, 2001
 // Author       : Thomas Wilkens
 // Task         : Constructor.
@@ -80,22 +85,16 @@ WlmConsoleEngineFileSystem::WlmConsoleEngineFileSystem( int argc, char *argv[], 
     opt_dfPath( NULL ), opt_port( 0 ), opt_refuseAssociation( OFFalse ),
     opt_rejectWithoutImplementationUID( OFFalse ), opt_sleepAfterFind( 0 ), opt_sleepDuringFind( 0 ),
     opt_maxPDU( ASC_DEFAULTMAXPDU ), opt_networkTransferSyntax( EXS_Unknown ),
-    opt_verbose( OFFalse ), opt_debug( OFFalse ), opt_failInvalidQuery( OFTrue ), opt_singleProcess( OFTrue ),
+    opt_verbose( OFFalse ), opt_debug( OFFalse ), opt_failInvalidQuery( OFTrue ), opt_singleProcess( OFFalse ), opt_forkedChild( OFFalse ),
     opt_maxAssociations( 50 ), opt_noSequenceExpansion( OFFalse ), opt_enableRejectionOfIncompleteWlFiles( OFTrue ),
     opt_blockMode(DIMSE_BLOCKING), opt_dimse_timeout(0), opt_acse_timeout(30),
-    app( NULL ), cmd( NULL ), dataSource( dataSourcev )
+    app( NULL ), cmd( NULL ), dataSource( dataSourcev ), argc(paramArgc), argv(paramArgv)
 {
   // Initialize application identification string.
   sprintf( rcsid, "$dcmtk: %s v%s %s $", applicationName, OFFIS_DCMTK_VERSION, OFFIS_DCMTK_RELEASEDATE );
 
   // Initialize starting values for variables pertaining to program options.
   opt_dfPath = "/home/www/wlist";
-
-#ifdef HAVE_FORK
-  opt_singleProcess = OFFalse;
-#else
-  opt_singleProcess = OFTrue;
-#endif
 
   // Initialize program options and parameters.
   char tempstr[20];
@@ -112,8 +111,11 @@ WlmConsoleEngineFileSystem::WlmConsoleEngineFileSystem( int argc, char *argv[], 
     cmd->addOption("--version",                                "print version information and exit", OFTrue /* exclusive */);
     cmd->addOption("--verbose",                   "-v",        "verbose mode, print processing details");
     cmd->addOption("--debug",                     "-d",        "debug mode, print debug information");
-#ifdef HAVE_FORK
+#if defined(HAVE_FORK) || defined(_WIN32)
     cmd->addOption("--single-process",            "-s",        "single process mode");
+#ifdef _WIN32
+    cmd->addOption("--forked-child",							   "process is forked child, internal use only");
+#endif
 #endif
     cmd->addOption("--no-sq-expansion",           "-nse",        "disable expansion of empty sequences\nin C-FIND request messages");
     OFString opt5 = "path to worklist data files\n(default: ";
@@ -210,8 +212,14 @@ WlmConsoleEngineFileSystem::WlmConsoleEngineFileSystem( int argc, char *argv[], 
       DIMSE_debug(OFTrue);
       SetDebugLevel(3);
     }
-#ifdef HAVE_FORK
+#if defined(HAVE_FORK) || defined(_WIN32)
     if( cmd->findOption("--single-process") ) opt_singleProcess = OFTrue;
+#ifdef _WIN32
+	else
+	{
+	  if (cmd->findOption("--forked-child")) opt_forkedChild = OFTrue;
+	}
+#endif
 #endif
     if( cmd->findOption("--no-sq-expansion") ) opt_noSequenceExpansion = OFTrue;
     if( cmd->findOption("--data-files-path") ) app->checkValue(cmd->getValue(opt_dfPath));
@@ -293,6 +301,13 @@ WlmConsoleEngineFileSystem::WlmConsoleEngineFileSystem( int argc, char *argv[], 
   // set specific parameters in data source object
   dataSource->SetDfPath( opt_dfPath );
   dataSource->SetEnableRejectionOfIncompleteWlFiles( opt_enableRejectionOfIncompleteWlFiles );
+
+#ifdef HAVE_WINSOCK_H
+  WSAData winSockData;
+  // we need at least version 1.1.
+  WORD winSockVersionNeeded = MAKEWORD( 1, 1 );
+  WSAStartup(winSockVersionNeeded, &winSockData);
+#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -306,6 +321,10 @@ WlmConsoleEngineFileSystem::~WlmConsoleEngineFileSystem()
 {
   delete cmd;
   delete app;
+
+#ifdef HAVE_WINSOCK_H
+  WSACleanup();
+#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -320,6 +339,48 @@ int WlmConsoleEngineFileSystem::StartProvidingService()
 // Return Value : Indicator that shows if the function was executed successfully or not.
 {
   OFCondition cond;
+
+#ifdef HAVE_GETEUID
+  // If port is privileged we must be as well.
+  if( opt_port < 1024 && geteuid() != 0 )
+    return( WLM_EC_InsufficientPortPrivileges );
+#endif
+
+#ifdef HAVE_FORK
+    if (!opt_singleProcess)
+      DUL_requestForkOnTransportConnectionReceipt(argc, argv);
+#elif defined(_WIN32)
+  if (opt_forkedChild)
+  {
+    // child process
+    DUL_markProcessAsForkedChild();
+
+    WSAPROTOCOL_INFO protoInfo;
+    DWORD bytesRead = 0;
+    HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
+
+    // read socket handle number from stdin, i.e. the anonymous pipe
+	// to which our parent process has written the handle number.
+    if (ReadFile(hStdIn, &protoInfo, sizeof(WSAPROTOCOL_INFO), &bytesRead, NULL))
+	{
+        // make sure buffer is zero terminated
+		SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, &protoInfo, 0 , 0);
+        dcmExternalSocketHandle.set((int)sock);
+		COUT << "external sock " << (int)sock << endl;
+    }
+    else
+	{
+      CERR << "Error while reading socket handle: " << GetLastError() << endl;
+      return 1;
+    }
+  }
+  else
+  {
+    // parent process
+    if (!opt_singleProcess)
+      DUL_requestForkOnTransportConnectionReceipt(argc, argv);
+  }
+#endif
 
   // connect to data source
   cond = dataSource->ConnectToDataSource();
@@ -340,7 +401,7 @@ int WlmConsoleEngineFileSystem::StartProvidingService()
       opt_sleepAfterFind, opt_sleepDuringFind,
       opt_maxPDU, opt_networkTransferSyntax,
       opt_verbose, opt_debug, opt_failInvalidQuery,
-      opt_singleProcess, opt_maxAssociations,
+      opt_singleProcess, opt_forkedChild, opt_maxAssociations,
       opt_blockMode, opt_dimse_timeout, opt_acse_timeout,
       &ofConsole );
   cond = activityManager->StartProvidingService();
