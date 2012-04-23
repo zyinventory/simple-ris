@@ -247,8 +247,8 @@ int main(int argc, char *argv[])
 
 #ifdef HAVE_WINSOCK_H
   WSAData winSockData;
-  /* we need at least version 1.1 */
-  WORD winSockVersionNeeded = MAKEWORD( 1, 1 );
+  /* we need at least version 2.0 */
+  WORD winSockVersionNeeded = MAKEWORD( 2, 0 );
   WSAStartup(winSockVersionNeeded, &winSockData);
 #endif
 
