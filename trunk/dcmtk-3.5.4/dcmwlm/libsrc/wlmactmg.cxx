@@ -343,11 +343,16 @@ OFCondition WlmActivityManager::WaitForAssociation( T_ASC_Network * net )
 #elif defined(_WIN32)
 	if(opt_forkedChild) timeout = 10;
 #endif
-  } // if( !( opt_singleProcess || opt_forkedChild ) ) timeout = 1;
+  } // if( !( opt_singleProcess || opt_forkedChild ) ) timeout = unlimited;
 
   // Listen to a socket for timeout seconds and wait for an association request.
   // try to receive an association request:
-  OFCondition cond = ASC_receiveAssociation( net, &assoc, opt_maxPDU, NULL, NULL, OFFalse, DUL_NOBLOCK, timeout );
+  OFCondition cond;
+  if( opt_singleProcess || opt_forkedChild )
+	cond = ASC_receiveAssociation( net, &assoc, opt_maxPDU, NULL, NULL, OFFalse, DUL_NOBLOCK, timeout );
+  else
+	cond = ASC_receiveAssociation( net, &assoc, opt_maxPDU );
+
   if( cond != DUL_NOASSOCIATIONREQUEST )
   {
 	if( cond.good() && cond.code() == DULC_FORKEDCHILD )
@@ -552,10 +557,6 @@ OFCondition WlmActivityManager::WaitForAssociation( T_ASC_Network * net )
       }
     }
 #endif
-  }
-  else
-  {
-	if( opt_singleProcess || opt_forkedChild ) COUT << "no data receive: " << cond.text() << endl;
   }
   return( EC_Normal );
 }
