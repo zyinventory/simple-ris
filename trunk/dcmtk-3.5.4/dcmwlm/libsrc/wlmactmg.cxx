@@ -105,7 +105,7 @@ WlmActivityManager::WlmActivityManager(
     OFBool opt_verbosev, 
     OFBool opt_debugv, 
     OFBool opt_failInvalidQueryv, 
-    OFBool opt_singleProcessv, 
+    OFBool opt_singleProcessv, OFBool opt_forkedChildv,
     int opt_maxAssociationsv, 
     T_DIMSE_BlockingMode opt_blockModev,
     int opt_dimse_timeoutv,
@@ -134,7 +134,7 @@ WlmActivityManager::WlmActivityManager(
     opt_sleepAfterFind( opt_sleepAfterFindv ), opt_sleepDuringFind( opt_sleepDuringFindv ),
     opt_maxPDU( opt_maxPDUv ), opt_networkTransferSyntax( opt_networkTransferSyntaxv ),
     opt_verbose( opt_verbosev ), opt_debug( opt_debugv ), opt_failInvalidQuery( opt_failInvalidQueryv ),
-    opt_singleProcess( opt_singleProcessv ), opt_maxAssociations( opt_maxAssociationsv ),
+    opt_singleProcess( opt_singleProcessv ), opt_forkedChild(opt_forkedChildv), opt_maxAssociations( opt_maxAssociationsv ),
     opt_blockMode(opt_blockModev), opt_dimse_timeout(opt_dimse_timeoutv), opt_acse_timeout(opt_acse_timeoutv),
     supportedAbstractSyntaxes( NULL ), numberOfSupportedAbstractSyntaxes( 0 ),
     logStream( logStreamv ), processTable( processTable )
@@ -158,13 +158,6 @@ WlmActivityManager::WlmActivityManager(
   GUSISetup( GUSIwithInternetSockets );
 #endif
 
-#ifdef HAVE_WINSOCK_H
-  WSAData winSockData;
-  // we need at least version 1.1.
-  WORD winSockVersionNeeded = MAKEWORD( 1, 1 );
-  WSAStartup(winSockVersionNeeded, &winSockData);
-#endif
-
   // initialize table that manages subprocesses.
   processTable.pcnt = 0;
   processTable.plist = NULL;
@@ -183,10 +176,6 @@ WlmActivityManager::~WlmActivityManager()
   delete supportedAbstractSyntaxes[0];
   delete supportedAbstractSyntaxes[1];
   delete supportedAbstractSyntaxes;
-
-#ifdef HAVE_WINSOCK_H
-  WSACleanup();
-#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -211,12 +200,6 @@ OFCondition WlmActivityManager::StartProvidingService()
     DumpMessage( msg );
   }
 
-#ifdef HAVE_GETEUID
-  // If port is privileged we must be as well.
-  if( opt_port < 1024 && geteuid() != 0 )
-    return( WLM_EC_InsufficientPortPrivileges );
-#endif
-
   // Initialize network, i.e. create an instance of T_ASC_Network*.
   cond = ASC_initializeNetwork( NET_ACCEPTOR, (int)opt_port, opt_acse_timeout, &net );
   if( cond.bad() ) return( WLM_EC_InitializationOfNetworkConnectionFailed );
@@ -239,12 +222,17 @@ OFCondition WlmActivityManager::StartProvidingService()
     // the calling applications correspondingly.
     cond = WaitForAssociation( net );
 
+#if defined(HAVE_FORK)  // (Note that on a Windows platform, it seem not necessary.)
     // Clean up any child processes if the execution is not limited to a single process.
-    // (Note that on a Windows platform, opt_singleProcess will always be OFTrue.)
     if( !opt_singleProcess )
       CleanChildren();
-  }
+#endif
+    // if running in inetd mode, we always terminate after one association
+    if (dcmExternalSocketHandle.get() >= 0) break;
 
+    // if running in multi-process mode, always terminate child after one association
+    if (DUL_processIsForkedChild()) break;
+  }
   // Drop the network, i.e. free memory of T_ASC_Network* structure. This call
   // is the counterpart of ASC_initializeNetwork(...) which was called above.
   cond = ASC_dropNetwork( &net );
@@ -338,27 +326,38 @@ OFCondition WlmActivityManager::WaitForAssociation( T_ASC_Network * net )
 {
   T_ASC_Association *assoc = NULL;
   char buf[BUFSIZ], msg[200];
-  int timeout;
+  int timeout = 1;
 
   // Depending on if the execution is limited to one single process
   // or not we need to set the timeout value correspondingly
-  // (Note that on a Windows platform, opt_singleProcess will always be OFTrue.)
+  // (Note that on a Windows platform, CountChildProcesses will always be 0.)
   if( opt_singleProcess )
     timeout = 1000;
   else
   {
+#if defined(HAVE_FORK)
     if( CountChildProcesses() > 0 )
       timeout = 1;
     else
       timeout = 1000;
-  }
+#elif defined(_WIN32)
+	if(opt_forkedChild) timeout = 10;
+#endif
+  } // if( !( opt_singleProcess || opt_forkedChild ) ) timeout = 1;
 
   // Listen to a socket for timeout seconds and wait for an association request.
-  OFBool dataReceived = ASC_associationWaiting( net, timeout );
-  if( dataReceived )
+  // try to receive an association request:
+  OFCondition cond = ASC_receiveAssociation( net, &assoc, opt_maxPDU, NULL, NULL, OFFalse, DUL_NOBLOCK, timeout );
+  if( cond != DUL_NOASSOCIATIONREQUEST )
   {
-    // try to receive an association request:
-    OFCondition cond = ASC_receiveAssociation( net, &assoc, opt_maxPDU );
+	if( cond.good() && cond.code() == DULC_FORKEDCHILD )
+    {
+	  COUT << cond.text() << endl;
+      ASC_dropAssociation( assoc );
+      ASC_destroyAssociation( &assoc );
+	  return( EC_Normal );
+    }
+
     if( cond.bad() )
     {
       if( !opt_singleProcess )
@@ -366,7 +365,7 @@ OFCondition WlmActivityManager::WaitForAssociation( T_ASC_Network * net )
         ASC_dropAssociation( assoc );
         ASC_destroyAssociation( &assoc );
       }
-      return( EC_Normal );
+	  return( EC_Normal );
     }
 
     // Dump some information if required
@@ -512,7 +511,7 @@ OFCondition WlmActivityManager::WaitForAssociation( T_ASC_Network * net )
     // process to handle the association or don't. (Note that at the moment, this is only
     // possible if fork() is available; in other words, it is not possible on a Windows
     // platform) (Note that under Windows opt_singleProcess will always be OFTrue.)
-    if( opt_singleProcess )
+    if( opt_singleProcess || opt_forkedChild)
     {
       // Go ahead and handle the association (i.e. handle the callers requests) in this process.
       HandleAssociation( assoc );
@@ -554,7 +553,10 @@ OFCondition WlmActivityManager::WaitForAssociation( T_ASC_Network * net )
     }
 #endif
   }
-
+  else
+  {
+	if( opt_singleProcess || opt_forkedChild ) COUT << "no data receive: " << cond.text() << endl;
+  }
   return( EC_Normal );
 }
 

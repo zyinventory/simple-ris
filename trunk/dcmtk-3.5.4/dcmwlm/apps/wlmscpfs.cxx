@@ -56,7 +56,12 @@ int main( int argc, char *argv[] )
   // Free memory
   delete consoleEngine;
   delete dataSource;
-
+/*
+  DWORD bytesRead = 0;
+  char buf[256];
+  HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
+  ReadFile(hStdIn, buf, sizeof(buf), &bytesRead, NULL);
+*/
   return( result );
 }
 

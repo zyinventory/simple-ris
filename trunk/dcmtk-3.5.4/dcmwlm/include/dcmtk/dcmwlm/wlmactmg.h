@@ -71,6 +71,7 @@ class WlmActivityManager
     OFBool opt_failInvalidQuery;
     /// indicates if the application is run in single process mode or not
     OFBool opt_singleProcess;
+	OFBool opt_forkedChild;
     /// maximum number of association for non-single process mode
     int opt_maxAssociations;
     /// blocking mode for DIMSE operations
@@ -214,7 +215,7 @@ class WlmActivityManager
         OFBool opt_verbosev, 
         OFBool opt_debugv, 
         OFBool opt_failInvalidQueryv, 
-        OFBool opt_singleProcessv, 
+        OFBool opt_singleProcessv, OFBool opt_forkedChildv,
         int opt_maxAssociationsv, 
         T_DIMSE_BlockingMode opt_blockModev,
         int opt_dimse_timeoutv,

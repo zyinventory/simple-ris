@@ -76,6 +76,7 @@ class WlmConsoleEngineFileSystem
     OFBool opt_failInvalidQuery;
     /// indicates if this application is run in single process mode or not
     OFBool opt_singleProcess;
+	OFBool opt_forkedChild;
     /// indicates how many associations can be accepted at the same time
     int opt_maxAssociations;
     /// indicates if an expansion of empty sequences in C-Find RQ messages shall take place or not
@@ -112,6 +113,7 @@ class WlmConsoleEngineFileSystem
        */
     WlmConsoleEngineFileSystem &operator=( const WlmConsoleEngineFileSystem &Src );
 
+	int argc; char **argv;
 
   public:
       /** constructor.
