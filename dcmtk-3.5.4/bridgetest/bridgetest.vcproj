@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\bridge;..\config\include;..\ofstd\include;..\ofstd\include\dcmtk\ofstd;..\dcmdata\include;..\dcmdata\include\dcmtk\dcmdata"
+				AdditionalIncludeDirectories="..\bridge;..\config\include;..\ofstd\include;..\dcmdata\include;..\dcmnet\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"

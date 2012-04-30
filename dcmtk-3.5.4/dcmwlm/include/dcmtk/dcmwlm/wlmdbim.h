@@ -4,17 +4,26 @@ class DcmTagKey;
 class OFConsole;
 class OFCondition;
 
+#ifndef __BRIDGE_DEFINE
+typedef struct tagWorklistRecord *PWorklistRecord;
+typedef struct tagIndicatorWorklistRecord *PIndicatorWorklistRecord;
+#endif
+
 class WlmDBInteractionManager
 {
 private:
-  static const unsigned int CapabilityIncreaseStep = 100;
+  unsigned int CapabilityIncreaseStep;
   unsigned int MaxMatchingDatasetCapability;
-  int queryContext;
+
+  DcmDataset *searchMaskIdentifiers;
 
   /// array of matching records
   DcmDataset **matchingRecords;
   /// number of array fields
   unsigned long numOfMatchingRecords;
+
+  DcmDataset **dbRecords;
+  unsigned long numOfDBRecords;
 
   /// indicates if wl-files which are lacking return type 1 attributes or information in such attributes shall be rejected or not
   OFBool enableRejectionOfIncompleteWlFiles;
@@ -35,10 +44,13 @@ private:
   void DumpMessage( const char *message );
 
 protected:
+  OFCondition DiscardPersonName(DcmTagKey key, DcmDataset *searchMask);
+  OFCondition GetSearchMaskValue(char *& value, OFBool addAnd, OFString& whereStatement, DcmTagKey key, DcmDataset *searchMask);
 
 public:
   WlmDBInteractionManager();
   virtual ~WlmDBInteractionManager(void);
+  static void WlmDataset(PWorklistRecord pWorklist, PIndicatorWorklistRecord pIndicator, WlmDBInteractionManager *dbim);
 
   /** Set value in member variable.
    *  @param value The value to set.
@@ -59,11 +71,11 @@ public:
    *  @param value The value to set.
    */
   void SetEnableRejectionOfIncompleteWlFiles( OFBool value );
-
-  virtual void StartGenerate(DcmDataset *searchMask);
-  virtual DcmDataset *NextDataset(DcmDataset *searchMask);
-  virtual void StopGenerate();
+  virtual OFCondition GenerateDataset();
+  void DetermineMatchingRecordOne( DcmDataset *dataset );
   virtual unsigned long DetermineMatchingRecords( DcmDataset *searchMask );
+
+  int DummyDataset(DcmDataset *searchMask, DcmDataset **datasetPA);
 
   /** For the matching record that is identified through idx, this function returns the number
    *  of items that are contained in the sequence element that is referred to by sequenceTag.

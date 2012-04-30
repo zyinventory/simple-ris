@@ -27,6 +27,8 @@ DcmTagKey keyContBolus(0x8, 0x10), keyBodParExam(0x18, 0x15), keyProtocolNam(0x1
 DcmTagKey keyStuInsUid(0x20, 0xd), keySerInsUid(0x20, 0xe), keyStuId(0x20, 0x10), keySerNum(0x20, 0x11), keyImaNum(0x20, 0x13);
 DcmTagKey keyReqPhysician(0x32, 0x1032), keyReqService(0x32, 0x1933);
 
+// copy value in DcmElement to OFString
+// get OFString internal char*, not string copy
 void getValue(DcmDataset *imageDataSet, const char **pValue, DcmTagKey& key, OFString& value)
 {
   imageDataSet->findAndGetOFString(key, value);
@@ -38,19 +40,10 @@ void getNameValue(DcmDataset *imageDataSet, PImgDataset pDataset, DcmTagKey& key
 {
   OFString temp; 
   imageDataSet->findAndGetOFString(key, temp);
-  bool isKan = false;
-  for(int i; i < temp.length(); i++)
-  {
-    if(temp[i] > '~')
-    {
-      isKan = true;
-      break;
-    }
-  }
-  if(isKan)
-    valueKan = temp;
-  else
+  if(IsASCII(temp.c_str()))
     value = temp;
+  else
+    valueKan = temp;
   pDataset->pPatNam = value.c_str();
   pDataset->pPatNamKan = valueKan.c_str();
   pDataset->pPatNamKat = valueKat.c_str();
@@ -81,7 +74,7 @@ void getTimeNumberValue(DcmDataset *imageDataSet, int &intValue, DcmTagKey& key,
   else
   {
     if(value.length() < 6) value.append(6 - value.length(), '0'); // see DICOM part5: TM data type
-    int temp = atof(value.c_str());
+    int temp = static_cast<int>(atof(value.c_str()));
     intValue = temp / 10000 * 3600 + temp % 10000 /100 * 60 + temp % 100;
   }
   if (opt_debug) printf("%s : TM %d\n", key.toString().c_str(), intValue);
@@ -117,7 +110,7 @@ bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString
   OFDateTime dateTime;
   dateTime.setCurrentDateTime();
   dataset.insertDate = dateTime.getDate().getYear() * 10000 + dateTime.getDate().getMonth() * 100 + dateTime.getDate().getDay();
-  dataset.insertTime = dateTime.getTime().getTimeInSeconds();
+  dataset.insertTime = static_cast<int>(dateTime.getTime().getTimeInSeconds());
 
   dataset.fileDate = 0;
   dataset.fileTime = 0;
@@ -185,6 +178,7 @@ bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString
   OFString valueReqPhysician;
   OFString valueReqService;
 
+  // char* in ImgDataset is controlled by OFString, it is not necessary to release char* manually.
   getValue(imageDataSet, &(dataset.pTransferSyntaxUid), keyTransferSyntaxUid, valueTransferSyntaxUid);
   getValue(imageDataSet, &(dataset.pSopClaUid), keySopClaUid, valueSopClaUid);
   getValue(imageDataSet, &(dataset.pSopInsUid), keySopInsUid, valueSopInsUid);

@@ -161,6 +161,15 @@ BEGIN
 END InsertImage;
 /
 
+Worklist:
+
+CREATE OR REPLACE FUNCTION IgnoreStringValue(param varchar2) RETURN varchar2 DETERMINISTIC IS
+BEGIN
+   RETURN 'ignore';
+END IgnoreStringValue;
+/
+
+ALTER TABLE DICOM.MODALITY_AETITILE_DICT MODIFY(AETITLE VARCHAR2(16 BYTE));
 
 Pending:
 

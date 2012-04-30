@@ -34,6 +34,7 @@
 			/>
 			<Tool
 				Name="Oracle ProC Compiler"
+				AdditionalOptions=""
 			/>
 			<Tool
 				Name="VCXMLDataGeneratorTool"
@@ -47,14 +48,15 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(Pro_C_Path)\OCI\include&quot;;..\config\include;..\ofstd\include;..\ofstd\include\dcmtk\ofstd;..\dcmdata\include;..\dcmdata\include\dcmtk\dcmdata"
-				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;BRIDGE_EXPORTS"
-				MinimalRebuild="true"
-				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
+				AdditionalIncludeDirectories="&quot;$(Pro_C_Path)\OCI\include&quot;;..\config\include;&quot;$(SolutionDir)ofstd\include&quot;;..\dcmdata\include;..\dcmnet\include"
+				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Debug\&quot;;WIN32;_DEBUG;_WINDOWS;_USRDLL;BRIDGE_EXPORTS"
+				MinimalRebuild="false"
+				BasicRuntimeChecks="0"
+				RuntimeLibrary="1"
+				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
-				DebugInformationFormat="4"
+				DebugInformationFormat="1"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -71,10 +73,10 @@
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib&quot;"
 				IgnoreAllDefaultLibraries="false"
-				IgnoreDefaultLibraryNames="msvcprtd.lib,LIBCMTD.LIB"
+				IgnoreDefaultLibraryNames=""
 				ModuleDefinitionFile="bridge.def"
 				GenerateDebugInformation="true"
-				SubSystem="2"
+				SubSystem="1"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -97,7 +99,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy $(OutDir)\$(ProjectName).dll $(SolutionDir)dcmnet\apps\$(ConfigurationName)"
+				CommandLine="copy $(OutDir)\$(ProjectName).dll $(SolutionDir)dcmnet\apps\$(ConfigurationName)&#x0D;&#x0A;copy $(OutDir)\$(ProjectName).dll $(SolutionDir)dcmwlm\apps\$(ConfigurationName)&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration
@@ -131,8 +133,8 @@
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
 				AdditionalIncludeDirectories="&quot;$(Pro_C_Path)\OCI\include&quot;;..\config\include;..\ofstd\include;..\ofstd\include\dcmtk\ofstd;..\dcmdata\include;..\dcmdata\include\dcmtk\dcmdata"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;BRIDGE_EXPORTS"
-				RuntimeLibrary="2"
+				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Debug\&quot;;WIN32;NDEBUG;_WINDOWS;_USRDLL;BRIDGE_EXPORTS"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
@@ -152,10 +154,10 @@
 				AdditionalDependencies="$(Pro_C_Path)\precomp\LIB\orasql11.lib netapi32.lib wsock32.lib zlib_o.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib&quot;"
-				IgnoreDefaultLibraryNames="msvcprt.lib,LIBCMT.LIB"
+				IgnoreDefaultLibraryNames=""
 				ModuleDefinitionFile="bridge.def"
 				GenerateDebugInformation="true"
-				SubSystem="2"
+				SubSystem="1"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				TargetMachine="1"
@@ -217,6 +219,10 @@
 						Name="Oracle ProC Compiler"
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\common.cpp"
+				>
 			</File>
 			<File
 				RelativePath=".\dllmain.cpp"

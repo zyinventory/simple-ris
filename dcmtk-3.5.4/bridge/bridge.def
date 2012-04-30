@@ -1,7 +1,12 @@
 LIBRARY	"bridge"
 EXPORTS
+	IsASCII
 	connectDicomDB
 	commitDicomDB
 	rollbackDicomDB
 	getManageNumber
 	insertImageInfoToDB
+	GetWorklistFromDB
+	pWorklistStatement DATA
+	SearchCondition DATA
+	WorklistInBridge DATA

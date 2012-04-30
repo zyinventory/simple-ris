@@ -138,33 +138,46 @@ typedef struct { unsigned short len; unsigned char arr[1]; } varchar;
 /* cud (compilation unit data) array */
 static const short sqlcud0[] =
 {12,4128,852,27,0,
-5,0,0,1,0,0,32,76,0,0,0,0,0,1,0,
-20,0,0,0,0,0,27,83,0,0,4,4,0,1,0,1,97,0,0,1,10,0,0,1,10,0,0,1,10,0,0,
-51,0,0,3,0,0,30,90,0,0,0,0,0,1,0,
-66,0,0,4,0,0,32,96,0,0,0,0,0,1,0,
-81,0,0,5,73,0,4,107,0,0,2,1,0,1,0,2,97,0,0,1,97,0,0,
-104,0,0,6,85,0,4,118,0,0,2,1,0,1,0,1,3,0,0,2,97,0,0,
-127,0,0,7,100,0,4,122,0,0,1,0,0,1,0,2,97,0,0,
-146,0,0,8,1855,0,6,185,0,0,52,52,0,1,0,2,3,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,3,
+5,0,0,1,0,0,32,162,0,0,0,0,0,1,0,
+20,0,0,0,0,0,27,169,0,0,4,4,0,1,0,1,97,0,0,1,10,0,0,1,10,0,0,1,10,0,0,
+51,0,0,3,0,0,30,176,0,0,0,0,0,1,0,
+66,0,0,4,0,0,32,182,0,0,0,0,0,1,0,
+81,0,0,5,73,0,4,193,0,0,2,1,0,1,0,2,97,0,0,1,97,0,0,
+104,0,0,6,85,0,4,204,0,0,2,1,0,1,0,1,3,0,0,2,97,0,0,
+127,0,0,7,100,0,4,208,0,0,1,0,0,1,0,2,97,0,0,
+146,0,0,8,1855,0,6,272,0,0,52,52,0,1,0,2,3,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,3,
 0,0,1,3,0,0,1,3,0,0,1,3,0,0,1,68,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,3,0,0,1,3,0,
 0,1,3,0,0,1,3,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,
 0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,
 0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,3,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,
 97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,
 1,97,0,0,1,97,0,0,1,97,0,0,
+369,0,0,9,0,0,17,334,0,0,1,1,0,1,0,1,97,0,0,
+388,0,0,9,0,0,45,336,0,0,4,4,0,1,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,
+419,0,0,9,0,0,13,337,0,0,23,0,0,1,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,
+0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,
+0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,3,0,0,2,3,
+0,0,
+526,0,0,9,0,0,15,339,0,0,0,0,0,1,0,
 };
 
 
 #include "stdafx.h"
 #include <oci.h>
-#include <ofdatime.h>
-#include <ofstring.h>
-#include <dcdatset.h>
+#include <dcmtk/ofstd/ofdatime.h>
+#include <dcmtk/ofstd/ofstring.h>
+#include <dcmtk/dcmdata/dcdatset.h>
 #include "bridge.h"
+
+const char BRIDGE[] = "bridge", BRIDGE_GetManageNumber[] = "bridge.getManageNumber", 
+  BRIDGE_InsertImageInfoToDB[] = "bridge.insertImageInfoToDB", 
+  BRIDGE_GetWorklistFromDB[] = "bridge.GetWorklistFromDB";
 
 /* EXEC SQL BEGIN DECLARE SECTION; */ 
 
 unsigned char connection[] = "dicom/dicom";
+
+// ---------StoreSCP-----------
 char oldStudyUid[65] = "";
 char imageManageNumber[15];
 int dateNumber;
@@ -220,6 +233,90 @@ char paramReqPhysician[65];
 char paramReqService[65];
 //dataset end
 int packageId;
+
+// ---------WLM Condition-----------
+const char *pWorklistStatement;
+
+#ifndef __BRIDGE_DEFINE
+
+#define DIC_UI_LEN		64
+#define DIC_AE_LEN		16
+#define DIC_SH_LEN		16
+#define DIC_PN_LEN		64
+#define DIC_LO_LEN		64
+#define DIC_CS_LEN		16
+#define DIC_AS_LEN		4
+#define DIC_DA_LEN		8
+#define DIC_TM_LEN		16
+#define DIC_DS_LEN		16
+
+typedef struct tagWlmCondition
+{
+  const char *pScheduleStationAE;
+  const char *pModality;
+  const char *pLowerScheduleDate;
+  const char *pUpperScheduleDate;
+} WlmCondition, *PWlmCondition;	
+
+typedef struct tagWorklistRecord
+{
+  char ScheduledStationAETitle[DIC_AE_LEN + 1];
+  char SchdldProcStepStartDate[DIC_DA_LEN + 1];
+  char SchdldProcStepStartTime[DIC_TM_LEN + 1];
+  char Modality[DIC_CS_LEN + 1];
+  char SchdldProcStepDescription[DIC_LO_LEN + 1];
+  char SchdldProcStepLocation[DIC_SH_LEN + 1];
+  char SchdldProcStepID[DIC_SH_LEN + 1];
+  char RequestedProcedureID[DIC_SH_LEN + 1];
+  char RequestedProcedureDescription[DIC_LO_LEN + 1];
+  char StudyInstanceUID[DIC_UI_LEN + 1];
+  char AccessionNumber[DIC_SH_LEN + 1];
+  char RequestingPhysician[DIC_PN_LEN + 1];
+  char AdmissionID[DIC_LO_LEN + 1];
+  char PatientsNameEn[DIC_PN_LEN + 1];
+  char PatientsNameCh[DIC_PN_LEN + 1];
+  char PatientID[DIC_LO_LEN + 1];
+  char PatientsBirthDate[DIC_DA_LEN + 1];
+  char PatientsSex[DIC_CS_LEN + 1];
+  char PatientsWeight[DIC_DS_LEN + 1];
+  char AdmittingDiagnosesDescription[DIC_LO_LEN + 1];
+  char PatientsAge[DIC_AS_LEN + 1];
+  int SupportChinese;
+  int DicomPersonName;
+} WorklistRecord, *PWorklistRecord;
+
+typedef struct tagIndicatorWorklistRecord
+{
+  short ScheduledStationAETitle;
+  short SchdldProcStepStartDate;
+  short SchdldProcStepStartTime;
+  short Modality;
+  short SchdldProcStepDescription;
+  short SchdldProcStepLocation;
+  short SchdldProcStepID;
+  short RequestedProcedureID;
+  short RequestedProcedureDescription;
+  short StudyInstanceUID;
+  short AccessionNumber;
+  short RequestingPhysician;
+  short AdmissionID;
+  short PatientsNameEn;
+  short PatientsNameCh;
+  short PatientID;
+  short PatientsBirthDate;
+  short PatientsSex;
+  short PatientsWeight;
+  short AdmittingDiagnosesDescription;
+  short PatientsAge;
+  short SupportChinese;
+  short DicomPersonName;
+} IndicatorWorklistRecord, *PIndicatorWorklistRecord;
+#endif
+
+WlmCondition SearchCondition;
+WorklistRecord WorklistInBridge;
+IndicatorWorklistRecord IndicatorWorklist;
+
 /* EXEC SQL END DECLARE SECTION; */ 
 
 
@@ -326,28 +423,24 @@ SQLCA_STORAGE_CLASS struct sqlca sqlca
 /* end SQLCA */
 
 
-bool SqlError( char* moduleName )
+bool SqlError( const char* moduleName )
 {
-	OFString errorMsg = moduleName;
-  errorMsg.append(" : ").append(sqlca.sqlerrm.sqlerrmc).append("\n");
-
-  ::OutputDebugString( errorMsg.c_str() );
-
-	/* EXEC SQL ROLLBACK RELEASE; */ 
+  CERR << moduleName << ':' << sqlca.sqlerrm.sqlerrmc << endl;
+  /* EXEC SQL ROLLBACK RELEASE; */ 
 
 {
- struct sqlexd sqlstm;
- sqlstm.sqlvsn = 12;
- sqlstm.arrsiz = 0;
- sqlstm.sqladtp = &sqladt;
- sqlstm.sqltdsp = &sqltds;
- sqlstm.iters = (unsigned int  )1;
- sqlstm.offset = (unsigned int  )5;
- sqlstm.cud = sqlcud0;
- sqlstm.sqlest = (unsigned char  *)&sqlca;
- sqlstm.sqlety = (unsigned short)4352;
- sqlstm.occurs = (unsigned int  )0;
- sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
+  struct sqlexd sqlstm;
+  sqlstm.sqlvsn = 12;
+  sqlstm.arrsiz = 0;
+  sqlstm.sqladtp = &sqladt;
+  sqlstm.sqltdsp = &sqltds;
+  sqlstm.iters = (unsigned int  )1;
+  sqlstm.offset = (unsigned int  )5;
+  sqlstm.cud = sqlcud0;
+  sqlstm.sqlest = (unsigned char  *)&sqlca;
+  sqlstm.sqlety = (unsigned short)4352;
+  sqlstm.occurs = (unsigned int  )0;
+  sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
 }
 
 
@@ -356,7 +449,7 @@ bool SqlError( char* moduleName )
 
 bool connectDicomDB()
 {
-  /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( "bridge" ) ); */ 
+  /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE ) ); */ 
 
   /* EXEC SQL CONNECT :connection; */ 
 
@@ -395,7 +488,7 @@ bool connectDicomDB()
   sqlstm.sqlctimeout = (unsigned int )0;
   sqlstm.sqlcnowait = (unsigned int )0;
   sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
-  if (sqlca.sqlcode < 0) return(SqlError("bridge"));
+  if (sqlca.sqlcode < 0) return(SqlError(BRIDGE));
 }
 
 
@@ -404,7 +497,7 @@ bool connectDicomDB()
 
 bool commitDicomDB()
 {
-  /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( "bridge" ) ); */ 
+  /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE ) ); */ 
 
   /* EXEC SQL COMMIT WORK RELEASE; */ 
 
@@ -421,7 +514,7 @@ bool commitDicomDB()
   sqlstm.sqlety = (unsigned short)4352;
   sqlstm.occurs = (unsigned int  )0;
   sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
-  if (sqlca.sqlcode < 0) return(SqlError("bridge"));
+  if (sqlca.sqlcode < 0) return(SqlError(BRIDGE));
 }
 
 
@@ -445,7 +538,7 @@ bool rollbackDicomDB()
   sqlstm.sqlety = (unsigned short)4352;
   sqlstm.occurs = (unsigned int  )0;
   sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
-  if (sqlca.sqlcode < 0) return(SqlError("bridge"));
+  if (sqlca.sqlcode < 0) return(SqlError(BRIDGE));
 }
 
 
@@ -454,8 +547,8 @@ bool rollbackDicomDB()
 
 bool getManageNumber(char * const outImageManageNum, const char * const studyUid, int currentStudyDateNumber)
 {
-  /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( "bridge" ) ); */ 
- 
+  /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_GetManageNumber ) ); */ 
+
   if(studyUid)
   {
     strncpy(oldStudyUid, studyUid, sizeof(oldStudyUid));
@@ -505,7 +598,7 @@ STU_STUINSUID=:b1";
     sqlstm.sqptdso = sqlstm.sqtdso;
     sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
     if (sqlca.sqlcode == 100) goto NODATA;
-    if (sqlca.sqlcode < 0) return(SqlError("bridge"));
+    if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetManageNumber));
 }
 
 
@@ -563,7 +656,7 @@ NODATA:
     sqlstm.sqpadto = sqlstm.sqadto;
     sqlstm.sqptdso = sqlstm.sqtdso;
     sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
-    if (sqlca.sqlcode < 0) return(SqlError("bridge"));
+    if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetManageNumber));
 }
 
 
@@ -605,7 +698,7 @@ Q.nextval ,'FM000000')) into :b0  from DUAL ";
     sqlstm.sqpadto = sqlstm.sqadto;
     sqlstm.sqptdso = sqlstm.sqtdso;
     sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
-    if (sqlca.sqlcode < 0) return(SqlError("bridge"));
+    if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetManageNumber));
 }
 
 
@@ -618,6 +711,9 @@ ReturnOutputString:
 
 bool insertImageInfoToDB(PImgDataset pimg)
 {
+  /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_InsertImageInfoToDB ) ); */ 
+
+
   strncpy(paramHddRoot, pimg->pHddRoot, sizeof(paramHddRoot)); paramHddRoot[sizeof(paramHddRoot) - 1] = '\0';
   strncpy(paramPath, pimg->pPath, sizeof(paramPath)); paramPath[sizeof(paramPath) - 1] = '\0';
   strncpy(paramImgManageNum, pimg->pImgManageNum, sizeof(paramImgManageNum)); paramImgManageNum[sizeof(paramImgManageNum) - 1] = '\0';
@@ -670,8 +766,6 @@ bool insertImageInfoToDB(PImgDataset pimg)
   strncpy(paramReqPhysician, pimg->pReqPhysician, sizeof(paramReqPhysician)); paramReqPhysician[sizeof(paramReqPhysician) - 1] = '\0';
   strncpy(paramReqService, pimg->pReqService, sizeof(paramReqService)); paramReqService[sizeof(paramReqService) - 1] = '\0';
 
-  /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( "bridge" ) ); */ 
- 
   /* EXEC SQL EXECUTE BEGIN :packageId := INSERTIMAGE(
     paramHddRoot => :paramHddRoot,
     paramPath => :paramPath,
@@ -1191,9 +1285,356 @@ D ;";
   sqlstm.sqpadto = sqlstm.sqadto;
   sqlstm.sqptdso = sqlstm.sqtdso;
   sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
-  if (sqlca.sqlcode < 0) return(SqlError("bridge"));
+  if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_InsertImageInfoToDB));
 }
 
 
-  return TRUE;
+  return true;
+}
+
+// ---------WLM Condition-----------
+
+bool GetWorklistFromDB(FetchWorklistCallback callback, WlmDBInteractionManager *dbim)
+{
+  /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_GetWorklistFromDB ) ); */ 
+
+
+  /* EXEC SQL PREPARE S FROM :pWorklistStatement; */ 
+
+{
+  struct sqlexd sqlstm;
+  sqlstm.sqlvsn = 12;
+  sqlstm.arrsiz = 52;
+  sqlstm.sqladtp = &sqladt;
+  sqlstm.sqltdsp = &sqltds;
+  sqlstm.stmt = "";
+  sqlstm.iters = (unsigned int  )1;
+  sqlstm.offset = (unsigned int  )369;
+  sqlstm.cud = sqlcud0;
+  sqlstm.sqlest = (unsigned char  *)&sqlca;
+  sqlstm.sqlety = (unsigned short)4352;
+  sqlstm.occurs = (unsigned int  )0;
+  sqlstm.sqhstv[0] = (         void  *)pWorklistStatement;
+  sqlstm.sqhstl[0] = (unsigned int  )0;
+  sqlstm.sqhsts[0] = (         int  )0;
+  sqlstm.sqindv[0] = (         void  *)0;
+  sqlstm.sqinds[0] = (         int  )0;
+  sqlstm.sqharm[0] = (unsigned int  )0;
+  sqlstm.sqadto[0] = (unsigned short )0;
+  sqlstm.sqtdso[0] = (unsigned short )0;
+  sqlstm.sqphsv = sqlstm.sqhstv;
+  sqlstm.sqphsl = sqlstm.sqhstl;
+  sqlstm.sqphss = sqlstm.sqhsts;
+  sqlstm.sqpind = sqlstm.sqindv;
+  sqlstm.sqpins = sqlstm.sqinds;
+  sqlstm.sqparm = sqlstm.sqharm;
+  sqlstm.sqparc = sqlstm.sqharc;
+  sqlstm.sqpadto = sqlstm.sqadto;
+  sqlstm.sqptdso = sqlstm.sqtdso;
+  sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
+  if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetWorklistFromDB));
+}
+
+
+  /* EXEC SQL DECLARE C CURSOR FOR S; */ 
+
+  /* EXEC SQL OPEN C USING :SearchCondition; */ 
+
+{
+  struct sqlexd sqlstm;
+  sqlstm.sqlvsn = 12;
+  sqlstm.arrsiz = 52;
+  sqlstm.sqladtp = &sqladt;
+  sqlstm.sqltdsp = &sqltds;
+  sqlstm.stmt = "";
+  sqlstm.iters = (unsigned int  )1;
+  sqlstm.offset = (unsigned int  )388;
+  sqlstm.selerr = (unsigned short)1;
+  sqlstm.cud = sqlcud0;
+  sqlstm.sqlest = (unsigned char  *)&sqlca;
+  sqlstm.sqlety = (unsigned short)4352;
+  sqlstm.occurs = (unsigned int  )0;
+  sqlstm.sqcmod = (unsigned int )0;
+  sqlstm.sqhstv[0] = (         void  *)SearchCondition.pScheduleStationAE;
+  sqlstm.sqhstl[0] = (unsigned int  )0;
+  sqlstm.sqhsts[0] = (         int  )0;
+  sqlstm.sqindv[0] = (         void  *)0;
+  sqlstm.sqinds[0] = (         int  )0;
+  sqlstm.sqharm[0] = (unsigned int  )0;
+  sqlstm.sqadto[0] = (unsigned short )0;
+  sqlstm.sqtdso[0] = (unsigned short )0;
+  sqlstm.sqhstv[1] = (         void  *)SearchCondition.pModality;
+  sqlstm.sqhstl[1] = (unsigned int  )0;
+  sqlstm.sqhsts[1] = (         int  )0;
+  sqlstm.sqindv[1] = (         void  *)0;
+  sqlstm.sqinds[1] = (         int  )0;
+  sqlstm.sqharm[1] = (unsigned int  )0;
+  sqlstm.sqadto[1] = (unsigned short )0;
+  sqlstm.sqtdso[1] = (unsigned short )0;
+  sqlstm.sqhstv[2] = (         void  *)SearchCondition.pLowerScheduleDate;
+  sqlstm.sqhstl[2] = (unsigned int  )0;
+  sqlstm.sqhsts[2] = (         int  )0;
+  sqlstm.sqindv[2] = (         void  *)0;
+  sqlstm.sqinds[2] = (         int  )0;
+  sqlstm.sqharm[2] = (unsigned int  )0;
+  sqlstm.sqadto[2] = (unsigned short )0;
+  sqlstm.sqtdso[2] = (unsigned short )0;
+  sqlstm.sqhstv[3] = (         void  *)SearchCondition.pUpperScheduleDate;
+  sqlstm.sqhstl[3] = (unsigned int  )0;
+  sqlstm.sqhsts[3] = (         int  )0;
+  sqlstm.sqindv[3] = (         void  *)0;
+  sqlstm.sqinds[3] = (         int  )0;
+  sqlstm.sqharm[3] = (unsigned int  )0;
+  sqlstm.sqadto[3] = (unsigned short )0;
+  sqlstm.sqtdso[3] = (unsigned short )0;
+  sqlstm.sqphsv = sqlstm.sqhstv;
+  sqlstm.sqphsl = sqlstm.sqhstl;
+  sqlstm.sqphss = sqlstm.sqhsts;
+  sqlstm.sqpind = sqlstm.sqindv;
+  sqlstm.sqpins = sqlstm.sqinds;
+  sqlstm.sqparm = sqlstm.sqharm;
+  sqlstm.sqparc = sqlstm.sqharc;
+  sqlstm.sqpadto = sqlstm.sqadto;
+  sqlstm.sqptdso = sqlstm.sqtdso;
+  sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
+  if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetWorklistFromDB));
+}
+
+
+  /* EXEC SQL FETCH C INTO :WorklistInBridge INDICATOR :IndicatorWorklist; */ 
+
+{
+  struct sqlexd sqlstm;
+  sqlstm.sqlvsn = 12;
+  sqlstm.arrsiz = 52;
+  sqlstm.sqladtp = &sqladt;
+  sqlstm.sqltdsp = &sqltds;
+  sqlstm.iters = (unsigned int  )1;
+  sqlstm.offset = (unsigned int  )419;
+  sqlstm.selerr = (unsigned short)1;
+  sqlstm.cud = sqlcud0;
+  sqlstm.sqlest = (unsigned char  *)&sqlca;
+  sqlstm.sqlety = (unsigned short)4352;
+  sqlstm.occurs = (unsigned int  )0;
+  sqlstm.sqfoff = (           int )0;
+  sqlstm.sqfmod = (unsigned int )2;
+  sqlstm.sqhstv[0] = (         void  *)WorklistInBridge.ScheduledStationAETitle;
+  sqlstm.sqhstl[0] = (unsigned int  )17;
+  sqlstm.sqhsts[0] = (         int  )0;
+  sqlstm.sqindv[0] = (         void  *)&IndicatorWorklist.ScheduledStationAETitle;
+  sqlstm.sqinds[0] = (         int  )0;
+  sqlstm.sqharm[0] = (unsigned int  )0;
+  sqlstm.sqadto[0] = (unsigned short )0;
+  sqlstm.sqtdso[0] = (unsigned short )0;
+  sqlstm.sqhstv[1] = (         void  *)WorklistInBridge.SchdldProcStepStartDate;
+  sqlstm.sqhstl[1] = (unsigned int  )9;
+  sqlstm.sqhsts[1] = (         int  )0;
+  sqlstm.sqindv[1] = (         void  *)&IndicatorWorklist.SchdldProcStepStartDate;
+  sqlstm.sqinds[1] = (         int  )0;
+  sqlstm.sqharm[1] = (unsigned int  )0;
+  sqlstm.sqadto[1] = (unsigned short )0;
+  sqlstm.sqtdso[1] = (unsigned short )0;
+  sqlstm.sqhstv[2] = (         void  *)WorklistInBridge.SchdldProcStepStartTime;
+  sqlstm.sqhstl[2] = (unsigned int  )17;
+  sqlstm.sqhsts[2] = (         int  )0;
+  sqlstm.sqindv[2] = (         void  *)&IndicatorWorklist.SchdldProcStepStartTime;
+  sqlstm.sqinds[2] = (         int  )0;
+  sqlstm.sqharm[2] = (unsigned int  )0;
+  sqlstm.sqadto[2] = (unsigned short )0;
+  sqlstm.sqtdso[2] = (unsigned short )0;
+  sqlstm.sqhstv[3] = (         void  *)WorklistInBridge.Modality;
+  sqlstm.sqhstl[3] = (unsigned int  )17;
+  sqlstm.sqhsts[3] = (         int  )0;
+  sqlstm.sqindv[3] = (         void  *)&IndicatorWorklist.Modality;
+  sqlstm.sqinds[3] = (         int  )0;
+  sqlstm.sqharm[3] = (unsigned int  )0;
+  sqlstm.sqadto[3] = (unsigned short )0;
+  sqlstm.sqtdso[3] = (unsigned short )0;
+  sqlstm.sqhstv[4] = (         void  *)WorklistInBridge.SchdldProcStepDescription;
+  sqlstm.sqhstl[4] = (unsigned int  )65;
+  sqlstm.sqhsts[4] = (         int  )0;
+  sqlstm.sqindv[4] = (         void  *)&IndicatorWorklist.SchdldProcStepDescription;
+  sqlstm.sqinds[4] = (         int  )0;
+  sqlstm.sqharm[4] = (unsigned int  )0;
+  sqlstm.sqadto[4] = (unsigned short )0;
+  sqlstm.sqtdso[4] = (unsigned short )0;
+  sqlstm.sqhstv[5] = (         void  *)WorklistInBridge.SchdldProcStepLocation;
+  sqlstm.sqhstl[5] = (unsigned int  )17;
+  sqlstm.sqhsts[5] = (         int  )0;
+  sqlstm.sqindv[5] = (         void  *)&IndicatorWorklist.SchdldProcStepLocation;
+  sqlstm.sqinds[5] = (         int  )0;
+  sqlstm.sqharm[5] = (unsigned int  )0;
+  sqlstm.sqadto[5] = (unsigned short )0;
+  sqlstm.sqtdso[5] = (unsigned short )0;
+  sqlstm.sqhstv[6] = (         void  *)WorklistInBridge.SchdldProcStepID;
+  sqlstm.sqhstl[6] = (unsigned int  )17;
+  sqlstm.sqhsts[6] = (         int  )0;
+  sqlstm.sqindv[6] = (         void  *)&IndicatorWorklist.SchdldProcStepID;
+  sqlstm.sqinds[6] = (         int  )0;
+  sqlstm.sqharm[6] = (unsigned int  )0;
+  sqlstm.sqadto[6] = (unsigned short )0;
+  sqlstm.sqtdso[6] = (unsigned short )0;
+  sqlstm.sqhstv[7] = (         void  *)WorklistInBridge.RequestedProcedureID;
+  sqlstm.sqhstl[7] = (unsigned int  )17;
+  sqlstm.sqhsts[7] = (         int  )0;
+  sqlstm.sqindv[7] = (         void  *)&IndicatorWorklist.RequestedProcedureID;
+  sqlstm.sqinds[7] = (         int  )0;
+  sqlstm.sqharm[7] = (unsigned int  )0;
+  sqlstm.sqadto[7] = (unsigned short )0;
+  sqlstm.sqtdso[7] = (unsigned short )0;
+  sqlstm.sqhstv[8] = (         void  *)WorklistInBridge.RequestedProcedureDescription;
+  sqlstm.sqhstl[8] = (unsigned int  )65;
+  sqlstm.sqhsts[8] = (         int  )0;
+  sqlstm.sqindv[8] = (         void  *)&IndicatorWorklist.RequestedProcedureDescription;
+  sqlstm.sqinds[8] = (         int  )0;
+  sqlstm.sqharm[8] = (unsigned int  )0;
+  sqlstm.sqadto[8] = (unsigned short )0;
+  sqlstm.sqtdso[8] = (unsigned short )0;
+  sqlstm.sqhstv[9] = (         void  *)WorklistInBridge.StudyInstanceUID;
+  sqlstm.sqhstl[9] = (unsigned int  )65;
+  sqlstm.sqhsts[9] = (         int  )0;
+  sqlstm.sqindv[9] = (         void  *)&IndicatorWorklist.StudyInstanceUID;
+  sqlstm.sqinds[9] = (         int  )0;
+  sqlstm.sqharm[9] = (unsigned int  )0;
+  sqlstm.sqadto[9] = (unsigned short )0;
+  sqlstm.sqtdso[9] = (unsigned short )0;
+  sqlstm.sqhstv[10] = (         void  *)WorklistInBridge.AccessionNumber;
+  sqlstm.sqhstl[10] = (unsigned int  )17;
+  sqlstm.sqhsts[10] = (         int  )0;
+  sqlstm.sqindv[10] = (         void  *)&IndicatorWorklist.AccessionNumber;
+  sqlstm.sqinds[10] = (         int  )0;
+  sqlstm.sqharm[10] = (unsigned int  )0;
+  sqlstm.sqadto[10] = (unsigned short )0;
+  sqlstm.sqtdso[10] = (unsigned short )0;
+  sqlstm.sqhstv[11] = (         void  *)WorklistInBridge.RequestingPhysician;
+  sqlstm.sqhstl[11] = (unsigned int  )65;
+  sqlstm.sqhsts[11] = (         int  )0;
+  sqlstm.sqindv[11] = (         void  *)&IndicatorWorklist.RequestingPhysician;
+  sqlstm.sqinds[11] = (         int  )0;
+  sqlstm.sqharm[11] = (unsigned int  )0;
+  sqlstm.sqadto[11] = (unsigned short )0;
+  sqlstm.sqtdso[11] = (unsigned short )0;
+  sqlstm.sqhstv[12] = (         void  *)WorklistInBridge.AdmissionID;
+  sqlstm.sqhstl[12] = (unsigned int  )65;
+  sqlstm.sqhsts[12] = (         int  )0;
+  sqlstm.sqindv[12] = (         void  *)&IndicatorWorklist.AdmissionID;
+  sqlstm.sqinds[12] = (         int  )0;
+  sqlstm.sqharm[12] = (unsigned int  )0;
+  sqlstm.sqadto[12] = (unsigned short )0;
+  sqlstm.sqtdso[12] = (unsigned short )0;
+  sqlstm.sqhstv[13] = (         void  *)WorklistInBridge.PatientsNameEn;
+  sqlstm.sqhstl[13] = (unsigned int  )65;
+  sqlstm.sqhsts[13] = (         int  )0;
+  sqlstm.sqindv[13] = (         void  *)&IndicatorWorklist.PatientsNameEn;
+  sqlstm.sqinds[13] = (         int  )0;
+  sqlstm.sqharm[13] = (unsigned int  )0;
+  sqlstm.sqadto[13] = (unsigned short )0;
+  sqlstm.sqtdso[13] = (unsigned short )0;
+  sqlstm.sqhstv[14] = (         void  *)WorklistInBridge.PatientsNameCh;
+  sqlstm.sqhstl[14] = (unsigned int  )65;
+  sqlstm.sqhsts[14] = (         int  )0;
+  sqlstm.sqindv[14] = (         void  *)&IndicatorWorklist.PatientsNameCh;
+  sqlstm.sqinds[14] = (         int  )0;
+  sqlstm.sqharm[14] = (unsigned int  )0;
+  sqlstm.sqadto[14] = (unsigned short )0;
+  sqlstm.sqtdso[14] = (unsigned short )0;
+  sqlstm.sqhstv[15] = (         void  *)WorklistInBridge.PatientID;
+  sqlstm.sqhstl[15] = (unsigned int  )65;
+  sqlstm.sqhsts[15] = (         int  )0;
+  sqlstm.sqindv[15] = (         void  *)&IndicatorWorklist.PatientID;
+  sqlstm.sqinds[15] = (         int  )0;
+  sqlstm.sqharm[15] = (unsigned int  )0;
+  sqlstm.sqadto[15] = (unsigned short )0;
+  sqlstm.sqtdso[15] = (unsigned short )0;
+  sqlstm.sqhstv[16] = (         void  *)WorklistInBridge.PatientsBirthDate;
+  sqlstm.sqhstl[16] = (unsigned int  )9;
+  sqlstm.sqhsts[16] = (         int  )0;
+  sqlstm.sqindv[16] = (         void  *)&IndicatorWorklist.PatientsBirthDate;
+  sqlstm.sqinds[16] = (         int  )0;
+  sqlstm.sqharm[16] = (unsigned int  )0;
+  sqlstm.sqadto[16] = (unsigned short )0;
+  sqlstm.sqtdso[16] = (unsigned short )0;
+  sqlstm.sqhstv[17] = (         void  *)WorklistInBridge.PatientsSex;
+  sqlstm.sqhstl[17] = (unsigned int  )17;
+  sqlstm.sqhsts[17] = (         int  )0;
+  sqlstm.sqindv[17] = (         void  *)&IndicatorWorklist.PatientsSex;
+  sqlstm.sqinds[17] = (         int  )0;
+  sqlstm.sqharm[17] = (unsigned int  )0;
+  sqlstm.sqadto[17] = (unsigned short )0;
+  sqlstm.sqtdso[17] = (unsigned short )0;
+  sqlstm.sqhstv[18] = (         void  *)WorklistInBridge.PatientsWeight;
+  sqlstm.sqhstl[18] = (unsigned int  )17;
+  sqlstm.sqhsts[18] = (         int  )0;
+  sqlstm.sqindv[18] = (         void  *)&IndicatorWorklist.PatientsWeight;
+  sqlstm.sqinds[18] = (         int  )0;
+  sqlstm.sqharm[18] = (unsigned int  )0;
+  sqlstm.sqadto[18] = (unsigned short )0;
+  sqlstm.sqtdso[18] = (unsigned short )0;
+  sqlstm.sqhstv[19] = (         void  *)WorklistInBridge.AdmittingDiagnosesDescription;
+  sqlstm.sqhstl[19] = (unsigned int  )65;
+  sqlstm.sqhsts[19] = (         int  )0;
+  sqlstm.sqindv[19] = (         void  *)&IndicatorWorklist.AdmittingDiagnosesDescription;
+  sqlstm.sqinds[19] = (         int  )0;
+  sqlstm.sqharm[19] = (unsigned int  )0;
+  sqlstm.sqadto[19] = (unsigned short )0;
+  sqlstm.sqtdso[19] = (unsigned short )0;
+  sqlstm.sqhstv[20] = (         void  *)WorklistInBridge.PatientsAge;
+  sqlstm.sqhstl[20] = (unsigned int  )5;
+  sqlstm.sqhsts[20] = (         int  )0;
+  sqlstm.sqindv[20] = (         void  *)&IndicatorWorklist.PatientsAge;
+  sqlstm.sqinds[20] = (         int  )0;
+  sqlstm.sqharm[20] = (unsigned int  )0;
+  sqlstm.sqadto[20] = (unsigned short )0;
+  sqlstm.sqtdso[20] = (unsigned short )0;
+  sqlstm.sqhstv[21] = (         void  *)&WorklistInBridge.SupportChinese;
+  sqlstm.sqhstl[21] = (unsigned int  )sizeof(int);
+  sqlstm.sqhsts[21] = (         int  )0;
+  sqlstm.sqindv[21] = (         void  *)&IndicatorWorklist.SupportChinese;
+  sqlstm.sqinds[21] = (         int  )0;
+  sqlstm.sqharm[21] = (unsigned int  )0;
+  sqlstm.sqadto[21] = (unsigned short )0;
+  sqlstm.sqtdso[21] = (unsigned short )0;
+  sqlstm.sqhstv[22] = (         void  *)&WorklistInBridge.DicomPersonName;
+  sqlstm.sqhstl[22] = (unsigned int  )sizeof(int);
+  sqlstm.sqhsts[22] = (         int  )0;
+  sqlstm.sqindv[22] = (         void  *)&IndicatorWorklist.DicomPersonName;
+  sqlstm.sqinds[22] = (         int  )0;
+  sqlstm.sqharm[22] = (unsigned int  )0;
+  sqlstm.sqadto[22] = (unsigned short )0;
+  sqlstm.sqtdso[22] = (unsigned short )0;
+  sqlstm.sqphsv = sqlstm.sqhstv;
+  sqlstm.sqphsl = sqlstm.sqhstl;
+  sqlstm.sqphss = sqlstm.sqhsts;
+  sqlstm.sqpind = sqlstm.sqindv;
+  sqlstm.sqpins = sqlstm.sqinds;
+  sqlstm.sqparm = sqlstm.sqharm;
+  sqlstm.sqparc = sqlstm.sqharc;
+  sqlstm.sqpadto = sqlstm.sqadto;
+  sqlstm.sqptdso = sqlstm.sqtdso;
+  sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
+  if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetWorklistFromDB));
+}
+
+
+  callback(&WorklistInBridge, &IndicatorWorklist, dbim);
+  /* EXEC SQL CLOSE C; */ 
+
+{
+  struct sqlexd sqlstm;
+  sqlstm.sqlvsn = 12;
+  sqlstm.arrsiz = 52;
+  sqlstm.sqladtp = &sqladt;
+  sqlstm.sqltdsp = &sqltds;
+  sqlstm.iters = (unsigned int  )1;
+  sqlstm.offset = (unsigned int  )526;
+  sqlstm.cud = sqlcud0;
+  sqlstm.sqlest = (unsigned char  *)&sqlca;
+  sqlstm.sqlety = (unsigned short)4352;
+  sqlstm.occurs = (unsigned int  )0;
+  sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
+  if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetWorklistFromDB));
+}
+
+
+  return true;
 }

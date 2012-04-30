@@ -50,6 +50,7 @@
 //#include "dcmtk/dcmdata/dctk.h"
 //#include <stdio.h>
 //#include <stdlib.h>
+//#include "dcmtk/dcmdata/dcdict.h"     // for GlobalDcmDataDictionary
 #include "dcmtk/dcmdata/dcvras.h"     // for DcmAgeString
 #include "dcmtk/dcmdata/dcvrlo.h"     // for DcmLongString
 #include "dcmtk/dcmdata/dcvrae.h"	  // for DcmApplicationEntity
@@ -60,7 +61,24 @@
 #include "dcmtk/dcmdata/dcdeftag.h"	  // for DCM_OffendingElement, ...
 #include "dcmtk/dcmdata/dcsequen.h"	  // for DcmSequenceOfItems
 
+#include "bridge.h"
 #include "dcmtk/dcmwlm/wlmdbim.h"
+
+_declspec(dllimport) const char *pWorklistStatement;
+_declspec(dllimport) WlmCondition SearchCondition;
+
+static const char COND_AND[] = " AND ", DISCARD[] = "DISCARD",  EQUAL_COLON[] = "=:",
+  WHERE_STATEMENT[] = "SELECT ScheduledStationAETitle, SchdldProcStepStartDate, SchdldProcStepStartTime\
+   , Modality, SchdldProcStepDescription, SchdldProcStepLocation, SchdldProcStepID, RequestedProcedureID\
+   , RequestedProcedureDescription, StudyInstanceUID, AccessionNumber, RequestingPhysician, AdmissionID\
+   , PatientsNameEn, PatientsNameCh, PatientID, PatientsBirthDate, PatientsSex, PatientsWeight\
+   , AdmittingDiagnosesDescription, PatientsAge, SupportChinese, DicomPersonName \
+   from V_EXAMSTUDY_WORKLIST2 WHERE ",
+  RESULT_DATE_RANGE[] = "Result date range: ", SchdldProcStepStartDate[] = "SchdldProcStepStartDateTime",
+  DATE_GE_PREFIX[] = ">=to_date(:", DATE_LT_PREFIX[] = "<to_date(:", DATE_POSTFIX[] = ", 'yyyyMMdd')",
+  IGNORE_STRING_VALUE_PREFIX[] = "IgnoreStringValue(:", IGNORE_STRING_VALUE_POSTFIX[] = ")='ignore'",
+  MATCHING_RECORDS_IN_DB[] = " matching records found in DB.",
+  SET_DEFAULT_DATE[] = "No date specified, set current date", MKTIME_ERROR[] = "mktime tommorow error.";
 
 // ----------------------------------------------------------------------------
 
@@ -70,7 +88,7 @@ WlmDBInteractionManager::WlmDBInteractionManager()
 // Task         : Constructor.
 // Parameters   : none.
 // Return Value : none.
-  : MaxMatchingDatasetCapability(0), matchingRecords(NULL)
+  : CapabilityIncreaseStep(MAX_WLM_NUMBER), MaxMatchingDatasetCapability(0), matchingRecords(NULL)
 {
 }
 
@@ -165,6 +183,64 @@ OFBool WlmFileSystemInteractionManager::IsCalledApplicationEntityTitleSupported(
 */
 // ----------------------------------------------------------------------------
 
+void WlmDBInteractionManager::DetermineMatchingRecordOne( DcmDataset *dataset )
+// Parameters   : searchMask - [in] The search mask.
+//				: dataset - [in] The db record.
+// Return Value : result of matching record.
+{
+  char msg[128];
+  // in case option --enable-file-reject is set, we have to check if the current
+  // .wl-file meets certain conditions; in detail, the file's dataset has to be
+  // checked whether it contains all necessary return type 1 attributes and contains
+  // information in all these attributes; if this is condition is not met, the
+  // .wl-file shall be rejected
+  if( enableRejectionOfIncompleteWlFiles && !DatasetIsComplete( dataset ) )
+  {
+	delete dataset;
+    if( verboseMode )
+    {
+      sprintf( msg, "Record %d is incomplete. Record will be ignored.", numOfMatchingRecords );
+      DumpMessage( msg );
+    }
+  }
+  else
+  {
+    // check if the current dataset matches the matching key attribute values
+    if( !DatasetMatchesSearchMask( dataset, searchMaskIdentifiers ) )
+    {
+	  delete dataset;
+      if( verboseMode )
+      {
+        sprintf( msg, "Information from record %d does not match query.", numOfMatchingRecords );
+        DumpMessage( msg );
+      }
+    }
+    else
+    {
+      if( verboseMode )
+      {
+        sprintf( msg, "Information from record %d matches query.", numOfMatchingRecords );
+        DumpMessage( msg );
+      }
+
+      // since the dataset matches the matching key attribute values
+      // we need to insert it into the matchingRecords array
+	  if(numOfMatchingRecords >= MaxMatchingDatasetCapability)
+	  {
+		MaxMatchingDatasetCapability += CapabilityIncreaseStep;
+		  DcmDataset **tmp = new DcmDataset*[MaxMatchingDatasetCapability];
+		  for( unsigned long j=0 ; j<numOfMatchingRecords ; j++ )
+			tmp[j] = matchingRecords[j];
+		  if(matchingRecords != NULL) delete[] matchingRecords;
+		  matchingRecords = tmp;
+	  }
+	  matchingRecords[numOfMatchingRecords] = dataset;
+
+      ++numOfMatchingRecords;
+    }
+  }
+}
+
 unsigned long WlmDBInteractionManager::DetermineMatchingRecords( DcmDataset *searchMask )
 // Date         : July 11, 2002
 // Author       : Thomas Wilkens
@@ -175,69 +251,12 @@ unsigned long WlmDBInteractionManager::DetermineMatchingRecords( DcmDataset *sea
 // Parameters   : searchMask - [in] The search mask.
 // Return Value : Number of matching records.
 {
-  char msg[128];
-
   // initialize member variables
-  DcmDataset *dataset = NULL;
   numOfMatchingRecords = 0;
-
-  StartGenerate(searchMask);
-  // go through all records
-  while(dataset = NextDataset(searchMask))
-  {
-    // in case option --enable-file-reject is set, we have to check if the current
-    // .wl-file meets certain conditions; in detail, the file's dataset has to be
-    // checked whether it contains all necessary return type 1 attributes and contains
-    // information in all these attributes; if this is condition is not met, the
-    // .wl-file shall be rejected
-    if( enableRejectionOfIncompleteWlFiles && !DatasetIsComplete( dataset ) )
-    {
-      if( verboseMode )
-      {
-        sprintf( msg, "Record %d is incomplete. Record will be ignored.", numOfMatchingRecords );
-        DumpMessage( msg );
-      }
-    }
-    else
-    {
-      // check if the current dataset matches the matching key attribute values
-      if( !DatasetMatchesSearchMask( dataset, searchMask ) )
-      {
-        if( verboseMode )
-        {
-          sprintf( msg, "Information from record %d does not match query.", numOfMatchingRecords );
-          DumpMessage( msg );
-        }
-      }
-      else
-      {
-        if( verboseMode )
-        {
-          sprintf( msg, "Information from record %d matches query.", numOfMatchingRecords );
-          DumpMessage( msg );
-        }
-
-        // since the dataset matches the matching key attribute values
-        // we need to insert it into the matchingRecords array
-		if(numOfMatchingRecords >= MaxMatchingDatasetCapability)
-		{
-		  MaxMatchingDatasetCapability += CapabilityIncreaseStep;
-          DcmDataset **tmp = new DcmDataset*[MaxMatchingDatasetCapability];
-          for( unsigned long j=0 ; j<numOfMatchingRecords ; j++ )
-            tmp[j] = matchingRecords[j];
-          if(matchingRecords != NULL) delete[] matchingRecords;
-          matchingRecords = tmp;
-		}
-		matchingRecords[numOfMatchingRecords] = dataset;
-
-        ++numOfMatchingRecords;
-      }
-	}
-  }
-  StopGenerate();
-
-  // return result
-  return( numOfMatchingRecords );
+  searchMaskIdentifiers = searchMask;
+  OFCondition cond = GenerateDataset();
+  if(cond.bad()) CERR << cond.text() << endl;
+  return numOfMatchingRecords;
 }
 
 // ----------------------------------------------------------------------------
@@ -1986,150 +2005,331 @@ void WlmDBInteractionManager::ExtractValuesFromRange( const char *range, char *&
 
 // ----------------------------------------------------------------------------
 
-void WlmDBInteractionManager::StartGenerate(DcmDataset *searchMask)
+OFCondition WlmDBInteractionManager::DiscardPersonName(DcmTagKey key, DcmDataset *searchMask)
 {
-  queryContext = 0;
-}
+  OFCondition cond;
+  DcmElement *pElement = NULL;
 
-void WlmDBInteractionManager::StopGenerate()
-{
-  queryContext = 0;
-}
-
-DcmDataset *WlmDBInteractionManager::NextDataset(DcmDataset *searchMask)
-{
-  char buf[65];
-  int i = 0;
-  DcmDataset *dataset = NULL;
-
-  if(queryContext == 3)
+  DcmTag tag(key);
+  const char* tagName = tag.getTagName();
+  if(verboseMode) COUT << tagName << ':' << ' ';
+  cond = searchMask->findAndGetElement(key, pElement, OFTrue);
+  if(cond.good())
   {
-	queryContext = 0;
-	return NULL;
+	DcmPersonName *pPN = dynamic_cast<DcmPersonName*>(pElement);
+	char *value;
+	pPN->getString(value);
+	if(value != NULL && verboseMode) COUT << value << '[' << DISCARD << ']';
+	cond = pPN->clear();
   }
+  if(verboseMode) COUT << endl;
+  return cond;
+}
+
+OFCondition WlmDBInteractionManager::GetSearchMaskValue(char*& value, OFBool addAnd, OFString& whereStatement, DcmTagKey key, DcmDataset *searchMask)
+{
+  OFCondition cond;
+  DcmElement *pElement = NULL;
+
+  DcmTag tag(key);
+  const char* tagName = tag.getTagName();
+  if(verboseMode) COUT << tagName << ':' << ' ';
+  cond = searchMask->findAndGetElement(key, pElement, OFTrue);
+  if(cond.good())
+  {
+	value = NULL;
+	cond = pElement->getString(value);
+	if(cond.good() && value != NULL)
+	{
+	  if(verboseMode) COUT << value;
+
+	  if(value[0] == '\0' || value[0] == '*') value = NULL;
+	}
+	if(addAnd) whereStatement.append(COND_AND);
+
+	if(value == NULL) // always true, ignore this tag
+	  whereStatement.append(IGNORE_STRING_VALUE_PREFIX).append(tagName).append(IGNORE_STRING_VALUE_POSTFIX);
+	else
+	  whereStatement.append(tagName).append(EQUAL_COLON).append(tagName);
+  }
+  if(verboseMode) COUT << endl;
+  return cond;
+}
+
+OFCondition WlmDBInteractionManager::GenerateDataset()
+{
+  DcmElement *pElement = NULL;
+  OFCondition cond;
+  OFString searchMaskDateValue, whereStatement(WHERE_STATEMENT); 
+  char *tempValue;
+  ZeroMemory( &SearchCondition, sizeof(SearchCondition) );
+  OFBool hasCondition = OFFalse;
+
+  DcmDataset *searchMask = searchMaskIdentifiers;
+
+  cond = GetSearchMaskValue(tempValue, hasCondition, whereStatement, DCM_ScheduledStationAETitle, searchMask);
+  if(cond.good())
+  {
+	SearchCondition.pScheduleStationAE = tempValue;
+	hasCondition = OFTrue;
+  }
+
+  cond = GetSearchMaskValue(tempValue, hasCondition, whereStatement, DCM_Modality, searchMask);
+  if(cond.good())
+  {
+	SearchCondition.pModality = tempValue;
+	hasCondition = OFTrue;
+  }
+/*
+  cond = GetSearchMaskValue(tempValue, condset.conditions != CM_NONE, whereStatement, DCM_PatientID, searchMask);
+  if(cond.good() && tempValue != NULL)
+  {
+	condset.conditions |= CM_PatientID;
+	condset.pPatientID = tempValue;
+  }
+
+  cond = GetSearchMaskValue(tempValue, condset.conditions != CM_NONE, whereStatement, DCM_AccessionNumber, searchMask);
+  if(cond.good() && tempValue != NULL)
+  {
+	condset.conditions |= CM_AccessionNumber;
+	condset.pAccessionNumber = tempValue;
+  }
+
+  cond = GetSearchMaskValue(tempValue, condset.conditions != CM_NONE, whereStatement, DCM_AdmissionID, searchMask);
+  if(cond.good() && tempValue != NULL)
+  {
+	condset.conditions |= CM_AdmissionID;
+	condset.pAdmissionID = tempValue;
+  }
+*/
+  DiscardPersonName(DCM_ScheduledPerformingPhysiciansName, searchMask);
+  DiscardPersonName(DCM_PatientsName, searchMask);
+  DiscardPersonName(DCM_RequestingPhysician, searchMask);
+
+  char *lower = NULL, *upper = NULL;
+  OFDate lowerDate, upperDate;
+  OFString lowerDateString, upperDateString;
+
+  cond = searchMask->findAndGetElement(DCM_ScheduledProcedureStepStartDate, pElement, OFTrue);
+  if(cond.good())
+  {
+	cond = pElement->getOFString(searchMaskDateValue, 0);
+	if(cond.good())
+	{
+	  if(strchr( searchMaskDateValue.c_str(), '-' ) == NULL)
+	  { // single match
+		DcmDate *schdlDate = dynamic_cast<DcmDate*>(pElement);
+		cond = schdlDate->getOFDate(lowerDate);
+		if(cond.good()) upperDate = lowerDate;
+	  }
+	  else
+	  { // range match
+		ExtractValuesFromRange(searchMaskDateValue.c_str(), lower, upper);
+
+		if(lower != NULL)
+		{
+		  OFString lowerString(lower);
+		  cond = DcmDate::getOFDateFromString( lowerString, lowerDate );
+		}
+
+		if(upper != NULL && cond.good())
+		{
+		  OFString upperString(upper);
+		  cond = DcmDate::getOFDateFromString( upperString, upperDate );
+		}
+
+		if(!(lowerDate.isValid() || upperDate.isValid())) cond = EC_IllegalParameter;
+	  }
+	}
+	else if(pElement->getVM() == 0) // No date specified, set current date
+	{
+	  lowerDate.setCurrentDate();
+	  upperDate = lowerDate;
+	  CERR << SET_DEFAULT_DATE << endl;
+	  cond = EC_Normal;
+	}
+  }
+
+  if(cond.bad() || !(lowerDate.isValid() || upperDate.isValid()))
+  {	// date resolve failed, set current date
+	if(cond.bad()) CERR << cond.text() << endl;
+	else CERR << SET_DEFAULT_DATE << endl;
+	lowerDate.setCurrentDate();
+	upperDate = lowerDate;
+  }
+
+  // clean date
+  if(lower != NULL) { delete[] lower; lower = NULL; }
+  if(upper != NULL) { delete[] upper; upper = NULL; }
+
+  if(verboseMode) COUT << RESULT_DATE_RANGE;
+
+  if(!lowerDate.isValid()) lowerDate.setDate(1970, 1, 1);
+  lowerDate.getISOFormattedDate(lowerDateString, OFFalse);
+  SearchCondition.pLowerScheduleDate = lowerDateString.c_str();
+  if(hasCondition == OFTrue) whereStatement.append(COND_AND);
+  whereStatement.append(SchdldProcStepStartDate).append(DATE_GE_PREFIX).append(SchdldProcStepStartDate).append(1, '1').append(DATE_POSTFIX);
+  hasCondition = OFTrue;
+  if(verboseMode) COUT << lowerDate << ',';
+
+  if(!upperDate.isValid()) upperDate.setDate(2099, 12, 31);
+
+  // sec[0-59], min[0-59], hour[0-23], day[1-31], month[0-11], year[year - 1900]
+  struct tm tommorow = { 0, 0, 0, upperDate.getDay() + 1, upperDate.getMonth() - 1, upperDate.getYear() - 1900 };
+  if( mktime( &tommorow ) == (time_t)-1 )
+	CERR << MKTIME_ERROR << endl;
   else
   {
-	dataset = new DcmDataset();
+	upperDate.setDate(tommorow.tm_year + 1900, tommorow.tm_mon + 1, tommorow.tm_mday);
+	upperDate.getISOFormattedDate(upperDateString, OFFalse);
+	SearchCondition.pUpperScheduleDate = upperDateString.c_str();
+	if(hasCondition == OFTrue) whereStatement.append(COND_AND);
+	whereStatement.append(SchdldProcStepStartDate).append(DATE_LT_PREFIX).append(SchdldProcStepStartDate).append(1, '2').append(DATE_POSTFIX);
+	hasCondition = OFTrue;
+	if(verboseMode) COUT << upperDate;
+  }
+  if(verboseMode) COUT << endl;
 
-	if(queryContext == 1)
+  pWorklistStatement = whereStatement.c_str();
+  if(verboseMode) COUT << whereStatement << endl;
+
+  if(connectDicomDB())
+  {
+	if(GetWorklistFromDB(WlmDataset, this))
+	{
+	  commitDicomDB();
+	  return ECC_Normal;
+	}
+  }
+  return EC_IllegalParameter;
+}
+
+int WlmDBInteractionManager::DummyDataset(DcmDataset *searchMask, DcmDataset **datasetPtrArray)
+{
+  char buf[65];
+  for(int i = 0; i < 3; i++)
+  {
+	DcmDataset *dataset = new DcmDataset();
+
+	if(i == 1)
 	{
 	  DcmCodeString *charset = new DcmCodeString(DcmTag(DCM_SpecificCharacterSet));	//0008,0005 O 1
 	  charset->putString("ISO_IR 100");
 	  dataset->insert(charset);
 	}
-	else if(queryContext == 2)
+	else if(i == 2)
 	{
 	  DcmCodeString *charset = new DcmCodeString(DcmTag(DCM_SpecificCharacterSet));	//0008,0005 O 1
 	  charset->putString("GB18030");
 	  dataset->insert(charset);
 	}
-	i = queryContext++;
+
+	DcmShortString *accessNum = new DcmShortString(DcmTag(DCM_AccessionNumber));  //0008,0050 O 2
+	sprintf(buf, "ACC-%06d", i);
+	accessNum->putString(buf);
+	dataset->insert(accessNum);
+
+	DcmPersonName *referPhyName = new DcmPersonName(DcmTag(DCM_ReferringPhysiciansName));  // 0008,0090 O 2
+	referPhyName->putString("Physician^Referring=医师^转诊");
+	dataset->insert(referPhyName);
+
+	DcmSequenceOfItems *referStudySQ = new DcmSequenceOfItems(DCM_ReferencedStudySequence); //0008,1110 O 2
+	dataset->insert(referStudySQ);
+
+	DcmSequenceOfItems *referPatientSQ = new DcmSequenceOfItems(DCM_ReferencedPatientSequence); //0008,1120 O 2
+	dataset->insert(referPatientSQ);
+
+	DcmPersonName *patientName = new DcmPersonName(DcmTag(DCM_PatientsName));  // 0010,0010 R 1
+	sprintf(buf, "Test^%d=测试^%d", i, i);
+	patientName->putString(buf);
+	dataset->insert(patientName);
+
+	DcmLongString *patientId = new DcmLongString(DcmTag(DCM_PatientID));  //0010,0020 R 1
+	sprintf(buf, "PATID-%06d", i, i);
+	patientId->putString(buf);
+	dataset->insert(patientId);
+
+	DcmDate *birthDate = new DcmDate(DcmTag(DCM_PatientsBirthDate));	//0010,0030 O 2
+	birthDate->setCurrentDate();
+	dataset->insert(birthDate);
+
+	DcmCodeString *patientSex = new DcmCodeString(DcmTag(DCM_PatientsSex));	//0010,0040 O 2
+	patientSex->putString("M");
+	dataset->insert(patientSex);
+
+	DcmAgeString *patientAge = new DcmAgeString(DcmTag(DCM_PatientsAge)); //0010,1010 O 3
+	patientAge->putString("50Y");
+	dataset->insert(patientAge);
+
+	DcmDecimalString *patientWeight = new DcmDecimalString(DcmTag(DCM_PatientsWeight));  //0010,1030 O 2
+	patientWeight->putString("70");
+	dataset->insert(patientWeight);
+
+	DcmUniqueIdentifier *studyInstUid = new DcmUniqueIdentifier(DcmTag(DCM_StudyInstanceUID));  //0020,000d O 1
+	sprintf(buf, "1.2.156.126666.1.2.1.%d", i);
+	studyInstUid->putString(buf);
+	dataset->insert(studyInstUid);
+
+	DcmPersonName *reqPhyName = new DcmPersonName(DcmTag(DCM_RequestingPhysician));  // 0032,1032 O 2
+	reqPhyName->putString("Physician^Requesting=医师^请求");
+	dataset->insert(reqPhyName);
+
+	DcmLongString *reqProcDesc = new DcmLongString(DcmTag(DCM_RequestedProcedureDescription));  //0032,1060 O 1
+	reqProcDesc->putString("Requested Procedure Test");
+	dataset->insert(reqProcDesc);
+
+	DcmLongString *admissionId = new DcmLongString(DcmTag(DCM_AdmissionID));  //0038,0010 O 2
+	sprintf(buf, "ADMID-%06d", i, i);
+	admissionId->putString(buf);
+	dataset->insert(admissionId);
+
+	DcmShortString *reqProcPrior = new DcmShortString(DcmTag(DCM_RequestedProcedurePriority));  //0040,1003 O 2
+	reqProcPrior->putString("MEDIUM"); //STAT, HIGH, ROUTINE, MEDIUM, LOW 
+	dataset->insert(reqProcPrior);
+
+	DcmSequenceOfItems *schdlProcSQ = new DcmSequenceOfItems(DCM_ScheduledProcedureStepSequence); //0040,0100 R 1
+	{
+	  DcmItem *item = new DcmItem();
+
+	  DcmCodeString *modality = new DcmCodeString(DcmTag(DCM_Modality));	//0008,0060 R 1
+	  modality->putString("MR");
+	  item->insert(modality);
+
+	  DcmApplicationEntity *schdlStationAE = new DcmApplicationEntity(DCM_ScheduledStationAETitle);  //0040,0001 R 1
+	  schdlStationAE->putString("regstation");
+	  item->insert(schdlStationAE);
+
+	  DcmDate *schdlDate = new DcmDate(DcmTag(DCM_ScheduledProcedureStepStartDate));	//0040,0002 R 1
+	  schdlDate->setCurrentDate();
+	  item->insert(schdlDate);
+
+	  DcmTime *schdlTime = new DcmTime(DCM_ScheduledProcedureStepStartTime);  //0040,0003 R 1
+	  schdlTime->setCurrentTime();
+	  item->insert(schdlTime);
+
+	  DcmPersonName *schdlPerfmPhyName = new DcmPersonName(DcmTag(DCM_ScheduledPerformingPhysiciansName));  // 0040,0006 R 2
+	  schdlPerfmPhyName->putString("Physician^SchedulePerform=医师^预约执行");
+	  item->insert(schdlPerfmPhyName);
+
+	  DcmLongString *schdlProcStepDesc = new DcmLongString(DcmTag(DCM_ScheduledProcedureStepDescription));  //0040,0007 O 1
+	  schdlProcStepDesc->putString("Scheduled Procedure Step Test");
+	  item->insert(schdlProcStepDesc);
+
+	  DcmShortString *schdlProcStepId = new DcmShortString(DcmTag(DCM_ScheduledProcedureStepID));  //0040,0009 O 1
+	  sprintf(buf, "SCHD-%06d", i);
+	  schdlProcStepId->putString(buf);
+	  item->insert(schdlProcStepId);
+
+	  schdlProcSQ->append(item);
+	}
+	dataset->insert(schdlProcSQ);
+
+	DcmShortString *reqProcStepId = new DcmShortString(DcmTag(DCM_RequestedProcedureID));  //0040,1001 O 1
+	sprintf(buf, "REQ-%06d", i);
+	reqProcStepId->putString(buf);
+	dataset->insert(reqProcStepId);
+
+	datasetPtrArray[i] = dataset;
   }
-
-  DcmShortString *accessNum = new DcmShortString(DcmTag(DCM_AccessionNumber));  //0008,0050 O 2
-  sprintf(buf, "ACC-%06d", i);
-  accessNum->putString(buf);
-  dataset->insert(accessNum);
-
-  DcmPersonName *referPhyName = new DcmPersonName(DcmTag(DCM_ReferringPhysiciansName));  // 0008,0090 O 2
-  referPhyName->putString("Physician^Referring=医师^转诊");
-  dataset->insert(referPhyName);
-
-  DcmSequenceOfItems *referStudySQ = new DcmSequenceOfItems(DCM_ReferencedStudySequence); //0008,1110 O 2
-  dataset->insert(referStudySQ);
-
-  DcmSequenceOfItems *referPatientSQ = new DcmSequenceOfItems(DCM_ReferencedPatientSequence); //0008,1120 O 2
-  dataset->insert(referPatientSQ);
-
-  DcmPersonName *patientName = new DcmPersonName(DcmTag(DCM_PatientsName));  // 0010,0010 R 1
-  sprintf(buf, "Test^%d=测试^%d", i, i);
-  patientName->putString(buf);
-  dataset->insert(patientName);
-
-  DcmLongString *patientId = new DcmLongString(DcmTag(DCM_PatientID));  //0010,0020 R 1
-  sprintf(buf, "PATID-%06d", i, i);
-  patientId->putString(buf);
-  dataset->insert(patientId);
-
-  DcmDate *birthDate = new DcmDate(DcmTag(DCM_PatientsBirthDate));	//0010,0030 O 2
-  birthDate->setCurrentDate();
-  dataset->insert(birthDate);
-
-  DcmCodeString *patientSex = new DcmCodeString(DcmTag(DCM_PatientsSex));	//0010,0040 O 2
-  patientSex->putString("M");
-  dataset->insert(patientSex);
-
-  DcmAgeString *patientAge = new DcmAgeString(DcmTag(DCM_PatientsAge)); //0010,1010 O 3
-  patientAge->putString("50Y");
-  dataset->insert(patientAge);
-
-  DcmDecimalString *patientWeight = new DcmDecimalString(DcmTag(DCM_PatientsWeight));  //0010,1030 O 2
-  patientWeight->putString("70");
-  dataset->insert(patientWeight);
-
-  DcmUniqueIdentifier *studyInstUid = new DcmUniqueIdentifier(DcmTag(DCM_StudyInstanceUID));  //0020,000d O 1
-  sprintf(buf, "1.2.156.126666.1.2.1.%d", i);
-  studyInstUid->putString(buf);
-  dataset->insert(studyInstUid);
-
-  DcmPersonName *reqPhyName = new DcmPersonName(DcmTag(DCM_RequestingPhysician));  // 0032,1032 O 2
-  reqPhyName->putString("Physician^Requesting=医师^请求");
-  dataset->insert(reqPhyName);
-
-  DcmLongString *reqProcDesc = new DcmLongString(DcmTag(DCM_RequestedProcedureDescription));  //0032,1060 O 1
-  reqProcDesc->putString("Requested Procedure Test");
-  dataset->insert(reqProcDesc);
-
-  DcmLongString *admissionId = new DcmLongString(DcmTag(DCM_AdmissionID));  //0038,0010 O 2
-  sprintf(buf, "ADMID-%06d", i, i);
-  admissionId->putString(buf);
-  dataset->insert(admissionId);
-
-  DcmShortString *reqProcPrior = new DcmShortString(DcmTag(DCM_RequestedProcedurePriority));  //0040,1003 O 2
-  reqProcPrior->putString("MEDIUM"); //STAT, HIGH, ROUTINE, MEDIUM, LOW 
-  dataset->insert(reqProcPrior);
-
-  DcmSequenceOfItems *schdlProcSQ = new DcmSequenceOfItems(DCM_ScheduledProcedureStepSequence); //0040,0100 R 1
-  {
-	DcmItem *item = new DcmItem();
-
-	DcmCodeString *modality = new DcmCodeString(DcmTag(DCM_Modality));	//0008,0060 R 1
-	modality->putString("MR");
-	item->insert(modality);
-
-	DcmApplicationEntity *schdlStationAE = new DcmApplicationEntity(DCM_ScheduledStationAETitle);  //0040,0001 R 1
-	schdlStationAE->putString("regstation");
-	item->insert(schdlStationAE);
-
-	DcmDate *schdlDate = new DcmDate(DcmTag(DCM_ScheduledProcedureStepStartDate));	//0040,0002 R 1
-	schdlDate->setCurrentDate();
-	item->insert(schdlDate);
-
-	DcmTime *schdlTime = new DcmTime(DCM_ScheduledProcedureStepStartTime);  //0040,0003 R 1
-	schdlTime->setCurrentTime();
-	item->insert(schdlTime);
-
-	DcmPersonName *schdlPerfmPhyName = new DcmPersonName(DcmTag(DCM_ScheduledPerformingPhysiciansName));  // 0040,0006 R 2
-	schdlPerfmPhyName->putString("Physician^SchedulePerform=医师^预约执行");
-	item->insert(schdlPerfmPhyName);
-
-	DcmLongString *schdlProcStepDesc = new DcmLongString(DcmTag(DCM_ScheduledProcedureStepDescription));  //0040,0007 O 1
-	schdlProcStepDesc->putString("Scheduled Procedure Step Test");
-	item->insert(schdlProcStepDesc);
-
-	DcmShortString *schdlProcStepId = new DcmShortString(DcmTag(DCM_ScheduledProcedureStepID));  //0040,0009 O 1
-	sprintf(buf, "SCHD-%06d", i);
-	schdlProcStepId->putString(buf);
-	item->insert(schdlProcStepId);
-
-	schdlProcSQ->append(item);
-  }
-  dataset->insert(schdlProcSQ);
-
-  DcmShortString *reqProcStepId = new DcmShortString(DcmTag(DCM_RequestedProcedureID));  //0040,1001 O 1
-  sprintf(buf, "REQ-%06d", i);
-  reqProcStepId->putString(buf);
-  dataset->insert(reqProcStepId);
-
-  return dataset;
+  return 3;
 }

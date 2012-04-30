@@ -391,6 +391,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmtls", "dcmtls\libsrc\dcmtls.vcproj", "{20DE3D23-5A44-4038-A420-05CC34EA8772}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmwlm", "dcmwlm\libsrc\dcmwlm.vcproj", "{115B839A-471F-4F57-8074-0FB26A40E0BF}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7838ED12-CD6E-45A3-AE31-F5E6FAFCDAA7} = {7838ED12-CD6E-45A3-AE31-F5E6FAFCDAA7}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcod2lum", "dcmimgle\apps\dcod2lum.vcproj", "{56A67C8C-991E-4B94-8517-6630863858F9}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -530,6 +533,7 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bridgetest", "bridgetest\bridgetest.vcproj", "{DF99FBBC-047C-4458-9077-28F5AA50E551}"
 	ProjectSection(ProjectDependencies) = postProject
 		{7838ED12-CD6E-45A3-AE31-F5E6FAFCDAA7} = {7838ED12-CD6E-45A3-AE31-F5E6FAFCDAA7}
+		{140C0096-4C8B-4854-A76D-DF0B659A6C52} = {140C0096-4C8B-4854-A76D-DF0B659A6C52}
 	EndProjectSection
 EndProject
 Global
