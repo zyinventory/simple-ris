@@ -1,12 +1,18 @@
 #include "stdafx.h"
 #include <oci.h>
-#include <ofdatime.h>
-#include <ofstring.h>
-#include <dcdatset.h>
+#include <dcmtk/ofstd/ofdatime.h>
+#include <dcmtk/ofstd/ofstring.h>
+#include <dcmtk/dcmdata/dcdatset.h>
 #include "bridge.h"
+
+const char BRIDGE[] = "bridge", BRIDGE_GetManageNumber[] = "bridge.getManageNumber", 
+  BRIDGE_InsertImageInfoToDB[] = "bridge.insertImageInfoToDB", 
+  BRIDGE_GetWorklistFromDB[] = "bridge.GetWorklistFromDB";
 
 EXEC SQL BEGIN DECLARE SECTION;
 unsigned char connection[] = "dicom/dicom";
+
+// ---------StoreSCP-----------
 char oldStudyUid[65] = "";
 char imageManageNumber[15];
 int dateNumber;
@@ -62,31 +68,111 @@ char paramReqPhysician[65];
 char paramReqService[65];
 //dataset end
 int packageId;
+
+// ---------WLM Condition-----------
+const char *pWorklistStatement;
+
+#ifndef __BRIDGE_DEFINE
+
+#define DIC_UI_LEN		64
+#define DIC_AE_LEN		16
+#define DIC_SH_LEN		16
+#define DIC_PN_LEN		64
+#define DIC_LO_LEN		64
+#define DIC_CS_LEN		16
+#define DIC_AS_LEN		4
+#define DIC_DA_LEN		8
+#define DIC_TM_LEN		16
+#define DIC_DS_LEN		16
+
+typedef struct tagWlmCondition
+{
+  const char *pScheduleStationAE;
+  const char *pModality;
+  const char *pLowerScheduleDate;
+  const char *pUpperScheduleDate;
+} WlmCondition, *PWlmCondition;	
+
+typedef struct tagWorklistRecord
+{
+  char ScheduledStationAETitle[DIC_AE_LEN + 1];
+  char SchdldProcStepStartDate[DIC_DA_LEN + 1];
+  char SchdldProcStepStartTime[DIC_TM_LEN + 1];
+  char Modality[DIC_CS_LEN + 1];
+  char SchdldProcStepDescription[DIC_LO_LEN + 1];
+  char SchdldProcStepLocation[DIC_SH_LEN + 1];
+  char SchdldProcStepID[DIC_SH_LEN + 1];
+  char RequestedProcedureID[DIC_SH_LEN + 1];
+  char RequestedProcedureDescription[DIC_LO_LEN + 1];
+  char StudyInstanceUID[DIC_UI_LEN + 1];
+  char AccessionNumber[DIC_SH_LEN + 1];
+  char RequestingPhysician[DIC_PN_LEN + 1];
+  char AdmissionID[DIC_LO_LEN + 1];
+  char PatientsNameEn[DIC_PN_LEN + 1];
+  char PatientsNameCh[DIC_PN_LEN + 1];
+  char PatientID[DIC_LO_LEN + 1];
+  char PatientsBirthDate[DIC_DA_LEN + 1];
+  char PatientsSex[DIC_CS_LEN + 1];
+  char PatientsWeight[DIC_DS_LEN + 1];
+  char AdmittingDiagnosesDescription[DIC_LO_LEN + 1];
+  char PatientsAge[DIC_AS_LEN + 1];
+  int SupportChinese;
+  int DicomPersonName;
+} WorklistRecord, *PWorklistRecord;
+
+typedef struct tagIndicatorWorklistRecord
+{
+  short ScheduledStationAETitle;
+  short SchdldProcStepStartDate;
+  short SchdldProcStepStartTime;
+  short Modality;
+  short SchdldProcStepDescription;
+  short SchdldProcStepLocation;
+  short SchdldProcStepID;
+  short RequestedProcedureID;
+  short RequestedProcedureDescription;
+  short StudyInstanceUID;
+  short AccessionNumber;
+  short RequestingPhysician;
+  short AdmissionID;
+  short PatientsNameEn;
+  short PatientsNameCh;
+  short PatientID;
+  short PatientsBirthDate;
+  short PatientsSex;
+  short PatientsWeight;
+  short AdmittingDiagnosesDescription;
+  short PatientsAge;
+  short SupportChinese;
+  short DicomPersonName;
+} IndicatorWorklistRecord, *PIndicatorWorklistRecord;
+#endif
+
+WlmCondition SearchCondition;
+WorklistRecord WorklistInBridge;
+IndicatorWorklistRecord IndicatorWorklist;
+
 EXEC SQL END DECLARE SECTION;
 
 EXEC SQL INCLUDE SQLCA.H;
 
-bool SqlError( char* moduleName )
+bool SqlError( const char* moduleName )
 {
-	OFString errorMsg = moduleName;
-  errorMsg.append(" : ").append(sqlca.sqlerrm.sqlerrmc).append("\n");
-
-  ::OutputDebugString( errorMsg.c_str() );
-
-	EXEC SQL ROLLBACK RELEASE;
+  CERR << moduleName << ':' << sqlca.sqlerrm.sqlerrmc << endl;
+  EXEC SQL ROLLBACK RELEASE;
   return FALSE;
 }
 
 bool connectDicomDB()
 {
-  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( "bridge" ) );
+  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE ) );
   EXEC SQL CONNECT :connection;
   return TRUE;
 }
 
 bool commitDicomDB()
 {
-  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( "bridge" ) );
+  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE ) );
   EXEC SQL COMMIT WORK RELEASE;
   return TRUE;
 }
@@ -99,7 +185,7 @@ bool rollbackDicomDB()
 
 bool getManageNumber(char * const outImageManageNum, const char * const studyUid, int currentStudyDateNumber)
 {
-  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( "bridge" ) ); 
+  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_GetManageNumber ) );
   if(studyUid)
   {
     strncpy(oldStudyUid, studyUid, sizeof(oldStudyUid));
@@ -129,6 +215,8 @@ ReturnOutputString:
 
 bool insertImageInfoToDB(PImgDataset pimg)
 {
+  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_InsertImageInfoToDB ) );
+
   strncpy(paramHddRoot, pimg->pHddRoot, sizeof(paramHddRoot)); paramHddRoot[sizeof(paramHddRoot) - 1] = '\0';
   strncpy(paramPath, pimg->pPath, sizeof(paramPath)); paramPath[sizeof(paramPath) - 1] = '\0';
   strncpy(paramImgManageNum, pimg->pImgManageNum, sizeof(paramImgManageNum)); paramImgManageNum[sizeof(paramImgManageNum) - 1] = '\0';
@@ -181,7 +269,6 @@ bool insertImageInfoToDB(PImgDataset pimg)
   strncpy(paramReqPhysician, pimg->pReqPhysician, sizeof(paramReqPhysician)); paramReqPhysician[sizeof(paramReqPhysician) - 1] = '\0';
   strncpy(paramReqService, pimg->pReqService, sizeof(paramReqService)); paramReqService[sizeof(paramReqService) - 1] = '\0';
 
-  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( "bridge" ) ); 
   EXEC SQL EXECUTE BEGIN :packageId := INSERTIMAGE(
     paramHddRoot => :paramHddRoot,
     paramPath => :paramPath,
@@ -235,5 +322,20 @@ bool insertImageInfoToDB(PImgDataset pimg)
     paramReqPhysician => :paramReqPhysician,
     paramReqService => :paramReqService
     ); END; END-EXEC;
-  return TRUE;
+  return true;
+}
+
+// ---------WLM Condition-----------
+
+bool GetWorklistFromDB(FetchWorklistCallback callback, WlmDBInteractionManager *dbim)
+{
+  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_GetWorklistFromDB ) );
+
+  EXEC SQL PREPARE S FROM :pWorklistStatement;
+  EXEC SQL DECLARE C CURSOR FOR S;
+  EXEC SQL OPEN C USING :SearchCondition;
+  EXEC SQL FETCH C INTO :WorklistInBridge INDICATOR :IndicatorWorklist;
+  callback(&WorklistInBridge, &IndicatorWorklist, dbim);
+  EXEC SQL CLOSE C;
+  return true;
 }
