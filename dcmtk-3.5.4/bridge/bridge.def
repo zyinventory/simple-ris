@@ -1,6 +1,7 @@
 LIBRARY	"bridge"
 EXPORTS
 	IsASCII
+	rtrim
 	connectDicomDB
 	commitDicomDB
 	rollbackDicomDB

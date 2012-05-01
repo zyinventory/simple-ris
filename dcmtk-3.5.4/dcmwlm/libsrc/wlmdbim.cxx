@@ -67,19 +67,6 @@
 _declspec(dllimport) const char *pWorklistStatement;
 _declspec(dllimport) WlmCondition SearchCondition;
 
-static const char COND_AND[] = " AND ", DISCARD[] = "DISCARD",  EQUAL_COLON[] = "=:",
-  WHERE_STATEMENT[] = "SELECT ScheduledStationAETitle, SchdldProcStepStartDate, SchdldProcStepStartTime\
-   , Modality, SchdldProcStepDescription, SchdldProcStepLocation, SchdldProcStepID, RequestedProcedureID\
-   , RequestedProcedureDescription, StudyInstanceUID, AccessionNumber, RequestingPhysician, AdmissionID\
-   , PatientsNameEn, PatientsNameCh, PatientID, PatientsBirthDate, PatientsSex, PatientsWeight\
-   , AdmittingDiagnosesDescription, PatientsAge, SupportChinese, DicomPersonName \
-   from V_EXAMSTUDY_WORKLIST2 WHERE ",
-  RESULT_DATE_RANGE[] = "Result date range: ", SchdldProcStepStartDate[] = "SchdldProcStepStartDateTime",
-  DATE_GE_PREFIX[] = ">=to_date(:", DATE_LT_PREFIX[] = "<to_date(:", DATE_POSTFIX[] = ", 'yyyyMMdd')",
-  IGNORE_STRING_VALUE_PREFIX[] = "IgnoreStringValue(:", IGNORE_STRING_VALUE_POSTFIX[] = ")='ignore'",
-  MATCHING_RECORDS_IN_DB[] = " matching records found in DB.",
-  SET_DEFAULT_DATE[] = "No date specified, set current date", MKTIME_ERROR[] = "mktime tommorow error.";
-
 // ----------------------------------------------------------------------------
 
 WlmDBInteractionManager::WlmDBInteractionManager() 
@@ -2190,6 +2177,7 @@ OFCondition WlmDBInteractionManager::GenerateDataset()
   }
   if(verboseMode) COUT << endl;
 
+  whereStatement.append(ORDER_BY).append(SchdldProcStepStartDate); //.append(ORDER_DESC);
   pWorklistStatement = whereStatement.c_str();
   if(verboseMode) COUT << whereStatement << endl;
 
@@ -2198,7 +2186,7 @@ OFCondition WlmDBInteractionManager::GenerateDataset()
 	if(GetWorklistFromDB(WlmDataset, this))
 	{
 	  commitDicomDB();
-	  return ECC_Normal;
+	  return EC_Normal;
 	}
   }
   return EC_IllegalParameter;

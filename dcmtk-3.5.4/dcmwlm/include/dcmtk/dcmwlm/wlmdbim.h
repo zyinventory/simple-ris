@@ -9,6 +9,25 @@ typedef struct tagWorklistRecord *PWorklistRecord;
 typedef struct tagIndicatorWorklistRecord *PIndicatorWorklistRecord;
 #endif
 
+const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030", 
+  CONSTRUCT_FAILED[] = " construct failed.", INSERT_FAILED[] = " insert failed.",
+  WARNING[] = "Warning: ", VALUE_LENGTH_EXCEED[] = " length exceed: ",
+  TYPE_1_IS_NULL[] = "(type 1) is NULL.", MEDIUM[] = "MEDIUM",
+  ANONYMOUS[] = "anonymous", NVL_VALUE[] = " is NULL, replace ", ASCII_VALUE[] = " do not support chinese, replace ",
+  VALUE_LENGTH_UNKNOWN[] = " length is unknown, treat it as NULL. ",
+  COND_AND[] = " AND ", DISCARD[] = "DISCARD",  EQUAL_COLON[] = "=:",
+  WHERE_STATEMENT[] = "SELECT ScheduledStationAETitle, SchdldProcStepStartDate, SchdldProcStepStartTime\
+   , Modality, SchdldProcStepDescription, SchdldProcStepLocation, SchdldProcStepID, RequestedProcedureID\
+   , RequestedProcedureDescription, StudyInstanceUID, AccessionNumber, RequestingPhysician, AdmissionID\
+   , PatientsNameEn, PatientsNameCh, PatientID, PatientsBirthDate, PatientsSex, PatientsWeight\
+   , AdmittingDiagnosesDescription, PatientsAge, SupportChinese, DicomPersonName \
+   from V_EXAMSTUDY_WORKLIST2 WHERE ", ORDER_BY[] = " ORDER BY ", ORDER_ASC[] = " ASC", ORDER_DESC[] = " DESC",
+  RESULT_DATE_RANGE[] = "Result date range: ", SchdldProcStepStartDate[] = "SchdldProcStepStartDateTime",
+  DATE_GE_PREFIX[] = ">=to_date(:", DATE_LT_PREFIX[] = "<to_date(:", DATE_POSTFIX[] = ", 'yyyyMMdd')",
+  IGNORE_STRING_VALUE_PREFIX[] = "IgnoreStringValue(:", IGNORE_STRING_VALUE_POSTFIX[] = ")='ignore'",
+  MATCHING_RECORDS_IN_DB[] = " matching records found in DB.",
+  SET_DEFAULT_DATE[] = "No date specified, set current date", MKTIME_ERROR[] = "mktime tommorow error.";
+
 class WlmDBInteractionManager
 {
 private:

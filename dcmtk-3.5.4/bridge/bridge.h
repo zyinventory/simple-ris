@@ -11,6 +11,7 @@ typedef char DIC_DA[DIC_DA_LEN + 1];
 typedef char DIC_TM[DIC_TM_LEN + 1];
 
 bool IsASCII(const char *str);
+char *rtrim(char *s, int maxLen = -1);
 
 // ------------- Store SCP -----------------
 
