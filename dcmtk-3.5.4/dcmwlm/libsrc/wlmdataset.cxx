@@ -42,7 +42,7 @@ static OFCondition SetDefaultValue(DcmElement *pElement, const char *value, shor
 
   DcmTag tag = pElement->getTag();
   strncpy(cpValue, tag.getTagName(), vlen + 1);
-  cpValue[DIC_NODENAME_LEN] = '\0';
+  cpValue[vlen] = '\0';
 
   if(indicator < 0) // NULL
   	CERR << WARNING << tag.getTagName() << NVL_VALUE << value << endl;
