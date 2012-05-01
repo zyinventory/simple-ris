@@ -329,13 +329,17 @@ bool insertImageInfoToDB(PImgDataset pimg)
 
 bool GetWorklistFromDB(FetchWorklistCallback callback, WlmDBInteractionManager *dbim)
 {
-  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_GetWorklistFromDB ) );
+  EXEC SQL WHENEVER SQLERROR DO return( SqlError( BRIDGE_GetWorklistFromDB ) );
+  EXEC SQL WHENEVER NOT FOUND DO break;
 
   EXEC SQL PREPARE S FROM :pWorklistStatement;
   EXEC SQL DECLARE C CURSOR FOR S;
   EXEC SQL OPEN C USING :SearchCondition;
-  EXEC SQL FETCH C INTO :WorklistInBridge INDICATOR :IndicatorWorklist;
-  callback(&WorklistInBridge, &IndicatorWorklist, dbim);
+  while(true)
+  {
+	EXEC SQL FETCH C INTO :WorklistInBridge INDICATOR :IndicatorWorklist;
+	callback(&WorklistInBridge, &IndicatorWorklist, dbim);
+  }
   EXEC SQL CLOSE C;
   return true;
 }
