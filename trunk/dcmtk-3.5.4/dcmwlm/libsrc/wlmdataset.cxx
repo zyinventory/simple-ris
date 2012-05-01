@@ -16,13 +16,6 @@
 #include "dcmtk/dcmwlm/wlmdbim.h"
 #include "bridge.h"
 
-const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030", 
-  CONSTRUCT_FAILED[] = " construct failed.", INSERT_FAILED[] = " insert failed.",
-  WARNING[] = "Warning: ", VALUE_LENGTH_EXCEED[] = " length exceed: ",
-  TYPE_1_IS_NULL[] = "(type 1) is NULL.", MEDIUM[] = "MEDIUM",
-  ANONYMOUS[] = "anonymous", NVL_VALUE[] = " is NULL, replace ", ASCII_VALUE[] = " do not support chinese, replace ",
-  VALUE_LENGTH_UNKNOWN[] = " length is unknown, treat it as NULL. ";
-
 static void DumpPosition(DcmTag& tag, const char *failedPosition, DcmDataset *&dataset, DcmItem *item = NULL)
 {
   CERR << tag.getTagName() << failedPosition << endl;
@@ -63,14 +56,33 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 {
   if(pWorklist == NULL || pIndicator == NULL) return;
 
-  OFCondition cond = ECC_Normal;
+  OFCondition cond = EC_Normal;
   DcmDataset *dataset = new DcmDataset();
+
+  DcmElement *pElement = NULL;
+  OFBool requestChinese = OFFalse;
+  cond = dbim->searchMaskIdentifiers->findAndGetElement(DCM_SpecificCharacterSet, pElement, OFTrue);
+  if(cond.good())
+  {
+	OFString charset;
+	cond = pElement->getOFString(charset, 0);
+	requestChinese = cond.good() && charset == CHARSET_GB18030;
+  }
 
   {
 	DcmTag tag(DCM_SpecificCharacterSet);	//0008,0005 O 1
 	DcmCodeString *charset = new DcmCodeString(tag);
-	if(pWorklist->SupportChinese == 0) cond = charset->putString(CHARSET_ISO_IR_100);
-	else cond = charset->putString(CHARSET_GB18030);
+	if(pWorklist->SupportChinese == 0)
+	  cond = charset->putString(CHARSET_ISO_IR_100);
+	else if(pWorklist->SupportChinese == 1)
+	  cond = charset->putString(CHARSET_GB18030);
+	else
+	{
+	  if(requestChinese)
+		cond = charset->putString(CHARSET_GB18030);
+	  else
+		cond = charset->putString(CHARSET_ISO_IR_100);
+	}
 	if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
 	cond = dataset->insert(charset);
 	if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset); return; }
@@ -80,7 +92,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	DcmTag tag(DCM_AccessionNumber);	//0008,0050 O 2
 	DcmShortString *accessNum = new DcmShortString(tag);
 	TranslateIndicatorMessage(pIndicator->AccessionNumber, tag);
-	if(pIndicator->AccessionNumber >= 0) cond = accessNum->putString(pWorklist->AccessionNumber);
+	if(pIndicator->AccessionNumber >= 0) cond = accessNum->putString(rtrim(pWorklist->AccessionNumber));
 	if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
 	cond = dataset->insert(accessNum, OFTrue);
 	if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset); return; }
@@ -96,7 +108,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	  {
 		TranslateIndicatorMessage(pIndicator->AdmittingDiagnosesDescription, tag);
 		DcmLongString *admissionDiag = new DcmLongString(tag);
-		cond = admissionDiag->putString(pWorklist->AdmittingDiagnosesDescription);
+		cond = admissionDiag->putString(rtrim(pWorklist->AdmittingDiagnosesDescription));
 		if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
 		cond = dataset->insert(admissionDiag);
 		if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset); return; }
@@ -125,13 +137,11 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	  }
 	  if(pIndicator->PatientsNameCh >= 0) pn.append(pWorklist->PatientsNameCh);
 	}
+	normalizeString(pn, !MULTIPART, DELETE_LEADING, DELETE_TRAILING);
 	if(pn.length() == 0)
 	  cond = SetDefaultValue(patientName, ANONYMOUS);
-	else if(pn.length() > DIC_PN_LEN)
-	{
-	  TranslateIndicatorMessage(pn.length(), tag);
+	else
 	  cond = patientName->putString(pn.c_str());
-	}
 	if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
 	cond = dataset->insert(patientName);
 	if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset); return; }
@@ -142,7 +152,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	TranslateIndicatorMessage(pIndicator->PatientID, tag, OFTrue);
 	DcmLongString *patientId = new DcmLongString(tag);
 	if(pIndicator->PatientID >= 0)
-	  cond = patientId->putString(pWorklist->PatientID);
+	  cond = patientId->putString(rtrim(pWorklist->PatientID));
 	else
 	  cond = SetDefaultValue(patientId, ANONYMOUS);
 	if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
@@ -154,7 +164,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	DcmTag tag(DCM_PatientsBirthDate);  //0010,0030 O 2
 	DcmDate *birthDate = new DcmDate(tag);
 	TranslateIndicatorMessage(pIndicator->PatientsBirthDate, tag);
-	if(pIndicator->PatientsBirthDate >= 0) cond = birthDate->putString(pWorklist->PatientsBirthDate);
+	if(pIndicator->PatientsBirthDate >= 0) cond = birthDate->putString(rtrim(pWorklist->PatientsBirthDate));
 	if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
 	cond = dataset->insert(birthDate);
 	if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset); return; }
@@ -164,7 +174,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	DcmTag tag(DCM_PatientsSex);  ////0010,0040 O 2
 	DcmCodeString *patientSex = new DcmCodeString(tag);
 	TranslateIndicatorMessage(pIndicator->PatientsSex, tag);
-	if(pIndicator->PatientsSex >= 0) cond = patientSex->putString(pWorklist->PatientsSex);
+	if(pIndicator->PatientsSex >= 0) cond = patientSex->putString(rtrim(pWorklist->PatientsSex));
 	if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
 	cond = dataset->insert(patientSex);
 	if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset); return; }
@@ -174,7 +184,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	DcmTag tag(DCM_PatientsAge);  //0010,1010 O 3
 	DcmAgeString *patientAge = new DcmAgeString(tag);
 	TranslateIndicatorMessage(pIndicator->PatientsAge, tag);
-	if(pIndicator->PatientsAge >= 0) cond = patientAge->putString(pWorklist->PatientsAge);
+	if(pIndicator->PatientsAge >= 0) cond = patientAge->putString(rtrim(pWorklist->PatientsAge));
 	if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
 	cond = dataset->insert(patientAge);
 	if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset); return; }
@@ -184,7 +194,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	DcmTag tag(DCM_PatientsWeight);  //0010,1030 O 2
 	DcmDecimalString *patientWeight = new DcmDecimalString(tag);
 	TranslateIndicatorMessage(pIndicator->PatientsWeight, tag);
-	if(pIndicator->PatientsWeight >= 0) cond = patientWeight->putString(pWorklist->PatientsWeight);
+	if(pIndicator->PatientsWeight >= 0) cond = patientWeight->putString(rtrim(pWorklist->PatientsWeight));
 	if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
 	cond = dataset->insert(patientWeight);
 	if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset); return; }
@@ -196,7 +206,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	if(pIndicator->StudyInstanceUID >= 0)
 	{
 	  DcmUniqueIdentifier *studyInstUid = new DcmUniqueIdentifier(tag);
-	  cond = studyInstUid->putString(pWorklist->StudyInstanceUID);
+	  cond = studyInstUid->putString(rtrim(pWorklist->StudyInstanceUID));
 	  if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
 	  cond = dataset->insert(studyInstUid);
 	  if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset); return; }
@@ -207,7 +217,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	DcmTag tag(DCM_RequestingPhysician);  // 0032,1032 O 2
 	DcmPersonName *reqPhyName = new DcmPersonName(tag);
 	TranslateIndicatorMessage(pIndicator->RequestingPhysician, tag);
-	if(pIndicator->RequestingPhysician >= 0 && pWorklist->SupportChinese == 1) cond = reqPhyName->putString(pWorklist->RequestingPhysician);
+	if(pIndicator->RequestingPhysician >= 0 && pWorklist->SupportChinese == 1) cond = reqPhyName->putString(rtrim(pWorklist->RequestingPhysician));
 	if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
 	cond = dataset->insert(reqPhyName);
 	if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset); return; }
@@ -220,7 +230,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	if(pIndicator->RequestedProcedureDescription >= 0)
 	{
 	  if(pWorklist->SupportChinese == 1 || IsASCII(pWorklist->RequestedProcedureDescription))
-		cond = reqProcDesc->putString(pWorklist->RequestedProcedureDescription);
+		cond = reqProcDesc->putString(rtrim(pWorklist->RequestedProcedureDescription));
 	  else
 		cond = SetDefaultValue(reqProcDesc, tag.getTagName(), pIndicator->RequestedProcedureDescription);
 	}
@@ -235,7 +245,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	DcmTag tag(DCM_AdmissionID);  //0038,0010 O 2
 	DcmLongString *admissionId = new DcmLongString(tag);
 	TranslateIndicatorMessage(pIndicator->AdmissionID, tag);
-	if(pIndicator->AdmissionID >= 0) cond = admissionId->putString(pWorklist->AdmissionID);
+	if(pIndicator->AdmissionID >= 0) cond = admissionId->putString(rtrim(pWorklist->AdmissionID));
 	if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
 	cond = dataset->insert(admissionId);
 	if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset); return; }
@@ -260,7 +270,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	  if(pIndicator->Modality >= 0)
 	  {
 		DcmCodeString *modality = new DcmCodeString(tag);
-		cond = modality->putString(pWorklist->Modality);
+		cond = modality->putString(rtrim(pWorklist->Modality));
 		if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset, item); return; }
 		cond = item->insert(modality);
 		if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset, item); return; }
@@ -273,7 +283,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	  if(pIndicator->ScheduledStationAETitle >= 0)
 	  {
 		DcmApplicationEntity *schdlStationAE = new DcmApplicationEntity(tag);
-		cond = schdlStationAE->putString(pWorklist->ScheduledStationAETitle);
+		cond = schdlStationAE->putString(rtrim(pWorklist->ScheduledStationAETitle));
 		if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset, item); return; }
 		cond = item->insert(schdlStationAE);
 		if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset, item); return; }
@@ -286,7 +296,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	  if(pIndicator->SchdldProcStepStartDate >= 0)
 	  {
 		DcmDate *schdlDate = new DcmDate(tag);
-		cond = schdlDate->putString(pWorklist->SchdldProcStepStartDate);
+		cond = schdlDate->putString(rtrim(pWorklist->SchdldProcStepStartDate));
 		if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset, item); return; }
 		cond = item->insert(schdlDate);
 		if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset, item); return; }
@@ -299,7 +309,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	  if(pIndicator->SchdldProcStepStartTime >= 0)
 	  {
 		DcmTime *schdlTime = new DcmTime(tag);
-		cond = schdlTime->putString(pWorklist->SchdldProcStepStartTime);
+		cond = schdlTime->putString(rtrim(pWorklist->SchdldProcStepStartTime));
 		if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset, item); return; }
 		cond = item->insert(schdlTime);
 		if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset, item); return; }
@@ -316,7 +326,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	  if(pIndicator->SchdldProcStepDescription >= 0)
 	  {
 		if(pWorklist->SupportChinese == 1 || IsASCII(pWorklist->SchdldProcStepDescription))
-		  cond = schdlProcStepDesc->putString(pWorklist->SchdldProcStepDescription);
+		  cond = schdlProcStepDesc->putString(rtrim(pWorklist->SchdldProcStepDescription));
 		else
 		  cond = SetDefaultValue(schdlProcStepDesc, tag.getTagName(), pIndicator->SchdldProcStepDescription);
 	  }
@@ -334,7 +344,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	  if(pIndicator->SchdldProcStepID >= 0)
 	  {
 		if(pWorklist->SupportChinese == 1 || IsASCII(pWorklist->SchdldProcStepID))
-		  cond = schdlProcStepId->putString(pWorklist->SchdldProcStepID);
+		  cond = schdlProcStepId->putString(rtrim(pWorklist->SchdldProcStepID));
 		else
 		  cond = SetDefaultValue(schdlProcStepId, tag.getTagName(), pIndicator->SchdldProcStepID);
 	  }
@@ -352,7 +362,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	  if(pIndicator->SchdldProcStepLocation >= 0)
 	  {
 		if(pWorklist->SupportChinese == 1 || IsASCII(pWorklist->SchdldProcStepLocation))
-		  cond = schdlProcStepLocation->putString(pWorklist->SchdldProcStepLocation);
+		  cond = schdlProcStepLocation->putString(rtrim(pWorklist->SchdldProcStepLocation));
 	  }
 	  if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset, item); return; }
 	  cond = item->insert(schdlProcStepLocation);
@@ -372,7 +382,7 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
 	if(pIndicator->RequestedProcedureID >= 0)
 	{
 	  if(pWorklist->SupportChinese == 1 || IsASCII(pWorklist->RequestedProcedureID))
-		cond = reqProcId->putString(pWorklist->RequestedProcedureID);
+		cond = reqProcId->putString(rtrim(pWorklist->RequestedProcedureID));
 	  else
 		cond = SetDefaultValue(reqProcId, tag.getTagName(), pIndicator->RequestedProcedureID);
 	}

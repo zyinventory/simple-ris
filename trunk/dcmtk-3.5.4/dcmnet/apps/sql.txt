@@ -161,7 +161,7 @@ BEGIN
 END InsertImage;
 /
 
-Worklist:
+ready:
 
 CREATE OR REPLACE FUNCTION IgnoreStringValue(param varchar2) RETURN varchar2 DETERMINISTIC IS
 BEGIN
@@ -170,6 +170,79 @@ END IgnoreStringValue;
 /
 
 ALTER TABLE DICOM.MODALITY_AETITILE_DICT MODIFY(AETITLE VARCHAR2(16 BYTE));
+
+CREATE OR REPLACE FORCE VIEW DICOM.V_EXAMSTUDY_WORKLIST2
+(
+   SCHEDULEDSTATIONAETITLE,
+   SCHDLDPROCSTEPSTARTDATE,
+   SCHDLDPROCSTEPSTARTTIME,
+   MODALITY,
+   SCHDLDPROCSTEPDESCRIPTION,
+   SCHDLDPROCSTEPLOCATION,
+   SCHDLDPROCSTEPID,
+   REQUESTEDPROCEDUREID,
+   REQUESTEDPROCEDUREDESCRIPTION,
+   STUDYINSTANCEUID,
+   ACCESSIONNUMBER,
+   REQUESTINGPHYSICIAN,
+   ADMISSIONID,
+   PATIENTSNAMEEN,
+   PATIENTSNAMECH,
+   PATIENTID,
+   PATIENTSBIRTHDATE,
+   PATIENTSSEX,
+   PATIENTSWEIGHT,
+   ADMITTINGDIAGNOSESDESCRIPTION,
+   PATIENTSAGE,
+   SCHDLDPROCSTEPSTARTDATETIME,
+   SUPPORTCHINESE,
+   DICOMPERSONNAME
+)
+AS
+     SELECT t7.aetitle AS ScheduledStationAETitle,
+            TO_CHAR (t1.EXEC_DATETIME, 'yyyyMMdd') AS SchdldProcStepStartDate,
+            TO_CHAR (t1.EXEC_DATETIME, 'hh24miss') AS SchdldProcStepStartTime,
+            t3.class_code AS Modality,
+            'scheduled' AS SchdldProcStepDescription,
+            t1.exec_place AS SchdldProcStepLocation,
+            t1.id AS SchdldProcStepID,
+            t1.id AS RequestedProcedureID,
+            get_exam_item2 (t1.id) AS RequestedProcedureDescription,
+            t8.STUD_UID || '.' || t1.ID AS StudyInstanceUID,
+            t1.id AS AccessionNumber,
+            t2.req_doct AS RequestingPhysician,
+            t2.exam_no AS AdmissionID,
+            t4.en_Name AS PatientsNameEn,
+            t4.pat_name AS PatientsNameCh,
+            t1.EXAM_CODE AS PatientID,
+            TO_CHAR (t4.birthdate, 'yyyyMMdd') AS PatientsBirthDate,
+            (CASE WHEN t4.sex = 'ÄÐ' THEN 'M' ELSE 'F' END) AS PatientsSex,
+            60 AS PatientsWeight,
+            t2.clin_diag AS AdmittingDiagnosesDescription,
+            TO_CHAR (NVL (t4.age, 0), 'FM000') || 'Y' AS PatientsAge,
+            t1.EXEC_DATETIME AS SchdldProcStepStartDateTime,
+            (CASE
+                WHEN t7.aetitle = 'UNKNOWN' THEN -1
+                WHEN t7.aetitle = 'TJWQCT' OR T3.CLASS_CODE = 'RF' THEN 0
+                ELSE 1
+             END)
+               AS SupportChinese,
+            (CASE WHEN t7.aetitle = 'CANON_CCR' THEN 1 ELSE 0 END)
+               AS DicomPersonName
+       FROM EXAM_STUDY t1,
+            EXAM_REQ t2,
+            EXAM_CLASS_DICT t3,
+            PATIENT_DICT t4,
+            MODALITY_AETITILE_DICT t7,
+            STUDUID_CONF t8
+      WHERE     t1.obsolete_flag = 0
+            AND t1.procedure_status_id < 5
+            AND t1.study_instance_uid IS NULL
+            AND t1.exec_dept_id = 96
+            AND t1.exam_req_id = t2.id
+            AND t1.exam_class_id = t3.id
+            AND t1.patient_id = t4.id
+            AND t1.exam_class_id = t7.exam_class_id;
 
 Pending:
 
