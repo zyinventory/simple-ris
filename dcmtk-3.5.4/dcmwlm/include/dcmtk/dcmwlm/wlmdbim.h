@@ -64,7 +64,7 @@ private:
 
 protected:
   OFCondition DiscardPersonName(DcmTagKey key, DcmDataset *searchMask);
-  OFCondition GetSearchMaskValue(char *& value, OFBool addAnd, OFString& whereStatement, DcmTagKey key, DcmDataset *searchMask);
+  OFCondition GetSearchMaskValue(OFString &value, OFBool addAnd, OFString& whereStatement, DcmTagKey key, DcmDataset *searchMask);
 
 public:
   WlmDBInteractionManager();

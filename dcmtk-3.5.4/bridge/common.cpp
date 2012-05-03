@@ -7,7 +7,7 @@ bool IsASCII(const char *str)
   size_t length = strlen(str);
   for(unsigned int i = 0; i < length; i++)
   {
-    if(str[i] > '~')
+    if(str[i] > '~' || str[i] < 0)
     {
       isAscii = false;
       break;
@@ -26,7 +26,7 @@ char *rtrim(char *s, int maxLen = -1)
   if(maxLen == -1)
 	maxLen = strlen(s) - 1;
   else
-	maxLen = min(maxLen, strlen(s)) -1;
+	maxLen = min(maxLen, static_cast<int>(strlen(s))) - 1;
   int i;
   for(i = maxLen; i >= 0; --i)
   {

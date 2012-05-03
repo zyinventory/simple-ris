@@ -1633,7 +1633,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
     if (shouldFork && (command_argc > 0) && command_argv)
     {
         // win32 code to create new child process
-        HANDLE childSocketHandle;
+        //HANDLE childSocketHandle;
         HANDLE hChildStdInRead;
         HANDLE hChildStdInWrite;
         HANDLE hChildStdInWriteDup;
@@ -1717,9 +1717,9 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 
 				// return OF_ok status code DULC_FORKEDCHILD with descriptive text
                 char buf4[256];
-                sprintf(buf4, "new child process started with pid %i, socketHandle %i", 
+                sprintf(buf4, "new child process started with pid %i, CatalogEntryId %i", 
                   OFstatic_cast(int, pi.dwProcessId), 
-                  (int)childSocketHandle);
+                  (int)protoInfo.dwCatalogEntryId);
                 return makeDcmnetCondition (DULC_FORKEDCHILD, OF_ok, buf4);
             }
             else 

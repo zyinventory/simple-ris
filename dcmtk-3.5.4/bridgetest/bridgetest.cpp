@@ -10,8 +10,6 @@ _declspec(dllimport) WorklistRecord WorklistInBridge;
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-  DcmDataset *datasetPtrArray[ MAX_WLM_NUMBER ];
-
   Uint32 datasetNumber = 0;
 
   if(connectDicomDB() /* && GetWorklistFromDB(datasetPtrArray, &datasetNumber) */)

@@ -54,7 +54,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
+				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;LIBXML_STATIC;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Debug\&quot;"
 				ExceptionHandling="1"
 				RuntimeLibrary="1"
 				EnableFunctionLevelLinking="true"
@@ -80,6 +80,7 @@
 			<Tool
 				Name="VCLibrarianTool"
 				OutputFile="Debug\dcmsr.lib"
+				IgnoreAllDefaultLibraries="false"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -135,7 +136,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
+				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;LIBXML_STATIC;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Release\&quot;"
 				ExceptionHandling="1"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -160,6 +161,7 @@
 			<Tool
 				Name="VCLibrarianTool"
 				OutputFile="Release\dcmsr.lib"
+				IgnoreAllDefaultLibraries="false"
 			/>
 			<Tool
 				Name="VCALinkTool"
