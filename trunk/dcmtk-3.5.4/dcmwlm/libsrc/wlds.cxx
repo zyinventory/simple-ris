@@ -1374,11 +1374,11 @@ OFBool WlmDataSource::IsSupportedMatchingKeyAttribute( DcmElement *element, DcmS
   if( supSequenceElement != NULL )
   {
     if( supSequenceElementKey == DCM_ScheduledProcedureStepSequence &&
-        ( elementKey == DCM_ScheduledStationAETitle           ||
-          elementKey == DCM_ScheduledProcedureStepStartDate   ||
-          elementKey == DCM_ScheduledProcedureStepStartTime   ||
-          elementKey == DCM_Modality                          ||
-          elementKey == DCM_ScheduledPerformingPhysiciansName ) )
+		( elementKey == DCM_ScheduledStationAETitle           ||
+		  elementKey == DCM_ScheduledProcedureStepStartDate   ||
+		  elementKey == DCM_ScheduledProcedureStepStartTime   ||
+		  elementKey == DCM_Modality                          ||
+		  elementKey == DCM_ScheduledPerformingPhysiciansName ) )
       isSupportedMatchingKeyAttribute = OFTrue;
   }
   else
@@ -1469,7 +1469,6 @@ OFBool WlmDataSource::IsSupportedReturnKeyAttribute( DcmElement *element, DcmSeq
 //                   DCM_LastMenstrualDate                                 (0010,21d0)  DA  O  3  (from the Patient Medical Module)
 //                   DCM_InstitutionAddress                                (0008,0081)  ST  O  3  (from the Visit Identification Module)
 //                   DCM_OtherPatientNames                                 (0010,1001)  PN  O  3  (from the Patient Identification Module)
-//                   DCM_PatientsAge                                       (0010,1010)  AS  O  3  (from the Patient Demographic Module)
 //                   DCM_PatientsAddress                                   (0010,1040)  LO  O  3  (from the Patient Demographic Module)
 //                   DCM_MilitaryRank                                      (0010,1080)  LO  O  3  (from the Patient Demographic Module)
 //                   DCM_SmokingStatus                                     (0010,21a0)  CS  O  3  (from the Patient Medical Module)
@@ -1494,6 +1493,25 @@ OFBool WlmDataSource::IsSupportedReturnKeyAttribute( DcmElement *element, DcmSeq
 //                    > DCM_CodingSchemeVersion                            (0008,0103)  SH  O  3
 //                    > DCM_CodingSchemeDesignator                         (0080,0102)  SH  O  1C
 //                    > DCM_CodeMeaning                                    (0080,0104)  LO  O  3
+//	   *    DCM_InstitutionCodeSequence                           (0008,0082)  SQ  O  3
+//	   *    DCM_ReferencedVisitSequence							  (0008,1125)  SQ  O  3
+//	   *    DCM_IssuerOfPatientID                                 (0010,0021)  LO  O  3
+//	   *    DCM_PatientsBirthTime                                 (0010,0032)  TM  O  3
+//	   *	DCM_PatientsInsurancePlanCodeSequence				  (0010,0050)  SQ  O  3
+//	   *	DCM_PatientsBirthName                                 (0010,1005)  PN  O  3
+//	   *    DCM_PatientsAge                                       (0010,1010)  AS  O  3
+//	   *	DCM_PatientsMothersBirthName						  (0010,1060)  PN  O  3
+//	   *	DCM_BranchOfService									  (0010,1081)  LO  O  3
+//	   *	DCM_MedicalRecordLocator                              (0010,1090)  LO  O  3
+//	   *	DCM_CountryOfResidence                                (0010,2150)  LO  O  3
+//	   *	DCM_RegionOfResidence								  (0010,2152)  LO  O  3
+//	   *    DCM_PatientsTelephoneNumbers                          (0010,2154)  SH  O  3
+//	   *	DCM_Occupation										  (0010,2180)  SH  O  3
+//	   *	DCM_PatientsReligiousPreference                       (0010,21f0)  LO  O  3
+//	   *	DCM_ReferencedPatientAliasSequence                    (0038,0004)  SQ  O  3
+//	   *	DCM_VisitStatusID									  (0038,0008)  CS  O  3
+//	   *    DCM_PatientsInstitutionResidence                      (0038,0400)  LO  O  3
+//	   *	DCM_VisitComments									  (0038,4000)  LT  O  3
 // Parameters   : element            - [in] Pointer to the element which shall be checked.
 //                supSequenceElement - [in] Pointer to the superordinate sequence element of which
 //                                     the currently processed element is an attribute, or NULL if
@@ -1548,7 +1566,11 @@ OFBool WlmDataSource::IsSupportedReturnKeyAttribute( DcmElement *element, DcmSeq
           ( elementKey == DCM_CodeValue                                  ||
             elementKey == DCM_CodingSchemeVersion                        ||
             elementKey == DCM_CodingSchemeDesignator                     ||
-            elementKey == DCM_CodeMeaning ) ) )
+            elementKey == DCM_CodeMeaning ) )                               ||
+		( supSequenceElementKey == DCM_InstitutionCodeSequence )            ||
+		( supSequenceElementKey == DCM_ReferencedVisitSequence )            ||
+		( supSequenceElementKey == DCM_PatientsInsurancePlanCodeSequence )  ||
+		( supSequenceElementKey == DCM_ReferencedPatientAliasSequence ) )
       isSupportedReturnKeyAttribute = OFTrue;
   }
   else
@@ -1571,7 +1593,6 @@ OFBool WlmDataSource::IsSupportedReturnKeyAttribute( DcmElement *element, DcmSeq
         elementKey == DCM_PatientID                                         ||
         elementKey == DCM_PatientsBirthDate                                 ||
         elementKey == DCM_PatientsSex                                       ||
-        elementKey == DCM_PatientsAge                                       ||    //zy modified, add patient age
         elementKey == DCM_PatientsWeight                                    ||
         elementKey == DCM_ConfidentialityConstraintOnPatientDataDescription ||
         elementKey == DCM_PatientState                                      ||
@@ -1609,7 +1630,27 @@ OFBool WlmDataSource::IsSupportedReturnKeyAttribute( DcmElement *element, DcmSeq
         elementKey == DCM_PlacerOrderNumberImagingServiceRequest            ||
         elementKey == DCM_FillerOrderNumberImagingServiceRequest            ||
         elementKey == DCM_ImagingServiceRequestComments                     ||
-        elementKey == DCM_RequestedProcedureCodeSequence )
+        elementKey == DCM_RequestedProcedureCodeSequence                    ||
+		// -------------------------------------------------------------------
+		elementKey == DCM_InstitutionCodeSequence                           ||
+		elementKey == DCM_ReferencedVisitSequence                           ||
+		elementKey == DCM_PatientsInsurancePlanCodeSequence                 ||
+		elementKey == DCM_ReferencedPatientAliasSequence					||
+		elementKey == DCM_IssuerOfPatientID                                 ||
+		elementKey == DCM_PatientsBirthTime									||
+		elementKey == DCM_PatientsBirthName									||
+		elementKey == DCM_PatientsAge										||
+		elementKey == DCM_PatientsMothersBirthName							||
+		elementKey == DCM_BranchOfService									||
+		elementKey == DCM_MedicalRecordLocator								||
+		elementKey == DCM_CountryOfResidence								||
+		elementKey == DCM_RegionOfResidence									||
+		elementKey == DCM_PatientsTelephoneNumbers							||
+		elementKey == DCM_Occupation										||
+		elementKey == DCM_PatientsReligiousPreference						||
+		elementKey == DCM_VisitStatusID										||
+		elementKey == DCM_PatientsInstitutionResidence						||
+		elementKey == DCM_VisitComments )
       isSupportedReturnKeyAttribute = OFTrue;
   }
 

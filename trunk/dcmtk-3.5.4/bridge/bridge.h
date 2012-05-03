@@ -1,6 +1,5 @@
 #pragma once
 
-#include "stdafx.h"
 #include <dcmtk/dcmnet/dicom.h>
 
 #define DIC_AS_LEN		4

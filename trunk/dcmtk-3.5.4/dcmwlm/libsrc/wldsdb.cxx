@@ -411,7 +411,8 @@ WlmDataSourceStatusType WlmDataSourceDB::StartFindRequest( DcmDataset &findReque
 			specificCharacterSetElement->getString(charset);
 			char *generatedCharacterSet = NULL;
 			dbInteractionManager->GetAttributeValueForMatchingRecord(DCM_SpecificCharacterSet, superiorSequenceArray, numOfSuperiorSequences, i, generatedCharacterSet);
-			if( generatedCharacterSet != NULL && strnlen(generatedCharacterSet, 16) > 0 && strncmp(charset, generatedCharacterSet, 16) != 0)
+			if( generatedCharacterSet != NULL && strnlen(generatedCharacterSet, 16) > 0 
+			  && ( charset == NULL || strncmp(charset, generatedCharacterSet, 16) != 0 ) )
 			{
 			  OFCondition cond = specificCharacterSetElement->putString( generatedCharacterSet );
 			  if( cond.bad() )

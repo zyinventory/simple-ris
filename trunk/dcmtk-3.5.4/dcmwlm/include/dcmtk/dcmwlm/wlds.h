@@ -213,7 +213,6 @@ class WlmDataSource
        *    DCM_InstitutionName                                   (0008,0080)  LO  O  3  (from the Visit Identification Module)
        *    DCM_AdmittingDiagnosesDescription                     (0008,1080)  LO  O  3  (from the Visit Admission Module)
        *    DCM_OtherPatientIDs                                   (0010,1000)  LO  O  3  (from the Patient Identification Module)
-       *    DCM_PatientsAge                                       (0010,1010)  AS  O  3  (from the Patient Demographic Module)
 	   *    DCM_PatientsSize                                      (0010,1020)  DS  O  3  (from the Patient Demographic Module)
        *    DCM_EthnicGroup                                       (0010,2160)  SH  O  3  (from the Patient Demographic Module)
        *    DCM_PatientComments                                   (0010,4000)  LT  O  3  (from the Patient Demographic Module)
@@ -245,6 +244,26 @@ class WlmDataSource
        *     > DCM_CodingSchemeVersion                            (0008,0103)  SH  O  3
        *     > DCM_CodingSchemeDesignator                         (0008,0102)  SH  O  1C
        *     > DCM_CodeMeaning                                    (0008,0104)  LO  O  3
+	   * -------------------------------------------------------------------------------
+	   *    DCM_InstitutionCodeSequence                           (0008,0082)  SQ  O  3
+	   *    DCM_ReferencedVisitSequence							  (0008,1125)  SQ  O  3
+	   *    DCM_IssuerOfPatientID                                 (0010,0021)  LO  O  3
+	   *    DCM_PatientsBirthTime                                 (0010,0032)  TM  O  3
+	   *	DCM_PatientsInsurancePlanCodeSequence				  (0010,0050)  SQ  O  3
+	   *	DCM_PatientsBirthName                                 (0010,1005)  PN  O  3
+       *    DCM_PatientsAge                                       (0010,1010)  AS  O  3
+	   *	DCM_PatientsMothersBirthName						  (0010,1060)  PN  O  3
+	   *	DCM_BranchOfService									  (0010,1081)  LO  O  3
+	   *	DCM_MedicalRecordLocator                              (0010,1090)  LO  O  3
+	   *	DCM_CountryOfResidence                                (0010,2150)  LO  O  3
+	   *	DCM_RegionOfResidence								  (0010,2152)  LO  O  3
+	   *    DCM_PatientsTelephoneNumbers                          (0010,2154)  SH  O  3
+	   *	DCM_Occupation										  (0010,2180)  SH  O  3
+	   *	DCM_PatientsReligiousPreference                       (0010,21f0)  LO  O  3
+	   *	DCM_ReferencedPatientAliasSequence                    (0038,0004)  SQ  O  3
+	   *	DCM_VisitStatusID									  (0038,0008)  CS  O  3
+	   *    DCM_PatientsInstitutionResidence                      (0038,0400)  LO  O  3
+	   *	DCM_VisitComments									  (0038,4000)  LT  O  3
        *  @param element            Pointer to the element which shall be checked.
        *  @param supSequenceElement Pointer to the superordinate sequence element of which
        *                            the currently processed element is an attribute, or NULL if

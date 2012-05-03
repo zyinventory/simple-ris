@@ -51,7 +51,7 @@
 				AdditionalIncludeDirectories="&quot;$(Pro_C_Path)\OCI\include&quot;;..\config\include;&quot;$(SolutionDir)ofstd\include&quot;;..\dcmdata\include;..\dcmnet\include"
 				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Debug\&quot;;WIN32;_DEBUG;_WINDOWS;_USRDLL;BRIDGE_EXPORTS"
 				MinimalRebuild="false"
-				BasicRuntimeChecks="0"
+				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -132,13 +132,13 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="&quot;$(Pro_C_Path)\OCI\include&quot;;..\config\include;..\ofstd\include;..\ofstd\include\dcmtk\ofstd;..\dcmdata\include;..\dcmdata\include\dcmtk\dcmdata"
-				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Debug\&quot;;WIN32;NDEBUG;_WINDOWS;_USRDLL;BRIDGE_EXPORTS"
+				AdditionalIncludeDirectories="&quot;$(Pro_C_Path)\OCI\include&quot;;..\config\include;&quot;$(SolutionDir)ofstd\include&quot;;..\dcmdata\include;..\dcmnet\include"
+				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Release\&quot;;WIN32;NDEBUG;_WINDOWS;_USRDLL;BRIDGE_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
-				DebugInformationFormat="3"
+				DebugInformationFormat="0"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -156,7 +156,7 @@
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib&quot;"
 				IgnoreDefaultLibraryNames=""
 				ModuleDefinitionFile="bridge.def"
-				GenerateDebugInformation="true"
+				GenerateDebugInformation="false"
 				SubSystem="1"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
@@ -182,7 +182,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy $(OutDir)\$(ProjectName).dll $(SolutionDir)dcmnet\apps\$(ConfigurationName)"
+				CommandLine="copy $(OutDir)\$(ProjectName).dll $(SolutionDir)dcmnet\apps\$(ConfigurationName)&#x0D;&#x0A;copy $(OutDir)\$(ProjectName).dll $(SolutionDir)dcmwlm\apps\$(ConfigurationName)&#x0D;&#x0A;"
 			/>
 		</Configuration>
 	</Configurations>

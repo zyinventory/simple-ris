@@ -2013,7 +2013,7 @@ OFCondition WlmDBInteractionManager::DiscardPersonName(DcmTagKey key, DcmDataset
   return cond;
 }
 
-OFCondition WlmDBInteractionManager::GetSearchMaskValue(char*& value, OFBool addAnd, OFString& whereStatement, DcmTagKey key, DcmDataset *searchMask)
+OFCondition WlmDBInteractionManager::GetSearchMaskValue(OFString& value, OFBool addAnd, OFString& whereStatement, DcmTagKey key, DcmDataset *searchMask)
 {
   OFCondition cond;
   DcmElement *pElement = NULL;
@@ -2024,17 +2024,15 @@ OFCondition WlmDBInteractionManager::GetSearchMaskValue(char*& value, OFBool add
   cond = searchMask->findAndGetElement(key, pElement, OFTrue);
   if(cond.good())
   {
-	value = NULL;
-	cond = pElement->getString(value);
-	if(cond.good() && value != NULL)
+	cond = pElement->getOFString(value, 0);
+	if(cond.good() && ( ! value.empty() ))
 	{
 	  if(verboseMode) COUT << value;
-
-	  if(value[0] == '\0' || value[0] == '*') value = NULL;
+	  if(value[0] == '\0' || value[0] == '*') value.clear();
 	}
 	if(addAnd) whereStatement.append(COND_AND);
 
-	if(value == NULL) // always true, ignore this tag
+	if(value.empty()) // always true, ignore this tag
 	  whereStatement.append(IGNORE_STRING_VALUE_PREFIX).append(tagName).append(IGNORE_STRING_VALUE_POSTFIX);
 	else
 	  whereStatement.append(tagName).append(EQUAL_COLON).append(tagName);
@@ -2048,25 +2046,21 @@ OFCondition WlmDBInteractionManager::GenerateDataset()
   DcmElement *pElement = NULL;
   OFCondition cond;
   OFString searchMaskDateValue, whereStatement(WHERE_STATEMENT); 
-  char *tempValue;
   ZeroMemory( &SearchCondition, sizeof(SearchCondition) );
   OFBool hasCondition = OFFalse;
 
   DcmDataset *searchMask = searchMaskIdentifiers;
 
-  cond = GetSearchMaskValue(tempValue, hasCondition, whereStatement, DCM_ScheduledStationAETitle, searchMask);
-  if(cond.good())
-  {
-	SearchCondition.pScheduleStationAE = tempValue;
-	hasCondition = OFTrue;
-  }
+  OFString scheduleStationAE;
+  GetSearchMaskValue(scheduleStationAE, hasCondition, whereStatement, DCM_ScheduledStationAETitle, searchMask);
+  SearchCondition.pScheduleStationAE = scheduleStationAE.c_str();
+  hasCondition = OFTrue;
 
-  cond = GetSearchMaskValue(tempValue, hasCondition, whereStatement, DCM_Modality, searchMask);
-  if(cond.good())
-  {
-	SearchCondition.pModality = tempValue;
-	hasCondition = OFTrue;
-  }
+  OFString modality;
+  GetSearchMaskValue(modality, hasCondition, whereStatement, DCM_Modality, searchMask);
+  SearchCondition.pModality = modality.c_str();
+  hasCondition = OFTrue;
+
 /*
   cond = GetSearchMaskValue(tempValue, condset.conditions != CM_NONE, whereStatement, DCM_PatientID, searchMask);
   if(cond.good() && tempValue != NULL)
