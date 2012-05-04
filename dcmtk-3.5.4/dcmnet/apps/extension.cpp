@@ -59,7 +59,6 @@ void getNameValue(DcmDataset *imageDataSet, PImgDataset pDataset, DcmTagKey& key
 
   pDataset->pPatNamKat = valueKat.c_str();
   if (opt_debug) printf("%s : %s\n", key.toString().c_str(), dicomName.c_str());
-  printf("en: %s, ch: %s\n", value.c_str(), valueKan.c_str());
 }
 
 void getDateNumberValue(DcmDataset *imageDataSet, int &intValue, DcmTagKey& key, OFString& value)
