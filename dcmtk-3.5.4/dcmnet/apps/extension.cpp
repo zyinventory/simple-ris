@@ -6,10 +6,11 @@
 #include <direct.h>        /* for _mkdir() */
 #endif
 
-#include "dcmtk/dcmnet/dimse.h"
 #include "dcmtk/ofstd/ofstd.h"
 #include "dcmtk/ofstd/ofdatime.h"
+#include "dcmtk/dcmdata/dcvrpn.h"
 #include "dcmtk/dcmnet/dicom.h"
+#include "dcmtk/dcmnet/dimse.h"
 #include "bridge.h"
 
 extern OFBool opt_debug;
@@ -38,16 +39,27 @@ void getValue(DcmDataset *imageDataSet, const char **pValue, DcmTagKey& key, OFS
 
 void getNameValue(DcmDataset *imageDataSet, PImgDataset pDataset, DcmTagKey& key, OFString& value, OFString& valueKan, OFString& valueKat)
 {
-  OFString temp; 
-  imageDataSet->findAndGetOFString(key, temp);
-  if(IsASCII(temp.c_str()))
-    value = temp;
-  else
-    valueKan = temp;
+  OFString dicomName, chineseName; 
+  OFCondition cond;
+  imageDataSet->findAndGetOFString(key, dicomName);
+  cond = DcmPersonName::getFormattedNameFromString(dicomName, value, 0);
+  if(cond.good() && value.length() > 0)
+  {
+	if( ! IsASCII(value.c_str()) )
+	{
+	  chineseName = value;
+	  value.clear();
+	}
+  }
   pDataset->pPatNam = value.c_str();
+
+  cond = DcmPersonName::getFormattedNameFromString(dicomName, valueKan, 1);
+  if(cond.bad() || valueKan.length() == 0) valueKan = chineseName;
   pDataset->pPatNamKan = valueKan.c_str();
+
   pDataset->pPatNamKat = valueKat.c_str();
-  if (opt_debug) printf("%s : %s\n", key.toString().c_str(), temp.c_str());
+  if (opt_debug) printf("%s : %s\n", key.toString().c_str(), dicomName.c_str());
+  printf("en: %s, ch: %s\n", value.c_str(), valueKan.c_str());
 }
 
 void getDateNumberValue(DcmDataset *imageDataSet, int &intValue, DcmTagKey& key, OFString& value)
