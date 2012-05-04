@@ -573,6 +573,10 @@ void WlmDataSource::ExpandEmptySequenceInSearchMask( DcmElement *&element )
       newElement = new DcmUniqueIdentifier( DcmTag( DCM_ReferencedSOPClassUID ) );       if( item->insert( newElement ) != EC_Normal ) delete newElement;
       newElement = new DcmUniqueIdentifier( DcmTag( DCM_ReferencedSOPInstanceUID ) );    if( item->insert( newElement ) != EC_Normal ) delete newElement;
     }
+	else if( key == DCM_InstitutionCodeSequence || key == DCM_ReferencedVisitSequence || key == DCM_PatientsInsurancePlanCodeSequence || key == DCM_ReferencedPatientAliasSequence )
+	{
+	  sequenceElement->clear();
+	}
     else
     {
       // this code should never be executed; if it is, there is a logical error
