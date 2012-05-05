@@ -1,0 +1,1 @@
+OFCondition MkdirRecursive(OFString& subdirectoryPath);

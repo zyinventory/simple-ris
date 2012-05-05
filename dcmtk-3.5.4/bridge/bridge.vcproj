@@ -277,6 +277,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\common.h"
+				>
+			</File>
+			<File
 				RelativePath=".\stdafx.h"
 				>
 			</File>

@@ -575,7 +575,8 @@ void WlmDataSource::ExpandEmptySequenceInSearchMask( DcmElement *&element )
     }
 	else if( key == DCM_InstitutionCodeSequence || key == DCM_ReferencedVisitSequence || key == DCM_PatientsInsurancePlanCodeSequence || key == DCM_ReferencedPatientAliasSequence )
 	{
-	  sequenceElement->clear();
+	  // sequence shall contain a empty item, call clear() will delete the empty item, cause warning message.
+	  // sequenceElement->clear(); 
 	}
     else
     {

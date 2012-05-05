@@ -54,7 +54,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\bridge;&quot;D:\workspace\dcmtk-support\zlib-1.2.3\include&quot;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Debug\&quot;"
+				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Debug\&quot;"
 				ExceptionHandling="1"
 				RuntimeLibrary="1"
 				EnableFunctionLevelLinking="true"
@@ -135,7 +135,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\bridge;&quot;D:\workspace\dcmtk-support\zlib-1.2.3\include&quot;"
-				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
+				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Release\&quot;"
 				ExceptionHandling="1"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -377,10 +377,6 @@
 		<Filter
 			Name="Header Files"
 			>
-			<File
-				RelativePath="..\apps\wlcefs.h"
-				>
-			</File>
 			<File
 				RelativePath="..\include\dcmtk\dcmwlm\wlds.h"
 				>

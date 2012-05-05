@@ -2,6 +2,12 @@ LIBRARY	"bridge"
 EXPORTS
 	IsASCII
 	rtrim
+	GetSignalInterruptValue
+	SignalInterruptHandler
+	Capture_Ctrl_C
+	GenerateLogPath
+	GetFileInfo
+	DeleteEmptyFile
 	connectDicomDB
 	commitDicomDB
 	rollbackDicomDB

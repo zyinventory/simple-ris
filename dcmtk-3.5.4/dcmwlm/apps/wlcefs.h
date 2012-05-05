@@ -134,6 +134,13 @@ class WlmConsoleEngineFileSystem
        *  @return Return value that is supposed to be returned from main().
        */
     int StartProvidingService();
+
+	ofstream *GetFileOutputStream() const { return fileOutputStream; };
+	const OFString &GetFilePath() const { return filePath; };
+	void SetFilePath(const char *value) { filePath = value; };
+  private:
+	ofstream *fileOutputStream;
+	OFString filePath;
 };
 
 #endif

@@ -53,7 +53,7 @@
 #include "dcmtk/ofstd/ofstd.h"
 #include "dcmtk/dcmdata/dcdicent.h"  // needed by MSVC5 with STL
 #include "dcmtk/dcmwlm/wlmactmg.h"
-
+#include "common.h"
 // ----------------------------------------------------------------------------
 
 // We need two global functions, because we need to pass a function pointer for a callback function
@@ -150,7 +150,7 @@ WlmActivityManager::WlmActivityManager(
   // make sure not to let dcmdata remove tailing blank padding or perform other
   // manipulations. We want to see the real data.
   dcmEnableAutomaticInputDataCorrection.set( OFFalse );
-  DumpMessage( "\n(notice: dcmdata auto correction disabled.)\n" );
+  if(opt_verbose) DumpMessage( "\n(notice: dcmdata auto correction disabled.)\n" );
 
 #ifdef HAVE_GUSI_H
   // needed for Macintosh.
@@ -161,6 +161,9 @@ WlmActivityManager::WlmActivityManager(
   // initialize table that manages subprocesses.
   processTable.pcnt = 0;
   processTable.plist = NULL;
+
+  // capture Ctrl-C
+  Capture_Ctrl_C();
 }
 
 // ----------------------------------------------------------------------------
@@ -232,6 +235,9 @@ OFCondition WlmActivityManager::StartProvidingService()
 
     // if running in multi-process mode, always terminate child after one association
     if (DUL_processIsForkedChild()) break;
+
+	// if Ctrl-C press
+	if (GetSignalInterruptValue() != 0) break;
   }
   // Drop the network, i.e. free memory of T_ASC_Network* structure. This call
   // is the counterpart of ASC_initializeNetwork(...) which was called above.
@@ -332,14 +338,14 @@ OFCondition WlmActivityManager::WaitForAssociation( T_ASC_Network * net )
   // or not we need to set the timeout value correspondingly
   // (Note that on a Windows platform, CountChildProcesses will always be 0.)
   if( opt_singleProcess )
-    timeout = 1000;
+    timeout = 1;
   else
   {
 #if defined(HAVE_FORK)
     if( CountChildProcesses() > 0 )
       timeout = 1;
     else
-      timeout = 1000;
+      timeout = 10;
 #elif defined(_WIN32)
 	if(opt_forkedChild) timeout = 10;
 #endif
@@ -348,10 +354,7 @@ OFCondition WlmActivityManager::WaitForAssociation( T_ASC_Network * net )
   // Listen to a socket for timeout seconds and wait for an association request.
   // try to receive an association request:
   OFCondition cond;
-  if( opt_singleProcess || opt_forkedChild )
-	cond = ASC_receiveAssociation( net, &assoc, opt_maxPDU, NULL, NULL, OFFalse, DUL_NOBLOCK, timeout );
-  else
-	cond = ASC_receiveAssociation( net, &assoc, opt_maxPDU );
+  cond = ASC_receiveAssociation( net, &assoc, opt_maxPDU, NULL, NULL, OFFalse, DUL_NOBLOCK, timeout );
 
   if( cond != DUL_NOASSOCIATIONREQUEST )
   {

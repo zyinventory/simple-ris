@@ -1,8 +1,5 @@
 #include "stdafx.h"
 #include <oci.h>
-#include <dcmtk/ofstd/ofdatime.h>
-#include <dcmtk/ofstd/ofstring.h>
-#include <dcmtk/dcmdata/dcdatset.h>
 #include "bridge.h"
 
 const char BRIDGE[] = "bridge", BRIDGE_GetManageNumber[] = "bridge.getManageNumber", 
@@ -10,7 +7,7 @@ const char BRIDGE[] = "bridge", BRIDGE_GetManageNumber[] = "bridge.getManageNumb
   BRIDGE_GetWorklistFromDB[] = "bridge.GetWorklistFromDB";
 
 EXEC SQL BEGIN DECLARE SECTION;
-unsigned char connection[] = "dicom/dicom";
+const unsigned char connection[] = "dicom/dicom";
 
 // ---------StoreSCP-----------
 char oldStudyUid[65] = "";
