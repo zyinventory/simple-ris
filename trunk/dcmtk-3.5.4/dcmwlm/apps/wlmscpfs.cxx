@@ -41,6 +41,7 @@
 #include "wlcefs.h"
 #include "dcmtk/dcmwlm/wlds.h"
 #include "dcmtk/dcmwlm/wldsdb.h"
+#include "common.h"
 
 #define OFFIS_CONSOLE_APPLICATION "wlmscpfs"
 
@@ -53,6 +54,8 @@ int main( int argc, char *argv[] )
   WlmConsoleEngineFileSystem *consoleEngine = new WlmConsoleEngineFileSystem( argc, argv, OFFIS_CONSOLE_APPLICATION, dataSource );
   int result = consoleEngine->StartProvidingService();
 
+  ofstream *ofs = consoleEngine->GetFileOutputStream();
+  OFString filePath(consoleEngine->GetFilePath());
   // Free memory
   delete consoleEngine;
   delete dataSource;
@@ -62,6 +65,14 @@ int main( int argc, char *argv[] )
   HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
   ReadFile(hStdIn, buf, sizeof(buf), &bytesRead, NULL);
 */
+  if(ofs != NULL)
+  {
+	ofConsole.setCout(NULL);
+	ofConsole.setCerr(NULL);
+	ofs->close();
+	DeleteEmptyFile(filePath.c_str());
+  }
+  
   return( result );
 }
 

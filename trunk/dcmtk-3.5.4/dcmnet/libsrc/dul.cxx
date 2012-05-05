@@ -1636,7 +1636,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
         //HANDLE childSocketHandle;
         HANDLE hChildStdInRead;
         HANDLE hChildStdInWrite;
-        HANDLE hChildStdInWriteDup;
+        //HANDLE hChildStdInWriteDup;
 
         SECURITY_ATTRIBUTES sa;
         sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -1660,6 +1660,8 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
             return makeDcmnetCondition(DULC_CANNOTFORK, OF_error, buf4);
         }
 
+		SetHandleInformation( hChildStdInWrite, HANDLE_FLAG_INHERIT, 0);
+		/*
 		// create duplicate of write end handle of pipe
         if (!DuplicateHandle(GetCurrentProcess(),hChildStdInWrite,
                            GetCurrentProcess(),&hChildStdInWriteDup,0,
@@ -1670,7 +1672,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 
 		// destroy original write end handle of pipe
         CloseHandle(hChildStdInWrite);
-
+		*/
 		// we need a STARTUPINFO and a PROCESS_INFORMATION structure for CreateProcess.
         STARTUPINFO si;
         PROCESS_INFORMATION pi;
@@ -1705,21 +1707,22 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 				// and our local copy of the socket handle.
                 CloseHandle(pi.hProcess);
                 CloseHandle(pi.hThread);
-                CloseHandle((HANDLE)sock);
+                closesocket((SOCKET)sock);
 
 				// send number of socket handle in child process over anonymous pipe
                 DWORD bytesWritten;
-                if (!WriteFile(hChildStdInWriteDup, (BYTE*)&protoInfo, sizeof(WSAPROTOCOL_INFO), &bytesWritten, NULL))
+                if (!WriteFile(hChildStdInWrite, (BYTE*)&protoInfo, sizeof(WSAPROTOCOL_INFO), &bytesWritten, NULL))
 				{
-                    CloseHandle(hChildStdInWriteDup);
+                    CloseHandle(hChildStdInWrite);
                     return makeDcmnetCondition (DULC_CANNOTFORK, OF_error, "error while writing to anonymous pipe");
                 }
+				CloseHandle(hChildStdInWrite);
 
 				// return OF_ok status code DULC_FORKEDCHILD with descriptive text
                 char buf4[256];
-                sprintf(buf4, "new child process started with pid %i, CatalogEntryId %i", 
+                sprintf(buf4, "new child process started with pid %i, from %s", 
                   OFstatic_cast(int, pi.dwProcessId), 
-                  (int)protoInfo.dwCatalogEntryId);
+				  inet_ntoa(reinterpret_cast<sockaddr_in*>(&from)->sin_addr));
                 return makeDcmnetCondition (DULC_FORKEDCHILD, OF_ok, buf4);
             }
             else 
@@ -1728,7 +1731,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 				// to avoid resource leak.
                 CloseHandle(pi.hProcess);
                 CloseHandle(pi.hThread);
-                CloseHandle((HANDLE)sock);
+                closesocket((SOCKET)sock);
                 return makeDcmnetCondition (DULC_CANNOTFORK, OF_error, "error while duplicating socket handle");
             }
         }

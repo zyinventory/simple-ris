@@ -42,6 +42,7 @@
 
 #include "dcmtk/dcmnet/dicom.h"
 #include "dcmtk/ofstd/ofcmdln.h"
+#include "dcmtk/ofstd/ofpacs.h"
 #include "dcmtk/dcmwlm/wltypdef.h"
 #include "dcmtk/dcmdata/dcxfer.h"
 #include "dcmtk/ofstd/ofconapp.h"
@@ -58,6 +59,7 @@
 #include "dcmtk/dcmnet/dimse.h"
 
 #include "wlcefs.h"
+#include "common.h"
 
 #ifdef WITH_ZLIB
 #include <zlib.h>        /* for zlibVersion() */
@@ -88,7 +90,7 @@ WlmConsoleEngineFileSystem::WlmConsoleEngineFileSystem( int paramArgc, char *par
     opt_verbose( OFFalse ), opt_debug( OFFalse ), opt_failInvalidQuery( OFTrue ), opt_singleProcess( OFFalse ), opt_forkedChild( OFFalse ),
     opt_maxAssociations( 50 ), opt_noSequenceExpansion( OFFalse ), opt_enableRejectionOfIncompleteWlFiles( OFTrue ),
     opt_blockMode(DIMSE_BLOCKING), opt_dimse_timeout(0), opt_acse_timeout(30),
-    app( NULL ), cmd( NULL ), dataSource( dataSourcev ), argc(paramArgc), argv(paramArgv)
+    fileOutputStream( NULL ), app( NULL ), cmd( NULL ), dataSource( dataSourcev ), argc(paramArgc), argv(paramArgv)
 {
   // Initialize application identification string.
   sprintf( rcsid, "$dcmtk: %s v%s %s $", applicationName, OFFIS_DCMTK_VERSION, OFFIS_DCMTK_RELEASEDATE );
@@ -291,6 +293,27 @@ WlmConsoleEngineFileSystem::WlmConsoleEngineFileSystem( int paramArgc, char *par
   DumpMessage( rcsid );
   DumpMessage( "" );
 
+  if( opt_forkedChild )
+  {
+	char logPath[64];
+	errno_t err = GenerateLogPath(logPath, sizeof(logPath), applicationName, PATH_SEPARATOR);
+	if( ! err )
+	{
+	  OFString logFilePath(logPath);
+	  logFilePath.resize(logFilePath.rfind(PATH_SEPARATOR));
+	  if(EC_Normal == MkdirRecursive(logFilePath))
+	  {
+		fileOutputStream = new ofstream(logPath, ios::app | ios::out, _SH_DENYWR);
+		if(fileOutputStream != NULL)
+		{
+		  ofConsole.setCout(fileOutputStream);
+		  ofConsole.setCerr(fileOutputStream);
+		  SetFilePath(logPath);
+		}
+	  }
+	}
+  }
+
   // set general parameters in data source object
   dataSource->SetLogStream( &ofConsole );
   dataSource->SetVerbose( opt_verbose );
@@ -361,12 +384,13 @@ int WlmConsoleEngineFileSystem::StartProvidingService()
 
     // read socket handle number from stdin, i.e. the anonymous pipe
 	// to which our parent process has written the handle number.
-    if (ReadFile(hStdIn, &protoInfo, sizeof(WSAPROTOCOL_INFO), &bytesRead, NULL))
+    if (hStdIn != NULL && hStdIn != INVALID_HANDLE_VALUE && ReadFile(hStdIn, &protoInfo, sizeof(WSAPROTOCOL_INFO), &bytesRead, NULL))
 	{
         // make sure buffer is zero terminated
-		SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, &protoInfo, 0 , 0);
+		SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, &protoInfo, 0 , WSA_FLAG_OVERLAPPED);
         dcmExternalSocketHandle.set((int)sock);
-		COUT << "external sock " << (int)sock << endl;
+		if(opt_verbose || opt_debug) COUT << "external sock " << (int)sock << endl;
+		CloseHandle(hStdIn);
     }
     else
 	{

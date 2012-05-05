@@ -1,6 +1,7 @@
 #pragma once
 
 #include <dcmtk/dcmnet/dicom.h>
+#include "common.h"
 
 #define DIC_AS_LEN		4
 #define DIC_DA_LEN		8
@@ -8,9 +9,6 @@
 typedef char DIC_AS[DIC_AS_LEN + 1];
 typedef char DIC_DA[DIC_DA_LEN + 1];
 typedef char DIC_TM[DIC_TM_LEN + 1];
-
-bool IsASCII(const char *str);
-char *rtrim(char *s, int maxLen = -1);
 
 // ------------- Store SCP -----------------
 

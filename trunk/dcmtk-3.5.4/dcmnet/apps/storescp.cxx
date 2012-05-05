@@ -58,7 +58,6 @@ END_EXTERN_C
 #endif
 
 #ifdef HAVE_WINDOWS_H
-#include <direct.h>        /* for _mkdir() */
 #include <Winsock2.h>
 #endif
 
@@ -78,6 +77,7 @@ END_EXTERN_C
 #include "dcmtk/dcmdata/dcostrmz.h"      /* for dcmZlibCompressionLevel */
 #include "dcmtk/dcmnet/dcasccfg.h"      /* for class DcmAssociationConfiguration */
 #include "dcmtk/dcmnet/dcasccff.h"      /* for class DcmAssociationConfigurationFile */
+#include "dcmtk/ofstd/ofpacs.h"
 
 #ifdef WITH_OPENSSL
 #include "dcmtk/dcmtls/tlstrans.h"
@@ -966,11 +966,13 @@ int main(int argc, char *argv[])
 
     // read socket handle number from stdin, i.e. the anonymous pipe
 	// to which our parent process has written the handle number.
-    if (ReadFile(hStdIn, &protoInfo, sizeof(WSAPROTOCOL_INFO), &bytesRead, NULL))
+    if (hStdIn != NULL && hStdIn != INVALID_HANDLE_VALUE && ReadFile(hStdIn, &protoInfo, sizeof(WSAPROTOCOL_INFO), &bytesRead, NULL))
 	{
         // make sure buffer is zero terminated
-		SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, &protoInfo, 0 , 0);
+		SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, &protoInfo, 0, WSA_FLAG_OVERLAPPED);
         dcmExternalSocketHandle.set((int)sock);
+		if(opt_verbose || opt_debug) COUT << "external sock " << (int)sock << endl;
+		CloseHandle(hStdIn);
     }
     else
 	{
@@ -1839,7 +1841,7 @@ storeSCPCallback(
 
 
 		  // check if the subdirectory is already existent
-          if( mkdirRecursive( subdirectoryPathAndName ) != STATUS_Success )
+          if( EC_Normal != MkdirRecursive( subdirectoryPathAndName ) )
           {
             fprintf(stderr, "storescp: Could not create subdirectory %s.\n", subdirectoryPathAndName.c_str() );
             rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;

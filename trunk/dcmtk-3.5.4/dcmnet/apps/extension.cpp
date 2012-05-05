@@ -115,8 +115,8 @@ bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString
   dataset.pPath = relateFilePathName.c_str();
   dataset.pImgManageNum = imageManageNumber.c_str();
 
-  FILETIME fileTime;
-  SYSTEMTIME utcTime, localTime;
+  //FILETIME fileTime;
+  SYSTEMTIME /*utcTime, */localTime;
 
   OFDateTime dateTime;
   dateTime.setCurrentDateTime();
@@ -125,19 +125,9 @@ bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString
 
   dataset.fileDate = 0;
   dataset.fileTime = 0;
-  HANDLE handle = ::CreateFile(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-  if( handle != INVALID_HANDLE_VALUE) 
-  {
-    if(::GetFileTime(handle, NULL, NULL, &fileTime))
-    {
-      FileTimeToSystemTime(&fileTime, &utcTime);
-      SystemTimeToTzSpecificLocalTime(NULL, &utcTime, &localTime);
-      dataset.fileDate = localTime.wYear * 10000 + localTime.wMonth * 100 + localTime.wDay;
-      dataset.fileTime = localTime.wHour * 3600 + localTime.wMinute * 60 + localTime.wSecond;
-    }
-    ::GetFileSizeEx(handle, &dataset.fileSize);
-    ::CloseHandle(handle);
-  }
+  dataset.fileSize.QuadPart = GetFileInfo(filePath.c_str(), &localTime);
+  dataset.fileDate = localTime.wYear * 10000 + localTime.wMonth * 100 + localTime.wDay;
+  dataset.fileTime = localTime.wHour * 3600 + localTime.wMinute * 60 + localTime.wSecond;
 
   if(dataset.fileDate == 0)
   { // open file failed, substitute at insertDate/Time
@@ -295,42 +285,4 @@ failback:
   // subdirectoryName = "20"
   subdirectoryName += buf;
   imageManageNumber = &buf[5];
-}
-
-DIC_US mkdirRecursive(OFString& subdirectoryPath)
-{
-  // check if the subdirectory is already existent
-  if( OFStandard::dirExists(subdirectoryPath) )
-  {
-    return STATUS_Success;
-  }
-  else
-  {
-    size_t position = subdirectoryPath.rfind(PATH_SEPARATOR);
-    if(position != OFString_npos)
-    {
-      OFString upperLevel = subdirectoryPath.substr(0, position);
-      DIC_US mkResult = mkdirRecursive(upperLevel);
-      if(mkResult != STATUS_Success)
-      {
-        return mkResult;
-      }
-      // else: upper level exist, create current level
-    }
-
-    // if it is not existent create it
-    #ifdef HAVE_WINDOWS_H
-    if( _mkdir( subdirectoryPath.c_str() ) == -1 )
-    #else
-    if( mkdir( subdirectoryPathAndName.c_str(), S_IRWXU | S_IRWXG | S_IRWXO ) == -1 )
-    #endif
-    {
-      fprintf(stderr, "storescp: Could not create subdirectory %s.\n", subdirectoryPath.c_str() );
-      return STATUS_STORE_Error_CannotUnderstand;
-    }
-    else
-    {
-      return STATUS_Success;
-    }
-  }
 }

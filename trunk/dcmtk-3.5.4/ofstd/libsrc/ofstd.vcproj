@@ -390,6 +390,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\ofpacs.cxx"
+				>
+			</File>
+			<File
 				RelativePath="ofstd.cxx"
 				>
 			</File>
@@ -475,6 +479,10 @@
 			</File>
 			<File
 				RelativePath="..\include\dcmtk\ofstd\ofoset.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\dcmtk\ofstd\ofpacs.h"
 				>
 			</File>
 			<File
