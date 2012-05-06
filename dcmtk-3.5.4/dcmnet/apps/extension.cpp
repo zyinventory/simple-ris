@@ -91,11 +91,6 @@ void getTimeNumberValue(DcmDataset *imageDataSet, int &intValue, DcmTagKey& key,
   if (opt_debug) printf("%s : TM %d\n", key.toString().c_str(), intValue);
 }
 
-void commitToDB()
-{
-  commitDicomDB();
-}
-
 bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString& outputDirectory, OFString& relateFilePathName)
 {
   char buff[1024];
@@ -235,11 +230,16 @@ bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString
     if(opt_debug) printf("%s : %s\n", keyStudyModality.toString().c_str(), dataset.pStudyModality);
   }
 
-  if(connected ? connected : connectDicomDB())
+  if(insertImageInfoToDB(&dataset))
   {
-    return insertImageInfoToDB(&dataset);
+	commitDicomDB();
+	return true;
   }
-  return false;
+  else
+  {
+	logError(CERR);
+	return false;
+  }
 }
 
 void generateImageStoreDirectory(DcmDataset **imageDataSet, OFString& subdirectoryName, OFString& imageManageNumber)
@@ -258,30 +258,29 @@ void generateImageStoreDirectory(DcmDataset **imageDataSet, OFString& subdirecto
     (*imageDataSet)->findAndGetOFString(keyStuDat, studyDate);
   }
 
-  if(connected ? connected : connectDicomDB())
-  {
-    if(studyDate.empty())
-    { // current date as default
-      sprintf(buf, "%04u%02u%02u", currentDate.getDate().getYear(), currentDate.getDate().getMonth(), currentDate.getDate().getDay());
-      studyDate = buf;  // YYYYMMDD
-    }
-
-    strncpy(buf, studyDate.c_str() + 2, 4); // YYMM
-    buf[4] = PATH_SEPARATOR; // YYMM/
-    if( ! getManageNumber(buf + 5, // old study's imageManageNumber or YYMM/YYYYMMDDXXXXXX
-      studyInstUID.empty() ? NULL : studyInstUID.c_str(), atoi(studyDate.c_str())))
-      goto failback;
+  if(studyDate.empty())
+  { // current date as default
+    sprintf(buf, "%04u%02u%02u", currentDate.getDate().getYear(), currentDate.getDate().getMonth(), currentDate.getDate().getDay());
+    studyDate = buf;  // YYYYMMDD
   }
-  else // no db seq value, using current time format: NODB/YYYMMDD_XXXXX, XXXXX = seconds in today
+
+  strncpy(buf, studyDate.c_str() + 2, 4); // YYMM
+  buf[4] = PATH_SEPARATOR; // YYMM/
+  if( getManageNumber(buf + 5, // old study's imageManageNumber or YYMM/YYYYMMDDXXXXXX
+    studyInstUID.empty() ? NULL : studyInstUID.c_str(), atoi(studyDate.c_str())))
   {
-failback:
+	commitDicomDB();
+  }
+  else
+  {
+	// no db seq value, using current time format: NODB/YYYMMDD_XXXXX, XXXXX = seconds in today
+	logError(CERR);
     strncpy(buf, "NODB", 4); // NODB
     buf[4] = PATH_SEPARATOR; // NODB/
     sprintf(buf + 5, "%04u%02u%02u_%05u", // NODB/YYYMMDD_XXXXX
       currentDate.getDate().getYear(), currentDate.getDate().getMonth(), currentDate.getDate().getDay(),
       (int)currentDate.getTime().getTimeInSeconds()); 
   }
-
   // subdirectoryName = "20"
   subdirectoryName += buf;
   imageManageNumber = &buf[5];

@@ -3,12 +3,17 @@
 #include <dcmtk/dcmnet/dicom.h>
 #include "common.h"
 
+#define __BRIDGE_DEFINE 1
+
 #define DIC_AS_LEN		4
 #define DIC_DA_LEN		8
 #define DIC_TM_LEN		16
 typedef char DIC_AS[DIC_AS_LEN + 1];
 typedef char DIC_DA[DIC_DA_LEN + 1];
 typedef char DIC_TM[DIC_TM_LEN + 1];
+
+bool commitDicomDB();
+bool rollbackDicomDB();
 
 // ------------- Store SCP -----------------
 
@@ -64,17 +69,12 @@ typedef struct tagImgDataset
   const char *pReqService;
 } ImgDataset, *PImgDataset;
 
-bool connectDicomDB();
-bool commitDicomDB();
-bool rollbackDicomDB();
 bool insertImageInfoToDB(PImgDataset);
 bool getManageNumber(char * const outImageManageNum, const char * const studyUid, int currentStudyDateNumber);
 
 // ------------- WLM Condition -----------------
 
 #define MAX_WLM_NUMBER 100
-
-#define __BRIDGE_DEFINE
 
 typedef struct tagWlmCondition
 {

@@ -12,7 +12,7 @@ int _tmain(int argc, _TCHAR* argv[])
 {
   Uint32 datasetNumber = 0;
 
-  if(connectDicomDB() /* && GetWorklistFromDB(datasetPtrArray, &datasetNumber) */)
+  if(true /* && GetWorklistFromDB(datasetPtrArray, &datasetNumber) */)
   {
 	std::cout << "Test Number: " << WorklistInBridge.AccessionNumber << ',' << WorklistInBridge.PatientsNameCh << endl;
 	commitDicomDB();

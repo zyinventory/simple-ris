@@ -48,7 +48,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(Pro_C_Path)\OCI\include&quot;;..\config\include;&quot;$(SolutionDir)ofstd\include&quot;;..\dcmdata\include;..\dcmnet\include"
+				AdditionalIncludeDirectories="&quot;$(Pro_C_Path)\precomp\public&quot;;&quot;$(Pro_C_Path)\OCI\include&quot;;..\config\include;&quot;$(SolutionDir)ofstd\include&quot;;..\dcmdata\include;..\dcmnet\include"
 				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Debug\&quot;;WIN32;_DEBUG;_WINDOWS;_USRDLL;BRIDGE_EXPORTS"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="3"
@@ -132,7 +132,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="&quot;$(Pro_C_Path)\OCI\include&quot;;..\config\include;&quot;$(SolutionDir)ofstd\include&quot;;..\dcmdata\include;..\dcmnet\include"
+				AdditionalIncludeDirectories="&quot;$(Pro_C_Path)\precomp\public&quot;;&quot;$(Pro_C_Path)\OCI\include&quot;;..\config\include;&quot;$(SolutionDir)ofstd\include&quot;;..\dcmdata\include;..\dcmnet\include"
 				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Release\&quot;;WIN32;NDEBUG;_WINDOWS;_USRDLL;BRIDGE_EXPORTS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"

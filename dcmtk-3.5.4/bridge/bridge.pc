@@ -1,10 +1,16 @@
 #include "stdafx.h"
-#include <oci.h>
+#include <sqlcpr.h>
 #include "bridge.h"
 
-const char BRIDGE[] = "bridge", BRIDGE_GetManageNumber[] = "bridge.getManageNumber", 
+static const char BRIDGE[] = "bridge", BRIDGE_GetManageNumber[] = "bridge.getManageNumber", 
   BRIDGE_InsertImageInfoToDB[] = "bridge.insertImageInfoToDB", 
   BRIDGE_GetWorklistFromDB[] = "bridge.GetWorklistFromDB";
+static const char *ErrorModuleName = NULL;
+static char ErrorMessage[1024];
+static size_t bufferSize = 1023;
+static size_t messageLength = 0;
+
+static bool connected = false;
 
 EXEC SQL BEGIN DECLARE SECTION;
 const unsigned char connection[] = "dicom/dicom";
@@ -153,35 +159,57 @@ EXEC SQL END DECLARE SECTION;
 
 EXEC SQL INCLUDE SQLCA.H;
 
+const char *GetErrorMessage()
+{
+  return ErrorMessage;
+}
+
+const char *GetErrorModuleName()
+{
+  return ErrorModuleName;
+}
+
 bool SqlError( const char* moduleName )
 {
-  CERR << moduleName << ':' << sqlca.sqlerrm.sqlerrmc << endl;
+  ErrorModuleName = moduleName;
+  if(sqlca.sqlcode < 0)
+  {
+	sqlglm(reinterpret_cast<unsigned char *>(ErrorMessage), &bufferSize, &messageLength);
+	ErrorMessage[messageLength] = '\0';
+  }
+  else
+	strncpy(ErrorMessage, sqlca.sqlerrm.sqlerrmc, sizeof(ErrorMessage));
+  EXEC SQL  WHENEVER SQLERROR CONTINUE;
   EXEC SQL ROLLBACK RELEASE;
+  connected = false;
   return FALSE;
-}
-
-bool connectDicomDB()
-{
-  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE ) );
-  EXEC SQL CONNECT :connection;
-  return TRUE;
-}
-
-bool commitDicomDB()
-{
-  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE ) );
-  EXEC SQL COMMIT WORK RELEASE;
-  return TRUE;
 }
 
 bool rollbackDicomDB()
 {
   EXEC SQL ROLLBACK RELEASE;
+  connected = false;
+  return TRUE;
+}
+
+static bool connectDicomDB()
+{
+  EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE ) );
+  EXEC SQL CONNECT :connection;
+  connected = true;
+  return TRUE;
+}
+
+bool commitDicomDB()
+{
+  EXEC SQL COMMIT WORK RELEASE;
+  connected = false;
   return TRUE;
 }
 
 bool getManageNumber(char * const outImageManageNum, const char * const studyUid, int currentStudyDateNumber)
 {
+  if( ! (connected ? true : connectDicomDB()) ) return false;
   EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_GetManageNumber ) );
   if(studyUid)
   {
@@ -212,6 +240,7 @@ ReturnOutputString:
 
 bool insertImageInfoToDB(PImgDataset pimg)
 {
+  if( ! (connected ? true : connectDicomDB()) ) return false;
   EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_InsertImageInfoToDB ) );
 
   strncpy(paramHddRoot, pimg->pHddRoot, sizeof(paramHddRoot)); paramHddRoot[sizeof(paramHddRoot) - 1] = '\0';
@@ -326,6 +355,7 @@ bool insertImageInfoToDB(PImgDataset pimg)
 
 bool GetWorklistFromDB(FetchWorklistCallback callback, WlmDBInteractionManager *dbim)
 {
+  if( ! (connected ? true : connectDicomDB()) ) return false;
   EXEC SQL WHENEVER SQLERROR DO return( SqlError( BRIDGE_GetWorklistFromDB ) );
   EXEC SQL WHENEVER NOT FOUND DO break;
 

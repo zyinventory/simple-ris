@@ -8,7 +8,9 @@ EXPORTS
 	GenerateLogPath
 	GetFileInfo
 	DeleteEmptyFile
-	connectDicomDB
+	GetErrorMessage
+	GetErrorModuleName
+	logError
 	commitDicomDB
 	rollbackDicomDB
 	getManageNumber

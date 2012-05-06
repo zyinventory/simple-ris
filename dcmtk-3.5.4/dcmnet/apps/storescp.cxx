@@ -101,6 +101,7 @@ int mkstemp(char *);
 }
 #endif
 #include "extension.h"
+#include "common.h"
 
 #ifdef PRIVATE_STORESCP_DECLARATIONS
 PRIVATE_STORESCP_DECLARATIONS
@@ -180,7 +181,7 @@ static const char *opt_execOnEndOfStudy = NULL;       // default: don't execute 
 
 OFString           lastStudySubdirectoryPathAndName;
 static OFBool      opt_renameOnEndOfStudy = OFFalse;  // default: don't rename any files on end of study
-static long        opt_endOfStudyTimeout = -1;        // default: no end of study timeout
+static long        opt_endOfStudyTimeout = 10;        // default: no end of study timeout
 static OFBool      endOfStudyThroughTimeoutEvent = OFFalse;
 static const char *opt_configFile = NULL;
 static const char *opt_profileName = NULL;
@@ -393,7 +394,7 @@ int main(int argc, char *argv[])
                                                              "execute command c after having received and\nprocessed all C-STORE-Request messages that\nbelong to one study" );
     cmd.addOption(  "--rename-on-eostudy",      "-rns",      "(only w/ -ss) Having received and processed\nall C-STORE-Request messages that belong to\none study, rename output files according to\na certain pattern" );
     cmd.addOption(  "--eostudy-timeout",        "-tos",  1,  "[t]imeout: integer (only w/ -ss, -xcs or -rns)",
-                                                             "specifies a timeout of t seconds for\nend-of-study determination" );
+                                                             "specifies a timeout of t seconds for\nend-of-study determination, only affect --fork-child or single process mode, default is 1, --fork mode is always 1." );
 #ifdef _WIN32
     cmd.addOption(  "--exec-sync",              "-xs",       "execute command synchronously in foreground" );
 #endif
@@ -504,6 +505,7 @@ int main(int argc, char *argv[])
       {
         app.checkConflict("--inetd", "--fork", opt_inetd_mode);
         opt_forkMode = OFTrue;
+		opt_endOfStudyTimeout = 1L;
       }
 #ifdef _WIN32
       if (cmd.findOption("--forked-child"))
@@ -802,17 +804,38 @@ int main(int argc, char *argv[])
       opt_renameOnEndOfStudy = OFTrue;
     }
 
-    if (cmd.findOption("--eostudy-timeout"))
+    if (cmd.findOption("--eostudy-timeout") && ! opt_forkMode)
     {
       if( opt_sortConcerningStudies == NULL && opt_execOnEndOfStudy == NULL && opt_renameOnEndOfStudy == OFFalse )
         app.printError("--eostudy-timeout only in combination with --sort-conc-studies, --exec-on-eostudy or --rename-on-eostudy");
-      app.checkValue(cmd.getValueAndCheckMin(opt_endOfStudyTimeout, 0));
+	  app.checkValue(cmd.getValueAndCheckMin(opt_endOfStudyTimeout, 0));
     }
 
 #ifdef _WIN32
     if (cmd.findOption("--exec-sync")) opt_execSync = OFTrue;
 #endif
 
+  }
+
+  char logPath[64];
+  ofstream *fileOutputStream = NULL;
+  if( opt_forkedChild )
+  {
+	errno_t err = GenerateLogPath(logPath, sizeof(logPath), OFFIS_CONSOLE_APPLICATION, PATH_SEPARATOR);
+	if( ! err )
+	{
+	  OFString logFilePath(logPath);
+	  logFilePath.resize(logFilePath.rfind(PATH_SEPARATOR));
+	  if(EC_Normal == MkdirRecursive(logFilePath))
+	  {
+		fileOutputStream = new ofstream(logPath, ios::app | ios::out, _SH_DENYWR);
+		if(fileOutputStream != NULL)
+		{
+		  ofConsole.setCout(fileOutputStream);
+		  ofConsole.setCerr(fileOutputStream);
+		}
+	  }
+	}
   }
 
 #ifdef WITH_OPENSSL
@@ -913,7 +936,6 @@ int main(int argc, char *argv[])
 
 #endif
 
-
 #ifdef HAVE_GETEUID
   /* if port is privileged we must be as well */
   if (opt_port < 1024)
@@ -971,7 +993,7 @@ int main(int argc, char *argv[])
         // make sure buffer is zero terminated
 		SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, &protoInfo, 0, WSA_FLAG_OVERLAPPED);
         dcmExternalSocketHandle.set((int)sock);
-		if(opt_verbose || opt_debug) COUT << "external sock " << (int)sock << endl;
+		if(opt_debug) COUT << "external sock " << (int)sock << endl;
 		CloseHandle(hStdIn);
     }
     else
@@ -1087,6 +1109,7 @@ int main(int argc, char *argv[])
   signal(SIGCHLD, sigChildHandler);
 #endif
 
+  Capture_Ctrl_C();
   while (cond.good())
   {
     /* receive an association and acknowledge or reject it. If the association was */
@@ -1120,6 +1143,8 @@ int main(int argc, char *argv[])
     // if running in multi-process mode, always terminate child after one association
     if (DUL_processIsForkedChild()) break;
 
+	// if Ctrl-C press
+	if (GetSignalInterruptValue() != 0) break;
   }
 
   /* drop the network, i.e. free memory of T_ASC_Network* structure. This call */
@@ -1138,6 +1163,14 @@ int main(int argc, char *argv[])
 #ifdef WITH_OPENSSL
   delete tLayer;
 #endif
+
+  if(fileOutputStream != NULL)
+  {
+	ofConsole.setCout(NULL);
+	ofConsole.setCerr(NULL);
+	fileOutputStream->close();
+	DeleteEmptyFile(logPath);
+  }
 
   return 0;
 }
@@ -1226,13 +1259,13 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
   if (opt_verbose)
   {
 #if defined(HAVE_FORK) || defined(_WIN32)
-      if (opt_forkMode)
-      {
-        printf("Association Received in %s process (pid: %ld) from %s\n", (DUL_processIsForkedChild() ? "child" : "parent") , OFstatic_cast(long, getpid()), assoc->params->DULparams.callingAPTitle);
-      }
-	  else printf("Association Received from %s\n", assoc->params->DULparams.callingAPTitle);
+    if (opt_forkMode)
+    {
+      printf("Association Received in %s process (pid: %ld) from %s\n", (DUL_processIsForkedChild() ? "child" : "parent") , OFstatic_cast(long, getpid()), assoc->params->DULparams.callingAPTitle);
+    }
+	else printf("Association Received from %s\n", assoc->params->DULparams.callingAPTitle);
 #else
-      printf("Association Received\n");
+    printf("Association Received\n");
 #endif
   }
 
@@ -1888,7 +1921,7 @@ storeSCPCallback(
         fprintf(stderr, "storescp: Cannot write image file: %s\n", fileName.c_str());
         rsp->DimseStatus = STATUS_STORE_Refused_OutOfResources;
       }
-      if(insertImage(*imageDataSet, imageManageNumber, opt_outputDirectory, relateFilePathName)) commitToDB();
+
       // check the image to make sure it is consistent, i.e. that its sopClass and sopInstance correspond
       // to those mentioned in the request. If not, set the status in the response message variable.
       if ((rsp->DimseStatus == STATUS_Success)&&(!opt_ignore))
@@ -1908,7 +1941,7 @@ storeSCPCallback(
           rsp->DimseStatus = STATUS_STORE_Error_DataSetDoesNotMatchSOPClass;
         }
       }
-
+	  if (rsp->DimseStatus == STATUS_Success) insertImage(*imageDataSet, imageManageNumber, opt_outputDirectory, relateFilePathName);
     }
 
     // in case opt_bitPreserving is set, do some other things
