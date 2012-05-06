@@ -8,6 +8,8 @@
 #include <process.h>     /* needed for declaration of getpid() */
 #endif
 
+#include "common.h"
+
 #ifndef HAVE_NO_TYPEDEF_PID_T  // not include cfwin32.h
 typedef int pid_t;
 #endif
@@ -32,7 +34,7 @@ bool IsASCII(const char *str)
   s:	  input string
   maxLen: max length of string s
  */
-char *rtrim(char *s, int maxLen = -1)
+char *rtrim(char *s, int maxLen)
 {
   if(s == NULL) return 0;
   if(maxLen == -1)
@@ -120,4 +122,9 @@ void DeleteEmptyFile(const char *filePath)
 	if(fileSize.QuadPart == 0LL)
 	  ::DeleteFile(filePath);
   }
+}
+
+void logError(std::ostream &outputStream)
+{
+  outputStream << GetErrorModuleName() << ':' << GetErrorMessage() << std::endl;
 }

@@ -138,41 +138,47 @@ typedef struct { unsigned short len; unsigned char arr[1]; } varchar;
 /* cud (compilation unit data) array */
 static const short sqlcud0[] =
 {12,4128,852,27,0,
-5,0,0,1,0,0,32,159,0,0,0,0,0,1,0,
-20,0,0,0,0,0,27,166,0,0,4,4,0,1,0,1,97,0,0,1,10,0,0,1,10,0,0,1,10,0,0,
-51,0,0,3,0,0,30,173,0,0,0,0,0,1,0,
-66,0,0,4,0,0,32,179,0,0,0,0,0,1,0,
-81,0,0,5,73,0,4,190,0,0,2,1,0,1,0,2,97,0,0,1,97,0,0,
-104,0,0,6,85,0,4,201,0,0,2,1,0,1,0,1,3,0,0,2,97,0,0,
-127,0,0,7,100,0,4,205,0,0,1,0,0,1,0,2,97,0,0,
-146,0,0,8,1855,0,6,269,0,0,52,52,0,1,0,2,3,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,3,
+5,0,0,1,0,0,32,183,0,0,0,0,0,1,0,
+20,0,0,2,0,0,32,190,0,0,0,0,0,1,0,
+35,0,0,0,0,0,27,198,0,0,4,4,0,1,0,1,97,0,0,1,10,0,0,1,10,0,0,1,10,0,0,
+66,0,0,4,0,0,30,205,0,0,0,0,0,1,0,
+81,0,0,5,73,0,4,218,0,0,2,1,0,1,0,2,97,0,0,1,97,0,0,
+104,0,0,6,85,0,4,229,0,0,2,1,0,1,0,1,3,0,0,2,97,0,0,
+127,0,0,7,100,0,4,233,0,0,1,0,0,1,0,2,97,0,0,
+146,0,0,8,1855,0,6,298,0,0,52,52,0,1,0,2,3,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,3,
 0,0,1,3,0,0,1,3,0,0,1,3,0,0,1,68,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,3,0,0,1,3,0,
 0,1,3,0,0,1,3,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,
 0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,
 0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,3,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,
 97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,
 1,97,0,0,1,97,0,0,1,97,0,0,
-369,0,0,9,0,0,17,332,0,0,1,1,0,1,0,1,97,0,0,
-388,0,0,9,0,0,45,334,0,0,4,4,0,1,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,
-419,0,0,9,0,0,13,337,0,0,23,0,0,1,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,
+369,0,0,9,0,0,17,362,0,0,1,1,0,1,0,1,97,0,0,
+388,0,0,9,0,0,45,364,0,0,4,4,0,1,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,
+419,0,0,9,0,0,13,367,0,0,23,0,0,1,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,
 0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,
 0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,3,0,0,2,3,
 0,0,
-526,0,0,9,0,0,15,340,0,0,0,0,0,1,0,
+526,0,0,9,0,0,15,370,0,0,0,0,0,1,0,
 };
 
 
 #include "stdafx.h"
-#include <oci.h>
+#include <sqlcpr.h>
 #include "bridge.h"
 
-const char BRIDGE[] = "bridge", BRIDGE_GetManageNumber[] = "bridge.getManageNumber", 
+static const char BRIDGE[] = "bridge", BRIDGE_GetManageNumber[] = "bridge.getManageNumber", 
   BRIDGE_InsertImageInfoToDB[] = "bridge.insertImageInfoToDB", 
   BRIDGE_GetWorklistFromDB[] = "bridge.GetWorklistFromDB";
+static const char *ErrorModuleName = NULL;
+static char ErrorMessage[1024];
+static size_t bufferSize = 1023;
+static size_t messageLength = 0;
+
+static bool connected = false;
 
 /* EXEC SQL BEGIN DECLARE SECTION; */ 
 
-const unsigned char connection[] = "dicom/dicom";
+const unsigned char connection[] = "dicom/dicom2";
 
 // ---------StoreSCP-----------
 char oldStudyUid[65] = "";
@@ -420,9 +426,28 @@ SQLCA_STORAGE_CLASS struct sqlca sqlca
 /* end SQLCA */
 
 
+const char *GetErrorMessage()
+{
+  return ErrorMessage;
+}
+
+const char *GetErrorModuleName()
+{
+  return ErrorModuleName;
+}
+
 bool SqlError( const char* moduleName )
 {
-  CERR << moduleName << ':' << sqlca.sqlerrm.sqlerrmc << endl;
+  ErrorModuleName = moduleName;
+  if(sqlca.sqlcode < 0)
+  {
+	sqlglm(reinterpret_cast<unsigned char *>(ErrorMessage), &bufferSize, &messageLength);
+	ErrorMessage[messageLength] = '\0';
+  }
+  else
+	strncpy(ErrorMessage, sqlca.sqlerrm.sqlerrmc, sizeof(ErrorMessage));
+  /* EXEC SQL  WHENEVER SQLERROR CONTINUE; */ 
+
   /* EXEC SQL ROLLBACK RELEASE; */ 
 
 {
@@ -441,10 +466,35 @@ bool SqlError( const char* moduleName )
 }
 
 
+  connected = false;
   return FALSE;
 }
 
-bool connectDicomDB()
+bool rollbackDicomDB()
+{
+  /* EXEC SQL ROLLBACK RELEASE; */ 
+
+{
+  struct sqlexd sqlstm;
+  sqlstm.sqlvsn = 12;
+  sqlstm.arrsiz = 0;
+  sqlstm.sqladtp = &sqladt;
+  sqlstm.sqltdsp = &sqltds;
+  sqlstm.iters = (unsigned int  )1;
+  sqlstm.offset = (unsigned int  )20;
+  sqlstm.cud = sqlcud0;
+  sqlstm.sqlest = (unsigned char  *)&sqlca;
+  sqlstm.sqlety = (unsigned short)4352;
+  sqlstm.occurs = (unsigned int  )0;
+  sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
+}
+
+
+  connected = false;
+  return TRUE;
+}
+
+static bool connectDicomDB()
 {
   /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE ) ); */ 
 
@@ -457,7 +507,7 @@ bool connectDicomDB()
   sqlstm.sqladtp = &sqladt;
   sqlstm.sqltdsp = &sqltds;
   sqlstm.iters = (unsigned int  )10;
-  sqlstm.offset = (unsigned int  )20;
+  sqlstm.offset = (unsigned int  )35;
   sqlstm.cud = sqlcud0;
   sqlstm.sqlest = (unsigned char  *)&sqlca;
   sqlstm.sqlety = (unsigned short)4352;
@@ -489,38 +539,13 @@ bool connectDicomDB()
 }
 
 
+  connected = true;
   return TRUE;
 }
 
 bool commitDicomDB()
 {
-  /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE ) ); */ 
-
   /* EXEC SQL COMMIT WORK RELEASE; */ 
-
-{
-  struct sqlexd sqlstm;
-  sqlstm.sqlvsn = 12;
-  sqlstm.arrsiz = 4;
-  sqlstm.sqladtp = &sqladt;
-  sqlstm.sqltdsp = &sqltds;
-  sqlstm.iters = (unsigned int  )1;
-  sqlstm.offset = (unsigned int  )51;
-  sqlstm.cud = sqlcud0;
-  sqlstm.sqlest = (unsigned char  *)&sqlca;
-  sqlstm.sqlety = (unsigned short)4352;
-  sqlstm.occurs = (unsigned int  )0;
-  sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
-  if (sqlca.sqlcode < 0) return(SqlError(BRIDGE));
-}
-
-
-  return TRUE;
-}
-
-bool rollbackDicomDB()
-{
-  /* EXEC SQL ROLLBACK RELEASE; */ 
 
 {
   struct sqlexd sqlstm;
@@ -539,11 +564,13 @@ bool rollbackDicomDB()
 }
 
 
+  connected = false;
   return TRUE;
 }
 
 bool getManageNumber(char * const outImageManageNum, const char * const studyUid, int currentStudyDateNumber)
 {
+  if( ! (connected ? true : connectDicomDB()) ) return false;
   /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_GetManageNumber ) ); */ 
 
   if(studyUid)
@@ -708,6 +735,7 @@ ReturnOutputString:
 
 bool insertImageInfoToDB(PImgDataset pimg)
 {
+  if( ! (connected ? true : connectDicomDB()) ) return false;
   /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_InsertImageInfoToDB ) ); */ 
 
 
@@ -1293,6 +1321,7 @@ D ;";
 
 bool GetWorklistFromDB(FetchWorklistCallback callback, WlmDBInteractionManager *dbim)
 {
+  if( ! (connected ? true : connectDicomDB()) ) return false;
   /* EXEC SQL WHENEVER SQLERROR DO return( SqlError( BRIDGE_GetWorklistFromDB ) ); */ 
 
   /* EXEC SQL WHENEVER NOT FOUND DO break; */ 

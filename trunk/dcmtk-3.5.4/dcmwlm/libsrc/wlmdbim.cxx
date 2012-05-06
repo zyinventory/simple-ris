@@ -2175,15 +2175,16 @@ OFCondition WlmDBInteractionManager::GenerateDataset()
   pWorklistStatement = whereStatement.c_str();
   if(verboseMode) COUT << whereStatement << endl;
 
-  if(connectDicomDB())
+  if(GetWorklistFromDB(WlmDataset, this))
   {
-	if(GetWorklistFromDB(WlmDataset, this))
-	{
-	  commitDicomDB();
-	  return EC_Normal;
-	}
+	commitDicomDB();
+	return EC_Normal;
   }
-  return EC_IllegalParameter;
+  else
+  {
+	logError(CERR);
+	return EC_IllegalParameter;
+  }
 }
 
 int WlmDBInteractionManager::DummyDataset(DcmDataset *searchMask, DcmDataset **datasetPtrArray)

@@ -1,5 +1,8 @@
 #pragma once
 
+const char *GetErrorMessage();
+const char *GetErrorModuleName();
+void logError(std::ostream& outputStream);
 int GetSignalInterruptValue();
 void SignalInterruptHandler(int signal);
 void Capture_Ctrl_C();
