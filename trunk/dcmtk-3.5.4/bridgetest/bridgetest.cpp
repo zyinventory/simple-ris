@@ -2,22 +2,57 @@
 //
 
 #include "stdafx.h"
-#include <dcmtk/ofstd/ofdatime.h>
-#include <dcmtk/dcmdata/dcdatset.h>
-#include <bridge.h>
+#include <iostream>
+#include <fstream>
+#include <windows.h>
+#include <sys/timeb.h>
+#include <io.h>
 
-_declspec(dllimport) WorklistRecord WorklistInBridge;
-
+using namespace std;
+#define FILENAME "count.txt"
 int _tmain(int argc, _TCHAR* argv[])
 {
-  Uint32 datasetNumber = 0;
-
-  if(true /* && GetWorklistFromDB(datasetPtrArray, &datasetNumber) */)
+  fstream fileStream;
+  for(int i = 0; i < 10; i++)
   {
-	std::cout << "Test Number: " << WorklistInBridge.AccessionNumber << ',' << WorklistInBridge.PatientsNameCh << endl;
-	commitDicomDB();
-	return 0;
+	::Sleep(100);
+	if( _access_s(FILENAME, 0) == 0 )
+	  fileStream.open(FILENAME, ios::out | ios::in | ios::ate, _SH_DENYRW);
+	else
+	  fileStream.open(FILENAME, ios::out | ios::in | ios::app, _SH_DENYRW);
+	if(fileStream.bad()) cout << "bad" << endl;
+	else if(fileStream.eof()) cout << "eof" << endl;
+	else if(fileStream.fail()) cout << "fail" << endl;
+	else break;
+  }
+
+  if( fileStream.good() )
+  {
+	char c;
+	cin >> c;
+	int number;
+	fileStream.seekg(0, ios::beg);
+	fileStream >> number;
+	if( ! fileStream.good() )
+	{
+	  number = 0;
+	  if(fileStream.bad()) cout << "bad" << endl;
+	  else if(fileStream.eof()) cout << "eof" << endl;
+	  else if(fileStream.fail()) cout << "fail" << endl;
+	}
+	++number;
+	fileStream.seekp(0, ios::beg);
+	fileStream.clear();
+	fileStream << number << endl;
+	fileStream.close();
   }
   else
-    return -1;
+  {
+	struct _timeb now;
+	errno_t err = _ftime_s(&now);
+	LARGE_INTEGER time_ms;
+	time_ms.QuadPart = now.time * 1000 + now.millitm;
+	cout << time_ms.QuadPart << endl;
+	cout << time_ms.LowPart << endl;
+  }
 }

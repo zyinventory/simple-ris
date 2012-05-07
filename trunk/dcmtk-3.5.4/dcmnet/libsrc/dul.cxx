@@ -1720,8 +1720,8 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 
 				// return OF_ok status code DULC_FORKEDCHILD with descriptive text
                 char buf4[256];
-                sprintf(buf4, "new child process started with pid %i, from %s", 
-                  OFstatic_cast(int, pi.dwProcessId), 
+                sprintf(buf4, "new child process started with pid %i, socket %d, from %s", 
+                  OFstatic_cast(int, pi.dwProcessId), sock,
 				  inet_ntoa(reinterpret_cast<sockaddr_in*>(&from)->sin_addr));
                 return makeDcmnetCondition (DULC_FORKEDCHILD, OF_ok, buf4);
             }
