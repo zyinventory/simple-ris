@@ -178,7 +178,7 @@ static bool connected = false;
 
 /* EXEC SQL BEGIN DECLARE SECTION; */ 
 
-const unsigned char connection[] = "dicom/dicom2";
+const unsigned char connection[] = "dicom/dicom";
 
 // ---------StoreSCP-----------
 char oldStudyUid[65] = "";
