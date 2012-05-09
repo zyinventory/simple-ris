@@ -9,8 +9,7 @@ typedef struct tagWorklistRecord *PWorklistRecord;
 typedef struct tagIndicatorWorklistRecord *PIndicatorWorklistRecord;
 #endif
 
-const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030", 
-  CONSTRUCT_FAILED[] = " construct failed.", INSERT_FAILED[] = " insert failed.",
+const char CONSTRUCT_FAILED[] = " construct failed.", INSERT_FAILED[] = " insert failed.",
   WARNING[] = "Warning: ", VALUE_LENGTH_EXCEED[] = " length exceed: ",
   TYPE_1_IS_NULL[] = "(type 1) is NULL.", MEDIUM[] = "MEDIUM",
   ANONYMOUS[] = "anonymous", NVL_VALUE[] = " is NULL, replace ", ASCII_VALUE[] = " do not support chinese, replace ",
