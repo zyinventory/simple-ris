@@ -1807,8 +1807,15 @@ storeSCPCallback(
       OFString fileName, relateFilePathName, imageManageNumber;
 	  // if charset is empty and pername is not ASCII, set charset value GB18030
 	  DcmElement *element = NULL;
-	  OFString personname;
-	  OFCondition ec = (*imageDataSet)->findAndGetElement(DCM_SpecificCharacterSet, element);
+	  OFString personname, sopInstanceUid;
+	  OFCondition ec = (*imageDataSet)->findAndGetOFString(DCM_SOPInstanceUID, sopInstanceUid);
+	  if( ec != EC_Normal )
+	  {
+		CERR << "storescp: No SOP instance UID found in data set." << endl;
+		rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
+		return;
+	  }
+	  ec = (*imageDataSet)->findAndGetElement(DCM_SpecificCharacterSet, element);
 	  if(element == NULL)
 	  {
 		ec = (*imageDataSet)->findAndGetOFString(DCM_PatientsName, personname);
@@ -1817,7 +1824,7 @@ storeSCPCallback(
 		  element = new DcmCodeString(DCM_SpecificCharacterSet);
 		  element->putString(CHARSET_GB18030);
 		  (*imageDataSet)->insert(element);
-		  CERR << ADD_DEFAULT_CHARSET << CHARSET_GB18030 << endl;
+		  CERR << sopInstanceUid << ':' << ADD_DEFAULT_CHARSET << CHARSET_GB18030 << endl;
 		}
 	  }
 	  else
@@ -1829,14 +1836,6 @@ storeSCPCallback(
 		  ec = (*imageDataSet)->findAndGetOFString(DCM_PatientsName, personname);
 		  if( ec.good() )
 		  {
-			OFString sopInstanceUid;
-			ec = (*imageDataSet)->findAndGetOFString(DCM_SOPInstanceUID, sopInstanceUid);
-			if( ec != EC_Normal )
-			{
-			  CERR << "storescp: No SOP instance UID found in data set." << endl;
-			  rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
-			  return;
-			}
 			CERR << sopInstanceUid << ':' << UNKNOWN_CHARSET << charset << OVERRIDE_BY;
 			if( IsASCII( personname.c_str() ) )
 			{

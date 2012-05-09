@@ -163,12 +163,20 @@ BEGIN
 END InsertImage;
 /
 
-ready:
-
 CREATE OR REPLACE FUNCTION IgnoreStringValue(param varchar2) RETURN varchar2 DETERMINISTIC IS
 BEGIN
    RETURN 'ignore';
 END IgnoreStringValue;
+/
+
+CREATE OR REPLACE function DICOM.get_exam_item2(study_id number) return varchar2 is
+  Result varchar2(4000);
+begin
+  select strcat(item_name) into Result from exam_study_detail, exam_item_dict 
+    where EXAM_STUDY_ID=study_id and exam_item_code=item_code 
+    group by EXAM_STUDY_ID;
+  return(Result);
+end get_exam_item2;
 /
 
 ALTER TABLE DICOM.MODALITY_AETITILE_DICT MODIFY(AETITLE VARCHAR2(16 BYTE));
@@ -229,8 +237,7 @@ AS
                 ELSE 1
              END)
                AS SupportChinese,
-            (CASE WHEN t7.aetitle = 'CANON_CCR' THEN 1 ELSE 0 END)
-               AS DicomPersonName
+             0  AS DicomPersonName
        FROM EXAM_STUDY t1,
             EXAM_REQ t2,
             EXAM_CLASS_DICT t3,
@@ -245,6 +252,8 @@ AS
             AND t1.exam_class_id = t3.id
             AND t1.patient_id = t4.id
             AND t1.exam_class_id = t7.exam_class_id;
+
+ready:
 
 Pending:
 
