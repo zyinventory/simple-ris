@@ -77,6 +77,7 @@ END_EXTERN_C
 #include "dcmtk/dcmdata/dcostrmz.h"      /* for dcmZlibCompressionLevel */
 #include "dcmtk/dcmnet/dcasccfg.h"      /* for class DcmAssociationConfiguration */
 #include "dcmtk/dcmnet/dcasccff.h"      /* for class DcmAssociationConfigurationFile */
+#include "dcmtk/dcmdata/dcvrcs.h"
 #include "dcmtk/ofstd/ofpacs.h"
 
 #ifdef WITH_OPENSSL
@@ -1804,7 +1805,52 @@ storeSCPCallback(
     if ((imageDataSet)&&(*imageDataSet)&&(!opt_bitPreserving)&&(!opt_ignore))
     {
       OFString fileName, relateFilePathName, imageManageNumber;
-
+	  // if charset is empty and pername is not ASCII, set charset value GB18030
+	  DcmElement *element = NULL;
+	  OFString personname;
+	  OFCondition ec = (*imageDataSet)->findAndGetElement(DCM_SpecificCharacterSet, element);
+	  if(element == NULL)
+	  {
+		ec = (*imageDataSet)->findAndGetOFString(DCM_PatientsName, personname);
+		if( ec.good() && ! IsASCII( personname.c_str() ) )
+		{
+		  element = new DcmCodeString(DCM_SpecificCharacterSet);
+		  element->putString(CHARSET_GB18030);
+		  (*imageDataSet)->insert(element);
+		  CERR << ADD_DEFAULT_CHARSET << CHARSET_GB18030 << endl;
+		}
+	  }
+	  else
+	  {
+		OFString charset;
+		ec = (*imageDataSet)->findAndGetOFString(DCM_SpecificCharacterSet, charset);
+		if(ec.good() && charset != CHARSET_GB18030 && charset != CHARSET_ISO_IR_100)
+		{
+		  ec = (*imageDataSet)->findAndGetOFString(DCM_PatientsName, personname);
+		  if( ec.good() )
+		  {
+			OFString sopInstanceUid;
+			ec = (*imageDataSet)->findAndGetOFString(DCM_SOPInstanceUID, sopInstanceUid);
+			if( ec != EC_Normal )
+			{
+			  CERR << "storescp: No SOP instance UID found in data set." << endl;
+			  rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
+			  return;
+			}
+			CERR << sopInstanceUid << ':' << UNKNOWN_CHARSET << charset << OVERRIDE_BY;
+			if( IsASCII( personname.c_str() ) )
+			{
+			  element->putString(CHARSET_ISO_IR_100);
+			  CERR << CHARSET_ISO_IR_100 << endl;
+			}
+			else
+			{
+			  element->putString(CHARSET_GB18030);
+			  CERR << CHARSET_GB18030 << endl;
+			}
+		  }
+		}
+	  }
       // in case option --sort-conc-studies is set, we need to perform some particular
       // steps to determine the actual name of the output file
       if( opt_sortConcerningStudies != NULL )
@@ -1817,10 +1863,10 @@ storeSCPCallback(
         const char *tmpstr1 = NULL;
         OFString currentStudyInstanceUID;
         DcmTagKey studyInstanceUIDTagKey( DCM_StudyInstanceUID );
-        OFCondition ec = (*imageDataSet)->findAndGetString( studyInstanceUIDTagKey, tmpstr1, OFFalse );
+        ec = (*imageDataSet)->findAndGetString( studyInstanceUIDTagKey, tmpstr1, OFFalse );
         if( ec != EC_Normal )
         {
-          fprintf(stderr, "storescp: No study instance UID found in data set.\n");
+          CERR << "storescp: No study instance UID found in data set." << endl;
           rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
           return;
         }
@@ -1845,13 +1891,6 @@ storeSCPCallback(
           // create the new lastStudyInstanceUID value according to the value in the current DICOM object
           lastStudyInstanceUID = currentStudyInstanceUID;
 
-
-          
-          
-          
-          
-          
-          
           // create a name for the new subdirectory. pattern: "[opt_sortConcerningStudies][YYMM]/[YYYYMMDDXXXXXX]"
           OFString subdirectoryName = opt_sortConcerningStudies;
           generateImageStoreDirectory(imageDataSet, subdirectoryName, imageManageNumber);
@@ -1864,19 +1903,12 @@ storeSCPCallback(
           subdirectoryPathAndName += subdirectoryName;
           if (position != OFString_npos) relateFilePathName.erase(0, position);
           relateFilePathName = subdirectoryName + relateFilePathName;
-
-		  printf("%s image save path: %s\n", currentStudyInstanceUID.c_str(), relateFilePathName.c_str());
-
-
-
-
-
-
+		  //printf("%s image save path: %s\n", currentStudyInstanceUID.c_str(), relateFilePathName.c_str());
 
 		  // check if the subdirectory is already existent
           if( EC_Normal != MkdirRecursive( subdirectoryPathAndName ) )
           {
-            fprintf(stderr, "storescp: Could not create subdirectory %s.\n", subdirectoryPathAndName.c_str() );
+            CERR << "storescp: Could not create subdirectory " << subdirectoryPathAndName << endl;
             rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
             return;
           }
@@ -1913,12 +1945,12 @@ storeSCPCallback(
       if (xfer == EXS_Unknown) xfer = (*imageDataSet)->getOriginalXfer();
 
       // store file either with meta header or as pure dataset
-      OFCondition cond = cbdata->dcmff->saveFile(fileName.c_str(), xfer, opt_sequenceType, opt_groupLength,
+      ec = cbdata->dcmff->saveFile(fileName.c_str(), xfer, opt_sequenceType, opt_groupLength,
           opt_paddingType, OFstatic_cast(Uint32, opt_filepad),
           OFstatic_cast(Uint32, opt_itempad), !opt_useMetaheader);
-      if (cond.bad())
+      if (ec.bad())
       {
-        fprintf(stderr, "storescp: Cannot write image file: %s\n", fileName.c_str());
+        CERR << "storescp: Cannot write image file: " << fileName << endl;
         rsp->DimseStatus = STATUS_STORE_Refused_OutOfResources;
       }
 
@@ -1929,7 +1961,7 @@ storeSCPCallback(
         // which SOP class and SOP instance ?
         if (! DU_findSOPClassAndInstanceInDataSet(*imageDataSet, sopClass, sopInstance, opt_correctUIDPadding))
         {
-           fprintf(stderr, "storescp: Bad image file: %s\n", fileName.c_str());
+           CERR << "storescp: Bad image file: " << fileName << endl;
            rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
         }
         else if (strcmp(sopClass, req->AffectedSOPClassUID) != 0)
