@@ -40,13 +40,13 @@ static OFCondition SetDefaultValue(DcmElement *pElement, const char *value, shor
   Uint32 vlen = min(vr.getMaxValueLength(), DIC_NODENAME_LEN);
 
   DcmTag tag = pElement->getTag();
-  strncpy(cpValue, tag.getTagName(), vlen + 1);
+  strncpy(cpValue, value, vlen + 1);
   cpValue[vlen] = '\0';
 
   if(indicator < 0) // NULL
-  	CERR << WARNING << tag.getTagName() << NVL_VALUE << value << endl;
+  	CERR << WARNING << tag.getTagName() << NVL_VALUE << cpValue << endl;
   else // not support Chinese
-	CERR << WARNING << tag.getTagName() << ASCII_VALUE << value << endl;
+	CERR << WARNING << tag.getTagName() << ASCII_VALUE << cpValue << endl;
 
   return pElement->putString(cpValue);
 }

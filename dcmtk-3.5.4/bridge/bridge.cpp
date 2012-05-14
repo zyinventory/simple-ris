@@ -187,7 +187,7 @@ int dateNumber;
 
 //dataset begin
 char paramHddRoot[65];
-char paramPath[65];
+char paramPath[257];
 char paramImgManageNum[15];
 int paramFileDate, paramFileTime, paramInsertDate, paramInsertTime;
 unsigned __int64 paramFileSize;
@@ -771,7 +771,7 @@ bool insertImageInfoToDB(PImgDataset pimg)
   strncpy(paramManufactModNam, pimg->pManufactModNam, sizeof(paramManufactModNam)); paramManufactModNam[sizeof(paramManufactModNam) - 1] = '\0';
   strncpy(paramPatNam, pimg->pPatNam, sizeof(paramPatNam)); paramPatNam[sizeof(paramPatNam) - 1] = '\0';
   strncpy(paramPatNamKan, pimg->pPatNamKan, sizeof(paramPatNamKan)); paramPatNamKan[sizeof(paramPatNamKan) - 1] = '\0';
-  strncpy(paramPatNamKan, pimg->pPatNamKat, sizeof(paramPatNamKat)); paramPatNamKat[sizeof(paramPatNamKat) - 1] = '\0';
+  strncpy(paramPatNamKat, pimg->pPatNamKat, sizeof(paramPatNamKat)); paramPatNamKat[sizeof(paramPatNamKat) - 1] = '\0';
   strncpy(paramPatId, pimg->pPatId, sizeof(paramPatId)); paramPatId[sizeof(paramPatId) - 1] = '\0';
   paramPatBirDat = pimg->patBirDat;
   strncpy(paramPatSex, pimg->pPatSex, sizeof(paramPatSex)); paramPatSex[sizeof(paramPatSex) - 1] = '\0';
@@ -901,7 +901,7 @@ D ;";
   sqlstm.sqadto[1] = (unsigned short )0;
   sqlstm.sqtdso[1] = (unsigned short )0;
   sqlstm.sqhstv[2] = (         void  *)paramPath;
-  sqlstm.sqhstl[2] = (unsigned int  )65;
+  sqlstm.sqhstl[2] = (unsigned int  )257;
   sqlstm.sqhsts[2] = (         int  )0;
   sqlstm.sqindv[2] = (         void  *)0;
   sqlstm.sqinds[2] = (         int  )0;
