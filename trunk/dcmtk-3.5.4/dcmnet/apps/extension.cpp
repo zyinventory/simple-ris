@@ -242,7 +242,7 @@ bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString
   }
 }
 
-void generateImageStoreDirectory(DcmDataset **imageDataSet, OFString& subdirectoryName, OFString& imageManageNumber)
+bool generateImageStoreDirectory(DcmDataset **imageDataSet, OFString& subdirectoryName, OFString& imageManageNumber)
 {
   char buf[256];
   OFString studyInstUID, studyDate;
@@ -266,12 +266,9 @@ void generateImageStoreDirectory(DcmDataset **imageDataSet, OFString& subdirecto
 
   strncpy(buf, studyDate.c_str() + 2, 4); // YYMM
   buf[4] = PATH_SEPARATOR; // YYMM/
-  if( getManageNumber(buf + 5, // old study's imageManageNumber or YYMM/YYYYMMDDXXXXXX
-    studyInstUID.empty() ? NULL : studyInstUID.c_str(), atoi(studyDate.c_str())))
-  {
-	commitDicomDB();
-  }
-  else
+  // old study's imageManageNumber or YYMM/YYYYMMDDXXXXXX
+  bool dbManageNumberSuccess = getManageNumber(buf + 5, studyInstUID.empty() ? NULL : studyInstUID.c_str(), atoi(studyDate.c_str()));
+  if( ! dbManageNumberSuccess )
   {
 	// no db seq value, using current time format: NODB/YYYMMDD_XXXXX, XXXXX = seconds in today
 	logError(CERR);
@@ -284,4 +281,5 @@ void generateImageStoreDirectory(DcmDataset **imageDataSet, OFString& subdirecto
   // subdirectoryName = "20"
   subdirectoryName += buf;
   imageManageNumber = &buf[5];
+  return dbManageNumberSuccess;
 }

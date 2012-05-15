@@ -214,9 +214,9 @@ void WlmDBInteractionManager::WlmDataset(PWorklistRecord pWorklist, PIndicatorWo
   {
 	DcmTag tag(DCM_PatientsWeight);  //0010,1030 O 2
 	DcmDecimalString *patientWeight = new DcmDecimalString(tag);
-	TranslateIndicatorMessage(pIndicator->PatientsWeight, tag);
-	if(pIndicator->PatientsWeight >= 0) cond = patientWeight->putString(pWorklist->PatientsWeight);
-	if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
+	//TranslateIndicatorMessage(pIndicator->PatientsWeight, tag);
+	//if(pIndicator->PatientsWeight >= 0) cond = patientWeight->putString(pWorklist->PatientsWeight);
+	//if(cond.bad()) { DumpPosition(tag, CONSTRUCT_FAILED, dataset); return; }
 	cond = dataset->insert(patientWeight);
 	if(cond.bad()) { DumpPosition(tag, INSERT_FAILED, dataset); return; }
   }
