@@ -1850,6 +1850,7 @@ storeSCPCallback(
 		  }
 		}
 	  }
+	  bool imageManageNumberFromDB = false;
       // in case option --sort-conc-studies is set, we need to perform some particular
       // steps to determine the actual name of the output file
       if( opt_sortConcerningStudies != NULL )
@@ -1892,7 +1893,7 @@ storeSCPCallback(
 
           // create a name for the new subdirectory. pattern: "[opt_sortConcerningStudies][YYMM]/[YYYYMMDDXXXXXX]"
           OFString subdirectoryName = opt_sortConcerningStudies;
-          generateImageStoreDirectory(imageDataSet, subdirectoryName, imageManageNumber);
+          imageManageNumberFromDB = generateImageStoreDirectory(imageDataSet, subdirectoryName, imageManageNumber);
 
           // create subdirectoryPathAndName (string with full path to new subdirectory)
           subdirectoryPathAndName = cbdata->imageFileName;
@@ -1972,7 +1973,8 @@ storeSCPCallback(
           rsp->DimseStatus = STATUS_STORE_Error_DataSetDoesNotMatchSOPClass;
         }
       }
-	  if (rsp->DimseStatus == STATUS_Success) insertImage(*imageDataSet, imageManageNumber, opt_outputDirectory, relateFilePathName);
+	  if (rsp->DimseStatus == STATUS_Success && imageManageNumberFromDB)
+		insertImage(*imageDataSet, imageManageNumber, opt_outputDirectory, relateFilePathName);
     }
 
     // in case opt_bitPreserving is set, do some other things
