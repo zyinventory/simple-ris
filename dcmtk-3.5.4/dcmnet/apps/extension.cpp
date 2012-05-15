@@ -91,6 +91,11 @@ void getTimeNumberValue(DcmDataset *imageDataSet, int &intValue, DcmTagKey& key,
   if (opt_debug) printf("%s : TM %d\n", key.toString().c_str(), intValue);
 }
 
+void rollbackDB()
+{
+  rollbackDicomDB();
+}
+
 bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString& outputDirectory, OFString& relateFilePathName)
 {
   char buff[1024];

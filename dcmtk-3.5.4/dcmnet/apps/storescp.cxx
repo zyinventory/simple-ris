@@ -1973,8 +1973,13 @@ storeSCPCallback(
           rsp->DimseStatus = STATUS_STORE_Error_DataSetDoesNotMatchSOPClass;
         }
       }
-	  if (rsp->DimseStatus == STATUS_Success && imageManageNumberFromDB)
-		insertImage(*imageDataSet, imageManageNumber, opt_outputDirectory, relateFilePathName);
+	  if(imageManageNumberFromDB)
+	  {
+		if (rsp->DimseStatus == STATUS_Success)
+		  insertImage(*imageDataSet, imageManageNumber, opt_outputDirectory, relateFilePathName);
+		else
+		  rollbackDB();
+	  }
     }
 
     // in case opt_bitPreserving is set, do some other things
