@@ -242,10 +242,16 @@ bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString
   }
   else
   {
+	CERR << "file:" << relateFilePathName << endl;
 	logError(CERR);
+	size_t pixelCounter = 0;
+	if(imageDataSet) imageDataSet->print(CERR, 1, 0, NULL, &pixelCounter);
 	return false;
   }
 }
+
+static OFBool hasCurrentDate = OFFalse;
+static OFDateTime currentDate;
 
 bool generateImageStoreDirectory(DcmDataset **imageDataSet, OFString& subdirectoryName, OFString& imageManageNumber)
 {
@@ -254,8 +260,11 @@ bool generateImageStoreDirectory(DcmDataset **imageDataSet, OFString& subdirecto
   //size_t pixelCounter = 0;
   //if(imageDataSet) (*imageDataSet)->print(COUT, 1, 0, NULL, &pixelCounter);
 
-  OFDateTime currentDate;
-  currentDate.setCurrentDateTime();
+  if( ! hasCurrentDate )
+  {
+	currentDate.setCurrentDateTime();
+	hasCurrentDate = OFTrue;
+  }
 
   if(imageDataSet)
   {
@@ -272,11 +281,13 @@ bool generateImageStoreDirectory(DcmDataset **imageDataSet, OFString& subdirecto
   strncpy(buf, studyDate.c_str() + 2, 4); // YYMM
   buf[4] = PATH_SEPARATOR; // YYMM/
   // old study's imageManageNumber or YYMM/YYYYMMDDXXXXXX
-  bool dbManageNumberSuccess = getManageNumber(buf + 5, studyInstUID.empty() ? NULL : studyInstUID.c_str(), atoi(studyDate.c_str()));
+  bool dbManageNumberSuccess = getManageNumber( buf + 5, studyInstUID.empty() ? NULL : studyInstUID.c_str(), atoi(studyDate.c_str()), NULL /* &COUT */);
   if( ! dbManageNumberSuccess )
   {
 	// no db seq value, using current time format: NODB/YYYMMDD_XXXXX, XXXXX = seconds in today
 	logError(CERR);
+	size_t pixelCounter = 0;
+	if(imageDataSet && *imageDataSet) (*imageDataSet)->print(CERR, 1, 0, NULL, &pixelCounter);
     strncpy(buf, "NODB", 4); // NODB
     buf[4] = PATH_SEPARATOR; // NODB/
     sprintf(buf + 5, "%04u%02u%02u_%05u", // NODB/YYYMMDD_XXXXX

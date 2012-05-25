@@ -207,22 +207,36 @@ bool commitDicomDB()
   return TRUE;
 }
 
-bool getManageNumber(char * const outImageManageNum, const char * const studyUid, int currentStudyDateNumber)
+bool getManageNumber(char * const outImageManageNum, const char * const studyUid, int currentStudyDateNumber, ostream *pLogStream)
 {
-  if( ! (connected ? true : connectDicomDB()) ) return false;
+  if( ! (connected ? true : connectDicomDB()) ) return FALSE;
   EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_GetManageNumber ) );
   if(studyUid)
   {
+	// select image manage number from old study level, imange manage number including '_' is invalid.
     strncpy(oldStudyUid, studyUid, sizeof(oldStudyUid));
-    EXEC SQL WHENEVER NOT FOUND GOTO NODATA;
-    EXEC SQL SELECT STU_IMGMANAGENUM INTO :imageManageNumber FROM STUDYLEVEL WHERE STU_STUINSUID=:oldStudyUid;
-    EXEC SQL WHENEVER NOT FOUND continue;
+    EXEC SQL WHENEVER NOT FOUND GOTO NO_STUDY_MANAGE_NUMBER;
+    EXEC SQL SELECT STU_IMGMANAGENUM INTO :imageManageNumber FROM STUDYLEVEL WHERE STU_STUINSUID=:oldStudyUid and INSTR(STU_IMGMANAGENUM, '_')=0;
+	if(pLogStream) *pLogStream << oldStudyUid << " found old image manage number in studylevel: " << imageManageNumber << endl;
     goto ReturnOutputString;
-    return TRUE;
-NODATA:
-    ;
+
+NO_STUDY_MANAGE_NUMBER:
+	// select image manage number from old image level, imange manage number including '_' is invalid.
+	EXEC SQL WHENEVER NOT FOUND GOTO NO_IMAGE_MANAGE_NUMBER;
+	EXEC SQL PREPARE StmtGetImgMngNum FROM SELECT DISTINCT SUBSTR(PATH,8,14) FROM IMAGELEVEL WHERE STUINSUID=:oldStudyInstanceUID AND INSTR(SUBSTR(PATH,8,14), '_')=0;
+	EXEC SQL DECLARE CurImgMngNum CURSOR FOR StmtGetImgMngNum;
+	EXEC SQL OPEN CurImgMngNum USING :oldStudyUid;
+	EXEC SQL FETCH CurImgMngNum INTO :imageManageNumber;
+	EXEC SQL CLOSE CurImgMngNum;
+	if(pLogStream) *pLogStream << oldStudyUid << " found old image manage number in imagelevel: " << imageManageNumber << endl;
+    goto ReturnOutputString;
+
+NO_IMAGE_MANAGE_NUMBER:
+	EXEC SQL CLOSE CurImgMngNum;
   }
 
+  // no old image manage number, create new number.
+  EXEC SQL WHENEVER NOT FOUND continue;
   if(currentStudyDateNumber > 0)
   {
     dateNumber = currentStudyDateNumber;
@@ -232,6 +246,7 @@ NODATA:
   {
     EXEC SQL SELECT TO_CHAR(SYSDATE, 'YYYYMMDD') || TO_CHAR(LOCIMGDIRSEQ.NEXTVAL, 'FM000000') INTO :imageManageNumber FROM DUAL;
   }
+  if(pLogStream) *pLogStream << oldStudyUid << " create a new image manage number: " << imageManageNumber << endl;
 
 ReturnOutputString:
   strncpy(outImageManageNum, imageManageNumber, sizeof(imageManageNumber));
