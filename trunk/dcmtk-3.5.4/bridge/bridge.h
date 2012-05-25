@@ -70,7 +70,7 @@ typedef struct tagImgDataset
 } ImgDataset, *PImgDataset;
 
 bool insertImageInfoToDB(PImgDataset);
-bool getManageNumber(char * const outImageManageNum, const char * const studyUid, int currentStudyDateNumber);
+bool getManageNumber(char * const outImageManageNum, const char * const studyUid, int currentStudyDateNumber, ostream* pLogStream = NULL);
 
 // ------------- WLM Condition -----------------
 

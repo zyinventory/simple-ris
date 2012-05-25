@@ -142,23 +142,28 @@ static const short sqlcud0[] =
 20,0,0,2,0,0,32,190,0,0,0,0,0,1,0,
 35,0,0,0,0,0,27,198,0,0,4,4,0,1,0,1,97,0,0,1,10,0,0,1,10,0,0,1,10,0,0,
 66,0,0,4,0,0,30,205,0,0,0,0,0,1,0,
-81,0,0,5,73,0,4,218,0,0,2,1,0,1,0,2,97,0,0,1,97,0,0,
-104,0,0,6,85,0,4,229,0,0,2,1,0,1,0,1,3,0,0,2,97,0,0,
-127,0,0,7,100,0,4,233,0,0,1,0,0,1,0,2,97,0,0,
-146,0,0,8,1855,0,6,298,0,0,52,52,0,1,0,2,3,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,3,
+81,0,0,5,109,0,4,219,0,0,2,1,0,1,0,2,97,0,0,1,97,0,0,
+104,0,0,6,124,0,17,226,0,0,0,0,0,1,0,
+119,0,0,6,0,0,45,228,0,0,1,1,0,1,0,1,97,0,0,
+138,0,0,6,0,0,13,229,0,0,1,0,0,1,0,2,97,0,0,
+157,0,0,6,0,0,15,230,0,0,0,0,0,1,0,
+172,0,0,6,0,0,15,235,0,0,0,0,0,1,0,
+187,0,0,7,85,0,4,243,0,0,2,1,0,1,0,1,3,0,0,2,97,0,0,
+210,0,0,8,100,0,4,247,0,0,1,0,0,1,0,2,97,0,0,
+229,0,0,9,1855,0,6,313,0,0,52,52,0,1,0,2,3,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,3,
 0,0,1,3,0,0,1,3,0,0,1,3,0,0,1,68,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,3,0,0,1,3,0,
 0,1,3,0,0,1,3,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,
 0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,
 0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,3,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,
 97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,
 1,97,0,0,1,97,0,0,1,97,0,0,
-369,0,0,9,0,0,17,362,0,0,1,1,0,1,0,1,97,0,0,
-388,0,0,9,0,0,45,364,0,0,4,4,0,1,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,
-419,0,0,9,0,0,13,367,0,0,23,0,0,1,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,
-0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,
-0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,3,0,0,2,3,
-0,0,
-526,0,0,9,0,0,15,370,0,0,0,0,0,1,0,
+452,0,0,10,0,0,17,377,0,0,1,1,0,1,0,1,97,0,0,
+471,0,0,10,0,0,45,379,0,0,4,4,0,1,0,1,97,0,0,1,97,0,0,1,97,0,0,1,97,0,0,
+502,0,0,10,0,0,13,382,0,0,23,0,0,1,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,
+0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,
+97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,97,0,0,2,3,0,0,
+2,3,0,0,
+609,0,0,10,0,0,15,385,0,0,0,0,0,1,0,
 };
 
 
@@ -568,17 +573,18 @@ bool commitDicomDB()
   return TRUE;
 }
 
-bool getManageNumber(char * const outImageManageNum, const char * const studyUid, int currentStudyDateNumber)
+bool getManageNumber(char * const outImageManageNum, const char * const studyUid, int currentStudyDateNumber, ostream *pLogStream)
 {
-  if( ! (connected ? true : connectDicomDB()) ) return false;
+  if( ! (connected ? true : connectDicomDB()) ) return FALSE;
   /* EXEC SQL  WHENEVER SQLERROR DO return( SqlError( BRIDGE_GetManageNumber ) ); */ 
 
   if(studyUid)
   {
+	// select image manage number from old study level, imange manage number including '_' is invalid.
     strncpy(oldStudyUid, studyUid, sizeof(oldStudyUid));
-    /* EXEC SQL WHENEVER NOT FOUND GOTO NODATA; */ 
+    /* EXEC SQL WHENEVER NOT FOUND GOTO NO_STUDY_MANAGE_NUMBER; */ 
 
-    /* EXEC SQL SELECT STU_IMGMANAGENUM INTO :imageManageNumber FROM STUDYLEVEL WHERE STU_STUINSUID=:oldStudyUid; */ 
+    /* EXEC SQL SELECT STU_IMGMANAGENUM INTO :imageManageNumber FROM STUDYLEVEL WHERE STU_STUINSUID=:oldStudyUid and INSTR(STU_IMGMANAGENUM, '_')=0; */ 
 
 {
     struct sqlexd sqlstm;
@@ -587,7 +593,7 @@ bool getManageNumber(char * const outImageManageNum, const char * const studyUid
     sqlstm.sqladtp = &sqladt;
     sqlstm.sqltdsp = &sqltds;
     sqlstm.stmt = "select STU_IMGMANAGENUM into :b0  from STUDYLEVEL where \
-STU_STUINSUID=:b1";
+(STU_STUINSUID=:b1 and INSTR(STU_IMGMANAGENUM,'_')=0)";
     sqlstm.iters = (unsigned int  )1;
     sqlstm.offset = (unsigned int  )81;
     sqlstm.selerr = (unsigned short)1;
@@ -621,18 +627,166 @@ STU_STUINSUID=:b1";
     sqlstm.sqpadto = sqlstm.sqadto;
     sqlstm.sqptdso = sqlstm.sqtdso;
     sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
-    if (sqlca.sqlcode == 100) goto NODATA;
+    if (sqlca.sqlcode == 100) goto NO_STUDY_MANAGE_NUMBER;
     if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetManageNumber));
 }
 
 
-    /* EXEC SQL WHENEVER NOT FOUND continue; */ 
-
+	if(pLogStream) *pLogStream << oldStudyUid << " found old image manage number in studylevel: " << imageManageNumber << endl;
     goto ReturnOutputString;
-    return TRUE;
-NODATA:
-    ;
+
+NO_STUDY_MANAGE_NUMBER:
+	// select image manage number from old image level, imange manage number including '_' is invalid.
+	/* EXEC SQL WHENEVER NOT FOUND GOTO NO_IMAGE_MANAGE_NUMBER; */ 
+
+	/* EXEC SQL PREPARE StmtGetImgMngNum FROM SELECT DISTINCT SUBSTR(PATH,8,14) FROM IMAGELEVEL WHERE STUINSUID=:oldStudyInstanceUID AND INSTR(SUBSTR(PATH,8,14), '_')=0; */ 
+
+{
+ struct sqlexd sqlstm;
+ sqlstm.sqlvsn = 12;
+ sqlstm.arrsiz = 4;
+ sqlstm.sqladtp = &sqladt;
+ sqlstm.sqltdsp = &sqltds;
+ sqlstm.stmt = "select distinct SUBSTR(PATH,8,14)  from IMAGELEVEL where (S\
+TUINSUID=:oldStudyInstanceUID and INSTR(SUBSTR(PATH,8,14),'_')=0)";
+ sqlstm.iters = (unsigned int  )1;
+ sqlstm.offset = (unsigned int  )104;
+ sqlstm.cud = sqlcud0;
+ sqlstm.sqlest = (unsigned char  *)&sqlca;
+ sqlstm.sqlety = (unsigned short)4352;
+ sqlstm.occurs = (unsigned int  )0;
+ sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
+ if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetManageNumber));
+}
+
+
+	/* EXEC SQL DECLARE CurImgMngNum CURSOR FOR StmtGetImgMngNum; */ 
+
+	/* EXEC SQL OPEN CurImgMngNum USING :oldStudyUid; */ 
+
+{
+ struct sqlexd sqlstm;
+ sqlstm.sqlvsn = 12;
+ sqlstm.arrsiz = 4;
+ sqlstm.sqladtp = &sqladt;
+ sqlstm.sqltdsp = &sqltds;
+ sqlstm.stmt = "";
+ sqlstm.iters = (unsigned int  )1;
+ sqlstm.offset = (unsigned int  )119;
+ sqlstm.selerr = (unsigned short)1;
+ sqlstm.cud = sqlcud0;
+ sqlstm.sqlest = (unsigned char  *)&sqlca;
+ sqlstm.sqlety = (unsigned short)4352;
+ sqlstm.occurs = (unsigned int  )0;
+ sqlstm.sqcmod = (unsigned int )0;
+ sqlstm.sqhstv[0] = (         void  *)oldStudyUid;
+ sqlstm.sqhstl[0] = (unsigned int  )65;
+ sqlstm.sqhsts[0] = (         int  )0;
+ sqlstm.sqindv[0] = (         void  *)0;
+ sqlstm.sqinds[0] = (         int  )0;
+ sqlstm.sqharm[0] = (unsigned int  )0;
+ sqlstm.sqadto[0] = (unsigned short )0;
+ sqlstm.sqtdso[0] = (unsigned short )0;
+ sqlstm.sqphsv = sqlstm.sqhstv;
+ sqlstm.sqphsl = sqlstm.sqhstl;
+ sqlstm.sqphss = sqlstm.sqhsts;
+ sqlstm.sqpind = sqlstm.sqindv;
+ sqlstm.sqpins = sqlstm.sqinds;
+ sqlstm.sqparm = sqlstm.sqharm;
+ sqlstm.sqparc = sqlstm.sqharc;
+ sqlstm.sqpadto = sqlstm.sqadto;
+ sqlstm.sqptdso = sqlstm.sqtdso;
+ sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
+ if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetManageNumber));
+}
+
+
+	/* EXEC SQL FETCH CurImgMngNum INTO :imageManageNumber; */ 
+
+{
+ struct sqlexd sqlstm;
+ sqlstm.sqlvsn = 12;
+ sqlstm.arrsiz = 4;
+ sqlstm.sqladtp = &sqladt;
+ sqlstm.sqltdsp = &sqltds;
+ sqlstm.iters = (unsigned int  )1;
+ sqlstm.offset = (unsigned int  )138;
+ sqlstm.selerr = (unsigned short)1;
+ sqlstm.cud = sqlcud0;
+ sqlstm.sqlest = (unsigned char  *)&sqlca;
+ sqlstm.sqlety = (unsigned short)4352;
+ sqlstm.occurs = (unsigned int  )0;
+ sqlstm.sqfoff = (           int )0;
+ sqlstm.sqfmod = (unsigned int )2;
+ sqlstm.sqhstv[0] = (         void  *)imageManageNumber;
+ sqlstm.sqhstl[0] = (unsigned int  )15;
+ sqlstm.sqhsts[0] = (         int  )0;
+ sqlstm.sqindv[0] = (         void  *)0;
+ sqlstm.sqinds[0] = (         int  )0;
+ sqlstm.sqharm[0] = (unsigned int  )0;
+ sqlstm.sqadto[0] = (unsigned short )0;
+ sqlstm.sqtdso[0] = (unsigned short )0;
+ sqlstm.sqphsv = sqlstm.sqhstv;
+ sqlstm.sqphsl = sqlstm.sqhstl;
+ sqlstm.sqphss = sqlstm.sqhsts;
+ sqlstm.sqpind = sqlstm.sqindv;
+ sqlstm.sqpins = sqlstm.sqinds;
+ sqlstm.sqparm = sqlstm.sqharm;
+ sqlstm.sqparc = sqlstm.sqharc;
+ sqlstm.sqpadto = sqlstm.sqadto;
+ sqlstm.sqptdso = sqlstm.sqtdso;
+ sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
+ if (sqlca.sqlcode == 100) goto NO_IMAGE_MANAGE_NUMBER;
+ if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetManageNumber));
+}
+
+
+	/* EXEC SQL CLOSE CurImgMngNum; */ 
+
+{
+ struct sqlexd sqlstm;
+ sqlstm.sqlvsn = 12;
+ sqlstm.arrsiz = 4;
+ sqlstm.sqladtp = &sqladt;
+ sqlstm.sqltdsp = &sqltds;
+ sqlstm.iters = (unsigned int  )1;
+ sqlstm.offset = (unsigned int  )157;
+ sqlstm.cud = sqlcud0;
+ sqlstm.sqlest = (unsigned char  *)&sqlca;
+ sqlstm.sqlety = (unsigned short)4352;
+ sqlstm.occurs = (unsigned int  )0;
+ sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
+ if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetManageNumber));
+}
+
+
+	if(pLogStream) *pLogStream << oldStudyUid << " found old image manage number in imagelevel: " << imageManageNumber << endl;
+    goto ReturnOutputString;
+
+NO_IMAGE_MANAGE_NUMBER:
+	/* EXEC SQL CLOSE CurImgMngNum; */ 
+
+{
+ struct sqlexd sqlstm;
+ sqlstm.sqlvsn = 12;
+ sqlstm.arrsiz = 4;
+ sqlstm.sqladtp = &sqladt;
+ sqlstm.sqltdsp = &sqltds;
+ sqlstm.iters = (unsigned int  )1;
+ sqlstm.offset = (unsigned int  )172;
+ sqlstm.cud = sqlcud0;
+ sqlstm.sqlest = (unsigned char  *)&sqlca;
+ sqlstm.sqlety = (unsigned short)4352;
+ sqlstm.occurs = (unsigned int  )0;
+ sqlcxt((void **)0, &sqlctx, &sqlstm, &sqlfpn);
+ if (sqlca.sqlcode < 0) return(SqlError(BRIDGE_GetManageNumber));
+}
+
+
   }
+
+  // no old image manage number, create new number.
+  /* EXEC SQL WHENEVER NOT FOUND continue; */ 
 
   if(currentStudyDateNumber > 0)
   {
@@ -648,7 +802,7 @@ NODATA:
     sqlstm.stmt = "select (TO_CHAR(:b0)||TO_CHAR(LOCIMGDIRSEQ.nextval ,'FM0\
 00000')) into :b1  from DUAL ";
     sqlstm.iters = (unsigned int  )1;
-    sqlstm.offset = (unsigned int  )104;
+    sqlstm.offset = (unsigned int  )187;
     sqlstm.selerr = (unsigned short)1;
     sqlstm.cud = sqlcud0;
     sqlstm.sqlest = (unsigned char  *)&sqlca;
@@ -698,7 +852,7 @@ NODATA:
     sqlstm.stmt = "select (TO_CHAR(SYSDATE,'YYYYMMDD')||TO_CHAR(LOCIMGDIRSE\
 Q.nextval ,'FM000000')) into :b0  from DUAL ";
     sqlstm.iters = (unsigned int  )1;
-    sqlstm.offset = (unsigned int  )127;
+    sqlstm.offset = (unsigned int  )210;
     sqlstm.selerr = (unsigned short)1;
     sqlstm.cud = sqlcud0;
     sqlstm.sqlest = (unsigned char  *)&sqlca;
@@ -727,6 +881,7 @@ Q.nextval ,'FM000000')) into :b0  from DUAL ";
 
 
   }
+  if(pLogStream) *pLogStream << oldStudyUid << " create a new image manage number: " << imageManageNumber << endl;
 
 ReturnOutputString:
   strncpy(outImageManageNum, imageManageNumber, sizeof(imageManageNumber));
@@ -879,7 +1034,7 @@ amStuId , paramSerNum => :paramSerNum , paramImaNum => :paramImaNum , paramRe\
 qPhysician => :paramReqPhysician , paramReqService => :paramReqService ) ; EN\
 D ;";
   sqlstm.iters = (unsigned int  )1;
-  sqlstm.offset = (unsigned int  )146;
+  sqlstm.offset = (unsigned int  )229;
   sqlstm.cud = sqlcud0;
   sqlstm.sqlest = (unsigned char  *)&sqlca;
   sqlstm.sqlety = (unsigned short)4352;
@@ -1337,7 +1492,7 @@ bool GetWorklistFromDB(FetchWorklistCallback callback, WlmDBInteractionManager *
   sqlstm.sqltdsp = &sqltds;
   sqlstm.stmt = "";
   sqlstm.iters = (unsigned int  )1;
-  sqlstm.offset = (unsigned int  )369;
+  sqlstm.offset = (unsigned int  )452;
   sqlstm.cud = sqlcud0;
   sqlstm.sqlest = (unsigned char  *)&sqlca;
   sqlstm.sqlety = (unsigned short)4352;
@@ -1376,7 +1531,7 @@ bool GetWorklistFromDB(FetchWorklistCallback callback, WlmDBInteractionManager *
   sqlstm.sqltdsp = &sqltds;
   sqlstm.stmt = "";
   sqlstm.iters = (unsigned int  )1;
-  sqlstm.offset = (unsigned int  )388;
+  sqlstm.offset = (unsigned int  )471;
   sqlstm.selerr = (unsigned short)1;
   sqlstm.cud = sqlcud0;
   sqlstm.sqlest = (unsigned char  *)&sqlca;
@@ -1440,7 +1595,7 @@ bool GetWorklistFromDB(FetchWorklistCallback callback, WlmDBInteractionManager *
  sqlstm.sqladtp = &sqladt;
  sqlstm.sqltdsp = &sqltds;
  sqlstm.iters = (unsigned int  )1;
- sqlstm.offset = (unsigned int  )419;
+ sqlstm.offset = (unsigned int  )502;
  sqlstm.selerr = (unsigned short)1;
  sqlstm.cud = sqlcud0;
  sqlstm.sqlest = (unsigned char  *)&sqlca;
@@ -1658,7 +1813,7 @@ bool GetWorklistFromDB(FetchWorklistCallback callback, WlmDBInteractionManager *
   sqlstm.sqladtp = &sqladt;
   sqlstm.sqltdsp = &sqltds;
   sqlstm.iters = (unsigned int  )1;
-  sqlstm.offset = (unsigned int  )526;
+  sqlstm.offset = (unsigned int  )609;
   sqlstm.cud = sqlcud0;
   sqlstm.sqlest = (unsigned char  *)&sqlca;
   sqlstm.sqlety = (unsigned short)4352;
