@@ -72,7 +72,9 @@ int main( int argc, char *argv[] )
 	ofs->close();
 	DeleteEmptyFile(filePath.c_str());
   }
-  
+#ifdef _DEBUG
+  _CrtDumpMemoryLeaks();
+#endif
   return( result );
 }
 

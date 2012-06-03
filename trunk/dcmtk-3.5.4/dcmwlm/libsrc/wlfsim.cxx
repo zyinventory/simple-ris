@@ -65,8 +65,6 @@ END_EXTERN_C
 #include "dcmtk/dcmdata/dcvrtm.h"
 #include "dcmtk/dcmwlm/wltypdef.h"
 #include "dcmtk/dcmdata/dctk.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 #include "dcmtk/dcmwlm/wlfsim.h"
 

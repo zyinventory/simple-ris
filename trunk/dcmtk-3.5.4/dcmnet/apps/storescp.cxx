@@ -256,7 +256,8 @@ int main(int argc, char *argv[])
 
   char tempstr[20];
   OFConsoleApplication app(OFFIS_CONSOLE_APPLICATION , "DICOM storage (C-STORE) SCP", rcsid);
-  OFCommandLine cmd;
+  OFCommandLine *pCmd = new OFCommandLine();
+  OFCommandLine &cmd = *pCmd;
 
   cmd.setParamColumn(LONGCOL+SHORTCOL+4);
   cmd.addParam("port", "tcp/ip port number to listen on", OFCmdParam::PM_Optional);
@@ -1173,6 +1174,10 @@ int main(int argc, char *argv[])
 	DeleteEmptyFile(logPath);
   }
 
+  delete pCmd;
+#ifdef _DEBUG
+  _CrtDumpMemoryLeaks();
+#endif
   return 0;
 }
 

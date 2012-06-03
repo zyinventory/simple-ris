@@ -261,7 +261,13 @@ END_EXTERN_C
 #ifndef __BORLANDC__
 BEGIN_EXTERN_C
 #endif
+#ifdef _DEBUG
+#define _CRTDBG_MAP_ALLOC
+#endif
 #include <stdlib.h>
+#ifdef _DEBUG
+#include <crtdbg.h>
+#endif
 #ifndef __BORLANDC__
 END_EXTERN_C
 #endif

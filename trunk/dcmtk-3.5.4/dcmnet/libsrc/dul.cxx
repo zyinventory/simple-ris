@@ -597,7 +597,10 @@ DUL_ReceiveAssociationRQ(
     cond = receiveTransportConnection(network, block, timeout, params, association);
 
     if (cond.bad() || (cond.code() == DULC_FORKEDCHILD))
+	{
+	    destroyAssociationKey(association);
         return cond;
+	}
 
     cond = PRV_StateMachine(network, association,
                   TRANS_CONN_INDICATION, (*network)->protocolState, params);
@@ -1640,6 +1643,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 
         SECURITY_ATTRIBUTES sa;
         sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+		// Set the bInheritHandle flag so pipe handles are inherited.
         sa.bInheritHandle = TRUE;
         sa.lpSecurityDescriptor = NULL;
 
@@ -1660,19 +1664,9 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
             return makeDcmnetCondition(DULC_CANNOTFORK, OF_error, buf4);
         }
 
+		// Ensure the write handle to the pipe is not inherited.
 		SetHandleInformation( hChildStdInWrite, HANDLE_FLAG_INHERIT, 0);
-		/*
-		// create duplicate of write end handle of pipe
-        if (!DuplicateHandle(GetCurrentProcess(),hChildStdInWrite,
-                           GetCurrentProcess(),&hChildStdInWriteDup,0,
-                           FALSE,DUPLICATE_SAME_ACCESS)) 
-        {
-            return makeDcmnetCondition(DULC_CANNOTFORK, OF_error, "Error while duplicating handle");
-        }
 
-		// destroy original write end handle of pipe
-        CloseHandle(hChildStdInWrite);
-		*/
 		// we need a STARTUPINFO and a PROCESS_INFORMATION structure for CreateProcess.
         STARTUPINFO si;
         PROCESS_INFORMATION pi;
@@ -1683,13 +1677,13 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 		// the child uses the same stdout and stderr as the parent, but
 		// stdin is the read end of our anonymous pipe.
         si.cb = sizeof(si);
-        si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+        si.dwFlags |= STARTF_USESTDHANDLES; // | STARTF_USESHOWWINDOW;
         si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
         si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
         si.hStdInput = hChildStdInRead;
-		si.wShowWindow |= SW_MINIMIZE;
+		// si.wShowWindow |= SW_MINIMIZE;
 		// create child process. 
-        if (!CreateProcess(NULL,OFconst_cast(char *,cmdLine.c_str()),NULL,NULL,TRUE,CREATE_NEW_CONSOLE,NULL,NULL,&si,&pi))
+        if (!CreateProcess(NULL,OFconst_cast(char *,cmdLine.c_str()),NULL,NULL,TRUE, NULL, NULL, NULL, &si, &pi))
         {
             char buf4[256];
             sprintf(buf4, "CreateProcess failed: (%i)",(int)GetLastError());
@@ -1717,6 +1711,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
                     return makeDcmnetCondition (DULC_CANNOTFORK, OF_error, "error while writing to anonymous pipe");
                 }
 				CloseHandle(hChildStdInWrite);
+				CloseHandle(hChildStdInRead);
 
 				// return OF_ok status code DULC_FORKEDCHILD with descriptive text
                 char buf4[256];
@@ -1732,6 +1727,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
                 CloseHandle(pi.hProcess);
                 CloseHandle(pi.hThread);
                 closesocket((SOCKET)sock);
+				CloseHandle(hChildStdInWrite);
                 return makeDcmnetCondition (DULC_CANNOTFORK, OF_error, "error while duplicating socket handle");
             }
         }

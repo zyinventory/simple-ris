@@ -58,7 +58,13 @@ void *malloc( size_t );
 void free( void* );
 int read();
 #else
+#ifdef _DEBUG
+#define _CRTDBG_MAP_ALLOC
+#endif
 #include <stdlib.h>
+#ifdef _DEBUG
+#include <crtdbg.h>
+#endif
 #endif  /* __GNUC__ */
 #define YY_USE_PROTOS
 #define YY_USE_CONST
