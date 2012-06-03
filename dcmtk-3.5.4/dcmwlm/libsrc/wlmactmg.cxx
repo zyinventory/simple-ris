@@ -356,7 +356,12 @@ OFCondition WlmActivityManager::WaitForAssociation( T_ASC_Network * net )
   OFCondition cond;
   cond = ASC_receiveAssociation( net, &assoc, opt_maxPDU, NULL, NULL, OFFalse, DUL_NOBLOCK, timeout );
 
-  if( cond != DUL_NOASSOCIATIONREQUEST )
+  if( cond == DUL_NOASSOCIATIONREQUEST )
+  {
+    ASC_dropAssociation( assoc );
+    ASC_destroyAssociation( &assoc );
+  }
+  else
   {
 	if( cond.good() && cond.code() == DULC_FORKEDCHILD )
     {
