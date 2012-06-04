@@ -1578,7 +1578,22 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
 
 cleanup:
 
-  if (cond.code() == DULC_FORKEDCHILD) return cond;
+  if (cond.code() == DULC_FORKEDCHILD)
+  {
+	OFCondition innerCond = ASC_dropSCPAssociation(assoc);
+	if (innerCond.bad())
+	{
+	  DimseCondition::dump(innerCond);
+	  exit(1);
+	}
+	innerCond = ASC_destroyAssociation(&assoc);
+	if (innerCond.bad())
+	{
+	  DimseCondition::dump(innerCond);
+	  exit(1);
+	}
+	return cond;
+  }
 
   cond = ASC_dropSCPAssociation(assoc);
   if (cond.bad())
