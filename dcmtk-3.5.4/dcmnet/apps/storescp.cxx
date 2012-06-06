@@ -238,6 +238,9 @@ extern "C" void sigChildHandler(int)
 
 int main(int argc, char *argv[])
 {
+#ifdef _DEBUG
+  _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+#endif
   T_ASC_Network *net;
   DcmAssociationConfiguration asccfg;
 

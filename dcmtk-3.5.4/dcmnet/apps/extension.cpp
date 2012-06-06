@@ -243,6 +243,9 @@ bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString
   else
   {
 	CERR << "file:" << relateFilePathName << endl;
+	CERR << "file size:" << dataset.fileSize.QuadPart << endl;
+	CERR << "file date:" << dataset.fileDate << endl;
+	CERR << "file time:" << dataset.fileTime << endl;
 	logError(CERR);
 	size_t pixelCounter = 0;
 	if(imageDataSet) imageDataSet->print(CERR, 1, 0, NULL, &pixelCounter);

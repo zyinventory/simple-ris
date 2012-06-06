@@ -64,6 +64,10 @@ int read();
 #include <stdlib.h>
 #ifdef _DEBUG
 #include <crtdbg.h>
+#ifndef DBG_NEW
+  #define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+  #define new DBG_NEW
+#endif
 #endif
 #endif  /* __GNUC__ */
 #define YY_USE_PROTOS
