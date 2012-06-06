@@ -25,7 +25,7 @@ char paramHddRoot[65];
 char paramPath[257];
 char paramImgManageNum[15];
 int paramFileDate, paramFileTime, paramInsertDate, paramInsertTime;
-unsigned __int64 paramFileSize;
+__int64 paramFileSize;
 char paramTransferSyntaxUid[65];
 char paramSopClaUid[65];
 char paramSopInsUid[65];

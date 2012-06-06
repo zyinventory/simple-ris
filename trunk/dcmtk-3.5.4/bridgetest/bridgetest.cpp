@@ -1,6 +1,5 @@
 // bridgetest.cpp : 定义控制台应用程序的入口点。
 //
-
 #include "stdafx.h"
 #include <iostream>
 #include <fstream>
@@ -12,6 +11,11 @@ using namespace std;
 #define FILENAME "count.txt"
 int _tmain(int argc, _TCHAR* argv[])
 {
+#ifdef _DEBUG
+  _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+#endif
+  void *p = new fstream();
+
   fstream fileStream;
   for(int i = 0; i < 10; i++)
   {
@@ -55,4 +59,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	cout << time_ms.QuadPart << endl;
 	cout << time_ms.LowPart << endl;
   }
+#ifdef _DEBUG
+  _CrtDumpMemoryLeaks();
+#endif
 }

@@ -267,6 +267,10 @@ BEGIN_EXTERN_C
 #include <stdlib.h>
 #ifdef _DEBUG
 #include <crtdbg.h>
+#ifndef DBG_NEW
+  #define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+  #define new DBG_NEW
+#endif
 #endif
 #ifndef __BORLANDC__
 END_EXTERN_C
