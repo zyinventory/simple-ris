@@ -13,7 +13,7 @@ static size_t messageLength = 0;
 static bool connected = false;
 
 EXEC SQL BEGIN DECLARE SECTION;
-const unsigned char connection[] = "dicom/dicom";
+const unsigned char connection[] = "dicom/dicom@dicomdb";
 
 // ---------StoreSCP-----------
 char oldStudyUid[65] = "";
