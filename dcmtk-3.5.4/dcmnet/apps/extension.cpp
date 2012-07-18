@@ -96,7 +96,7 @@ void rollbackDB()
   rollbackDicomDB();
 }
 
-bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString& outputDirectory, OFString& relateFilePathName, OFString& volumeLabel)
+bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString& outputDirectory, OFString& relateFilePathName, OFString& volumeLabel, OFBool needCompress)
 {
   ImgDataset dataset;
   ::ZeroMemory(&dataset, sizeof(ImgDataset));
@@ -104,8 +104,10 @@ bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString
   OFString filePath = outputDirectory;
   filePath += PATH_SEPARATOR;
   filePath.append(relateFilePathName);
+  if( ! needCompress ) filePath.append(".DCM");
 
   dataset.pHddRoot = volumeLabel.c_str();
+  relateFilePathName.append(".DCM");
   dataset.pPath = relateFilePathName.c_str();
   dataset.pImgManageNum = imageManageNumber.c_str();
 
@@ -117,16 +119,16 @@ bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString
   dataset.insertDate = dateTime.getDate().getYear() * 10000 + dateTime.getDate().getMonth() * 100 + dateTime.getDate().getDay();
   dataset.insertTime = static_cast<int>(dateTime.getTime().getTimeInSeconds());
 
-  dataset.fileDate = 0;
-  dataset.fileTime = 0;
   dataset.fileSize.QuadPart = GetFileInfo(filePath.c_str(), &localTime);
-  dataset.fileDate = localTime.wYear * 10000 + localTime.wMonth * 100 + localTime.wDay;
-  dataset.fileTime = localTime.wHour * 3600 + localTime.wMinute * 60 + localTime.wSecond;
-
-  if(dataset.fileDate == 0)
-  { // open file failed, substitute at insertDate/Time
-    dataset.fileDate = dataset.insertDate;
-    dataset.fileTime = dataset.insertTime;
+  if(dataset.fileSize.QuadPart == -1LL)
+  {
+	dataset.fileDate = dataset.insertDate;
+	dataset.fileTime = dataset.insertTime;
+  }
+  else
+  {
+	dataset.fileDate = localTime.wYear * 10000 + localTime.wMonth * 100 + localTime.wDay;
+	dataset.fileTime = localTime.wHour * 3600 + localTime.wMinute * 60 + localTime.wSecond;
   }
 
   OFString valueTransferSyntaxUid;
