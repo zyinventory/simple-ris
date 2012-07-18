@@ -96,9 +96,8 @@ void rollbackDB()
   rollbackDicomDB();
 }
 
-bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString& outputDirectory, OFString& relateFilePathName)
+bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString& outputDirectory, OFString& relateFilePathName, OFString& volumeLabel)
 {
-  char buff[1024];
   ImgDataset dataset;
   ::ZeroMemory(&dataset, sizeof(ImgDataset));
 
@@ -106,12 +105,7 @@ bool insertImage(DcmDataset *imageDataSet, OFString& imageManageNumber, OFString
   filePath += PATH_SEPARATOR;
   filePath.append(relateFilePathName);
 
-  ::GetCurrentDirectory(1024, buff);
-  OFString hddRoot = buff;
-  hddRoot += PATH_SEPARATOR;
-  hddRoot += outputDirectory;
-
-  dataset.pHddRoot = hddRoot.c_str();
+  dataset.pHddRoot = volumeLabel.c_str();
   dataset.pPath = relateFilePathName.c_str();
   dataset.pImgManageNum = imageManageNumber.c_str();
 

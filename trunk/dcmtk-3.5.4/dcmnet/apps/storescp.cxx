@@ -173,6 +173,7 @@ OFString           callingpresentationaddress;   // calling Presentation Adress 
 const char *       opt_respondingaetitle = APPLICATIONTITLE;
 static OFBool      opt_secureConnection = OFFalse;    // default: no secure connection
 static OFString    opt_outputDirectory(".");          // default: output directory equals "."
+static OFString    opt_volumeLabel;   // default: output directory's full path
 static const char *opt_sortConcerningStudies = NULL;  // default: no sorting
 OFString           lastStudyInstanceUID;
 OFString           subdirectoryPathAndName;
@@ -236,11 +237,21 @@ extern "C" void sigChildHandler(int)
 #define SHORTCOL 4
 #define LONGCOL 21
 
+void exitHook()
+{
+#ifdef _DEBUG
+  _CrtDumpMemoryLeaks();
+#endif
+}
+
 int main(int argc, char *argv[])
 {
 #ifdef _DEBUG
   _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 #endif
+
+  atexit(exitHook);
+
   T_ASC_Network *net;
   DcmAssociationConfiguration asccfg;
 
@@ -275,6 +286,7 @@ int main(int argc, char *argv[])
     opt0 += opt_outputDirectory;
     opt0 += ")";
     cmd.addOption("--output-directory",          "-od",   1, "[p]ath: string", opt0.c_str());
+	cmd.addOption("--volume-label",              "-vl",   1, "[p]ath: string", "volume where the images are stored, default: output directory's full path");
 
 #if defined(HAVE_FORK) || defined(_WIN32)
   cmd.addGroup("multi-process options:", LONGCOL, SHORTCOL+2);
@@ -550,6 +562,7 @@ int main(int argc, char *argv[])
       SetDebugLevel(3);
     }
     if (cmd.findOption("--output-directory")) app.checkValue(cmd.getValue(opt_outputDirectory));
+    if (cmd.findOption("--volume-label")) app.checkValue(cmd.getValue(opt_volumeLabel));
 
     cmd.beginOptionBlock();
     if (cmd.findOption("--prefer-uncompr"))      opt_networkTransferSyntax = EXS_Unknown;
@@ -977,6 +990,14 @@ int main(int argc, char *argv[])
       return 1;
     }
   }
+  if(opt_volumeLabel.length() == 0)
+  {
+	char buff[1024];
+	::GetCurrentDirectory(1024, buff);
+	opt_volumeLabel = buff;
+	opt_volumeLabel += PATH_SEPARATOR;
+	opt_volumeLabel += opt_outputDirectory;
+  }
 
 #ifdef HAVE_FORK
     if (opt_forkMode)
@@ -1178,13 +1199,8 @@ int main(int argc, char *argv[])
   }
 
   delete pCmd;
-#ifdef _DEBUG
-  _CrtDumpMemoryLeaks();
-#endif
   return 0;
 }
-
-
 
 static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfiguration& asccfg)
 {
@@ -1999,7 +2015,7 @@ storeSCPCallback(
 	  if(imageManageNumberFromDB)
 	  {
 		if (rsp->DimseStatus == STATUS_Success)
-		  insertImage(*imageDataSet, imageManageNumber, opt_outputDirectory, relateFilePathName);
+		  insertImage(*imageDataSet, imageManageNumber, opt_outputDirectory, relateFilePathName, opt_volumeLabel);
 		else
 		  rollbackDB();
 	  }
