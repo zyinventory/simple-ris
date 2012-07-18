@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
 
   int opt_debugMode = 0;
   OFBool opt_verbose = OFFalse;
+  OFBool opt_deleteSourceFile = OFFalse;
   E_FileReadMode opt_readMode = ERM_autoDetect;
   E_TransferSyntax opt_ixfer = EXS_Unknown;
   E_GrpLenEncoding opt_oglenc = EGL_recalcGL;
@@ -131,6 +132,7 @@ int main(int argc, char *argv[])
    cmd.addOption("--version",                                "print version information and exit", OFTrue /* exclusive */);
    cmd.addOption("--verbose",                   "-v",        "verbose mode, print processing details");
    cmd.addOption("--debug",                     "-d",        "debug mode, print debug information");
+   cmd.addOption("--delete-source-file",        "-ds",       "if conversion is successful, delete source file");
 
   cmd.addGroup("input options:");
     cmd.addSubGroup("input file format:");
@@ -288,6 +290,7 @@ int main(int argc, char *argv[])
 
       if (cmd.findOption("--verbose")) opt_verbose = OFTrue;
       if (cmd.findOption("--debug")) opt_debugMode = 5;
+	  if (cmd.findOption("--delete-source-file")) opt_deleteSourceFile = OFTrue;
 
       cmd.beginOptionBlock();
       if (cmd.findOption("--read-file")) opt_readMode = ERM_autoDetect;
@@ -717,6 +720,11 @@ int main(int argc, char *argv[])
     DJDecoderRegistration::cleanup();
     DJEncoderRegistration::cleanup();
 
+	if(opt_deleteSourceFile)
+	{
+	  if (opt_verbose) COUT << "delete source file: " << opt_ifname << endl;
+	  remove(opt_ifname);
+	}
     return 0;
 }
 

@@ -177,7 +177,8 @@ static OFString    opt_volumeLabel;   // default: output directory's full path
 static const char *opt_sortConcerningStudies = NULL;  // default: no sorting
 OFString           lastStudyInstanceUID;
 OFString           subdirectoryPathAndName;
-OFList<OFString>   outputFileNameArray;
+static OFBool      needCompress;
+OFList<OFString>   outputFileNameArray, compressJobQueue;
 static const char *opt_execOnReception = NULL;        // default: don't execute anything on reception
 static const char *opt_execOnEndOfStudy = NULL;       // default: don't execute anything on end of study
 
@@ -1982,6 +1983,8 @@ storeSCPCallback(
       // determine the transfer syntax which shall be used to write the information to the file
       E_TransferSyntax xfer = opt_writeTransferSyntax;
       if (xfer == EXS_Unknown) xfer = (*imageDataSet)->getOriginalXfer();
+	  needCompress = (xfer == EXS_LittleEndianExplicit || xfer == EXS_BigEndianExplicit || xfer == EXS_LittleEndianImplicit);
+	  if( ! needCompress ) fileName.append(".DCM");
 
       // store file either with meta header or as pure dataset
       ec = cbdata->dcmff->saveFile(fileName.c_str(), xfer, opt_sequenceType, opt_groupLength,
@@ -2015,7 +2018,7 @@ storeSCPCallback(
 	  if(imageManageNumberFromDB)
 	  {
 		if (rsp->DimseStatus == STATUS_Success)
-		  insertImage(*imageDataSet, imageManageNumber, opt_outputDirectory, relateFilePathName, opt_volumeLabel);
+		  insertImage(*imageDataSet, imageManageNumber, opt_outputDirectory, relateFilePathName, opt_volumeLabel, needCompress);
 		else
 		  rollbackDB();
 	  }
@@ -2252,10 +2255,13 @@ static void executeOnReception()
      *   none.
      */
 {
+  if( ! needCompress ) return;
+
   OFString cmd = opt_execOnReception;
   time_t t = time( NULL );
   struct tm *tmp = localtime( &t );
   char outstr[80];
+  OFString dir, outputFileName;
 
   // in case a file was actually written
   if( !opt_ignore )
@@ -2263,12 +2269,12 @@ static void executeOnReception()
     // perform substitution for placeholder #p; note that
     //  - in case option --sort-conc-studies is set, #p will be substituted by subdirectoryPathAndName
     //  - and in case option --sort-conc-studies is not set, #p will be substituted by opt_outputDirectory
-    OFString dir = (opt_sortConcerningStudies == NULL) ? OFString(opt_outputDirectory) : subdirectoryPathAndName;
+    dir = (opt_sortConcerningStudies == NULL) ? OFString(opt_outputDirectory) : subdirectoryPathAndName;
     cmd = replaceChars( cmd, OFString(PATH_PLACEHOLDER), dir );
 
     // perform substitution for placeholder #f; note that outputFileNameArray.back()
     // always contains the name of the file (without path) which was written last.
-    OFString outputFileName = outputFileNameArray.back();
+    outputFileName = outputFileNameArray.back();
     cmd = replaceChars( cmd, OFString(FILENAME_PLACEHOLDER), outputFileName );
   }
 
