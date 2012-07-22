@@ -88,13 +88,15 @@ OFBool DU_findSOPClassAndInstanceInDataSet(
   DcmItem *obj,
   char* sopClass, 
   char* sopInstance,
-  OFBool tolerateSpacePaddedUIDs = OFFalse);
+  OFBool tolerateSpacePaddedUIDs = OFFalse,
+  char* transferSyntax = NULL);
 
 OFBool DU_findSOPClassAndInstanceInFile(
   const char *fname,
   char* sopClass, 
   char* sopInstance,
-  OFBool tolerateSpacePaddedUIDs = OFFalse);
+  OFBool tolerateSpacePaddedUIDs = OFFalse,
+  char* transferSyntax = NULL);
  
 unsigned long DU_fileSize(const char *fname);
 

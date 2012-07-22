@@ -227,10 +227,12 @@ DU_findSOPClassAndInstanceInDataSet(
   DcmItem *obj,
   char* sopClass, 
   char* sopInstance,
-  OFBool tolerateSpacePaddedUIDs)
+  OFBool tolerateSpacePaddedUIDs,
+  char* transferSyntax)
 {
-    OFBool result = (DU_getStringDOElement(obj, DCM_SOPClassUID, sopClass) &&
-	DU_getStringDOElement(obj, DCM_SOPInstanceUID, sopInstance));
+    OFBool result = (DU_getStringDOElement(obj, DCM_SOPClassUID, sopClass) && DU_getStringDOElement(obj, DCM_SOPInstanceUID, sopInstance));
+	if( transferSyntax && strnlen(transferSyntax, 128) == 0 )
+	  DU_getStringDOElement(obj, DCM_TransferSyntaxUID, transferSyntax);
 
     if (tolerateSpacePaddedUIDs)
     {
@@ -241,6 +243,8 @@ DU_findSOPClassAndInstanceInDataSet(
             sopClass[slength-1]=0;
         if ((0 < (slength=strlen(sopInstance)))&&(sopInstance[slength-1]==' '))
             sopInstance[slength-1]=0;
+        if (transferSyntax && (0 < (slength=strlen(transferSyntax))) && (transferSyntax[slength-1]==' '))
+            transferSyntax[slength-1]=0;
     }
     return result;
 }
@@ -250,7 +254,8 @@ DU_findSOPClassAndInstanceInFile(
   const char *fname,
   char* sopClass, 
   char* sopInstance,
-  OFBool tolerateSpacePaddedUIDs)
+  OFBool tolerateSpacePaddedUIDs,
+  char* transferSyntax)
 {
     DcmFileFormat ff;
     if (! ff.loadFile(fname, EXS_Unknown, EGL_noChange).good())
@@ -258,11 +263,11 @@ DU_findSOPClassAndInstanceInFile(
 
     /* look in the meta-header first */
     OFBool found = DU_findSOPClassAndInstanceInDataSet(
-        ff.getMetaInfo(), sopClass, sopInstance, tolerateSpacePaddedUIDs);
+        ff.getMetaInfo(), sopClass, sopInstance, tolerateSpacePaddedUIDs, transferSyntax);
 
     if (!found) {
         found = DU_findSOPClassAndInstanceInDataSet(
-            ff.getDataset(), sopClass, sopInstance, tolerateSpacePaddedUIDs);
+            ff.getDataset(), sopClass, sopInstance, tolerateSpacePaddedUIDs, transferSyntax);
     }
     
     return found;
