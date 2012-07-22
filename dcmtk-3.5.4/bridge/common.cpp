@@ -111,7 +111,7 @@ LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime)
 	return -1LL;
 }
 
-void DeleteEmptyFile(const char *filePath)
+BOOL DeleteEmptyFile(const char *filePath)
 {
   LARGE_INTEGER fileSize;
   HANDLE handle = ::CreateFile(filePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -120,8 +120,12 @@ void DeleteEmptyFile(const char *filePath)
     ::GetFileSizeEx(handle, &fileSize);
     ::CloseHandle(handle);
 	if(fileSize.QuadPart == 0LL)
-	  ::DeleteFile(filePath);
+	  return  ::DeleteFile(filePath);
+	else
+	  return FALSE;
   }
+  else
+	return FALSE;
 }
 
 void logError(std::ostream &outputStream)
