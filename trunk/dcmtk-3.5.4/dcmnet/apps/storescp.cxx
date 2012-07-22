@@ -238,6 +238,10 @@ extern "C" void sigChildHandler(int)
 #define SHORTCOL 4
 #define LONGCOL 21
 
+const size_t LogPathMaxLength = 256;
+OFString logFilePathAndNameBefore(LogPathMaxLength, '\0');
+OFString logFilePathAndNameAfter(LogPathMaxLength, '\0');
+
 void exitHook()
 {
 #ifdef _DEBUG
@@ -252,6 +256,8 @@ void exitHook()
   lastStudySubdirectoryPathAndName.~OFString();
   subdirectoryPathAndName.~OFString();
   opt_ciphersuites.~OFString();
+  logFilePathAndNameBefore.~OFString();
+  logFilePathAndNameAfter.~OFString();
   _CrtDumpMemoryLeaks();
 #endif
 }
@@ -847,22 +853,25 @@ int main(int argc, char *argv[])
 
   }
 
-  char logPath[64];
   ofstream *fileOutputStream = NULL;
   if( opt_forkedChild )
   {
+	char logPath[LogPathMaxLength];
 	errno_t err = GenerateLogPath(logPath, sizeof(logPath), OFFIS_CONSOLE_APPLICATION, PATH_SEPARATOR);
 	if( ! err )
 	{
-	  OFString logFilePath(logPath);
-	  logFilePath.resize(logFilePath.rfind(PATH_SEPARATOR));
-	  if(EC_Normal == MkdirRecursive(logFilePath))
+	  logFilePathAndNameBefore = logPath;
+	  OFString temp(logFilePathAndNameBefore);
+	  temp.resize(temp.rfind(PATH_SEPARATOR));
+	  if(EC_Normal == MkdirRecursive(temp))
 	  {
-		fileOutputStream = new ofstream(logPath, ios::app | ios::out, _SH_DENYWR);
+		fileOutputStream = new ofstream(logFilePathAndNameBefore.c_str(), ios::app | ios::out, _SH_DENYWR);
 		if(fileOutputStream != NULL)
 		{
 		  ofConsole.setCout(fileOutputStream);
 		  ofConsole.setCerr(fileOutputStream);
+		  logFilePathAndNameAfter = logFilePathAndNameBefore;
+		  logFilePathAndNameAfter.resize(logFilePathAndNameAfter.size() - 4);
 		}
 	  }
 	}
@@ -1207,7 +1216,11 @@ int main(int argc, char *argv[])
 	ofConsole.setCout(NULL);
 	ofConsole.setCerr(NULL);
 	fileOutputStream->close();
-	DeleteEmptyFile(logPath);
+	if( ! DeleteEmptyFile(logFilePathAndNameBefore.c_str()) )
+	{
+	  if(logFilePathAndNameBefore != logFilePathAndNameAfter)
+		rename(logFilePathAndNameBefore.c_str(), logFilePathAndNameAfter.c_str());
+	}
   }
 
   delete pCmd;
@@ -2026,6 +2039,11 @@ storeSCPCallback(
           rsp->DimseStatus = STATUS_STORE_Error_DataSetDoesNotMatchSOPClass;
         }
       }
+
+	  if(logFilePathAndNameAfter.length() <= logFilePathAndNameBefore.length())
+		logFilePathAndNameAfter.append(1, '_').append(dcmSOPClassUIDToModality(req->AffectedSOPClassUID))
+		  .append(1, '.').append(imageManageNumber).append(".txt");
+
 	  if(imageManageNumberFromDB)
 	  {
 		if (rsp->DimseStatus == STATUS_Success)
