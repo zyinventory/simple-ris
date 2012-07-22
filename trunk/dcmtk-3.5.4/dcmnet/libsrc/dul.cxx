@@ -1653,7 +1653,16 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
         for (int i=1; i < command_argc; ++i)
         {
             cmdLine += " ";
-            cmdLine += command_argv[i];
+			if(strchr(command_argv[i], ' ') == NULL)
+			{
+			  cmdLine += command_argv[i];
+			}
+			else
+			{
+			  cmdLine.append(1, '\"');
+			  cmdLine += command_argv[i];
+			  cmdLine.append(1, '\"');
+			}
         }
 
 		// create anonymous pipe

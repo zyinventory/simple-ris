@@ -241,7 +241,7 @@ extern "C" void sigChildHandler(int)
 void exitHook()
 {
 #ifdef _DEBUG
-  _CrtDumpMemoryLeaks();
+  // _CrtDumpMemoryLeaks();
 #endif
 }
 
