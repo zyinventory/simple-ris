@@ -162,7 +162,7 @@ errmsg(const char *msg,...)
 
 
 static OFCondition
-addStoragePresentationContexts(T_ASC_Parameters *params, OFList<OFString>& sopClasses);
+addStoragePresentationContexts(T_ASC_Parameters *params, OFList<OFString>& sopClasses, const char *pcPreferredTransferSyntax = NULL);
 
 static OFCondition
 cstore(T_ASC_Association *assoc, const OFString& fname);
@@ -202,6 +202,7 @@ main(int argc, char *argv[])
 #endif
 
   char tempstr[20];
+  char transferSyntax[128];
   OFConsoleApplication app(OFFIS_CONSOLE_APPLICATION , "DICOM storage (C-STORE) SCU", rcsid);
   OFCommandLine cmd;
 
@@ -620,7 +621,7 @@ main(int argc, char *argv[])
       char sopClassUID[128];
       char sopInstanceUID[128];
       OFBool ignoreName;
-
+	  
       for (int i=3; i <= paramCount; i++)
       {
         ignoreName = OFFalse;
@@ -638,7 +639,8 @@ main(int argc, char *argv[])
         {
           if (opt_proposeOnlyRequiredPresentationContexts)
           {
-              if (!DU_findSOPClassAndInstanceInFile(currentFilename, sopClassUID, sopInstanceUID))
+			  transferSyntax[0] = '\0';
+              if (!DU_findSOPClassAndInstanceInFile(currentFilename, sopClassUID, sopInstanceUID, OFFalse, transferSyntax))
               {
                 ignoreName = OFTrue;
                 errormsg = "missing SOP class (or instance) in file: ";
@@ -667,7 +669,7 @@ main(int argc, char *argv[])
           if (!ignoreName) fileNameList.push_back(currentFilename);
         }
       }
-   }
+	}
 
 #ifdef ON_THE_FLY_COMPRESSION
     // register global JPEG decompression codecs
@@ -822,7 +824,7 @@ main(int argc, char *argv[])
     {
       /* Set the presentation contexts which will be negotiated */
       /* when the network connection will be established */
-      cond = addStoragePresentationContexts(params, sopClassUIDList);
+      cond = addStoragePresentationContexts(params, sopClassUIDList, transferSyntax);
     }
 
     if (cond.bad()) {
@@ -1066,7 +1068,7 @@ addPresentationContext(T_ASC_Parameters *params,
 }
 
 static OFCondition
-addStoragePresentationContexts(T_ASC_Parameters *params, OFList<OFString>& sopClasses)
+addStoragePresentationContexts(T_ASC_Parameters *params, OFList<OFString>& sopClasses, const char *pcPreferredTransferSyntax)
 {
     /*
      * Each SOP Class will be proposed in two presentation contexts (unless
@@ -1087,7 +1089,11 @@ addStoragePresentationContexts(T_ASC_Parameters *params, OFList<OFString>& sopCl
 
     // Which transfer syntax was preferred on the command line
     OFString preferredTransferSyntax;
-    if (opt_networkTransferSyntax == EXS_Unknown) {
+	if(pcPreferredTransferSyntax && strnlen(pcPreferredTransferSyntax, 128) > 0)
+	{
+	  preferredTransferSyntax = pcPreferredTransferSyntax;
+	}
+    else if (opt_networkTransferSyntax == EXS_Unknown) {
         /* gLocalByteOrder is defined in dcxfer.h */
         if (gLocalByteOrder == EBO_LittleEndian) {
             /* we are on a little endian machine */

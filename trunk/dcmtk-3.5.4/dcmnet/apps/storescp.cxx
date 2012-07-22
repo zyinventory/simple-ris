@@ -241,7 +241,18 @@ extern "C" void sigChildHandler(int)
 void exitHook()
 {
 #ifdef _DEBUG
-  // _CrtDumpMemoryLeaks();
+  dcmDataDict.clear();
+  opt_fileNameExtension.~OFString();
+  callingaetitle.~OFString();
+  calledaetitle.~OFString();
+  callingpresentationaddress.~OFString();
+  opt_outputDirectory.~OFString();
+  opt_volumeLabel.~OFString();
+  lastStudyInstanceUID.~OFString();
+  lastStudySubdirectoryPathAndName.~OFString();
+  subdirectoryPathAndName.~OFString();
+  opt_ciphersuites.~OFString();
+  _CrtDumpMemoryLeaks();
 #endif
 }
 
