@@ -1366,6 +1366,18 @@
 						/>
 					</FileConfiguration>
 				</File>
+				<File
+					RelativePath=".\dcmpstat\tests\philips.lut"
+					>
+					<FileConfiguration
+						Name="Debug|Win32"
+						ExcludedFromBuild="true"
+						>
+						<Tool
+							Name="VCCustomBuildTool"
+						/>
+					</FileConfiguration>
+				</File>
 			</Filter>
 		</Filter>
 		<Filter
