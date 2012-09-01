@@ -974,18 +974,6 @@
 				>
 			</File>
 		</Filter>
-		<File
-			RelativePath="..\apps\dcm2xml.dtd"
-			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				ExcludedFromBuild="true"
-				>
-				<Tool
-					Name="VCCustomBuildTool"
-				/>
-			</FileConfiguration>
-		</File>
 	</Files>
 	<Globals>
 	</Globals>
