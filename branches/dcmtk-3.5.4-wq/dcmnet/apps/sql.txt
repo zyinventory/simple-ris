@@ -1,0 +1,267 @@
+ALTER PROFILE "DEFAULT" LIMIT PASSWORD_LOCK_TIME 1/1440;
+
+--
+-- STRCAT_TYPE  (Type) 
+--
+CREATE OR REPLACE TYPE DICOM.strcat_type as object (
+  cat_string varchar2(4000),
+  static function ODCIAggregateInitialize
+  (cs_ctx In Out strcat_type) return number,
+  member function ODCIAggregateIterate
+  (self In Out strcat_type ,value in varchar2) return number, 
+  member function ODCIAggregateMerge 
+  (self In Out strcat_type, ctx2 In Out strcat_type) return number, 
+  member function ODCIAggregateTerminate 
+  (self In Out strcat_type, returnValue Out varchar2, flags in number) return number 
+);
+/
+
+
+--
+-- STRCAT_TYPE  (Type Body) 
+--
+--  Dependencies: 
+--   STANDARD (Package)
+--   STANDARD (Package)
+--   ODCICONST (Synonym)
+--
+CREATE OR REPLACE TYPE BODY DICOM.strcat_type is
+  static function ODCIAggregateInitialize(cs_ctx IN OUT strcat_type)
+  return number
+  is
+  begin
+      cs_ctx := strcat_type(null);
+      return ODCIConst.Success;
+  end;
+  
+  member function ODCIAggregateIterate(self IN OUT strcat_type, value IN varchar2)
+  return number
+  is
+  begin
+        /*字符串已""，""分别 */
+      self.cat_string := self.cat_string || ',' || value;
+      return ODCIConst.Success;
+  end;
+  
+  member function ODCIAggregateTerminate(self IN Out strcat_type, returnValue OUT varchar2, flags IN number)
+  return number
+  is
+  begin
+        /*去除空(is null)*/
+      returnValue := ltrim(rtrim(self.cat_string, ','), ',');
+      return ODCIConst.Success;
+  end;
+  
+  member function ODCIAggregateMerge(self IN OUT strcat_type, ctx2 IN Out strcat_type)
+  return number
+  is
+  begin
+      self.cat_string := self.cat_string || ',' || ctx2.cat_string;
+      return ODCIConst.Success;
+  end;
+end;
+/
+
+create or replace FUNCTION strcat(input varchar2) RETURN varchar2 PARALLEL_ENABLE AGGREGATE USING strcat_type;
+/
+
+CREATE OR REPLACE FUNCTION DICOM.InsertImage(paramSopInsUid VARCHAR2, paramSerInsUid varchar2, paramStuInsUid varchar2, 
+  paramTransferSyntaxUid varchar2, paramSopClaUID VARCHAR2, paramPatID VARCHAR2, paramImaNum VARCHAR2, 
+  paramHddRoot VARCHAR2, paramPath varchar2, paramFileSize NUMBER, paramFileDate number, paramFileTime number,
+  --series
+  paramSerNum VARCHAR2, paramSerDat number, paramSerTim number, paramSeriesModality varchar2, paramManufacturer varchar2,
+  paramManufactModNam varchar2, paramOperateName varchar2, paramProtocolNam varchar2, paramSerDes varchar2, paramBodParExam varchar2,
+  paramViewPos varchar2, paramContBolus varchar2, paramPatPos varchar2, paramInsertDate number, paramInsertTime number, 
+  --study
+  paramStuId VARCHAR2, paramStuDat number, paramStuTim NUMBER, paramAccNum number, paramRefPhyNam varchar2, paramPhyRecNam varchar2, 
+  paramPhyReadStuName varchar2, paramStuDes varchar2, paramPatAge varchar2, paramPatSiz varchar2, paramPatWei varchar2,
+  paramReqPhysician varchar2, paramReqService varchar2, paramInstNam varchar2, paramInstDepartName varchar2, 
+  paramStationName varchar2, paramStudyModality varchar2, paramPerformPhyName varchar2, paramImgManageNum varchar2,
+  paramPatNam varchar2, paramPatNamKan varchar2, paramPatNamKat varchar2, paramPatBirDat number, paramPatSex varchar2
+  ) RETURN NUMBER IS
+imageIncrease NUMBER;
+seriesIncrease NUMBER;
+allStuBodParExa varchar2(256);
+examPackageId number;
+numStuRelIma NUMBER;
+numStuRelSer NUMBER;
+numAccNum NUMBER;
+BEGIN
+  imageIncrease := 0;
+  numAccNum := to_number(paramAccNum);
+  update ImageLevel set HDDRoot=paramHddRoot, Path=paramPath, nSize=paramFileSize, InsertDate=paramFileDate, 
+    InsertTime=paramFileTime, ImaNum=paramImaNum, SOPClaUID=paramSopClaUID, PatID=paramPatID, 
+    StuInsUID=paramStuInsUid, SerInsUID=paramSerInsUid, Transfer=paramTransferSyntaxUid where SOPInsUID=paramSopInsUID;
+  if sql%rowcount=0 then
+    INSERT INTO ImageLevel (
+      SOPInsUID,      ImaNum,     SOPClaUID,      HDDRoot,      Path,     nSize,
+      InsertDate,     InsertTime,   PatID,      StuInsUID,      SerInsUID,Transfer)
+      VALUES (
+      paramSopInsUID, paramImaNum,paramSopClaUID, paramHddRoot, paramPath,      paramFileSize, 
+      paramFileDate,  paramFileTime,paramPatID, paramStuInsUID, paramSerInsUID, paramTransferSyntaxUid);
+    imageIncrease := 1;
+  end if;
+
+  seriesIncrease := 0;
+  if imageIncrease=1 then
+    UPDATE SeriesLevel SET Modality=paramSeriesModality, NumSerRelIma=NumSerRelIma+1 WHERE SerInsUID=paramSerInsUid;
+    if sql%rowcount=0 then
+      INSERT INTO SeriesLevel (
+        SerInsUID,      SerNum,       SerDate,      SerTime,      Modality,             Manufacturer,       ManufactModNm,  
+        OperateName,      ProNam,       SerDes,       BodParExa,      ViePos,       ContBolus,      PatPos,       NumSerRelIma,
+        InsertDate,       InsertTime,       PatID,      StuInsUID )
+        VALUES (
+        paramSerInsUID, paramSerNum,  paramSerDat,  paramSerTim,  paramSeriesModality,  paramManufacturer,  paramManufactModNam,
+        paramOperateName, paramProtocolNam,paramSerDes,  paramBodParExam, paramViewPos,  paramContBolus, paramPatPos,  1,
+        paramInsertDate,  paramInsertTime,  paramPatID, paramStuInsUid );
+      seriesIncrease := 1;
+    end if;
+  end if;
+  
+  -- concat STU_BODPAREXA(摄影部位)
+  select replace(substr(strcat(BodParExa), 0, 256), ',', '^') into allStuBodParExa from 
+    (select distinct BodParExa from SeriesLevel where StuInsUID=paramStuInsUid);
+  
+  begin -- link exam and study with package
+    SELECT NVL(EXAM_PACKAGE_ID, 0) INTO examPackageId FROM EXAM_STUDY WHERE ID=numAccNum;
+    UPDATE EXAM_STUDY SET PROCEDURE_STATUS_ID = 5 WHERE ID=numAccNum AND PROCEDURE_STATUS_ID < 5;
+    if examPackageId = 0 then --if exam no package, create new package
+      SELECT EXAM_PACKAGE_SEQ.NEXTVAL INTO examPackageId FROM DUAL;
+      INSERT INTO EXAM_PACKAGE(ID) VALUES(examPackageId);
+      UPDATE EXAM_STUDY SET EXAM_PACKAGE_ID=examPackageId WHERE ID=numAccNum; --shall not raise no_data_found
+    end if;
+  EXCEPTION
+    WHEN no_data_found then
+      SELECT EXAM_PACKAGE_SEQ.NEXTVAL INTO examPackageId FROM DUAL;
+      INSERT INTO EXAM_PACKAGE(ID) VALUES(examPackageId);
+    when others then raise_application_error(-20002, 'find exam package error', true);
+  end;
+  
+  UPDATE StudyLevel SET Pat_PatID=paramPatID, Pat_PatNam=paramPatNam, Pat_PatNamKan=paramPatNamKan,
+    Pat_PatNamKat=paramPatNamKat, Pat_PatBirDat=paramPatBirDat, Pat_PatSex=paramPatSex, Stu_DeleteFlg=0, 
+    Stu_Modality=paramStudyModality, Stu_NumStuRelIma=Stu_NumStuRelIma + imageincrease, 
+    Stu_NumStuRelSer=Stu_NumStuRelSer + seriesincrease, Stu_InsertDate=paramInsertDate, 
+    Stu_ImgManageNum=paramImgManageNum, Stu_DVD_Status=0, BackUp_RootDevice=NULL,
+    BackUp_VolumeName=NULL, BackUp_Date=NULL, BackUp_Time=NULL, Stu_StuStatusID=0,
+    Stu_InsertTime=paramInsertTime, STU_BODPAREXA=allStuBodParExa
+    WHERE Stu_StuInsUID=paramStuInsUID;
+  if sql%rowcount=0 then
+    INSERT INTO StudyLevel (
+      PACKAGEID,  Stu_StuInsUID,    Stu_StuID,  Stu_StuDat, Stu_StuTim, Stu_AccNum, Stu_RefPhyNam,  Stu_PhyRecName, 
+      Stu_PhyReadStuName, Stu_StuDes, Stu_PatAge, Stu_PatSiz, Stu_PatWei, Stu_ReqPhysician, Stu_ReqService, Stu_InstNam,
+      Stu_InstDepartName, Stu_StationName,  Stu_Modality,       Stu_PerformPhyName, Stu_NumStuRelSer, Stu_NumStuRelIma,
+      Stu_InsertDate, Stu_InsertTime, Stu_ImgManageNum, Stu_DeleteFlg,  Stu_DVD_Status, Stu_StuStatusID,
+      Pat_PatID,  Pat_PatNam,   Pat_PatNamKan,  Pat_PatNamKat,  Pat_PatBirDat,  Pat_PatSex, STU_BODPAREXA )
+      VALUES (
+		  examPackageId,paramStuInsUID, paramStuID, paramStuDat,paramStuTim,paramAccNum,paramRefPhyNam, paramPhyRecNam,
+			paramPhyReadStuName,paramStuDes,paramPatAge,paramPatSiz,paramPatWei,paramReqPhysician,paramReqService,paramInstNam,
+			paramInstDepartName,paramStationName, paramStudyModality, paramPerformPhyName,1,                1,
+      paramInsertDate,paramInsertTime,paramImgManageNum,0,              0,              0,
+      paramPatID,  paramPatNam, paramPatNamKan, paramPatNamKat, paramPatBirDat, paramPatSex,allStuBodParExa);
+  end if;
+  RETURN examPackageId;
+END InsertImage;
+/
+
+CREATE OR REPLACE FUNCTION IgnoreStringValue(param varchar2) RETURN varchar2 DETERMINISTIC IS
+BEGIN
+   RETURN 'ignore';
+END IgnoreStringValue;
+/
+
+CREATE OR REPLACE function DICOM.get_exam_item2(study_id number) return varchar2 is
+  Result varchar2(4000);
+begin
+  select strcat(item_name) into Result from exam_study_detail, exam_item_dict 
+    where EXAM_STUDY_ID=study_id and exam_item_code=item_code 
+    group by EXAM_STUDY_ID;
+  return(Result);
+end get_exam_item2;
+/
+
+ALTER TABLE DICOM.MODALITY_AETITILE_DICT MODIFY(AETITLE VARCHAR2(16 BYTE));
+
+CREATE OR REPLACE FORCE VIEW DICOM.V_EXAMSTUDY_WORKLIST2
+(
+   SCHEDULEDSTATIONAETITLE,
+   SCHDLDPROCSTEPSTARTDATE,
+   SCHDLDPROCSTEPSTARTTIME,
+   MODALITY,
+   SCHDLDPROCSTEPDESCRIPTION,
+   SCHDLDPROCSTEPLOCATION,
+   SCHDLDPROCSTEPID,
+   REQUESTEDPROCEDUREID,
+   REQUESTEDPROCEDUREDESCRIPTION,
+   STUDYINSTANCEUID,
+   ACCESSIONNUMBER,
+   REQUESTINGPHYSICIAN,
+   ADMISSIONID,
+   PATIENTSNAMEEN,
+   PATIENTSNAMECH,
+   PATIENTID,
+   PATIENTSBIRTHDATE,
+   PATIENTSSEX,
+   PATIENTSWEIGHT,
+   ADMITTINGDIAGNOSESDESCRIPTION,
+   PATIENTSAGE,
+   SCHDLDPROCSTEPSTARTDATETIME,
+   SUPPORTCHINESE,
+   DICOMPERSONNAME
+)
+AS
+     SELECT t7.aetitle AS ScheduledStationAETitle,
+            TO_CHAR (t1.EXEC_DATETIME, 'yyyyMMdd') AS SchdldProcStepStartDate,
+            TO_CHAR (t1.EXEC_DATETIME, 'hh24miss') AS SchdldProcStepStartTime,
+            t3.class_code AS Modality,
+            'scheduled' AS SchdldProcStepDescription,
+            t1.exec_place AS SchdldProcStepLocation,
+            t1.id AS SchdldProcStepID,
+            t1.id AS RequestedProcedureID,
+            get_exam_item2 (t1.id) AS RequestedProcedureDescription,
+            t8.STUD_UID || '.' || t1.ID AS StudyInstanceUID,
+            t1.id AS AccessionNumber,
+            t2.req_doct AS RequestingPhysician,
+            t2.exam_no AS AdmissionID,
+            t4.en_Name AS PatientsNameEn,
+            t4.pat_name AS PatientsNameCh,
+            t1.EXAM_CODE AS PatientID,
+            TO_CHAR (t4.birthdate, 'yyyyMMdd') AS PatientsBirthDate,
+            (CASE WHEN t4.sex = '男' THEN 'M' ELSE 'F' END) AS PatientsSex,
+            60 AS PatientsWeight,
+            t2.clin_diag AS AdmittingDiagnosesDescription,
+            TO_CHAR (NVL (t4.age, 0), 'FM000') || 'Y' AS PatientsAge,
+            t1.EXEC_DATETIME AS SchdldProcStepStartDateTime,
+            (CASE
+                WHEN t7.aetitle = 'UNKNOWN' THEN -1
+                WHEN t7.aetitle = 'TJWQCT' OR T3.CLASS_CODE = 'RF' THEN 0
+                ELSE 1
+             END)
+               AS SupportChinese,
+             0  AS DicomPersonName
+       FROM EXAM_STUDY t1,
+            EXAM_REQ t2,
+            EXAM_CLASS_DICT t3,
+            PATIENT_DICT t4,
+            MODALITY_AETITILE_DICT t7,
+            STUDUID_CONF t8
+      WHERE     t1.obsolete_flag = 0
+            AND t1.procedure_status_id < 5
+            AND t1.study_instance_uid IS NULL
+            AND t1.exec_dept_id = 96
+            AND t1.exam_req_id = t2.id
+            AND t1.exam_class_id = t3.id
+            AND t1.patient_id = t4.id
+            AND t1.exam_class_id = t7.exam_class_id;
+
+ready:
+
+Pending:
+
+ALTER TABLE DICOM.EXAM_STUDY ADD ( CONSTRAINT EXAM_STUDY_PK PRIMARY KEY (ID));
+ALTER TABLE DICOM.EXAM_STUDY ADD CONSTRAINT FK_EXAM_STUDY_PROCEDURE_STATUS FOREIGN KEY (PROCEDURE_STATUS_ID) REFERENCES DICOM.ENUM_PROCEDURE_STEP_DICT (ID) ENABLE VALIDATE;
+ALTER TABLE DICOM.EXAM_STUDY ADD CONSTRAINT FK_EXAM_STUDY_REQ FOREIGN KEY (EXAM_REQ_ID) REFERENCES DICOM.EXAM_REQ (ID) ENABLE VALIDATE;
+ALTER TABLE DICOM.EXAM_STUDY ADD CONSTRAINT FK_EXAM_STUDY_PATIENT FOREIGN KEY (PATIENT_ID) REFERENCES DICOM.PATIENT_DICT (ID) ENABLE VALIDATE;
+ALTER TABLE DICOM.EXAM_STUDY_DETAIL ADD CONSTRAINT FK_EXAM_STUDY_DETAIL FOREIGN KEY (EXAM_STUDY_ID) REFERENCES DICOM.EXAM_STUDY (ID) ENABLE VALIDATE;
+
+insert into exam_class_dict values(1, 'XA', '造影', 'ZY', 96, 'XA', 96, 0, 1, 2, NULL);
+ALTER TABLE DICOM.EXAM_STUDY ADD CONSTRAINT FK_EXAM_STUDY_EXAM_CLASS FOREIGN KEY (EXAM_CLASS_ID) REFERENCES DICOM.EXAM_CLASS_DICT (ID) ENABLE VALIDATE;
