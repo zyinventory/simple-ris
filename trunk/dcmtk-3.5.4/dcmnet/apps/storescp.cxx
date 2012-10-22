@@ -78,6 +78,7 @@ END_EXTERN_C
 #include "dcmtk/dcmnet/dcasccfg.h"      /* for class DcmAssociationConfiguration */
 #include "dcmtk/dcmnet/dcasccff.h"      /* for class DcmAssociationConfigurationFile */
 #include "dcmtk/dcmdata/dcvrcs.h"
+#include "dcmtk/ofstd/ofstream.h"
 #include "dcmtk/ofstd/ofpacs.h"
 
 #ifdef WITH_OPENSSL
@@ -101,7 +102,6 @@ extern "C" {
 int mkstemp(char *);
 }
 #endif
-#include "extension.h"
 #include "common.h"
 
 #ifdef PRIVATE_STORESCP_DECLARATIONS
@@ -120,6 +120,8 @@ static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v" OFFIS_DCMTK_VERS
 #define CALLED_AETITLE_PLACEHOLDER "#c"
 #define CALLING_PRESENTATION_ADDRESS_PLACEHOLDER "#r"
 #define RECEIVED_DATE_PLACEHOLDER "#d"
+#define ARCHIVE_PATH_PLACEHOLDER "#v"
+#define ARCHIVE_FILENAME_PLACEHOLDER "#z"
 
 static OFCondition processCommands(T_ASC_Association *assoc);
 static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfiguration& asccfg);
@@ -177,12 +179,13 @@ static OFString    opt_volumeLabel;   // default: output directory's full path
 static const char *opt_sortConcerningStudies = NULL;  // default: no sorting
 OFString           lastStudyInstanceUID;
 OFString           subdirectoryPathAndName;
-static OFBool      needCompress;
-OFList<OFString>   outputFileNameArray, compressJobQueue;
+OFList<OFString>   outputFileNameArray;
+ofstream		  inststrm;
+const char		  UNIT_SEPARATOR = 0x1F;
 static const char *opt_execOnReception = NULL;        // default: don't execute anything on reception
 static const char *opt_execOnEndOfStudy = NULL;       // default: don't execute anything on end of study
 
-OFString           lastStudySubdirectoryPathAndName;
+OFString           lastStudySubdirectoryPathAndName, lastArchiveFileName;
 static OFBool      opt_renameOnEndOfStudy = OFFalse;  // default: don't rename any files on end of study
 static long        opt_endOfStudyTimeout = 10;        // default: no end of study timeout
 static OFBool      endOfStudyThroughTimeoutEvent = OFFalse;
@@ -244,6 +247,12 @@ OFString logFilePathAndNameAfter(LogPathMaxLength, '\0');
 
 void exitHook()
 {
+  if(inststrm.is_open())
+  {
+	inststrm.flush();
+	inststrm.close();
+	COUT << "close index file on exit" << endl;
+  }
 #ifdef _DEBUG
   dcmDataDict.clear();
   opt_fileNameExtension.~OFString();
@@ -258,6 +267,8 @@ void exitHook()
   opt_ciphersuites.~OFString();
   logFilePathAndNameBefore.~OFString();
   logFilePathAndNameAfter.~OFString();
+  outputFileNameArray.clear();
+  lastArchiveFileName.~OFString();
   _CrtDumpMemoryLeaks();
 #endif
 }
@@ -1621,8 +1632,7 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
   }
 
 cleanup:
-
-  if (cond.code() == DULC_FORKEDCHILD)
+  if (cond.code() == DULC_FORKEDCHILD)  // keeping cond, using another OFCondition record dropping process.
   {
 	OFCondition innerCond = ASC_dropSCPAssociation(assoc);
 	if (innerCond.bad())
@@ -1638,6 +1648,14 @@ cleanup:
 	}
 	return cond;
   }
+
+  if(inststrm.is_open())
+  {
+	inststrm.close();
+	inststrm.clear();
+  }
+
+  executeEndOfStudyEvents();
 
   cond = ASC_dropSCPAssociation(assoc);
   if (cond.bad())
@@ -1868,10 +1886,10 @@ storeSCPCallback(
     // is present and the options opt_bitPreserving and opt_ignore are not set.
     if ((imageDataSet)&&(*imageDataSet)&&(!opt_bitPreserving)&&(!opt_ignore))
     {
-      OFString fileName, relateFilePathName, imageManageNumber;
+      OFString fileName;
 	  // if charset is empty and pername is not ASCII, set charset value GB18030
 	  DcmElement *element = NULL;
-	  OFString personname, sopInstanceUid;
+	  OFString patientsName, sopInstanceUid;
 	  OFCondition ec = (*imageDataSet)->findAndGetOFString(DCM_SOPInstanceUID, sopInstanceUid);
 	  if( ec != EC_Normal )
 	  {
@@ -1879,17 +1897,24 @@ storeSCPCallback(
 		rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
 		return;
 	  }
+
+	  ec = (*imageDataSet)->findAndGetOFString(DCM_PatientsName, patientsName);
+	  if( ec != EC_Normal )
+	  {
+		patientsName = "";
+	  }
+
 	  ec = (*imageDataSet)->findAndGetElement(DCM_SpecificCharacterSet, element);
 	  if(element == NULL)
 	  {
-		ec = (*imageDataSet)->findAndGetOFString(DCM_PatientsName, personname);
-		if( ec.good() && ! IsASCII( personname.c_str() ) )
+		if( ! IsASCII( patientsName.c_str() ) )
 		{
 		  element = new DcmCodeString(DCM_SpecificCharacterSet);
 		  element->putString(CHARSET_GB18030);
 		  (*imageDataSet)->insert(element);
 		  CERR << sopInstanceUid << ':' << ADD_DEFAULT_CHARSET << CHARSET_GB18030 << endl;
 		}
+		//else: NULL character set is considered as ISO_IR_100
 	  }
 	  else
 	  {
@@ -1897,28 +1922,34 @@ storeSCPCallback(
 		ec = (*imageDataSet)->findAndGetOFString(DCM_SpecificCharacterSet, charset);
 		if(ec.good() && charset != CHARSET_GB18030 && charset != CHARSET_ISO_IR_100)
 		{
-		  ec = (*imageDataSet)->findAndGetOFString(DCM_PatientsName, personname);
-		  if( ec.good() )
+		  CERR << sopInstanceUid << ':' << UNKNOWN_CHARSET << charset << OVERRIDE_BY;
+		  if( IsASCII( patientsName.c_str() ) )
 		  {
-			CERR << sopInstanceUid << ':' << UNKNOWN_CHARSET << charset << OVERRIDE_BY;
-			if( IsASCII( personname.c_str() ) )
-			{
-			  element->putString(CHARSET_ISO_IR_100);
-			  CERR << CHARSET_ISO_IR_100 << endl;
-			}
-			else
-			{
-			  element->putString(CHARSET_GB18030);
-			  CERR << CHARSET_GB18030 << endl;
-			}
+			element->putString(CHARSET_ISO_IR_100);
+			CERR << CHARSET_ISO_IR_100 << endl;
+		  }
+		  else
+		  {
+			element->putString(CHARSET_GB18030);
+			CERR << CHARSET_GB18030 << endl;
 		  }
 		}
 	  }
-	  bool imageManageNumberFromDB = false;
       // in case option --sort-conc-studies is set, we need to perform some particular
       // steps to determine the actual name of the output file
       if( opt_sortConcerningStudies != NULL )
       {
+		OFString patientId, studyDate, accNumber;
+
+		ec = (*imageDataSet)->findAndGetOFString(DCM_PatientID, patientId);
+		if( ec != EC_Normal )
+		{
+          CERR << "storescp: No patient ID found in data set." << endl;
+		  patientId = "NULL";
+		}
+		(*imageDataSet)->findAndGetOFString(DCM_StudyDate, studyDate);
+		(*imageDataSet)->findAndGetOFString(DCM_AccessionNumber, accNumber);
+
         // determine the study instance UID in the (current) DICOM object that has just been received
         // note that if findAndGetString says the resulting study instance UID equals NULL, the study
         // instance UID in the (current) DICOM object is an empty string; in general: no matter what
@@ -1939,7 +1970,7 @@ storeSCPCallback(
         // if this is the first DICOM object that was received or if the study instance UID in the
         // current DICOM object does not equal the last object's study instance UID we need to create
         // a new subdirectory in which the current DICOM object will be stored
-        //if( lastStudyInstanceUID.empty() || lastStudyInstanceUID != currentStudyInstanceUID) // can't skip it, must generate image file path to fill imagelevel in DB
+        if( lastStudyInstanceUID.empty() || lastStudyInstanceUID != currentStudyInstanceUID)
         {
           // if lastStudyInstanceUID is non-empty, we have just completed receiving all objects for one
           // study. In such a case, we need to set a certain indicator variable (lastStudySubdirectoryPathAndName),
@@ -1950,24 +1981,34 @@ storeSCPCallback(
           if( ! lastStudyInstanceUID.empty() )
           {
             lastStudySubdirectoryPathAndName = subdirectoryPathAndName;
+			if(inststrm.is_open())
+			{
+			  inststrm.close();
+			  inststrm.clear();
+			}
           }
 
+		  // get the current time (needed for subdirectory name)
+		  OFDateTime dateTime;
+		  dateTime.setCurrentDateTime();
+		  char buf[32];
           // create the new lastStudyInstanceUID value according to the value in the current DICOM object
           lastStudyInstanceUID = currentStudyInstanceUID;
 
-          // create a name for the new subdirectory. pattern: "[opt_sortConcerningStudies][YYMM]/[YYYYMMDDXXXXXX]"
-          OFString subdirectoryName = opt_sortConcerningStudies;
-          imageManageNumberFromDB = generateImageStoreDirectory(imageDataSet, subdirectoryName, imageManageNumber);
+          // create a name for the new subdirectory. pattern: "[opt_sortConcerningStudies]_[YYYYMMDD]_[HHMMSSMMM]" (use current datetime)
+          sprintf(buf, "_%04u%02u%02u_%02u%02u%02u%03u_",
+          dateTime.getDate().getYear(), dateTime.getDate().getMonth(), dateTime.getDate().getDay(),
+          dateTime.getTime().getHour(), dateTime.getTime().getMinute(), dateTime.getTime().getIntSecond(), dateTime.getTime().getMilliSecond());
+          OFString subdirectoryName;
+		  subdirectoryName.reserve(256);
+		  subdirectoryName.append(opt_sortConcerningStudies).append(buf).append(currentStudyInstanceUID);
 
           // create subdirectoryPathAndName (string with full path to new subdirectory)
           subdirectoryPathAndName = cbdata->imageFileName;
-          relateFilePathName = subdirectoryPathAndName;
+
           size_t position = subdirectoryPathAndName.rfind(PATH_SEPARATOR);
           if (position != OFString_npos) subdirectoryPathAndName.erase(position+1);
           subdirectoryPathAndName += subdirectoryName;
-          if (position != OFString_npos) relateFilePathName.erase(0, position);
-          relateFilePathName = subdirectoryName + relateFilePathName;
-		  //printf("%s image save path: %s\n", currentStudyInstanceUID.c_str(), relateFilePathName.c_str());
 
 		  // check if the subdirectory is already existent
           if( EC_Normal != MkdirRecursive( subdirectoryPathAndName ) )
@@ -1976,6 +2017,12 @@ storeSCPCallback(
             rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
             return;
           }
+		  OFString instanceListPath(subdirectoryPathAndName);
+		  instanceListPath.append(1, PATH_SEPARATOR).append("instance.txt");
+		  inststrm.open(instanceListPath.c_str(), ios_base::app | ios_base::out);
+		  inststrm << patientId << UNIT_SEPARATOR << patientsName << UNIT_SEPARATOR;
+		  inststrm << currentStudyInstanceUID << UNIT_SEPARATOR << studyDate << UNIT_SEPARATOR << accNumber << '\n';
+
           // all objects of a study have been received, so a new subdirectory is started.
           // ->timename counter can be reset, because the next filename can't cause a duplicate.
           // if no reset would be done, files of a new study (->new directory) would start with a counter in filename
@@ -1983,7 +2030,31 @@ storeSCPCallback(
             timeNameCounter = -1;
         }
 
-        // integrate subdirectory name into file name (note that cbdata->imageFileName currently contains both
+        OFString currentSeriesInstanceUID, modality;
+		Sint32 seriesNumber, instanceNumber;
+        (*imageDataSet)->findAndGetOFString( DCM_SeriesInstanceUID, currentSeriesInstanceUID );
+		inststrm << currentSeriesInstanceUID << UNIT_SEPARATOR;
+        (*imageDataSet)->findAndGetSint32( DCM_SeriesNumber, seriesNumber );
+		inststrm << seriesNumber << UNIT_SEPARATOR;
+        (*imageDataSet)->findAndGetOFString( DCM_Modality, modality );
+		inststrm << modality << UNIT_SEPARATOR;
+		inststrm << sopInstanceUid << UNIT_SEPARATOR;
+		(*imageDataSet)->findAndGetSint32( DCM_InstanceNumber, instanceNumber );
+		inststrm << instanceNumber << '\n';
+
+		lastArchiveFileName.clear();
+		lastArchiveFileName.append(opt_volumeLabel).append(1, PATH_SEPARATOR);
+		lastArchiveFileName.append(studyDate.substr(0, 4)).append(1, PATH_SEPARATOR).append(studyDate.substr(4, 2)).append(1, PATH_SEPARATOR).append(studyDate.substr(6, 2));
+		lastArchiveFileName.append(1, PATH_SEPARATOR).append(currentStudyInstanceUID).append(1, PATH_SEPARATOR).append(currentSeriesInstanceUID);
+        if( EC_Normal != MkdirRecursive( lastArchiveFileName ) )
+        {
+          CERR << "storescp: Could not create subdirectory " << subdirectoryPathAndName << endl;
+          rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
+          return;
+        }
+		lastArchiveFileName.append(1, PATH_SEPARATOR).append(sopInstanceUid).append(".DCM");
+
+		// integrate subdirectory name into file name (note that cbdata->imageFileName currently contains both
         // path and file name; however, the path refers to the output directory captured in opt_outputDirectory)
         char *tmpstr5 = strrchr( cbdata->imageFileName, PATH_SEPARATOR );
         fileName = subdirectoryPathAndName;
@@ -2007,8 +2078,6 @@ storeSCPCallback(
       // determine the transfer syntax which shall be used to write the information to the file
       E_TransferSyntax xfer = opt_writeTransferSyntax;
       if (xfer == EXS_Unknown) xfer = (*imageDataSet)->getOriginalXfer();
-	  needCompress = (xfer == EXS_LittleEndianExplicit || xfer == EXS_BigEndianExplicit || xfer == EXS_LittleEndianImplicit);
-	  if( ! needCompress ) fileName.append(".DCM");
 
       // store file either with meta header or as pure dataset
       ec = cbdata->dcmff->saveFile(fileName.c_str(), xfer, opt_sequenceType, opt_groupLength,
@@ -2042,15 +2111,7 @@ storeSCPCallback(
 
 	  if(logFilePathAndNameAfter.length() <= logFilePathAndNameBefore.length())
 		logFilePathAndNameAfter.append(1, '_').append(dcmSOPClassUIDToModality(req->AffectedSOPClassUID))
-		  .append(1, '.').append(imageManageNumber).append(".txt");
-
-	  if(imageManageNumberFromDB)
-	  {
-		if (rsp->DimseStatus == STATUS_Success)
-		  insertImage(*imageDataSet, imageManageNumber, opt_outputDirectory, relateFilePathName, opt_volumeLabel, needCompress);
-		else
-		  rollbackDB();
-	  }
+		  .append(1, '.').append(".txt");
     }
 
     // in case opt_bitPreserving is set, do some other things
@@ -2284,13 +2345,10 @@ static void executeOnReception()
      *   none.
      */
 {
-  if( ! needCompress ) return;
-
   OFString cmd = opt_execOnReception;
   time_t t = time( NULL );
   struct tm *tmp = localtime( &t );
   char outstr[80];
-  OFString dir, outputFileName;
 
   // in case a file was actually written
   if( !opt_ignore )
@@ -2298,12 +2356,12 @@ static void executeOnReception()
     // perform substitution for placeholder #p; note that
     //  - in case option --sort-conc-studies is set, #p will be substituted by subdirectoryPathAndName
     //  - and in case option --sort-conc-studies is not set, #p will be substituted by opt_outputDirectory
-    dir = (opt_sortConcerningStudies == NULL) ? OFString(opt_outputDirectory) : subdirectoryPathAndName;
+    OFString dir = (opt_sortConcerningStudies == NULL) ? OFString(opt_outputDirectory) : subdirectoryPathAndName;
     cmd = replaceChars( cmd, OFString(PATH_PLACEHOLDER), dir );
 
     // perform substitution for placeholder #f; note that outputFileNameArray.back()
     // always contains the name of the file (without path) which was written last.
-    outputFileName = outputFileNameArray.back();
+    OFString outputFileName = outputFileNameArray.back();
     cmd = replaceChars( cmd, OFString(FILENAME_PLACEHOLDER), outputFileName );
   }
 
@@ -2322,7 +2380,15 @@ static void executeOnReception()
     cmd = replaceChars( cmd, OFString(RECEIVED_DATE_PLACEHOLDER), outstr );
   }
 
+  // perform substitution for placeholder #v (archive dir)
+  cmd = replaceChars( cmd, OFString(ARCHIVE_PATH_PLACEHOLDER), opt_volumeLabel );
+
+  // perform substitution for placeholder #z (archive filename)
+  cmd = replaceChars( cmd, OFString(ARCHIVE_FILENAME_PLACEHOLDER), lastArchiveFileName );
+
   // Execute command in a new process
+  //if(opt_verbose)
+	COUT << "Starting command On Reception: " << cmd << endl;
   executeCommand( cmd );
 }
 
@@ -2446,7 +2512,14 @@ static void executeOnEndOfStudy()
     cmd = replaceChars( cmd, OFString(RECEIVED_DATE_PLACEHOLDER), outstr );
   }
 
+  // perform substitution for placeholder #v (archive dir)
+  cmd = replaceChars( cmd, OFString(ARCHIVE_PATH_PLACEHOLDER), opt_volumeLabel );
+
+  // don't perform substitution for placeholder #z (archive filename), archive filename is next one.
+
   // Execute command in a new process
+  //if(opt_verbose)
+	COUT << "exec on end of study: " << cmd << endl;
   executeCommand( cmd );
 }
 
