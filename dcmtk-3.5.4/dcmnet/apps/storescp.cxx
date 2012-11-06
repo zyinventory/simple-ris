@@ -185,7 +185,7 @@ const char		  UNIT_SEPARATOR = 0x1F;
 static const char *opt_execOnReception = NULL;        // default: don't execute anything on reception
 static const char *opt_execOnEndOfStudy = NULL;       // default: don't execute anything on end of study
 
-OFString           lastStudySubdirectoryPathAndName, lastArchiveFileName;
+OFString           lastStudySubdirectoryPathAndName, instanceCSVPath, lastArchiveFileName;
 static OFBool      opt_renameOnEndOfStudy = OFFalse;  // default: don't rename any files on end of study
 static long        opt_endOfStudyTimeout = 10;        // default: no end of study timeout
 static OFBool      endOfStudyThroughTimeoutEvent = OFFalse;
@@ -251,7 +251,7 @@ void exitHook()
   {
 	inststrm.flush();
 	inststrm.close();
-	COUT << "close index file on exit" << endl;
+	CERR << "close index file on exit:" << instanceCSVPath << endl;
   }
 #ifdef _DEBUG
   dcmDataDict.clear();
@@ -264,6 +264,7 @@ void exitHook()
   lastStudyInstanceUID.~OFString();
   lastStudySubdirectoryPathAndName.~OFString();
   subdirectoryPathAndName.~OFString();
+  instanceCSVPath.~OFString();
   opt_ciphersuites.~OFString();
   logFilePathAndNameBefore.~OFString();
   logFilePathAndNameAfter.~OFString();
@@ -1649,12 +1650,15 @@ cleanup:
 	return cond;
   }
 
+  if(opt_verbose) COUT << "association closing\n";
+
   if(inststrm.is_open())
   {
 	inststrm.close();
 	inststrm.clear();
+	if(opt_verbose) COUT << "close file: " << instanceCSVPath << '\n';
   }
-
+  lastStudySubdirectoryPathAndName = subdirectoryPathAndName;
   executeEndOfStudyEvents();
 
   cond = ASC_dropSCPAssociation(assoc);
@@ -1912,7 +1916,7 @@ storeSCPCallback(
 		  element = new DcmCodeString(DCM_SpecificCharacterSet);
 		  element->putString(CHARSET_GB18030);
 		  (*imageDataSet)->insert(element);
-		  CERR << sopInstanceUid << ':' << ADD_DEFAULT_CHARSET << CHARSET_GB18030 << endl;
+		  if(opt_verbose) COUT << sopInstanceUid << ':' << ADD_DEFAULT_CHARSET << CHARSET_GB18030 << endl;
 		}
 		//else: NULL character set is considered as ISO_IR_100
 	  }
@@ -1922,16 +1926,16 @@ storeSCPCallback(
 		ec = (*imageDataSet)->findAndGetOFString(DCM_SpecificCharacterSet, charset);
 		if(ec.good() && charset != CHARSET_GB18030 && charset != CHARSET_ISO_IR_100)
 		{
-		  CERR << sopInstanceUid << ':' << UNKNOWN_CHARSET << charset << OVERRIDE_BY;
+		  if(opt_verbose) COUT << sopInstanceUid << ':' << UNKNOWN_CHARSET << charset << OVERRIDE_BY;
 		  if( IsASCII( patientsName.c_str() ) )
 		  {
 			element->putString(CHARSET_ISO_IR_100);
-			CERR << CHARSET_ISO_IR_100 << endl;
+			if(opt_verbose) COUT << CHARSET_ISO_IR_100 << endl;
 		  }
 		  else
 		  {
 			element->putString(CHARSET_GB18030);
-			CERR << CHARSET_GB18030 << endl;
+			if(opt_verbose) COUT << CHARSET_GB18030 << endl;
 		  }
 		}
 	  }
@@ -1939,7 +1943,7 @@ storeSCPCallback(
       // steps to determine the actual name of the output file
       if( opt_sortConcerningStudies != NULL )
       {
-		OFString patientId, studyDate, accNumber;
+		OFString patientId, sex, birthdate, studyDate, accNumber;
 
 		ec = (*imageDataSet)->findAndGetOFString(DCM_PatientID, patientId);
 		if( ec != EC_Normal )
@@ -1947,6 +1951,8 @@ storeSCPCallback(
           CERR << "storescp: No patient ID found in data set." << endl;
 		  patientId = "NULL";
 		}
+		(*imageDataSet)->findAndGetOFString(DCM_PatientsSex, sex);
+		(*imageDataSet)->findAndGetOFString(DCM_PatientsBirthDate, birthdate);
 		(*imageDataSet)->findAndGetOFString(DCM_StudyDate, studyDate);
 		(*imageDataSet)->findAndGetOFString(DCM_AccessionNumber, accNumber);
 
@@ -1972,6 +1978,7 @@ storeSCPCallback(
         // a new subdirectory in which the current DICOM object will be stored
         if( lastStudyInstanceUID.empty() || lastStudyInstanceUID != currentStudyInstanceUID)
         {
+		  if(opt_verbose) COUT << "encounter new study: " << currentStudyInstanceUID << '\n';
           // if lastStudyInstanceUID is non-empty, we have just completed receiving all objects for one
           // study. In such a case, we need to set a certain indicator variable (lastStudySubdirectoryPathAndName),
           // so that we know that executeOnEndOfStudy() might have to be executed later. In detail, this indicator
@@ -1985,6 +1992,8 @@ storeSCPCallback(
 			{
 			  inststrm.close();
 			  inststrm.clear();
+			  if(opt_verbose) COUT << "close file: " << instanceCSVPath << '\n';
+			  instanceCSVPath.clear();
 			}
           }
 
@@ -2017,10 +2026,11 @@ storeSCPCallback(
             rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
             return;
           }
-		  OFString instanceListPath(subdirectoryPathAndName);
-		  instanceListPath.append(1, PATH_SEPARATOR).append("instance.txt");
-		  inststrm.open(instanceListPath.c_str(), ios_base::app | ios_base::out);
-		  inststrm << patientId << UNIT_SEPARATOR << patientsName << UNIT_SEPARATOR;
+		  instanceCSVPath = subdirectoryPathAndName;
+		  instanceCSVPath.append(1, PATH_SEPARATOR).append("instance.txt");
+		  if(opt_verbose) COUT << "open file: " << instanceCSVPath << '\n';
+		  inststrm.open(instanceCSVPath.c_str(), ios_base::app | ios_base::out);
+		  inststrm << patientId << UNIT_SEPARATOR << patientsName << UNIT_SEPARATOR << birthdate << UNIT_SEPARATOR << sex << UNIT_SEPARATOR;
 		  inststrm << currentStudyInstanceUID << UNIT_SEPARATOR << studyDate << UNIT_SEPARATOR << accNumber << '\n';
 
           // all objects of a study have been received, so a new subdirectory is started.
@@ -2275,6 +2285,8 @@ static OFCondition storeSCP(
   }
 #endif
 
+  if(opt_verbose) COUT << "receive instance " << subdirectoryPathAndName << " at end of callback\n";
+
   // if everything was successful so far and option --exec-on-reception is set,
   // we want to execute a certain command which was passed to the application
   if( cond.good() && opt_execOnReception != NULL )
@@ -2387,7 +2399,7 @@ static void executeOnReception()
   cmd = replaceChars( cmd, OFString(ARCHIVE_FILENAME_PLACEHOLDER), lastArchiveFileName );
 
   // Execute command in a new process
-  //if(opt_verbose)
+  if(opt_verbose)
 	COUT << "Starting command On Reception: " << cmd << endl;
   executeCommand( cmd );
 }
@@ -2494,6 +2506,8 @@ static void executeOnEndOfStudy()
   struct tm *tmp = localtime( &t );
   char outstr[80];
 
+  if(opt_verbose) COUT << "exec end of study: " << lastStudySubdirectoryPathAndName << '\n';
+
   // perform substitution for placeholder #p; #p will be substituted by lastStudySubdirectoryPathAndName
   cmd = replaceChars( cmd, OFString(PATH_PLACEHOLDER), lastStudySubdirectoryPathAndName );
 
@@ -2518,7 +2532,7 @@ static void executeOnEndOfStudy()
   // don't perform substitution for placeholder #z (archive filename), archive filename is next one.
 
   // Execute command in a new process
-  //if(opt_verbose)
+  if(opt_verbose)
 	COUT << "exec on end of study: " << cmd << endl;
   executeCommand( cmd );
 }

@@ -53,6 +53,8 @@
 #include "dcmtk/dcmjpeg/dipijpeg.h"  /* for dcmimage JPEG plugin */
 #include "dcmtk/dcmimage/diregist.h"  /* include to support color images */
 
+#include <errno.h>
+
 #ifdef WITH_ZLIB
 #include <zlib.h>      /* for zlibVersion() */
 #endif
@@ -652,69 +654,80 @@ int main(int argc, char *argv[])
     }
     DcmDataset *dataset = fileformat.getDataset();
 
+	bool skipCompress = false;
     DcmXfer original_xfer(dataset->getOriginalXfer());
     if (original_xfer.isEncapsulated())
     {
-      if (opt_verbose)
-        COUT << "DICOM file is already compressed, convert to uncompressed xfer syntax first\n";
-      if (EC_Normal != dataset->chooseRepresentation(EXS_LittleEndianExplicit, NULL))
-      {
-        CERR << "No conversion from compressed original to uncompressed xfer syntax possible!\n";
-        return 1;
-      }
+	  if(opt_deleteSourceFile)
+	  {
+		skipCompress = true;
+	  }
+	  else
+	  {
+		if (opt_verbose)
+		  COUT << "DICOM file is already compressed, convert to uncompressed xfer syntax first\n";
+		if (EC_Normal != dataset->chooseRepresentation(EXS_LittleEndianExplicit, NULL))
+		{
+		  CERR << "No conversion from compressed original to uncompressed xfer syntax possible!\n";
+		  return 1;
+		}
+	  }
     }
 
-    if (opt_verbose)
-        COUT << "Convert DICOM file to compressed transfer syntax\n";
+	if( ! skipCompress )
+	{
+	  if (opt_verbose)
+		  COUT << "Convert DICOM file to compressed transfer syntax\n";
 
-    DcmXfer opt_oxferSyn(opt_oxfer);
+	  DcmXfer opt_oxferSyn(opt_oxfer);
 
-    // create representation parameters for lossy and lossless
-    DJ_RPLossless rp_lossless((int)opt_selection_value, (int)opt_point_transform);
-    DJ_RPLossy rp_lossy((int)opt_quality);
+	  // create representation parameters for lossy and lossless
+	  DJ_RPLossless rp_lossless((int)opt_selection_value, (int)opt_point_transform);
+	  DJ_RPLossy rp_lossy((int)opt_quality);
 
-    const DcmRepresentationParameter *rp = &rp_lossy;
-    if ((opt_oxfer == EXS_JPEGProcess14SV1TransferSyntax)||
-        (opt_oxfer == EXS_JPEGProcess14TransferSyntax))
-        rp = &rp_lossless;
+	  const DcmRepresentationParameter *rp = &rp_lossy;
+	  if ((opt_oxfer == EXS_JPEGProcess14SV1TransferSyntax)||
+		  (opt_oxfer == EXS_JPEGProcess14TransferSyntax))
+		  rp = &rp_lossless;
 
-    dataset->chooseRepresentation(opt_oxfer, rp);
-    if (dataset->canWriteXfer(opt_oxfer))
-    {
-        if (opt_verbose)
-            COUT << "Output transfer syntax " << opt_oxferSyn.getXferName()
-                 << " can be written\n";
-    } else {
-        CERR << "No conversion to transfer syntax " << opt_oxferSyn.getXferName()
-             << " possible!\n";
-        return 1;
-    }
+	  dataset->chooseRepresentation(opt_oxfer, rp);
+	  if (dataset->canWriteXfer(opt_oxfer))
+	  {
+		  if (opt_verbose)
+			  COUT << "Output transfer syntax " << opt_oxferSyn.getXferName()
+				   << " can be written\n";
+	  } else {
+		  CERR << "No conversion to transfer syntax " << opt_oxferSyn.getXferName()
+			   << " possible!\n";
+		  return 1;
+	  }
 
-    // force meta-header to refresh SOP Class/Instance UIDs.
-    DcmItem *metaInfo = fileformat.getMetaInfo();
-    if (metaInfo)
-    {
-      delete metaInfo->remove(DCM_MediaStorageSOPClassUID);
-      delete metaInfo->remove(DCM_MediaStorageSOPInstanceUID);
-    }
+	  // force meta-header to refresh SOP Class/Instance UIDs.
+	  DcmItem *metaInfo = fileformat.getMetaInfo();
+	  if (metaInfo)
+	  {
+		delete metaInfo->remove(DCM_MediaStorageSOPClassUID);
+		delete metaInfo->remove(DCM_MediaStorageSOPInstanceUID);
+	  }
 
-    if (opt_verbose)
-        COUT << "creating output file " << opt_ofname << endl;
+	  if (opt_verbose)
+		  COUT << "creating output file " << opt_ofname << endl;
 
-    fileformat.loadAllDataIntoMemory();
-    error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
-              opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
+	  fileformat.loadAllDataIntoMemory();
+	  error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
+				opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
 
-    if (error.bad())
-    {
-        CERR << "Error: "
-             << error.text()
-             << ": writing file: " <<  opt_ofname << endl;
-        return 1;
-    }
+	  if (error.bad())
+	  {
+		  CERR << "Error: "
+			   << error.text()
+			   << ": writing file: " <<  opt_ofname << endl;
+		  return 1;
+	  }
 
-    if (opt_verbose)
-        COUT << "conversion successful\n";
+	  if (opt_verbose)
+		  COUT << "conversion successful\n";
+	}
 
     // deregister global codecs
     DJDecoderRegistration::cleanup();
@@ -723,7 +736,20 @@ int main(int argc, char *argv[])
 	if(opt_deleteSourceFile)
 	{
 	  if (opt_verbose) COUT << "delete source file: " << opt_ifname << endl;
-	  remove(opt_ifname);
+	  if(skipCompress)
+	  {
+		if( remove(opt_ofname) )
+		{
+		  int errnoRmdir = 0;
+		  _get_errno(&errnoRmdir);
+		  if(errnoRmdir != ENOENT) perror(opt_ofname);
+		}
+	  	if( rename(opt_ifname, opt_ofname) ) perror(opt_ifname);
+	  }
+	  else
+	  {
+		if( remove(opt_ifname) ) perror(opt_ifname);
+	  }
 	}
     return 0;
 }

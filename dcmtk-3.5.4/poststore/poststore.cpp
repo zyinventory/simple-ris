@@ -7,15 +7,19 @@
 #include <fstream>
 #include <sstream>
 #include <time.h>
+#include <limits.h>
+#include <direct.h>
+#include <errno.h>
 
 using namespace std;
 #import <msxml3.dll>
 using namespace MSXML2;
 
 const char UNIT_SEPARATOR = 0x1F;
-const int STATUS_Normal = 0, STATUS_Error = -1, STATUS_EOF = 1;
 const streamsize BUFF_SIZE = 1024;
+const int RMDIR_WAIT_SECONDS = 10;
 char buffer[BUFF_SIZE + 1];
+string baseurl("http://localhost/pacs/");
 string path("archdir/");
 string savePath;
 
@@ -38,26 +42,32 @@ HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::
 
   patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string patientId(buffer);
-  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+  if(! patientStrm.good()) { clog << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
 
   patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string patientsName(buffer);
-  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+  if(! patientStrm.good()) { clog << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+
+  patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
+  string birthdate(buffer);
+
+  patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
+  string sex(buffer);
 
   patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string studyUID(buffer);
-  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+  if(! patientStrm.good()) { clog << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
 
   patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string studyDate(buffer);
-  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+  if(! patientStrm.good()) { clog << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
 
   patientStrm.getline(buffer, BUFF_SIZE);
   string accNum(buffer);
 
   //paht += "YYYY/MM/DD/<study uid>/"
-  path.append(studyDate.substr(0, 4)).append(1, '/').append(studyDate.substr(4, 2)).append(1, '/').append(studyDate.substr(6, 2)).append(1, '/');
-  path.append(studyUID).append(1, '/');
+  path.append(studyDate.substr(0, 4)).append(1, '/').append(studyDate.substr(4, 2)).append(1, '/').append(studyDate.substr(6, 2));
+  path.append(1, '/').append(studyUID).append(1, '/');
 
   savePath = path;
   string::size_type p;
@@ -68,15 +78,16 @@ HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::
   hr = pXMLDom.CreateInstance(__uuidof(DOMDocument30));
   if (FAILED(hr))
   {
-	cerr << "Failed to CreateInstance on an XML DOM.\n";
+	clog << "Failed to CreateInstance on an XML DOM.\n";
 	return hr;
   }
   pXMLDom->preserveWhiteSpace = VARIANT_FALSE;
   pXMLDom->async = VARIANT_FALSE;
 
+  MSXML2::IXMLDOMElementPtr wado;
   if( pXMLDom->load(savePath.c_str()) == VARIANT_TRUE )
   {
-	study = pXMLDom->selectSingleNode("/wado_query/Patient/Study");
+	wado = pXMLDom->selectSingleNode("/wado_query");
   }
   else
   {
@@ -87,26 +98,42 @@ HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::
 	  pXMLDom->appendChild(pi);
 	  pi.Release();
 	}
-
-	MSXML2::IXMLDOMElementPtr wado;
+	/*
+	pi = pXMLDom->createProcessingInstruction("xml-stylesheet", "type='text/xml' href='/xslt/study.xsl'");
+	if (pi != NULL)
+	{
+	  pXMLDom->appendChild(pi);
+	  pi.Release();
+	}
+	*/
 	wado = pXMLDom->createNode(MSXML2::NODE_ELEMENT, "wado_query", "http://www.weasis.org/xsd");
 	wado->setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
-	wado->setAttribute("wadoURL", "http://localhost/");
 	wado->setAttribute("requireOnlySOPInstanceUID", "false");
 	pXMLDom->appendChild(wado);
+  }
+  wado->setAttribute("wadoURL", baseurl.c_str());
 
-	MSXML2::IXMLDOMElementPtr patient;
+  MSXML2::IXMLDOMElementPtr patient;
+  patient = pXMLDom->selectSingleNode("/wado_query/Patient");
+  if( ! patient )
+  {
 	patient = pXMLDom->createNode(MSXML2::NODE_ELEMENT, "Patient", "http://www.weasis.org/xsd");
-	patient->setAttribute("PatientID", patientId.c_str());
-	patient->setAttribute("PatientName", patientsName.c_str());
 	wado->appendChild(patient);
+  }
+  patient->setAttribute("PatientID", patientId.c_str());
+  patient->setAttribute("PatientName", patientsName.c_str());
+  if( ! birthdate.empty() ) patient->setAttribute("PatientBirthDate", birthdate.c_str());
+  if( ! sex.empty() ) patient->setAttribute("PatientSex", sex.c_str());
 
+  study = patient->selectSingleNode("./Study");
+  if( ! study )
+  {
 	study = pXMLDom->createNode(MSXML2::NODE_ELEMENT, "Study", "http://www.weasis.org/xsd");
 	study->setAttribute("StudyInstanceUID", studyUID.c_str());
-	study->setAttribute("StudyDate", studyDate.c_str());
-	study->setAttribute("AccessionNumber", accNum.c_str());
 	patient->appendChild(study);
   }
+  study->setAttribute("StudyDate", studyDate.c_str());
+  study->setAttribute("AccessionNumber", accNum.c_str());
   return S_OK;
 }
 
@@ -117,19 +144,19 @@ HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
 
   instStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string seriesUID(buffer);
-  if(! instStrm.good()) { cerr << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+  if(! instStrm.good()) { clog << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
 
   instStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string seriesNumber(buffer);
-  if(! instStrm.good()) { cerr << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+  if(! instStrm.good()) { clog << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
 
   instStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string modality(buffer);
-  if(! instStrm.good()) { cerr << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+  if(! instStrm.good()) { clog << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
 
   instStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string instanceUID(buffer);
-  if(! instStrm.good()) { cerr << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+  if(! instStrm.good()) { clog << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
 
   instStrm.getline(buffer, BUFF_SIZE);
   string instanceNumber(buffer);
@@ -148,28 +175,33 @@ HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
   {
 	series = study->ownerDocument->createNode(MSXML2::NODE_ELEMENT, "Series", "http://www.weasis.org/xsd");
 	series->setAttribute("SeriesInstanceUID", seriesUID.c_str());
-	series->setAttribute("SeriesNumber", seriesNumber.c_str());
-	series->setAttribute("Modality", modality.c_str());
 	study->appendChild(series);
   }
+  series->setAttribute("SeriesNumber", seriesNumber.c_str());
+  series->setAttribute("Modality", modality.c_str());
 
   instance = series->selectSingleNode(instanceQuery.c_str());
   if( ! instance )
   {
 	instance = study->ownerDocument->createNode(MSXML2::NODE_ELEMENT, "Instance", "http://www.weasis.org/xsd");
 	instance->setAttribute("SOPInstanceUID", instanceUID.c_str());
-	instance->setAttribute("InstanceNumber", instanceNumber.c_str());
-	string url(path);
-	url.append(seriesUID).append(1, '/').append(instanceUID).append(".DCM");
-	instance->setAttribute("DirectDownloadFile", url.c_str());
 	series->appendChild(instance);
   }
+  instance->setAttribute("InstanceNumber", instanceNumber.c_str());
+  string url(path);
+  url.append(seriesUID).append(1, '/').append(instanceUID).append(".DCM");
+  instance->setAttribute("DirectDownloadFile", url.c_str());
   return S_OK;
 }
 
 HRESULT processInputStream(istream& istrm)
 {
   istrm.getline(buffer, BUFF_SIZE);
+  if( ! istrm.good() )
+  {
+	clog << "Failed to read input file\n";
+	return E_FAIL;
+  }
 
   HRESULT hr;
   MSXML2::IXMLDOMDocumentPtr pXMLDom;
@@ -178,7 +210,7 @@ HRESULT processInputStream(istream& istrm)
   hr = getStudyNode(buffer, pXMLDom, study);
   if (FAILED(hr)) 
   {
-	cerr << "Failed to create DOM\n";
+	clog << "Failed to create DOM\n";
 	return hr;
   }
 
@@ -194,7 +226,7 @@ HRESULT processInputStream(istream& istrm)
   hr = pXMLDom->save(savePath.c_str());
   if (FAILED(hr))
   {
-	cerr << "Failed to save DOM to tree.xml\n";
+	clog << "Failed to save DOM to tree.xml\n";
 	return hr;
   }
 
@@ -202,26 +234,95 @@ HRESULT processInputStream(istream& istrm)
   return S_OK;
 }
 
+bool operationRetry(int(*fn)(const char *), const char *param, int state, int seconds, const char *messageHeader)
+{
+  bool opFail = true;
+  for(int i = 0; i < seconds; ++i )
+  {
+	if( fn(param) )
+	{
+	  int errnoOperation = 0;
+	  _get_errno(&errnoOperation);
+	  if(errnoOperation == state)
+		::Sleep(1000);
+	  else
+		break;
+	}
+	else
+	{
+	  opFail = false;
+	  break;
+	}
+  }
+
+  if(opFail)
+  {
+	perror(param);
+	cout << messageHeader << param <<endl;
+  }
+
+  return ! opFail;
+}
+
 int _tmain(int argc, _TCHAR* argv[])
 {
+  char* inputFile;
   CoInitialize(NULL);
   HRESULT hr;
-  if(argc == 1)
+  if(argc == 1 || strcmp(argv[1], "-?") == 0 || strcmp(argv[1], "-h") == 0 
+	|| strcmp(argv[1], "--help") == 0)
+  {
+	cout << "usage: poststore baseurl infile\n"
+	  << "baseurl: base url, must start with http://.\n"
+	  << "infile: input file, - is stdin." << endl;
+	return 0;
+  }
+
+  if(argc == 2)
+  {
+	if( strncmp(argv[1], "http://", 7) == 0 )
+	{
+	  baseurl = argv[1];
+	  inputFile = "-";
+	}
+	else
+	  inputFile = argv[1];
+  }
+  else
+  {
+	baseurl = argv[1];
+	inputFile = argv[2];
+  }
+
+  if(inputFile == "-")
   {
 	hr = processInputStream(cin);
   }
   else
   {
-	ifstream infile(argv[1]);
+	ifstream infile(inputFile);
 	if(infile)
 	{
 	  hr = processInputStream(infile);
 	  infile.close();
-	  remove(argv[1]);
+	  if(hr == S_OK)
+	  {
+		// dcmcjpeg inherit handle of instance.txt from storescp, wait dcmcjpeg close it.
+		if( operationRetry(remove, inputFile, EACCES, RMDIR_WAIT_SECONDS, "error at remove file: ") )
+		{
+		  char *pos = NULL;
+		  if((pos = strrchr(inputFile, '\\')) != NULL)
+		  {
+			*pos = '\0';
+			operationRetry(_rmdir, inputFile, ENOTEMPTY, RMDIR_WAIT_SECONDS, "error at remove dir: ");
+		  }
+		}
+	  }
 	}
 	else
 	{
-	  cerr << "Can't open file " << argv[1] << endl;
+	  perror(inputFile);
+	  cout << "error at open file: " << inputFile <<endl;
 	  hr = E_FAIL;
 	}
   }
