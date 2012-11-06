@@ -1657,6 +1657,7 @@ cleanup:
 	inststrm.close();
 	inststrm.clear();
 	if(opt_verbose) COUT << "close file: " << instanceCSVPath << '\n';
+	instanceCSVPath.clear();
   }
   lastStudySubdirectoryPathAndName = subdirectoryPathAndName;
   executeEndOfStudyEvents();
