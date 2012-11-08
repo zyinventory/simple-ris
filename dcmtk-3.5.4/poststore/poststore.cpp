@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <direct.h>
 #include <errno.h>
+#include <memory>
 
 using namespace std;
 #import <msxml3.dll>
@@ -92,7 +93,7 @@ HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::
   else
   {
 	MSXML2::IXMLDOMProcessingInstructionPtr pi;
-	pi = pXMLDom->createProcessingInstruction("xml", "version='1.0' encoding='GBK'");
+	pi = pXMLDom->createProcessingInstruction("xml", "version='1.0' encoding='gbk'");
 	if (pi != NULL)
 	{
 	  pXMLDom->appendChild(pi);
@@ -194,6 +195,119 @@ HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
   return S_OK;
 }
 
+HRESULT createStudyDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
+{
+  HRESULT hr;
+  MSXML2::IXMLDOMDocumentPtr pXsl;
+  hr = pXsl.CreateInstance(__uuidof(DOMDocument30));
+  if (FAILED(hr))
+  {
+	clog << "Failed to CreateInstance on an XSL DOM.\n";
+	return hr;
+  }
+  pXsl->preserveWhiteSpace = VARIANT_FALSE;
+  pXsl->async = VARIANT_FALSE;
+
+  if(pXsl->load("xslt\\study.xsl") == VARIANT_FALSE)
+  {
+	clog << "Failed to load XSL DOM: xslt\\study.xsl\n";
+	return E_FAIL;
+  }
+
+  string errorMessage;
+  string dayIndexFilePath("archdir/");
+  HANDLE fh;
+  try
+  {
+	unsigned long written = 0;
+	const char *header = "<?xml version=\"1.0\" encoding=\"gbk\"?>\n";
+	_bstr_t xmlText(pXMLDom->transformNode(pXsl));
+	MSXML2::IXMLDOMDocumentPtr dayDomPtr;
+	dayDomPtr.CreateInstance(__uuidof(DOMDocument30));
+	dayDomPtr->loadXML(xmlText);
+	dayDomPtr->firstChild->attributes->getNamedItem("encoding")->text = "GBK";
+	MSXML2::IXMLDOMNodePtr day = dayDomPtr->lastChild;
+	dayIndexFilePath.append(day->attributes->getNamedItem("StudyDate")->text).append("/index_day.xml");
+
+	fh = ::CreateFile(dayIndexFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(fh == INVALID_HANDLE_VALUE)
+	{
+	  if(ERROR_FILE_EXISTS == ::GetLastError())
+	  {
+		for(int i = 0; i < 100; ++i)  // 10 seconds
+		{
+		  fh = ::CreateFile(dayIndexFilePath.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		  if(fh == INVALID_HANDLE_VALUE)
+		  {
+			if(ERROR_SHARING_VIOLATION == ::GetLastError())
+			{
+			  clog << "Waiting lock...\n";
+			  ::Sleep(100);
+			}
+			else
+			  throw "Failed to lock file ";
+		  }
+		  else
+		  {
+			break;
+		  }
+		}
+
+		if(fh == INVALID_HANDLE_VALUE) throw "Lock file timeout: ";
+
+		/*
+		const size_t READBUF_SIZE = 1024 * 1024;
+		size_t hasRead = 0;
+		auto_ptr<char> readbuf(new char[READBUF_SIZE]);
+		if( ! ::ReadFile(fh, readbuf.get(), READBUF_SIZE, &hasRead, NULL) )
+		{
+		  throw "Can't read file ";
+		}
+		*/
+		MSXML2::IXMLDOMDocumentPtr oldIndex;
+		oldIndex.CreateInstance(__uuidof(DOMDocument30));
+		oldIndex->load(dayIndexFilePath.c_str());
+		string query("/Day/Study[text()='");
+		query.append(day->firstChild->text).append("']");
+		MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(query.c_str());
+		if(existStudy) oldIndex->lastChild->removeChild(existStudy);
+		oldIndex->lastChild->appendChild(day->firstChild);
+		::SetEndOfFile(fh);
+		if( ! ( WriteFile(fh, header, strlen(header), &written, NULL) && 
+		  WriteFile(fh, (const char *)oldIndex->lastChild->xml, strlen((const char *)oldIndex->lastChild->xml), &written, NULL) ) )
+		{
+		  throw "Failed to write file ";
+		}
+	  }
+	  else
+	  {
+		throw "Failed to create file ";
+	  }
+	}
+	else
+	{
+	  if( ! ( WriteFile(fh, header, strlen(header), &written, NULL) && 
+		WriteFile(fh, (const char *)day->xml, strlen((const char *)day->xml), &written, NULL) ) )
+	  {
+		throw "Failed to write file ";
+	  }
+	}
+	::CloseHandle(fh);
+  }
+  catch(_com_error &ex) 
+  {
+	clog << "Failed to transform XML+XSLT: " << ex.ErrorMessage() << '\n';
+	return ex.Error();
+  }
+  catch(char * message)
+  {
+	if(fh != INVALID_HANDLE_VALUE) ::CloseHandle(fh);
+	clog << message << dayIndexFilePath << '\n';
+	return E_FAIL;
+  }
+  return S_OK;
+}
+
 HRESULT processInputStream(istream& istrm)
 {
   istrm.getline(buffer, BUFF_SIZE);
@@ -230,8 +344,7 @@ HRESULT processInputStream(istream& istrm)
 	return hr;
   }
 
-  if (pXMLDom) pXMLDom.Release();
-  return S_OK;
+  return createStudyDateIndex(pXMLDom);
 }
 
 bool operationRetry(int(*fn)(const char *), const char *param, int state, int seconds, const char *messageHeader)
@@ -258,7 +371,7 @@ bool operationRetry(int(*fn)(const char *), const char *param, int state, int se
   if(opFail)
   {
 	perror(param);
-	cout << messageHeader << param <<endl;
+	clog << messageHeader << param <<endl;
   }
 
   return ! opFail;
@@ -308,6 +421,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	  if(hr == S_OK)
 	  {
 		// dcmcjpeg inherit handle of instance.txt from storescp, wait dcmcjpeg close it.
+		/*
 		if( operationRetry(remove, inputFile, EACCES, RMDIR_WAIT_SECONDS, "error at remove file: ") )
 		{
 		  char *pos = NULL;
@@ -317,12 +431,13 @@ int _tmain(int argc, _TCHAR* argv[])
 			operationRetry(_rmdir, inputFile, ENOTEMPTY, RMDIR_WAIT_SECONDS, "error at remove dir: ");
 		  }
 		}
+		*/
 	  }
 	}
 	else
 	{
 	  perror(inputFile);
-	  cout << "error at open file: " << inputFile <<endl;
+	  clog << "error at open file: " << inputFile <<endl;
 	  hr = E_FAIL;
 	}
   }
