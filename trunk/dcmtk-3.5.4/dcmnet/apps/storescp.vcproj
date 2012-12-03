@@ -53,7 +53,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;&quot;D:\workspace\dcmtk-support\zlib-1.2.3\include&quot;;..\..\dcmtls\include;&quot;D:\workspace\dcmtk-support\openssl-0.9.8a\include&quot;;..\..\bridge;..\..\dcmdata\include\dcmtk\dcmdata"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;&quot;D:\workspace\dcmtk-support\zlib-1.2.3\include&quot;;..\..\dcmtls\include;&quot;D:\workspace\dcmtk-support\openssl-0.9.8a\include&quot;;..\..\commonlib;..\..\dcmdata\include\dcmtk\dcmdata"
 				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Debug\&quot;;_DEBUG"
 				ExceptionHandling="1"
 				RuntimeLibrary="1"
@@ -81,7 +81,7 @@
 				Name="VCLinkerTool"
 				LinkLibraryDependencies="false"
 				AdditionalOptions=" /STACK:10000000 /machine:X86 /debug"
-				AdditionalDependencies="bridge.lib ofstd.lib dcmdata.lib dcmnet.lib dcmtls.lib zlib_d.lib dcmtkssl_d.lib dcmtkeay_d.lib netapi32.lib wsock32.lib ws2_32.lib"
+				AdditionalDependencies="commonlib.lib ofstd.lib dcmdata.lib dcmnet.lib dcmtls.lib zlib_d.lib dcmtkssl_d.lib dcmtkeay_d.lib netapi32.lib wsock32.lib ws2_32.lib"
 				OutputFile="Debug\storescp.exe"
 				Version="0.0"
 				LinkIncremental="2"
@@ -150,7 +150,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;&quot;D:\workspace\dcmtk-support\zlib-1.2.3\include&quot;;..\..\dcmtls\include;&quot;D:\workspace\dcmtk-support\openssl-0.9.8a\include&quot;;..\..\bridge;..\..\dcmdata\include\dcmtk\dcmdata"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;&quot;D:\workspace\dcmtk-support\zlib-1.2.3\include&quot;;..\..\dcmtls\include;&quot;D:\workspace\dcmtk-support\openssl-0.9.8a\include&quot;;..\..\commonlib;..\..\dcmdata\include\dcmtk\dcmdata"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
 				ExceptionHandling="1"
 				RuntimeLibrary="0"
@@ -177,7 +177,7 @@
 				Name="VCLinkerTool"
 				LinkLibraryDependencies="false"
 				AdditionalOptions=" /STACK:10000000 /machine:X86"
-				AdditionalDependencies="bridge.lib ofstd.lib dcmdata.lib dcmnet.lib dcmtls.lib zlib_o.lib dcmtkssl_o.lib dcmtkeay_o.lib netapi32.lib wsock32.lib ws2_32.lib"
+				AdditionalDependencies="commonlib.lib ofstd.lib dcmdata.lib dcmnet.lib dcmtls.lib zlib_o.lib dcmtkssl_o.lib dcmtkeay_o.lib netapi32.lib wsock32.lib ws2_32.lib"
 				OutputFile="Release\storescp.exe"
 				Version="0.0"
 				LinkIncremental="1"
@@ -408,10 +408,6 @@
 			Name="Source Files"
 			>
 			<File
-				RelativePath=".\extension.cpp"
-				>
-			</File>
-			<File
 				RelativePath="storescp.cxx"
 				>
 			</File>
@@ -419,10 +415,6 @@
 		<Filter
 			Name="Header Files"
 			>
-			<File
-				RelativePath=".\extension.h"
-				>
-			</File>
 		</Filter>
 		<File
 			RelativePath=".\sql.txt"

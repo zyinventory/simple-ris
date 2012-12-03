@@ -59,7 +59,7 @@
 #include "dcmtk/dcmnet/dimse.h"
 
 #include "wlcefs.h"
-#include "common.h"
+#include "commonlib.h"
 
 #ifdef WITH_ZLIB
 #include <zlib.h>        /* for zlibVersion() */

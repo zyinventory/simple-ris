@@ -1,7 +1,6 @@
 #pragma once
 
 #include <dcmtk/dcmnet/dicom.h>
-#include "common.h"
 
 #define __BRIDGE_DEFINE 1
 
@@ -141,3 +140,4 @@ typedef struct tagIndicatorWorklistRecord
 class WlmDBInteractionManager;
 typedef void (*FetchWorklistCallback)(PWorklistRecord pWorklist, PIndicatorWorklistRecord pIndicator, WlmDBInteractionManager *dbim);
 bool GetWorklistFromDB(FetchWorklistCallback /* fetchCallBack */, WlmDBInteractionManager *dbim);
+void logError(std::ostream &outputStream);

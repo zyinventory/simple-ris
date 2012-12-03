@@ -102,7 +102,7 @@ extern "C" {
 int mkstemp(char *);
 }
 #endif
-#include "common.h"
+#include "commonlib.h"
 
 #ifdef PRIVATE_STORESCP_DECLARATIONS
 PRIVATE_STORESCP_DECLARATIONS

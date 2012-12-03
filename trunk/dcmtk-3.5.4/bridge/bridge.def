@@ -1,13 +1,5 @@
 LIBRARY	"bridge"
 EXPORTS
-	IsASCII
-	rtrim
-	GetSignalInterruptValue
-	SignalInterruptHandler
-	Capture_Ctrl_C
-	GenerateLogPath
-	GetFileInfo
-	DeleteEmptyFile
 	GetErrorMessage
 	GetErrorModuleName
 	logError
