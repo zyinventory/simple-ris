@@ -41,7 +41,7 @@
 #include "wlcefs.h"
 #include "dcmtk/dcmwlm/wlds.h"
 #include "dcmtk/dcmwlm/wldsdb.h"
-#include "common.h"
+#include "commonlib.h"
 
 #define OFFIS_CONSOLE_APPLICATION "wlmscpfs"
 

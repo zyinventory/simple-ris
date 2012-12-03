@@ -14,6 +14,7 @@
 #include "dcmtk/dcmwlm/wltypdef.h"
 #include "dcmtk/dcmwlm/wlmdbim.h"
 #include "bridge.h"
+#include "commonlib.h"
 
 static void DumpPosition(DcmTag& tag, const char *failedPosition, DcmDataset *&dataset, DcmItem *item = NULL)
 {

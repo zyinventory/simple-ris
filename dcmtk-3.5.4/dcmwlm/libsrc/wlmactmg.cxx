@@ -53,7 +53,7 @@
 #include "dcmtk/ofstd/ofstd.h"
 #include "dcmtk/dcmdata/dcdicent.h"  // needed by MSVC5 with STL
 #include "dcmtk/dcmwlm/wlmactmg.h"
-#include "common.h"
+#include "commonlib.h"
 // ----------------------------------------------------------------------------
 
 // We need two global functions, because we need to pass a function pointer for a callback function

@@ -234,7 +234,7 @@ HRESULT createStudyDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
 	{
 	  if(ERROR_FILE_EXISTS == ::GetLastError())
 	  {
-		for(int i = 0; i < 100; ++i)  // 10 seconds
+		for(int i = 0; i < 1000; ++i)  // 10 seconds
 		{
 		  fh = ::CreateFile(dayIndexFilePath.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		  if(fh == INVALID_HANDLE_VALUE)
@@ -242,7 +242,7 @@ HRESULT createStudyDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
 			if(ERROR_SHARING_VIOLATION == ::GetLastError())
 			{
 			  clog << "Waiting lock...\n";
-			  ::Sleep(100);
+			  ::Sleep(10);
 			}
 			else
 			  throw "Failed to lock file ";
@@ -255,15 +255,6 @@ HRESULT createStudyDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
 
 		if(fh == INVALID_HANDLE_VALUE) throw "Lock file timeout: ";
 
-		/*
-		const size_t READBUF_SIZE = 1024 * 1024;
-		size_t hasRead = 0;
-		auto_ptr<char> readbuf(new char[READBUF_SIZE]);
-		if( ! ::ReadFile(fh, readbuf.get(), READBUF_SIZE, &hasRead, NULL) )
-		{
-		  throw "Can't read file ";
-		}
-		*/
 		MSXML2::IXMLDOMDocumentPtr oldIndex;
 		oldIndex.CreateInstance(__uuidof(DOMDocument30));
 		oldIndex->load(dayIndexFilePath.c_str());

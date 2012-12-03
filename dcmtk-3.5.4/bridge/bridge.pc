@@ -169,6 +169,11 @@ const char *GetErrorModuleName()
   return ErrorModuleName;
 }
 
+void logError(std::ostream &outputStream)
+{
+  outputStream << GetErrorModuleName() << ':' << GetErrorMessage() << std::endl;
+}
+
 bool SqlError( const char* moduleName )
 {
   ErrorModuleName = moduleName;
