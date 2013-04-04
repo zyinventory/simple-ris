@@ -139,6 +139,7 @@ END_EXTERN_C
 #include "dcmtk/dcmnet/dcmtrans.h"
 #include "dcmtk/dcmnet/dcmlayer.h"
 #include "dcmtk/ofstd/ofstd.h"
+#include "dcmtk/ofstd/ofpacs.h"
 
 OFGlobal<OFBool> dcmDisableGethostbyaddr(OFFalse);
 OFGlobal<Sint32> dcmConnectionTimeout(-1);
@@ -1636,10 +1637,8 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
     if (shouldFork && (command_argc > 0) && command_argv)
     {
         // win32 code to create new child process
-        //HANDLE childSocketHandle;
         HANDLE hChildStdInRead;
         HANDLE hChildStdInWrite;
-        //HANDLE hChildStdInWriteDup;
 
         SECURITY_ATTRIBUTES sa;
         sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -1676,6 +1675,36 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 		// Ensure the write handle to the pipe is not inherited.
 		SetHandleInformation( hChildStdInWrite, HANDLE_FLAG_INHERIT, 0);
 
+		SECURITY_ATTRIBUTES logSA;
+		logSA.bInheritHandle = TRUE;
+		logSA.lpSecurityDescriptor = NULL;
+		logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
+
+		HANDLE logFile = INVALID_HANDLE_VALUE;
+		DWORD errorCode;
+		OFString logFilePath, temp;
+		{
+		  char buf[256];
+		  char *ip_addr = inet_ntoa(reinterpret_cast<sockaddr_in*>(&from)->sin_addr);
+		  if(ip_addr == NULL) ip_addr = "console";
+		  OFString ipSock(ip_addr);
+		  ipSock.append(1, '_');
+		  ipSock.append(itoa(sock, buf, 10));
+		  GenerateLogPath(buf, 1024, ipSock.c_str(), '\\');
+		  logFilePath = buf;
+		  temp = buf;
+		}
+
+		temp.resize(temp.rfind(PATH_SEPARATOR));
+		if(EC_Normal == MkdirRecursive(temp))
+		{
+		  logFile = CreateFile(logFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+		  if(logFile == INVALID_HANDLE_VALUE)
+		  {
+			errorCode = GetLastError();
+			CERR << "create log file " << logFilePath.c_str() << " failed, error code:" << errorCode << endl;
+		  }
+		}
 		// we need a STARTUPINFO and a PROCESS_INFORMATION structure for CreateProcess.
         STARTUPINFO si;
         PROCESS_INFORMATION pi;
@@ -1687,31 +1716,37 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 		// stdin is the read end of our anonymous pipe.
         si.cb = sizeof(si);
         si.dwFlags |= STARTF_USESTDHANDLES; // | STARTF_USESHOWWINDOW;
-        si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-        si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+		if(logFile == INVALID_HANDLE_VALUE)
+		{
+		  si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+		  si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+		}
+		else
+		{
+		  si.hStdOutput = logFile;
+		  si.hStdError = logFile;
+		}
         si.hStdInput = hChildStdInRead;
 		// si.wShowWindow |= SW_MINIMIZE;
 		// create child process. 
         if (!CreateProcess(NULL,OFconst_cast(char *,cmdLine.c_str()),NULL,NULL,TRUE, NULL, NULL, NULL, &si, &pi))
         {
+			CloseHandle(hChildStdInWrite);
+			CloseHandle(hChildStdInRead);
             char buf4[256];
             sprintf(buf4, "CreateProcess failed: (%i)",(int)GetLastError());
             return makeDcmnetCondition(DULC_CANNOTFORK, OF_error, buf4);
         }
         else 
         {
+			CloseHandle(hChildStdInRead);
+			if(logFile != INVALID_HANDLE_VALUE) CloseHandle(logFile);
             // PROCESS_INFORMATION pi now contains various handles for the new process.
 			// Now that we have a handle to the new process, we can duplicate the
 			// socket handle into the new child process.
             WSAPROTOCOL_INFO protoInfo;
 			if (WSADuplicateSocket((SOCKET)sock, pi.dwProcessId, &protoInfo) == 0) 
             {
-                // close handles in PROCESS_INFORMATION structure
-				// and our local copy of the socket handle.
-                CloseHandle(pi.hProcess);
-                CloseHandle(pi.hThread);
-                closesocket((SOCKET)sock);
-
 				// send number of socket handle in child process over anonymous pipe
                 DWORD bytesWritten;
                 if (!WriteFile(hChildStdInWrite, (BYTE*)&protoInfo, sizeof(WSAPROTOCOL_INFO), &bytesWritten, NULL))
@@ -1719,14 +1754,18 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
                     CloseHandle(hChildStdInWrite);
                     return makeDcmnetCondition (DULC_CANNOTFORK, OF_error, "error while writing to anonymous pipe");
                 }
+
+				// close handles in PROCESS_INFORMATION structure
+				// and our local copy of the socket handle.
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
+				closesocket(sock);
 				CloseHandle(hChildStdInWrite);
-				CloseHandle(hChildStdInRead);
 
 				// return OF_ok status code DULC_FORKEDCHILD with descriptive text
                 char buf4[256];
-                sprintf(buf4, "new child process started with pid %i, socket %d, from %s", 
-                  OFstatic_cast(int, pi.dwProcessId), sock,
-				  inet_ntoa(reinterpret_cast<sockaddr_in*>(&from)->sin_addr));
+				sprintf(buf4, "new child process started with pid %i, socket %d, log file: %s", 
+				  OFstatic_cast(int, pi.dwProcessId), sock, logFilePath.c_str());
                 return makeDcmnetCondition (DULC_FORKEDCHILD, OF_ok, buf4);
             }
             else 
@@ -1735,7 +1774,6 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 				// to avoid resource leak.
                 CloseHandle(pi.hProcess);
                 CloseHandle(pi.hThread);
-                closesocket((SOCKET)sock);
 				CloseHandle(hChildStdInWrite);
                 return makeDcmnetCondition (DULC_CANNOTFORK, OF_error, "error while duplicating socket handle");
             }

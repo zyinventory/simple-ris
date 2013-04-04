@@ -4,8 +4,14 @@
 #include "dcmtk/ofstd/ofconsol.h"
 #include "dcmtk/ofstd/ofcond.h"
 #include "dcmtk/ofstd/ofstring.h"
+
+#include <strstream>
+#include <time.h>
+#include <errno.h>
 #ifdef HAVE_WINDOWS_H
+#include <windows.h>
 #include <direct.h>        /* for _mkdir() */
+#include <process.h>     /* needed for declaration of getpid() */
 #endif
 
 OFCondition MkdirRecursive(OFString& subdirectoryPath)
@@ -44,4 +50,39 @@ OFCondition MkdirRecursive(OFString& subdirectoryPath)
       return EC_Normal;
     }
   }
+}
+
+//return 0 if successful, otherwise errno
+int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator)
+{
+  time_t now = time(NULL);
+  struct tm calendar;
+  errno_t err = localtime_s(&calendar, &now);
+  if(!err)
+  {
+	pid_t pid = _getpid();
+	std::ostrstream format;
+	format << "pacs_log" << pathSeparator << "%Y" << pathSeparator << "%m" << pathSeparator << "%d" << pathSeparator << "%H%M%S_" << appName << '_' << pid << ".txt" << std::ends;
+	size_t pathLen = strftime(buf, bufLen, format.rdbuf()->str(), &calendar);
+	format.rdbuf()->freeze(false);
+	if( ! pathLen ) err = EINVAL;
+  }
+  return err;
+}
+
+BOOL DeleteEmptyFile(const char *filePath)
+{
+  LARGE_INTEGER fileSize;
+  HANDLE handle = ::CreateFile(filePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  if( handle != INVALID_HANDLE_VALUE) 
+  {
+    ::GetFileSizeEx(handle, &fileSize);
+    ::CloseHandle(handle);
+	if(fileSize.QuadPart == 0LL)
+	  return  ::DeleteFile(filePath);
+	else
+	  return TRUE;
+  }
+  else
+	return FALSE;
 }
