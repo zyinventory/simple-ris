@@ -53,7 +53,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;&quot;D:\workspace\dcmtk-support\zlib-1.2.3\include&quot;;..\..\dcmtls\include;&quot;D:\workspace\dcmtk-support\openssl-0.9.8a\include&quot;;..\..\commonlib;..\..\dcmdata\include\dcmtk\dcmdata"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;&quot;D:\workspace\dcmtk-support\zlib-1.2.3\include&quot;;..\..\dcmtls\include;&quot;D:\workspace\dcmtk-support\openssl-0.9.8a\include&quot;;&quot;$(SolutionDir)commonlib&quot;;..\..\dcmdata\include\dcmtk\dcmdata"
 				PreprocessorDefinitions="_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR=\&quot;Debug\&quot;;_DEBUG"
 				ExceptionHandling="1"
 				RuntimeLibrary="1"
@@ -89,6 +89,7 @@
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="Debug/storescp.pdb"
 				SubSystem="1"
+				HeapCommitSize="0"
 				ImportLibrary="Debug\storescp.lib"
 			/>
 			<Tool
@@ -150,7 +151,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
-				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;&quot;D:\workspace\dcmtk-support\zlib-1.2.3\include&quot;;..\..\dcmtls\include;&quot;D:\workspace\dcmtk-support\openssl-0.9.8a\include&quot;;..\..\commonlib;..\..\dcmdata\include\dcmtk\dcmdata"
+				AdditionalIncludeDirectories="..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;&quot;D:\workspace\dcmtk-support\zlib-1.2.3\include&quot;;..\..\dcmtls\include;&quot;D:\workspace\dcmtk-support\openssl-0.9.8a\include&quot;;&quot;$(SolutionDir)commonlib&quot;;..\..\dcmdata\include\dcmtk\dcmdata"
 				PreprocessorDefinitions="_REENTRANT,WITH_LIBXML,WITH_LIBPNG,WITH_LIBTIFF,WITH_OPENSSL,WITH_ZLIB,CMAKE_INTDIR=\&quot;Release\&quot;"
 				ExceptionHandling="1"
 				RuntimeLibrary="0"
@@ -184,6 +185,7 @@
 				AdditionalLibraryDirectories="&quot;..\..\$(ConfigurationName)&quot;;&quot;..\..\ofstd\libsrc\$(ConfigurationName)&quot;;&quot;..\..\dcmnet\libsrc\$(ConfigurationName)&quot;;&quot;..\..\dcmdata\libsrc\$(ConfigurationName)&quot;;&quot;..\..\dcmtls\libsrc\$(ConfigurationName)&quot;;&quot;D:\workspace\dcmtk-support\openssl-0.9.8a\lib&quot;;&quot;D:\workspace\dcmtk-support\zlib-1.2.3\lib&quot;"
 				ProgramDatabaseFile="Release/storescp.pdb"
 				SubSystem="1"
+				HeapCommitSize="0"
 				ImportLibrary="Release\storescp.lib"
 			/>
 			<Tool
@@ -279,6 +281,7 @@
 				AdditionalLibraryDirectories="..\$(OutDir),..,..\..\ofstd\$(OutDir),..\..\ofstd,..\..\dcmdata\$(OutDir),..\..\dcmdata,..\..\dcmtls\$(OutDir),..\..\dcmtls,D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir),D:\workspace\dcmtk-support\zlib-1.2.3\lib,D:\workspace\dcmtk-support\openssl-0.9.8a\lib\$(OutDir),D:\workspace\dcmtk-support\openssl-0.9.8a\lib,..\..\ofstd\libsrc\MinSizeRel\$(OutDir),..\..\ofstd\libsrc\MinSizeRel,..\..\dcmdata\libsrc\MinSizeRel\$(OutDir),..\..\dcmdata\libsrc\MinSizeRel,..\libsrc\MinSizeRel\$(OutDir),..\libsrc\MinSizeRel,..\..\dcmtls\libsrc\MinSizeRel\$(OutDir),..\..\dcmtls\libsrc\MinSizeRel"
 				ProgramDatabaseFile="MinSizeRel/storescp.pdb"
 				SubSystem="1"
+				HeapCommitSize="0"
 				ImportLibrary="MinSizeRel\storescp.lib"
 			/>
 			<Tool
@@ -376,6 +379,7 @@
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="RelWithDebInfo/storescp.pdb"
 				SubSystem="1"
+				HeapCommitSize="0"
 				ImportLibrary="RelWithDebInfo\storescp.lib"
 			/>
 			<Tool

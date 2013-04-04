@@ -103,7 +103,7 @@ int mkstemp(char *);
 }
 #endif
 #include <direct.h>
-#include <commonlib.h>
+#include "commonlib.h"
 
 #ifdef PRIVATE_STORESCP_DECLARATIONS
 PRIVATE_STORESCP_DECLARATIONS
@@ -243,26 +243,10 @@ extern "C" void sigChildHandler(int)
 #define SHORTCOL 4
 #define LONGCOL 21
 
-const size_t LogPathMaxLength = 256;
-static OFString logFilePathAndNameBefore(LogPathMaxLength, '\0');
-static OFString logFilePathAndNameAfter(LogPathMaxLength, '\0');
-static ofstream *fileOutputStream = NULL;
 static OFCommandLine *pCmd = NULL;
 
 void exitHook()
 {
-  if(fileOutputStream != NULL)
-  {
-	ofConsole.setCout(NULL);
-	ofConsole.setCerr(NULL);
-	fileOutputStream->close();
-	if( ! DeleteEmptyFile(logFilePathAndNameBefore.c_str()) )
-	{
-	  if(logFilePathAndNameBefore != logFilePathAndNameAfter)
-		rename(logFilePathAndNameBefore.c_str(), logFilePathAndNameAfter.c_str());
-	}
-  }
-
   if(inststrm.is_open())
   {
 	inststrm.flush();
@@ -285,8 +269,6 @@ void exitHook()
   subdirectoryPathAndName.~OFString();
   instanceCSVPath.~OFString();
   opt_ciphersuites.~OFString();
-  logFilePathAndNameBefore.~OFString();
-  logFilePathAndNameAfter.~OFString();
   outputFileNameArray.clear();
   lastArchiveFileName.~OFString();
   _CrtDumpMemoryLeaks();
@@ -883,29 +865,6 @@ int main(int argc, char *argv[])
     if (cmd.findOption("--exec-sync")) opt_execSync = OFTrue;
 #endif
 
-  }
-
-  if( opt_forkedChild )
-  {
-	char logPath[LogPathMaxLength];
-	errno_t err = GenerateLogPath(logPath, sizeof(logPath), OFFIS_CONSOLE_APPLICATION, PATH_SEPARATOR);
-	if( ! err )
-	{
-	  logFilePathAndNameBefore = logPath;
-	  OFString temp(logFilePathAndNameBefore);
-	  temp.resize(temp.rfind(PATH_SEPARATOR));
-	  if(EC_Normal == MkdirRecursive(temp))
-	  {
-		fileOutputStream = new ofstream(logFilePathAndNameBefore.c_str(), ios::app | ios::out, _SH_DENYWR);
-		if(fileOutputStream != NULL)
-		{
-		  ofConsole.setCout(fileOutputStream);
-		  ofConsole.setCerr(fileOutputStream);
-		  logFilePathAndNameAfter = logFilePathAndNameBefore;
-		  logFilePathAndNameAfter.resize(logFilePathAndNameAfter.size() - 4);
-		}
-	  }
-	}
   }
 
 #ifdef WITH_OPENSSL
@@ -1661,7 +1620,7 @@ cleanup:
 	return cond;
   }
 
-  if(opt_verbose) COUT << "association closing\n";
+  if(opt_debug) COUT << "association closing\n";
 
   if(inststrm.is_open())
   {
@@ -2131,10 +2090,6 @@ storeSCPCallback(
           rsp->DimseStatus = STATUS_STORE_Error_DataSetDoesNotMatchSOPClass;
         }
       }
-
-	  if(logFilePathAndNameAfter.length() <= logFilePathAndNameBefore.length())
-		logFilePathAndNameAfter.append(1, '_').append(dcmSOPClassUIDToModality(req->AffectedSOPClassUID))
-		  .append(1, '.').append(".txt");
     }
 
     // in case opt_bitPreserving is set, do some other things

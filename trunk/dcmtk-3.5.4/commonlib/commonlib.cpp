@@ -1,16 +1,16 @@
 #include "stdafx.h"
 #include <signal.h>
-#include <time.h>
-#include <errno.h>
-#include <strstream>
+//#include <time.h>
+//#include <errno.h>
+//#include <strstream>
 
-#ifdef _WIN32
-#include <process.h>     /* needed for declaration of getpid() */
-#endif
+//#ifdef _WIN32
+//#include <process.h>     /* needed for declaration of getpid() */
+//#endif
 
-#ifndef HAVE_NO_TYPEDEF_PID_T  // not include cfwin32.h
-typedef int pid_t;
-#endif
+//#ifndef HAVE_NO_TYPEDEF_PID_T  // not include cfwin32.h
+//typedef int pid_t;
+//#endif
 
 bool IsASCII(const char *str)
 {
@@ -69,24 +69,6 @@ int GetSignalInterruptValue()
   return signalInterruptFlag;
 }
 
-//return 0 if successful, otherwise errno
-errno_t GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator)
-{
-  time_t now = time(NULL);
-  struct tm calendar;
-  errno_t err = localtime_s(&calendar, &now);
-  if(!err)
-  {
-	pid_t pid = _getpid();
-	std::ostrstream format;
-	format << "pacs_log" << pathSeparator << "%Y" << pathSeparator << "%m%d" << pathSeparator << "%H%M%S_" << appName << '_' << pid << ".txt" << std::ends;
-	size_t pathLen = strftime(buf, bufLen, format.rdbuf()->str(), &calendar);
-	format.rdbuf()->freeze(false);
-	if( ! pathLen ) err = EINVAL;
-  }
-  return err;
-}
-
 LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime)
 {
   FILETIME fileTime;
@@ -107,21 +89,4 @@ LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime)
   }
   else
 	return -1LL;
-}
-
-BOOL DeleteEmptyFile(const char *filePath)
-{
-  LARGE_INTEGER fileSize;
-  HANDLE handle = ::CreateFile(filePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-  if( handle != INVALID_HANDLE_VALUE) 
-  {
-    ::GetFileSizeEx(handle, &fileSize);
-    ::CloseHandle(handle);
-	if(fileSize.QuadPart == 0LL)
-	  return  ::DeleteFile(filePath);
-	else
-	  return FALSE;
-  }
-  else
-	return FALSE;
 }
