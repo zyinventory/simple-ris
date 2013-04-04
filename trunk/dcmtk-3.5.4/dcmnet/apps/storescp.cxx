@@ -103,7 +103,7 @@ int mkstemp(char *);
 }
 #endif
 #include <direct.h>
-#include "commonlib.h"
+#include <commonlib.h>
 
 #ifdef PRIVATE_STORESCP_DECLARATIONS
 PRIVATE_STORESCP_DECLARATIONS
@@ -1018,15 +1018,15 @@ int main(int argc, char *argv[])
   }
 #endif
 
-  /* make sure data dictionary is loaded */
-  if (!dcmDataDict.isDictionaryLoaded())
-  {
-    fprintf(stderr, "Warning: no data dictionary loaded, check environment variable: %s\n", DCM_DICT_ENVIRONMENT_VARIABLE);
-  }
-
   if(opt_workingDirectory.length() != 0)
   {
 	_chdir(opt_workingDirectory.c_str());
+  }
+
+  /* make sure data dictionary is loaded */
+  if (!dcmDataDict.isDictionaryLoaded())
+  {
+	CERR << "Warning: no data dictionary loaded, check environment variable: " << DCM_DICT_ENVIRONMENT_VARIABLE << endl;
   }
 
   /* if the output directory does not equal "." (default directory) */
@@ -1280,7 +1280,7 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
   if (cond.code() == DULC_FORKEDCHILD)
   {
       if (opt_verbose) DimseCondition::dump(cond);
-	  else printf("%s\n", cond.text());
+	  else COUT << cond.text();
       goto cleanup;
   }
   // if some kind of error occured, take care of it
@@ -1334,18 +1334,17 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
   {
 #if defined(HAVE_FORK) || defined(_WIN32)
     if (opt_forkMode)
-    {
-      printf("Association Received in %s process (pid: %ld) from %s\n", (DUL_processIsForkedChild() ? "child" : "parent") , OFstatic_cast(long, getpid()), assoc->params->DULparams.callingAPTitle);
-    }
-	else printf("Association Received from %s\n", assoc->params->DULparams.callingAPTitle);
+	  COUT << "Association Received in " << (DUL_processIsForkedChild() ? "child" : "parent") << " process (pid: " << OFstatic_cast(long, getpid()) << ") from " << assoc->params->DULparams.callingAPTitle << endl;
+	else
+	  COUT << "Association Received from " << assoc->params->DULparams.callingAPTitle << endl;
 #else
-    printf("Association Received\n");
+    COUT << "Association Received" << endl;
 #endif
   }
 
   if (opt_debug)
   {
-    printf("Parameters:\n");
+    COUT << "Parameters:" << endl;
     ASC_dumpParameters(assoc->params, COUT);
 
     DIC_AE callingTitle;
@@ -1365,11 +1364,11 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
       ASC_REASON_SU_NOREASON
     };
 
-    if (opt_verbose) printf("Refusing Association (forced via command line)\n");
+    if (opt_verbose) COUT << "Refusing Association (forced via command line)" << endl;
     cond = ASC_rejectAssociation(assoc, &rej);
     if (cond.bad())
     {
-      printf("Association Reject Failed:\n");
+      COUT << "Association Reject Failed:" << endl;
       DimseCondition::dump(cond);
     }
     goto cleanup;
@@ -1538,7 +1537,7 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
       ASC_REASON_SU_APPCONTEXTNAMENOTSUPPORTED
     };
 
-    if (opt_verbose) printf("Association Rejected: bad application context name: %s\n", buf);
+    if (opt_verbose) COUT << "Association Rejected: bad application context name: " << buf;
     cond = ASC_rejectAssociation(assoc, &rej);
     if (cond.bad())
     {
@@ -1557,7 +1556,7 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
       ASC_REASON_SU_NOREASON
     };
 
-    if (opt_verbose) printf("Association Rejected: No Implementation Class UID provided\n");
+    if (opt_verbose) COUT << "Association Rejected: No Implementation Class UID provided" << endl;
     cond = ASC_rejectAssociation(assoc, &rej);
     if (cond.bad())
     {
@@ -1578,9 +1577,9 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
     }
     if (opt_verbose)
     {
-      printf("Association Acknowledged (Max Send PDV: %lu)\n", assoc->sendPDVLength);
+      COUT << "Association Acknowledged (Max Send PDV: " << assoc->sendPDVLength << ')' << endl;;
       if (ASC_countAcceptedPresentationContexts(assoc->params) == 0)
-        printf("    (but no valid presentation contexts)\n");
+        COUT << "    (but no valid presentation contexts)" << endl;
       if (opt_debug) ASC_dumpParameters(assoc->params, COUT);
     }
   }
@@ -1630,16 +1629,16 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
 
   if (cond == DUL_PEERREQUESTEDRELEASE)
   {
-    if (opt_verbose) printf("Association Release\n");
+    if (opt_verbose) COUT << "Association Release" << endl;
     cond = ASC_acknowledgeRelease(assoc);
   }
   else if (cond == DUL_PEERABORTEDASSOCIATION)
   {
-    if (opt_verbose) printf("Association Aborted\n");
+    if (opt_verbose) COUT << "Association Aborted" << endl;
   }
   else
   {
-    fprintf(stderr, "storescp: DIMSE Failure (aborting association)\n");
+    CERR << "storescp: DIMSE Failure (aborting association)" << endl;
     /* some kind of error so abort the association */
     cond = ASC_abortAssociation(assoc);
   }
@@ -1756,7 +1755,7 @@ processCommands(T_ASC_Association * assoc)
     // detail information, dump this information
     if (statusDetail != NULL)
     {
-      printf("Extra Status Detail: \n");
+      COUT << "Extra Status Detail: " << endl;
       statusDetail->print(COUT);
       delete statusDetail;
     }
@@ -1779,7 +1778,7 @@ processCommands(T_ASC_Association * assoc)
         default:
           // we cannot handle this kind of message
           cond = DIMSE_BADCOMMANDTYPE;
-          fprintf(stderr, "storescp: Cannot handle command: 0x%x\n", OFstatic_cast(unsigned, msg.CommandField));
+		  CERR << "storescp: Cannot handle command: " << hex << OFstatic_cast(unsigned, msg.CommandField) << endl;
           break;
       }
     }
@@ -1793,7 +1792,8 @@ static OFCondition echoSCP( T_ASC_Association * assoc, T_DIMSE_Message * msg, T_
 {
   if (opt_verbose)
   {
-    printf("Received ");
+    COUT << "Received ";
+	COUT.flush();
     DIMSE_printCEchoRQ(stdout, &msg->msg.CEchoRQ);
   }
 
@@ -1801,7 +1801,7 @@ static OFCondition echoSCP( T_ASC_Association * assoc, T_DIMSE_Message * msg, T_
   OFCondition cond = DIMSE_sendEchoResponse(assoc, presID, &msg->msg.CEchoRQ, STATUS_Success, NULL);
   if (cond.bad())
   {
-    fprintf(stderr, "storescp: Echo SCP Failed:\n");
+    CERR << "storescp: Echo SCP Failed:" << endl;
     DimseCondition::dump(cond);
   }
   return cond;
