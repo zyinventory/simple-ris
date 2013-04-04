@@ -153,6 +153,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\service.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\stdafx.cpp"
 				>
 				<FileConfiguration
@@ -180,6 +184,10 @@
 			>
 			<File
 				RelativePath=".\commonlib.h"
+				>
+			</File>
+			<File
+				RelativePath=".\service.h"
 				>
 			</File>
 			<File
