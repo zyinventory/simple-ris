@@ -409,10 +409,10 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 	  hr = processInputStream(infile);
 	  infile.close();
+#ifndef _DEBUG
 	  if(hr == S_OK)
 	  {
 		// dcmcjpeg inherit handle of instance.txt from storescp, wait dcmcjpeg close it.
-		/*
 		if( operationRetry(remove, inputFile, EACCES, RMDIR_WAIT_SECONDS, "error at remove file: ") )
 		{
 		  char *pos = NULL;
@@ -422,8 +422,8 @@ int _tmain(int argc, _TCHAR* argv[])
 			operationRetry(_rmdir, inputFile, ENOTEMPTY, RMDIR_WAIT_SECONDS, "error at remove dir: ");
 		  }
 		}
-		*/
 	  }
+#endif
 	}
 	else
 	{
