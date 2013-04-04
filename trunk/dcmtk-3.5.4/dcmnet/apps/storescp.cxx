@@ -102,6 +102,7 @@ extern "C" {
 int mkstemp(char *);
 }
 #endif
+#include <direct.h>
 #include "commonlib.h"
 
 #ifdef PRIVATE_STORESCP_DECLARATIONS
@@ -176,6 +177,7 @@ const char *       opt_respondingaetitle = APPLICATIONTITLE;
 static OFBool      opt_secureConnection = OFFalse;    // default: no secure connection
 static OFString    opt_outputDirectory(".");          // default: output directory equals "."
 static OFString    opt_volumeLabel;   // default: output directory's full path
+static OFString    opt_workingDirectory;    		  // default: current directory
 static const char *opt_sortConcerningStudies = NULL;  // default: no sorting
 OFString           lastStudyInstanceUID;
 OFString           subdirectoryPathAndName;
@@ -187,7 +189,7 @@ static const char *opt_execOnEndOfStudy = NULL;       // default: don't execute 
 
 OFString           lastStudySubdirectoryPathAndName, instanceCSVPath, lastArchiveFileName;
 static OFBool      opt_renameOnEndOfStudy = OFFalse;  // default: don't rename any files on end of study
-static long        opt_endOfStudyTimeout = 10;        // default: no end of study timeout
+static long        opt_endOfStudyTimeout = 1L;         // default: 1 second
 static OFBool      endOfStudyThroughTimeoutEvent = OFFalse;
 static const char *opt_configFile = NULL;
 static const char *opt_profileName = NULL;
@@ -242,18 +244,34 @@ extern "C" void sigChildHandler(int)
 #define LONGCOL 21
 
 const size_t LogPathMaxLength = 256;
-OFString logFilePathAndNameBefore(LogPathMaxLength, '\0');
-OFString logFilePathAndNameAfter(LogPathMaxLength, '\0');
+static OFString logFilePathAndNameBefore(LogPathMaxLength, '\0');
+static OFString logFilePathAndNameAfter(LogPathMaxLength, '\0');
+static ofstream *fileOutputStream = NULL;
+static OFCommandLine *pCmd = NULL;
 
 void exitHook()
 {
+  if(fileOutputStream != NULL)
+  {
+	ofConsole.setCout(NULL);
+	ofConsole.setCerr(NULL);
+	fileOutputStream->close();
+	if( ! DeleteEmptyFile(logFilePathAndNameBefore.c_str()) )
+	{
+	  if(logFilePathAndNameBefore != logFilePathAndNameAfter)
+		rename(logFilePathAndNameBefore.c_str(), logFilePathAndNameAfter.c_str());
+	}
+  }
+
   if(inststrm.is_open())
   {
 	inststrm.flush();
 	inststrm.close();
 	CERR << "close index file on exit:" << instanceCSVPath << endl;
   }
+
 #ifdef _DEBUG
+  delete pCmd;
   dcmDataDict.clear();
   opt_fileNameExtension.~OFString();
   callingaetitle.~OFString();
@@ -261,6 +279,7 @@ void exitHook()
   callingpresentationaddress.~OFString();
   opt_outputDirectory.~OFString();
   opt_volumeLabel.~OFString();
+  opt_workingDirectory.~OFString();
   lastStudyInstanceUID.~OFString();
   lastStudySubdirectoryPathAndName.~OFString();
   subdirectoryPathAndName.~OFString();
@@ -300,7 +319,7 @@ int main(int argc, char *argv[])
 
   char tempstr[20];
   OFConsoleApplication app(OFFIS_CONSOLE_APPLICATION , "DICOM storage (C-STORE) SCP", rcsid);
-  OFCommandLine *pCmd = new OFCommandLine();
+  pCmd = new OFCommandLine();
   OFCommandLine &cmd = *pCmd;
 
   cmd.setParamColumn(LONGCOL+SHORTCOL+4);
@@ -317,6 +336,7 @@ int main(int argc, char *argv[])
     opt0 += ")";
     cmd.addOption("--output-directory",          "-od",   1, "[p]ath: string", opt0.c_str());
 	cmd.addOption("--volume-label",              "-vl",   1, "[p]ath: string", "volume where the images are stored, default: output directory's full path");
+	cmd.addOption("--working-directory",         "-wd",   1, "[p]ath: string", "working directory, default: current directory");
 
 #if defined(HAVE_FORK) || defined(_WIN32)
   cmd.addGroup("multi-process options:", LONGCOL, SHORTCOL+2);
@@ -552,7 +572,6 @@ int main(int argc, char *argv[])
       {
         app.checkConflict("--inetd", "--fork", opt_inetd_mode);
         opt_forkMode = OFTrue;
-		opt_endOfStudyTimeout = 1L;
       }
 #ifdef _WIN32
       if (cmd.findOption("--forked-child"))
@@ -593,6 +612,7 @@ int main(int argc, char *argv[])
     }
     if (cmd.findOption("--output-directory")) app.checkValue(cmd.getValue(opt_outputDirectory));
     if (cmd.findOption("--volume-label")) app.checkValue(cmd.getValue(opt_volumeLabel));
+	if (cmd.findOption("--working-directory")) app.checkValue(cmd.getValue(opt_workingDirectory));
 
     cmd.beginOptionBlock();
     if (cmd.findOption("--prefer-uncompr"))      opt_networkTransferSyntax = EXS_Unknown;
@@ -865,7 +885,6 @@ int main(int argc, char *argv[])
 
   }
 
-  ofstream *fileOutputStream = NULL;
   if( opt_forkedChild )
   {
 	char logPath[LogPathMaxLength];
@@ -1005,6 +1024,11 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Warning: no data dictionary loaded, check environment variable: %s\n", DCM_DICT_ENVIRONMENT_VARIABLE);
   }
 
+  if(opt_workingDirectory.length() != 0)
+  {
+	_chdir(opt_workingDirectory.c_str());
+  }
+
   /* if the output directory does not equal "." (default directory) */
   if( opt_outputDirectory.compare(".") != 0 )
   {
@@ -1023,11 +1047,12 @@ int main(int argc, char *argv[])
       return 1;
     }
   }
+
   if(opt_volumeLabel.length() == 0)
   {
-	char buff[1024];
-	::GetCurrentDirectory(1024, buff);
-	opt_volumeLabel = buff;
+	char *buffer = _getcwd(NULL, 0);
+	opt_volumeLabel = buffer;
+	free(buffer);
 	opt_volumeLabel += PATH_SEPARATOR;
 	opt_volumeLabel += opt_outputDirectory;
   }
@@ -1223,19 +1248,6 @@ int main(int argc, char *argv[])
   delete tLayer;
 #endif
 
-  if(fileOutputStream != NULL)
-  {
-	ofConsole.setCout(NULL);
-	ofConsole.setCerr(NULL);
-	fileOutputStream->close();
-	if( ! DeleteEmptyFile(logFilePathAndNameBefore.c_str()) )
-	{
-	  if(logFilePathAndNameBefore != logFilePathAndNameAfter)
-		rename(logFilePathAndNameBefore.c_str(), logFilePathAndNameAfter.c_str());
-	}
-  }
-
-  delete pCmd;
   return 0;
 }
 
