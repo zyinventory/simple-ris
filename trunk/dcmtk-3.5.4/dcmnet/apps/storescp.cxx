@@ -979,7 +979,31 @@ int main(int argc, char *argv[])
 
   if(opt_workingDirectory.length() != 0)
   {
+	if(opt_verbose || opt_debug)
+	{
+  	  char *buffer = _getcwd(NULL, 0);
+	  COUT << "Old working directory: " << buffer << endl;
+	  free(buffer);
+	}
 	_chdir(opt_workingDirectory.c_str());
+	if(opt_verbose || opt_debug)
+	{
+	  char *buffer = _getcwd(NULL, 0);
+	  COUT << "New working directory: " << buffer << endl;
+	  free(buffer);
+	}
+  }
+  else if(opt_verbose || opt_debug)
+  {
+  	char *buffer = _getcwd(NULL, 0);
+	COUT << "working directory: " << buffer << endl;
+	free(buffer);
+  }
+
+  if(opt_verbose || opt_debug)
+  {
+	COUT << "-xcr --exec-on-reception:" << opt_execOnReception << endl;
+	COUT << "-xcs --exec-on-eostudy:" << opt_execOnEndOfStudy << endl;
   }
 
   /* make sure data dictionary is loaded */
@@ -1153,6 +1177,21 @@ int main(int argc, char *argv[])
 #endif
 
   Capture_Ctrl_C();
+
+  char* parentPidBuffer;
+  size_t requiredSize;
+  int parentPid = 0;
+  getenv_s( &requiredSize, NULL, 0, "PARENT_PID");
+  if(requiredSize > 0)
+  {
+	parentPidBuffer = new char[requiredSize];
+	getenv_s( &requiredSize, parentPidBuffer, requiredSize, "PARENT_PID");
+	parentPid = atoi(parentPidBuffer);
+	delete parentPidBuffer;
+  }
+  HANDLE parentHandle;
+  if(parentPid > 0) parentHandle = OpenProcess(SYNCHRONIZE, FALSE, parentPid);
+
   while (cond.good())
   {
     /* receive an association and acknowledge or reject it. If the association was */
@@ -1187,8 +1226,17 @@ int main(int argc, char *argv[])
     if (DUL_processIsForkedChild()) break;
 
 	// if Ctrl-C press
-	if (GetSignalInterruptValue() != 0) break;
+	if (GetSignalInterruptValue() != 0) { COUT << "Ctrl-C pressed" << endl; Beep(1500, 300); break; }
+
+	// if parent process terminate
+	if(parentHandle != NULL && WaitForSingleObject(parentHandle, 0) == WAIT_OBJECT_0)
+	{
+	  COUT << "parent process terminate" << endl;
+	  Beep(750, 300);
+	  break;
+	}
   }
+  if(parentHandle != NULL) CloseHandle(parentHandle);
 
   /* drop the network, i.e. free memory of T_ASC_Network* structure. This call */
   /* is the counterpart of ASC_initializeNetwork(...) which was called above. */
@@ -1239,7 +1287,7 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
   if (cond.code() == DULC_FORKEDCHILD)
   {
       if (opt_verbose) DimseCondition::dump(cond);
-	  else COUT << cond.text();
+	  else COUT << cond.text() << endl;
       goto cleanup;
   }
   // if some kind of error occured, take care of it

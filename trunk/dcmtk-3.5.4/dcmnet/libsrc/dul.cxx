@@ -1739,6 +1739,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
         }
         else 
         {
+			WaitForInputIdle(pi.hProcess, INFINITE);
 			CloseHandle(hChildStdInRead);
 			if(logFile != INVALID_HANDLE_VALUE) CloseHandle(logFile);
             // PROCESS_INFORMATION pi now contains various handles for the new process.
