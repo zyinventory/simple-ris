@@ -189,9 +189,16 @@ HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
 	series->appendChild(instance);
   }
   instance->setAttribute("InstanceNumber", instanceNumber.c_str());
-  string url(path);
-  url.append(seriesUID).append(1, '/').append(instanceUID).append(".DCM");
-  instance->setAttribute("DirectDownloadFile", url.c_str());
+  ostringstream url;
+  url << path;
+  if(seriesNumber.length() < 4)
+	for(int i = seriesNumber.length(); i < 4; i++) url << '0';
+  url << seriesNumber << '/';
+  if(instanceNumber.length() < 8)
+	for(int i = instanceNumber.length(); i < 8; i++) url << '0';
+  url << instanceNumber;
+  instance->setAttribute("DirectDownloadFile", url.str().c_str());
+  url.clear();
   return S_OK;
 }
 
