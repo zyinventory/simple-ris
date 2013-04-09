@@ -2075,14 +2075,19 @@ storeSCPCallback(
 		lastArchiveFileName.clear();
 		lastArchiveFileName.append(opt_volumeLabel).append(1, PATH_SEPARATOR);
 		lastArchiveFileName.append(studyDate.substr(0, 4)).append(1, PATH_SEPARATOR).append(studyDate.substr(4, 2)).append(1, PATH_SEPARATOR).append(studyDate.substr(6, 2));
-		lastArchiveFileName.append(1, PATH_SEPARATOR).append(currentStudyInstanceUID).append(1, PATH_SEPARATOR).append(currentSeriesInstanceUID);
+		lastArchiveFileName.append(1, PATH_SEPARATOR).append(currentStudyInstanceUID).append(1, PATH_SEPARATOR);
+		char buf2[32];
+		sprintf(buf2, "%04ld", seriesNumber);
+		lastArchiveFileName.append(buf2); //.append(currentSeriesInstanceUID);
         if( EC_Normal != MkdirRecursive( lastArchiveFileName ) )
         {
           CERR << "storescp: Could not create subdirectory " << subdirectoryPathAndName << endl;
           rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
           return;
         }
-		lastArchiveFileName.append(1, PATH_SEPARATOR).append(sopInstanceUid).append(".DCM");
+		lastArchiveFileName.append(1, PATH_SEPARATOR);
+		sprintf(buf2, "%08ld", instanceNumber);
+		lastArchiveFileName.append(buf2); // .append(sopInstanceUid).append(".DCM");
 
 		// integrate subdirectory name into file name (note that cbdata->imageFileName currently contains both
         // path and file name; however, the path refers to the output directory captured in opt_outputDirectory)

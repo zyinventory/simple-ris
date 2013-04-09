@@ -570,7 +570,7 @@ int main(int argc, char *argv[])
     DJDecoderRegistration::cleanup();
 #endif
 
-#ifdef DEBUG
+#ifdef _DEBUG
     dcmDataDict.clear();  /* useful for debugging with dmalloc */
 #endif
 
