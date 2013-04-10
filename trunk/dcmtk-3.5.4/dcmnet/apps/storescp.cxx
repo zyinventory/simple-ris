@@ -79,7 +79,6 @@ END_EXTERN_C
 #include "dcmtk/dcmnet/dcasccff.h"      /* for class DcmAssociationConfigurationFile */
 #include "dcmtk/dcmdata/dcvrcs.h"
 #include "dcmtk/ofstd/ofstream.h"
-#include "dcmtk/ofstd/ofpacs.h"
 
 #ifdef WITH_OPENSSL
 #include "dcmtk/dcmtls/tlstrans.h"
@@ -122,6 +121,7 @@ static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v" OFFIS_DCMTK_VERS
 #define CALLING_PRESENTATION_ADDRESS_PLACEHOLDER "#r"
 #define RECEIVED_DATE_PLACEHOLDER "#d"
 #define ARCHIVE_PATH_PLACEHOLDER "#v"
+#define ARCHIVE_STUDY_PATH_PLACEHOLDER "#s"
 #define ARCHIVE_FILENAME_PLACEHOLDER "#z"
 
 static OFCondition processCommands(T_ASC_Association *assoc);
@@ -180,7 +180,7 @@ static OFString    opt_volumeLabel;   // default: output directory's full path
 static OFString    opt_workingDirectory;    		  // default: current directory
 static const char *opt_sortConcerningStudies = NULL;  // default: no sorting
 OFString           lastStudyInstanceUID;
-OFString           subdirectoryPathAndName;
+OFString           subdirectoryPathAndName, archiveStudyPath;
 OFList<OFString>   outputFileNameArray;
 ofstream		  inststrm;
 const char		  UNIT_SEPARATOR = 0x1F;
@@ -267,6 +267,7 @@ void exitHook()
   lastStudyInstanceUID.~OFString();
   lastStudySubdirectoryPathAndName.~OFString();
   subdirectoryPathAndName.~OFString();
+  archiveStudyPath.~OFString();
   instanceCSVPath.~OFString();
   opt_ciphersuites.~OFString();
   outputFileNameArray.clear();
@@ -2032,6 +2033,10 @@ storeSCPCallback(
 		  subdirectoryName.reserve(256);
 		  subdirectoryName.append(opt_sortConcerningStudies).append(buf).append(currentStudyInstanceUID);
 
+		  archiveStudyPath = studyDate.substr(0, 4);
+		  archiveStudyPath.append(1, PATH_SEPARATOR).append(studyDate.substr(4, 2)).append(1, PATH_SEPARATOR);		// year/month/
+		  archiveStudyPath.append(studyDate.substr(6, 2)).append(1, PATH_SEPARATOR).append(currentStudyInstanceUID);// year/month/day/studyUID
+
           // create subdirectoryPathAndName (string with full path to new subdirectory)
           subdirectoryPathAndName = cbdata->imageFileName;
 
@@ -2039,8 +2044,7 @@ storeSCPCallback(
           if (position != OFString_npos) subdirectoryPathAndName.erase(position+1);
           subdirectoryPathAndName += subdirectoryName;
 
-		  // check if the subdirectory is already existent
-          if( EC_Normal != MkdirRecursive( subdirectoryPathAndName ) )
+		  if( ! MkdirRecursive( subdirectoryPathAndName.c_str() ) )
           {
             CERR << "storescp: Could not create subdirectory " << subdirectoryPathAndName << endl;
             rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
@@ -2079,7 +2083,7 @@ storeSCPCallback(
 		char buf2[32];
 		sprintf(buf2, "%04ld", seriesNumber);
 		lastArchiveFileName.append(buf2); //.append(currentSeriesInstanceUID);
-        if( EC_Normal != MkdirRecursive( lastArchiveFileName ) )
+		if( ! MkdirRecursive( lastArchiveFileName.c_str() ) )
         {
           CERR << "storescp: Could not create subdirectory " << subdirectoryPathAndName << endl;
           rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
@@ -2549,6 +2553,9 @@ static void executeOnEndOfStudy()
 
   // perform substitution for placeholder #v (archive dir)
   cmd = replaceChars( cmd, OFString(ARCHIVE_PATH_PLACEHOLDER), opt_volumeLabel );
+
+  // perform substitution for placeholder #s (archive study dir)
+  cmd = replaceChars( cmd, OFString(ARCHIVE_STUDY_PATH_PLACEHOLDER), archiveStudyPath );
 
   // don't perform substitution for placeholder #z (archive filename), archive filename is next one.
 

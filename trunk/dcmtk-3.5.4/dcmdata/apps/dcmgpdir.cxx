@@ -73,6 +73,8 @@
 #include "dcmtk/dcmjpeg/ddpiimpl.h"     /* for class DicomDirImageImplementation */
 #endif
 
+#include <direct.h>
+
 #ifdef WITH_ZLIB
 #include <zlib.h>         /* for zlibVersion() */
 #endif
@@ -89,6 +91,7 @@
 #define PATTERN_MATCHING_AVAILABLE
 #endif
 
+long generateIndex(const char *inputFile, const char *paramBaseUrl, const char *archivePath, const char *indexPath);
 
 static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v"
   OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
@@ -112,6 +115,10 @@ int main(int argc, char *argv[])
     const char *opt_charset = DEFAULT_DESCRIPTOR_CHARSET;
     const char *opt_directory = NULL;
     const char *opt_pattern = NULL;
+	const char *opt_archive = "archdir";
+	const char *opt_index = "indexdir";
+	const char *opt_csv = NULL;
+	const char *opt_weburl = NULL;
     DicomDirInterface::E_ApplicationProfile opt_profile = DicomDirInterface::AP_GeneralPurpose;
 
 #ifdef BUILD_DCMGPDIR_AS_DCMMKDIR
@@ -218,6 +225,11 @@ int main(int argc, char *argv[])
       cmd.addSubGroup("length encoding in sequences and items:");
         cmd.addOption("--length-explicit",       "+e",     "write with explicit lengths (default)");
         cmd.addOption("--length-undefined",      "-e",     "write with undefined lengths");
+      cmd.addSubGroup("index:");
+		cmd.addOption("--archive-directory",     "-ac", 1, "directory : string", "write DICOMDIR, default : archdir");
+		cmd.addOption("--index-directory",       "-ix", 1, "directory : string", "write index file, default : indexdir");
+        cmd.addOption("--input-csv",             "-ic", 1, "filename : string", "read index information from csv file");
+        cmd.addOption("--web-url",               "-wu", 1, "web url : string", "add a web url to index file");
 
     /* evaluate command line */
     prepareCmdLineArgs(argc, argv, OFFIS_CONSOLE_APPLICATION);
@@ -445,6 +457,17 @@ int main(int argc, char *argv[])
         {
             app.checkConflict("--icon-image-size", "--basic-cardiac, --xray-angiographic or --ct-and-mr", cmd.findOption("--icon-image-size"));
         }
+
+		cmd.beginOptionBlock();
+		if (cmd.findOption("--archive-directory"))
+            app.checkValue(cmd.getValue(opt_archive));
+		if (cmd.findOption("--index-directory"))
+            app.checkValue(cmd.getValue(opt_index));
+		if (cmd.findOption("--input-csv"))
+            app.checkValue(cmd.getValue(opt_csv));
+		if (cmd.findOption("--web-url"))
+            app.checkValue(cmd.getValue(opt_weburl));
+		cmd.endOptionBlock();
     }
 
     /* set debug mode and stream for log messages */
@@ -463,6 +486,8 @@ int main(int argc, char *argv[])
         OFSTRINGSTREAM_FREESTR(tmpString)
         return 1;  /* DcmDicomDir class dumps core when no data dictionary */
     }
+
+	long hr = generateIndex(opt_csv, opt_weburl, opt_archive, opt_index);
 
     /* create list of input files */
     OFList<OFString> fileNames;

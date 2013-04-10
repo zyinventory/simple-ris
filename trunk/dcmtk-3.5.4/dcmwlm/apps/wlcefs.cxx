@@ -42,7 +42,6 @@
 
 #include "dcmtk/dcmnet/dicom.h"
 #include "dcmtk/ofstd/ofcmdln.h"
-#include "dcmtk/ofstd/ofpacs.h"
 #include "dcmtk/dcmwlm/wltypdef.h"
 #include "dcmtk/dcmdata/dcxfer.h"
 #include "dcmtk/ofstd/ofconapp.h"
@@ -301,7 +300,7 @@ WlmConsoleEngineFileSystem::WlmConsoleEngineFileSystem( int paramArgc, char *par
 	{
 	  OFString logFilePath(logPath);
 	  logFilePath.resize(logFilePath.rfind(PATH_SEPARATOR));
-	  if(EC_Normal == MkdirRecursive(logFilePath))
+	  if(MkdirRecursive(logFilePath.c_str()))
 	  {
 		fileOutputStream = new ofstream(logPath, ios::app | ios::out, _SH_DENYWR);
 		if(fileOutputStream != NULL)

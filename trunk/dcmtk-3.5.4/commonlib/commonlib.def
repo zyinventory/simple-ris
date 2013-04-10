@@ -1,0 +1,14 @@
+LIBRARY	"commonlib"
+EXPORTS
+	GetSignalInterruptValue
+	SignalInterruptHandler
+	Capture_Ctrl_C
+	IsASCII
+	rtrim
+	GetFileInfo
+	MkdirRecursive
+	GenerateLogPath
+	DeleteEmptyFile
+	generateIndex
+	SvcInit
+	ReportSvcStatus

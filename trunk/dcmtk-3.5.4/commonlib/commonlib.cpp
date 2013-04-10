@@ -1,16 +1,17 @@
 #include "stdafx.h"
 #include <signal.h>
-//#include <time.h>
-//#include <errno.h>
-//#include <strstream>
+#include <time.h>
+#include <errno.h>
+#include <direct.h>        /* for _mkdir() */
+#include <process.h>
 
-//#ifdef _WIN32
-//#include <process.h>     /* needed for declaration of getpid() */
-//#endif
+#include <string>
+#include <iostream>
+#include <sstream>
 
-//#ifndef HAVE_NO_TYPEDEF_PID_T  // not include cfwin32.h
-//typedef int pid_t;
-//#endif
+#define PATH_SEPARATOR '\\'
+
+using namespace std;
 
 bool IsASCII(const char *str)
 {
@@ -89,4 +90,76 @@ LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime)
   }
   else
 	return -1LL;
+}
+
+bool MkdirRecursive(const char *subdir)
+{
+  // check if the subdirectory is already existent
+  if( _mkdir(subdir) )
+  {
+	if(errno == EEXIST)
+	  return true;
+  }
+  else
+  {
+	return true;
+  }
+
+  string subdirectoryPath = subdir;
+  size_t position = subdirectoryPath.rfind(PATH_SEPARATOR);
+  if(position != string::npos)
+  {
+    string upperLevel = subdirectoryPath.substr(0, position);
+	bool mkResult = MkdirRecursive(upperLevel.c_str());
+    if(mkResult != true)
+    {
+      return mkResult;
+    }
+    // else: upper level exist, create current level
+  }
+
+  // if it is not existent create it
+  if( _mkdir( subdirectoryPath.c_str() ) == -1 && errno != EEXIST)
+  {
+	cerr << "Could not create subdirectory " << subdirectoryPath.c_str() << endl;
+    return false;
+  }
+  else
+  {
+    return true;
+  }
+}
+
+//return 0 if successful, otherwise errno
+int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator)
+{
+  time_t now = time(NULL);
+  struct tm calendar;
+  errno_t err = localtime_s(&calendar, &now);
+  if(!err)
+  {
+	int pid = _getpid();
+	ostringstream format;
+	format << "pacs_log" << pathSeparator << "%Y" << pathSeparator << "%m" << pathSeparator << "%d" << pathSeparator << "%H%M%S_" << appName << '_' << pid << ".txt" << std::ends;
+	size_t pathLen = strftime(buf, bufLen, format.rdbuf()->str().c_str(), &calendar);
+	if( ! pathLen ) err = EINVAL;
+  }
+  return err;
+}
+
+BOOL DeleteEmptyFile(const char *filePath)
+{
+  LARGE_INTEGER fileSize;
+  HANDLE handle = ::CreateFile(filePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  if( handle != INVALID_HANDLE_VALUE) 
+  {
+    ::GetFileSizeEx(handle, &fileSize);
+    ::CloseHandle(handle);
+	if(fileSize.QuadPart == 0LL)
+	  return  ::DeleteFile(filePath);
+	else
+	  return TRUE;
+  }
+  else
+	return FALSE;
 }
