@@ -21,7 +21,7 @@ const char UNIT_SEPARATOR = 0x1F;
 const streamsize BUFF_SIZE = 1024;
 const int RMDIR_WAIT_SECONDS = 10;
 char buffer[BUFF_SIZE + 1];
-string baseurl("http://localhost/pacs/");
+string baseurl("");
 string archivePath("archdir");
 string indexPath("indexdir");
 string savePath;
@@ -385,7 +385,7 @@ bool operationRetry(int(*fn)(const char *), const char *param, int state, int se
 HRESULT generateIndex(const char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath)
 {
   HRESULT hr;
-  baseurl = paramBaseUrl;
+  if(paramBaseUrl) baseurl = paramBaseUrl;
   if(archPath) archivePath = archPath;
   if(indPath) indexPath = indPath;
   ifstream infile(inputFile);

@@ -187,7 +187,7 @@ const char		  UNIT_SEPARATOR = 0x1F;
 static const char *opt_execOnReception = NULL;        // default: don't execute anything on reception
 static const char *opt_execOnEndOfStudy = NULL;       // default: don't execute anything on end of study
 
-OFString           lastStudySubdirectoryPathAndName, instanceCSVPath, lastArchiveFileName;
+OFString           lastStudySubdirectoryPathAndName, instanceCSVPath, lastArchiveFileName, lastArchiveStudyPath;
 static OFBool      opt_renameOnEndOfStudy = OFFalse;  // default: don't rename any files on end of study
 static long        opt_endOfStudyTimeout = 1L;         // default: 1 second
 static OFBool      endOfStudyThroughTimeoutEvent = OFFalse;
@@ -266,6 +266,7 @@ void exitHook()
   opt_workingDirectory.~OFString();
   lastStudyInstanceUID.~OFString();
   lastStudySubdirectoryPathAndName.~OFString();
+  lastArchiveStudyPath.~OFString();
   subdirectoryPathAndName.~OFString();
   archiveStudyPath.~OFString();
   instanceCSVPath.~OFString();
@@ -1304,7 +1305,7 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
       // does not equal NULL), we have to consider that all objects for the current study have been received.
       // In such an "end-of-study" case, we might have to execute certain optional functions which were specified
       // by the user through command line options passed to storescp.
-      if( opt_endOfStudyTimeout != -1 && ! lastStudyInstanceUID.empty() )
+      if( opt_endOfStudyTimeout != -1 && ! subdirectoryPathAndName.empty() )
       {
         // indicate that the end-of-study-event occured through a timeout event.
         // This knowledge will be necessary in function renameOnEndOFStudy().
@@ -1312,10 +1313,11 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
 
         // before we actually execute those optional functions, we need to determine the path and name
         // of the subdirectory into which the DICOM files for the last study were written.
-        lastStudySubdirectoryPathAndName = subdirectoryPathAndName;
+		// execute end-of-study of previous study, shall not run at fork mode.
+        /* lastStudySubdirectoryPathAndName = subdirectoryPathAndName; */
 
         // now we can finally handle end-of-study events which might have to be executed
-        executeEndOfStudyEvents();
+        /* executeEndOfStudyEvents(); */
 
         // also, we need to clear lastStudyInstanceUID to indicate
         // that the last study is not considered to be open any more.
@@ -1323,6 +1325,7 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
 
         // also, we need to clear subdirectoryPathAndName
         subdirectoryPathAndName.clear();
+		archiveStudyPath.clear();
 
         // reset the endOfStudyThroughTimeoutEvent variable.
         endOfStudyThroughTimeoutEvent = OFFalse;
@@ -1679,6 +1682,9 @@ cleanup:
 	instanceCSVPath.clear();
   }
   lastStudySubdirectoryPathAndName = subdirectoryPathAndName;
+  if(opt_debug) COUT << "association cleanup:" << lastStudySubdirectoryPathAndName << endl;
+  lastArchiveStudyPath = archiveStudyPath;
+  if(opt_debug) COUT << "association cleanup:" << lastArchiveStudyPath << endl;
   executeEndOfStudyEvents();
 
   cond = ASC_dropSCPAssociation(assoc);
@@ -1753,6 +1759,7 @@ processCommands(T_ASC_Association * assoc)
 
         // also, we need to clear subdirectoryPathAndName
         subdirectoryPathAndName.clear();
+		archiveStudyPath.clear();
 
         // reset the endOfStudyThroughTimeoutEvent variable.
         endOfStudyThroughTimeoutEvent = OFFalse;
@@ -2009,6 +2016,9 @@ storeSCPCallback(
           if( ! lastStudyInstanceUID.empty() )
           {
             lastStudySubdirectoryPathAndName = subdirectoryPathAndName;
+			if(opt_debug) COUT << "encounter new study:" << lastStudySubdirectoryPathAndName << endl;
+			lastArchiveStudyPath = archiveStudyPath;
+			if(opt_debug) COUT << "encounter new study:" << lastArchiveStudyPath << endl;
 			if(inststrm.is_open())
 			{
 			  inststrm.close();
@@ -2360,6 +2370,7 @@ static void executeEndOfStudyEvents()
     executeOnEndOfStudy();
 
   lastStudySubdirectoryPathAndName.clear();
+  lastArchiveStudyPath.clear();
 }
 
 #ifdef _WIN32
@@ -2531,7 +2542,7 @@ static void executeOnEndOfStudy()
   struct tm *tmp = localtime( &t );
   char outstr[80];
 
-  if(opt_verbose) COUT << "exec end of study: " << lastStudySubdirectoryPathAndName << '\n';
+  if(opt_verbose) COUT << "exec end of study: " << lastStudySubdirectoryPathAndName << ',' << lastArchiveStudyPath << endl;
 
   // perform substitution for placeholder #p; #p will be substituted by lastStudySubdirectoryPathAndName
   cmd = replaceChars( cmd, OFString(PATH_PLACEHOLDER), lastStudySubdirectoryPathAndName );
@@ -2555,7 +2566,7 @@ static void executeOnEndOfStudy()
   cmd = replaceChars( cmd, OFString(ARCHIVE_PATH_PLACEHOLDER), opt_volumeLabel );
 
   // perform substitution for placeholder #s (archive study dir)
-  cmd = replaceChars( cmd, OFString(ARCHIVE_STUDY_PATH_PLACEHOLDER), archiveStudyPath );
+  cmd = replaceChars( cmd, OFString(ARCHIVE_STUDY_PATH_PLACEHOLDER), lastArchiveStudyPath );
 
   // don't perform substitution for placeholder #z (archive filename), archive filename is next one.
 

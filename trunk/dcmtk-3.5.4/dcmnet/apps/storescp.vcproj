@@ -18,7 +18,7 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="Debug"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="storescp.dir\Debug"
 			ConfigurationType="1"
 			UseOfMFC="0"
@@ -82,12 +82,12 @@
 				LinkLibraryDependencies="false"
 				AdditionalOptions=" /STACK:10000000 /machine:X86 /debug"
 				AdditionalDependencies="commonlib.lib ofstd.lib dcmdata.lib dcmnet.lib dcmtls.lib zlib_d.lib dcmtkssl_d.lib dcmtkeay_d.lib netapi32.lib wsock32.lib ws2_32.lib"
-				OutputFile="Debug\storescp.exe"
+				OutputFile="$(OutDir)\$(ProjectName).exe"
 				Version="0.0"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;..\..\$(ConfigurationName)&quot;;&quot;..\..\ofstd\libsrc\$(ConfigurationName)&quot;;&quot;..\..\dcmnet\libsrc\$(ConfigurationName)&quot;;&quot;..\..\dcmdata\libsrc\$(ConfigurationName)&quot;;&quot;..\..\dcmtls\libsrc\$(ConfigurationName)&quot;;&quot;D:\workspace\dcmtk-support\openssl-0.9.8a\lib&quot;;&quot;D:\workspace\dcmtk-support\zlib-1.2.3\lib&quot;"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="Debug/storescp.pdb"
+				ProgramDatabaseFile="Debug\storescp.pdb"
 				SubSystem="1"
 				HeapCommitSize="0"
 				ImportLibrary="Debug\storescp.lib"
@@ -116,7 +116,7 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="Release"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="storescp.dir\Release"
 			ConfigurationType="1"
 			UseOfMFC="0"
@@ -212,7 +212,7 @@
 		</Configuration>
 		<Configuration
 			Name="MinSizeRel|Win32"
-			OutputDirectory="MinSizeRel"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="storescp.dir\MinSizeRel"
 			ConfigurationType="1"
 			UseOfMFC="0"
@@ -308,7 +308,7 @@
 		</Configuration>
 		<Configuration
 			Name="RelWithDebInfo|Win32"
-			OutputDirectory="RelWithDebInfo"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="storescp.dir\RelWithDebInfo"
 			ConfigurationType="1"
 			UseOfMFC="0"
