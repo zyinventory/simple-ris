@@ -10,4 +10,4 @@ LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime);
 bool MkdirRecursive(const char*);
 int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator);
 BOOL DeleteEmptyFile(const char *filePath);
-long generateIndex(const char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath);
+long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath);

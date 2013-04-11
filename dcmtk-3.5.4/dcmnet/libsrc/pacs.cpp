@@ -36,9 +36,9 @@ bool MkdirRecursive_dcmnet(const char *subdir)
   }
 
   // if it is not existent create it
-  if( _mkdir( subdirectoryPath.c_str() ) == -1 )
+  if( _mkdir( subdirectoryPath.c_str() ) == -1 && errno != EEXIST )
   {
-  cerr << "Could not create subdirectory " << subdirectoryPath.c_str() << endl;
+	cerr << "Could not create subdirectory " << subdirectoryPath.c_str() << endl;
     return false;
   }
   else
