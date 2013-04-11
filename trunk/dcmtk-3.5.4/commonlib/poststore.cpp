@@ -382,7 +382,7 @@ bool operationRetry(int(*fn)(const char *), const char *param, int state, int se
   return ! opFail;
 }
 
-HRESULT generateIndex(const char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath)
+HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath)
 {
   HRESULT hr;
   if(paramBaseUrl) baseurl = paramBaseUrl;
