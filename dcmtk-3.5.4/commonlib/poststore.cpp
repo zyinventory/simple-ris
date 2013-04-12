@@ -24,7 +24,7 @@ char buffer[BUFF_SIZE + 1];
 string baseurl("");
 string archivePath("archdir");
 string indexPath("indexdir");
-string savePath;
+string savePath, downloadUrl;
 
 time_t dcmdate2tm(int dcmdate)
 {
@@ -69,9 +69,11 @@ HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::
   string accNum(buffer);
 
   //savePath = indexPath + "/YYYY/MM/DD/<study uid>/"
-  savePath = indexPath;
   savePath.append(1, '/').append(studyDate.substr(0, 4)).append(1, '/').append(studyDate.substr(4, 2));
   savePath.append(1, '/').append(studyDate.substr(6, 2)).append(1, '/').append(studyUID).append(1, '/');
+  downloadUrl = savePath;
+  savePath.insert(0, indexPath);
+  downloadUrl.insert(0, archivePath);
   string::size_type p;
   while((p = savePath.find('/')) != string::npos) savePath.replace(p, 1, 1, '\\');
   if( ! MkdirRecursive(savePath.c_str()))
@@ -196,7 +198,7 @@ HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
   }
   instance->setAttribute("InstanceNumber", instanceNumber.c_str());
   ostringstream url;
-  url << archivePath << '/';
+  url << downloadUrl;
   if(seriesNumber.length() < 4)
 	for(int i = seriesNumber.length(); i < 4; i++) url << '0';
   url << seriesNumber << '/';
