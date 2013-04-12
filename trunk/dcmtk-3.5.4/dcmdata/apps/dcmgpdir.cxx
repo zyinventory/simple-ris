@@ -91,7 +91,7 @@
 #define PATTERN_MATCHING_AVAILABLE
 #endif
 
-long generateIndex(const char *inputFile, const char *paramBaseUrl, const char *archivePath, const char *indexPath);
+long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archivePath, const char *indexPath);
 
 static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v"
   OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
     const char *opt_pattern = NULL;
 	const char *opt_archive = "archdir";
 	const char *opt_index = "indexdir";
-	const char *opt_csv = NULL;
+	const char *opt_csv;
 	const char *opt_weburl = NULL;
     DicomDirInterface::E_ApplicationProfile opt_profile = DicomDirInterface::AP_GeneralPurpose;
 
@@ -487,7 +487,12 @@ int main(int argc, char *argv[])
         return 1;  /* DcmDicomDir class dumps core when no data dictionary */
     }
 
-	long hr = generateIndex(opt_csv, opt_weburl, opt_archive, opt_index);
+	if(opt_csv)
+	{
+	  char buffer[512];
+	  strcpy_s(buffer, 512, opt_csv);
+	  long hr = generateIndex(buffer, opt_weburl, opt_archive, opt_index);
+	}
 
     /* create list of input files */
     OFList<OFString> fileNames;
