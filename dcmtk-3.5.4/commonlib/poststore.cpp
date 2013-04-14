@@ -68,7 +68,7 @@ HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::
   patientStrm.getline(buffer, BUFF_SIZE);
   string accNum(buffer);
 
-  //tempPath = "/YYYY/MM/DD"
+  //studyDatePath = "/YYYY/MM/DD"
   string studyDatePath;
   studyDatePath.append(1, '/').append(studyDate.substr(0, 4)).append(1, '/').append(studyDate.substr(4, 2));
   studyDatePath.append(1, '/').append(studyDate.substr(6, 2));
@@ -85,7 +85,7 @@ HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::
   
   //dayIndexFilePath = "<indexBase>/<tagStudyDate>/YYYY/MM/DD"
   dayIndexFilePath = indexBase;
-  dayIndexFilePath.append(1, '/').append(tagStudyDate).append(1, '/').append(studyDatePath);
+  dayIndexFilePath.append(1, '/').append(tagStudyDate).append(studyDatePath);
   savePath = dayIndexFilePath;
   //dayIndexFilePath = "<indexBase>/<tagStudyDate>/YYYY/MM/DD/index_day.xml"
   dayIndexFilePath.append("/index_day.xml");
@@ -227,7 +227,7 @@ HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
   return S_OK;
 }
 
-HRESULT createStudyDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
+HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile, string &indexFilePath, bool uniqueStudy)
 {
   HRESULT hr;
   MSXML2::IXMLDOMDocumentPtr pXsl;
@@ -240,9 +240,9 @@ HRESULT createStudyDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
   pXsl->preserveWhiteSpace = VARIANT_FALSE;
   pXsl->async = VARIANT_FALSE;
 
-  if(pXsl->load("xslt\\study.xsl") == VARIANT_FALSE)
+  if(pXsl->load(xslFile) == VARIANT_FALSE)
   {
-	cerr << "Failed to load XSL DOM: xslt\\study.xsl\n";
+	cerr << "Failed to load XSL DOM: " << xslFile << endl;
 	return E_FAIL;
   }
 
@@ -259,14 +259,14 @@ HRESULT createStudyDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
 	dayDomPtr->firstChild->attributes->getNamedItem("encoding")->text = "GBK";
 	MSXML2::IXMLDOMNodePtr day = dayDomPtr->lastChild;
 
-	fh = ::CreateFile(dayIndexFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+	fh = ::CreateFile(indexFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(fh == INVALID_HANDLE_VALUE)
 	{
 	  if(ERROR_FILE_EXISTS == ::GetLastError())
 	  {
 		for(int i = 0; i < 1000; ++i)  // 10 seconds
 		{
-		  fh = ::CreateFile(dayIndexFilePath.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		  fh = ::CreateFile(indexFilePath.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		  if(fh == INVALID_HANDLE_VALUE)
 		  {
 			if(ERROR_SHARING_VIOLATION == ::GetLastError())
@@ -287,11 +287,14 @@ HRESULT createStudyDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
 
 		MSXML2::IXMLDOMDocumentPtr oldIndex;
 		oldIndex.CreateInstance(__uuidof(DOMDocument30));
-		oldIndex->load(dayIndexFilePath.c_str());
-		string query("/Day/Study[text()='");
-		query.append(day->firstChild->text).append("']");
-		MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(query.c_str());
-		if(existStudy) oldIndex->lastChild->removeChild(existStudy);
+		oldIndex->load(indexFilePath.c_str());
+		if(uniqueStudy)
+		{
+		  string query("/Day/Study[text()='");
+		  query.append(day->firstChild->text).append("']");
+		  MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(query.c_str());
+		  if(existStudy) oldIndex->lastChild->removeChild(existStudy);
+		}
 		oldIndex->lastChild->appendChild(day->firstChild);
 		::SetEndOfFile(fh);
 		if( ! ( WriteFile(fh, header, strlen(header), &written, NULL) && 
@@ -323,7 +326,7 @@ HRESULT createStudyDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
   catch(char * message)
   {
 	if(fh != INVALID_HANDLE_VALUE) ::CloseHandle(fh);
-	cerr << message << dayIndexFilePath << '\n';
+	cerr << message << indexFilePath << '\n';
 	return E_FAIL;
   }
   return S_OK;
@@ -365,7 +368,31 @@ HRESULT processInputStream(istream& istrm)
 	return hr;
   }
 
-  return createStudyDateIndex(pXMLDom);
+  hr = createDateIndex(pXMLDom, "xslt\\study.xsl", dayIndexFilePath, true);
+  if (FAILED(hr))
+	cerr << "Failed to create study date index: " << dayIndexFilePath << endl;
+
+  HRESULT hrRec;
+  time_t t = time( NULL );
+  struct tm *tmp = localtime( &t );
+  char date[128];
+  strftime(date, sizeof(date), "\\receive\\%Y\\%m\\%d.xml", tmp );
+  string receiveIndexFilePath = indexBase;
+  receiveIndexFilePath.append(date);
+  string::size_type p = receiveIndexFilePath.rfind('\\');
+  string dirOnly = receiveIndexFilePath.substr(0, p);
+  if(MkdirRecursive(dirOnly.c_str()))
+  {
+	hrRec = createDateIndex(pXMLDom, "xslt\\receive.xsl", receiveIndexFilePath, false);
+	if (FAILED(hrRec))
+	  cerr << "Failed to create receive date index: " << receiveIndexFilePath << endl;
+  }
+  else
+  {
+	cerr << "Failed to create receive date index dir: " << dirOnly << endl;
+	hrRec = E_FAIL;
+  }
+  return FAILED(hr) ? hr : hrRec;
 }
 
 bool operationRetry(int(*fn)(const char *), const char *param, int state, int seconds, const char *messageHeader)
