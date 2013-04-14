@@ -83,7 +83,6 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				Description=""
 				CommandLine=""
 			/>
 		</Configuration>
@@ -154,7 +153,6 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				Description=""
 				CommandLine=""
 			/>
 		</Configuration>
@@ -211,6 +209,10 @@
 			>
 			<File
 				RelativePath=".\commonlib.h"
+				>
+			</File>
+			<File
+				RelativePath=".\poststore.h"
 				>
 			</File>
 			<File

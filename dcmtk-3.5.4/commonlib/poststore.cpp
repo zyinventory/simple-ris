@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <memory>
 #include "commonlib.h"
+#include "poststore.h"
 
 using namespace std;
 #import <msxml3.dll>
@@ -21,10 +22,9 @@ const char UNIT_SEPARATOR = 0x1F;
 const streamsize BUFF_SIZE = 1024;
 const int RMDIR_WAIT_SECONDS = 10;
 char buffer[BUFF_SIZE + 1];
-string baseurl("");
 string archivePath("archdir");
-string indexPath("indexdir");
-string savePath, downloadUrl;
+string indexBase("indexdir");
+string baseurl, savePath, downloadUrl, dayIndexFilePath;
 
 time_t dcmdate2tm(int dcmdate)
 {
@@ -68,20 +68,37 @@ HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::
   patientStrm.getline(buffer, BUFF_SIZE);
   string accNum(buffer);
 
-  //savePath = indexPath + "/YYYY/MM/DD/<study uid>/"
-  savePath.append(1, '/').append(studyDate.substr(0, 4)).append(1, '/').append(studyDate.substr(4, 2));
-  savePath.append(1, '/').append(studyDate.substr(6, 2)).append(1, '/').append(studyUID).append(1, '/');
-  downloadUrl = savePath;
-  savePath.insert(0, indexPath);
-  downloadUrl.insert(0, archivePath);
+  //tempPath = "/YYYY/MM/DD"
+  string studyDatePath;
+  studyDatePath.append(1, '/').append(studyDate.substr(0, 4)).append(1, '/').append(studyDate.substr(4, 2));
+  studyDatePath.append(1, '/').append(studyDate.substr(6, 2));
+
+  //downloadUrl = "<archivePath>/YYYY/MM/DD/<study uid>/"
+  downloadUrl = archivePath;
+  downloadUrl.append(studyDatePath).append(1, '/').append(studyUID).append(1, '/');
+
   string::size_type p;
+  // tagStudyDate = "0008,0020"
+  string tagStudyDate(MK_TAG_STRING(DCM_StudyDate));
+  // tagStudyDate = "00080020"
+  while((p = tagStudyDate.find(',')) != string::npos) tagStudyDate.replace(p, 1, 0, '_');
+  
+  //dayIndexFilePath = "<indexBase>/<tagStudyDate>/YYYY/MM/DD"
+  dayIndexFilePath = indexBase;
+  dayIndexFilePath.append(1, '/').append(tagStudyDate).append(1, '/').append(studyDatePath);
+  savePath = dayIndexFilePath;
+  //dayIndexFilePath = "<indexBase>/<tagStudyDate>/YYYY/MM/DD/index_day.xml"
+  dayIndexFilePath.append("/index_day.xml");
+
+  //savePath = "<indexBase>\<tagStudyDate>\YYYY\MM\DD"
   while((p = savePath.find('/')) != string::npos) savePath.replace(p, 1, 1, '\\');
   if( ! MkdirRecursive(savePath.c_str()))
   {
 	cerr << "Failed to Create " << savePath << endl;
 	return E_FAIL;
   }
-  savePath.append("index.xml");
+  //savePath = "<indexBase>\<tagStudyDate>\YYYY\MM\DD\<studyUID>.xml"
+  savePath.append(1, '\\').append(studyUID).append(".xml");
 
   HRESULT hr;
   hr = pXMLDom.CreateInstance(__uuidof(DOMDocument30));
@@ -230,8 +247,6 @@ HRESULT createStudyDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
   }
 
   string errorMessage;
-  string dayIndexFilePath(indexPath);
-  dayIndexFilePath.append(1, '/');
   HANDLE fh;
   try
   {
@@ -243,7 +258,6 @@ HRESULT createStudyDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
 	dayDomPtr->loadXML(xmlText);
 	dayDomPtr->firstChild->attributes->getNamedItem("encoding")->text = "GBK";
 	MSXML2::IXMLDOMNodePtr day = dayDomPtr->lastChild;
-	dayIndexFilePath.append(day->attributes->getNamedItem("StudyDate")->text).append("/index_day.xml");
 
 	fh = ::CreateFile(dayIndexFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(fh == INVALID_HANDLE_VALUE)
@@ -389,7 +403,7 @@ HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *arc
   HRESULT hr;
   if(paramBaseUrl) baseurl = paramBaseUrl;
   if(archPath) archivePath = archPath;
-  if(indPath) indexPath = indPath;
+  if(indPath) indexBase = indPath;
   ifstream infile(inputFile);
   if(infile)
   {
