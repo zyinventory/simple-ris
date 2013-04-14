@@ -1,3 +1,5 @@
+#pragma once
+
 #define SVC_ERROR ((DWORD)0xC0020001L)
 #define SVC_INFO  ((DWORD)0x60020002L)
 #define SERVICE_NAME "DicomCStore"
