@@ -375,27 +375,23 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
   return S_OK;
 }
 
-HRESULT createPatientIdIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
+HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag, const char *queryValue)
 {
   HRESULT hr;
-  _bstr_t patientId = pXMLDom->selectSingleNode("/wado_query/Patient/@PatientID")->Gettext();
-  unsigned int hash = hashCodeW(patientId);
-  if(patientId.length() == 0) patientId = "NULL";
+  _bstr_t tagValue = pXMLDom->selectSingleNode(queryValue)->Gettext();
+  unsigned int hash = hashCodeW(tagValue);
+  if(tagValue.length() == 0) tagValue = "NULL";
   
-  string tagPatientID(MK_TAG_STRING(DCM_PatientID));
-  string::size_type p;
-  while((p = tagPatientID.find(',')) != string::npos) tagPatientID.replace(p, 1, 0, '_');
-
-  sprintf(buffer, "%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.xml", indexBase.c_str(), tagPatientID.c_str(),
-	hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, (const char*)patientId);
-  string patientIdPath = buffer;
+  sprintf(buffer, "%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.xml", indexBase.c_str(), tag,
+	hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, (const char*)tagValue);
+  string indexPath = buffer;
   HANDLE fh = INVALID_HANDLE_VALUE;
   try
   {
 	unsigned long written = 0;
 	const char *header = "<?xml version=\"1.0\" encoding=\"gbk\"?>\n";
 	MSXML2::IXMLDOMDocumentPtr oldIndex;
-	hr = createOrOpenFile(patientIdPath, fh, oldIndex);
+	hr = createOrOpenFile(indexPath, fh, oldIndex);
 	if(SUCCEEDED(hr))
 	{
 	  if(oldIndex)
@@ -438,7 +434,7 @@ HRESULT createPatientIdIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
   catch(char * message)
   {
 	if(fh != INVALID_HANDLE_VALUE) ::CloseHandle(fh);
-	cerr << message << patientIdPath << '\n';
+	cerr << message << indexPath << '\n';
 	return E_FAIL;
   }
   return hr;
@@ -500,9 +496,19 @@ HRESULT processInputStream(istream& istrm)
   if (FAILED(hrRec))
 	cerr << "Failed to create receive date index: " << receiveIndexFilePath << endl;
 
-  // todo: patient id index
+  // study instance uid
+  string::size_type p;
+  string tagStudyUID(MK_TAG_STRING(DCM_StudyInstanceUID));
+  while((p = tagStudyUID.find(',')) != string::npos) tagStudyUID.replace(p, 1, 0, '_');
+  HRESULT hrStudyUID;
+  hrStudyUID = createKeyValueIndex(pXMLDom, tagStudyUID.c_str(), "/wado_query/Patient/Study/@StudyInstanceUID");
+
+  // patient id index
+  string tagPatientID(MK_TAG_STRING(DCM_PatientID));
+  while((p = tagPatientID.find(',')) != string::npos) tagPatientID.replace(p, 1, 0, '_');
   HRESULT hrPatientId;
-  hrPatientId = createPatientIdIndex(pXMLDom);
+  hrPatientId = createKeyValueIndex(pXMLDom, tagPatientID.c_str(), "/wado_query/Patient/@PatientID");
+
   return hr;
 }
 
