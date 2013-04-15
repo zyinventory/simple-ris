@@ -24,7 +24,7 @@ const int RMDIR_WAIT_SECONDS = 10;
 char buffer[BUFF_SIZE];
 string archivePath("archdir");
 string indexBase("indexdir");
-string baseurl, savePath, downloadUrl, dayIndexFilePath;
+string baseurl, downloadUrl, studyDatePath;
 
 time_t dcmdate2tm(int dcmdate)
 {
@@ -69,36 +69,12 @@ HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::
   string accNum(buffer);
 
   //studyDatePath = "/YYYY/MM/DD"
-  string studyDatePath;
   studyDatePath.append(1, '/').append(studyDate.substr(0, 4)).append(1, '/').append(studyDate.substr(4, 2));
   studyDatePath.append(1, '/').append(studyDate.substr(6, 2));
 
   //downloadUrl = "<archivePath>/YYYY/MM/DD/<study uid>/"
   downloadUrl = archivePath;
   downloadUrl.append(studyDatePath).append(1, '/').append(studyUID).append(1, '/');
-
-  string::size_type p;
-  // tagStudyDate = "0008,0020"
-  string tagStudyDate(MK_TAG_STRING(DCM_StudyDate));
-  // tagStudyDate = "00080020"
-  while((p = tagStudyDate.find(',')) != string::npos) tagStudyDate.replace(p, 1, 0, '_');
-  
-  //dayIndexFilePath = "<indexBase>/<tagStudyDate>/YYYY/MM/DD"
-  dayIndexFilePath = indexBase;
-  dayIndexFilePath.append(1, '/').append(tagStudyDate).append(studyDatePath);
-  savePath = dayIndexFilePath;
-  //dayIndexFilePath = "<indexBase>/<tagStudyDate>/YYYY/MM/DD/index_day.xml"
-  dayIndexFilePath.append("/index_day.xml");
-
-  //savePath = "<indexBase>\<tagStudyDate>\YYYY\MM\DD"
-  while((p = savePath.find('/')) != string::npos) savePath.replace(p, 1, 1, '\\');
-  if( ! MkdirRecursive(savePath.c_str()))
-  {
-	cerr << "Failed to Create " << savePath << endl;
-	return E_FAIL;
-  }
-  //savePath = "<indexBase>\<tagStudyDate>\YYYY\MM\DD\<studyUID>.xml"
-  savePath.append(1, '\\').append(studyUID).append(".xml");
 
   HRESULT hr;
   hr = pXMLDom.CreateInstance(__uuidof(DOMDocument30));
@@ -111,32 +87,25 @@ HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::
   pXMLDom->async = VARIANT_FALSE;
 
   MSXML2::IXMLDOMElementPtr wado;
-  if( pXMLDom->load(savePath.c_str()) == VARIANT_TRUE )
+  MSXML2::IXMLDOMProcessingInstructionPtr pi;
+  pi = pXMLDom->createProcessingInstruction("xml", "version='1.0' encoding='gbk'");
+  if (pi != NULL)
   {
-	wado = pXMLDom->selectSingleNode("/wado_query");
+	pXMLDom->appendChild(pi);
+	pi.Release();
   }
-  else
+  /*
+  pi = pXMLDom->createProcessingInstruction("xml-stylesheet", "type='text/xml' href='/xslt/study.xsl'");
+  if (pi != NULL)
   {
-	MSXML2::IXMLDOMProcessingInstructionPtr pi;
-	pi = pXMLDom->createProcessingInstruction("xml", "version='1.0' encoding='gbk'");
-	if (pi != NULL)
-	{
-	  pXMLDom->appendChild(pi);
-	  pi.Release();
-	}
-	/*
-	pi = pXMLDom->createProcessingInstruction("xml-stylesheet", "type='text/xml' href='/xslt/study.xsl'");
-	if (pi != NULL)
-	{
-	  pXMLDom->appendChild(pi);
-	  pi.Release();
-	}
-	*/
-	wado = pXMLDom->createNode(MSXML2::NODE_ELEMENT, "wado_query", "http://www.weasis.org/xsd");
-	wado->setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
-	wado->setAttribute("requireOnlySOPInstanceUID", "false");
-	pXMLDom->appendChild(wado);
+	pXMLDom->appendChild(pi);
+	pi.Release();
   }
+  */
+  wado = pXMLDom->createNode(MSXML2::NODE_ELEMENT, "wado_query", "http://www.weasis.org/xsd");
+  wado->setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+  wado->setAttribute("requireOnlySOPInstanceUID", "false");
+  pXMLDom->appendChild(wado);
   wado->setAttribute("wadoURL", baseurl.c_str());
 
   MSXML2::IXMLDOMElementPtr patient;
@@ -331,7 +300,7 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 	  {
 		if(uniqueStudy)
 		{
-		  string query("/Day/Study[text()='");
+		  string query("/Collection/Study[text()='");
 		  query.append(day->firstChild->text).append("']");
 		  MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(query.c_str());
 		  if(existStudy) oldIndex->lastChild->removeChild(existStudy);
@@ -469,47 +438,49 @@ HRESULT processInputStream(istream& istrm)
   }
   if( ! successOnce ) return E_FAIL;
 
-  hr = pXMLDom->save(savePath.c_str());
+  // study instance uid
+  string::size_type p;
+  string tagStudyUID(MK_TAG_STRING(DCM_StudyInstanceUID));
+  while((p = tagStudyUID.find(',')) != string::npos) tagStudyUID.replace(p, 1, 0, '_');
+  hr = createKeyValueIndex(pXMLDom, tagStudyUID.c_str(), "/wado_query/Patient/Study/@StudyInstanceUID");
   if (FAILED(hr))
   {
-	cerr << "Failed to save DOM to tree.xml\n";
+	cerr << "Failed to save StudyInstanceUID index\n";
 	return hr;
   }
 
-  hr = createDateIndex(pXMLDom, "xslt\\study.xsl", dayIndexFilePath, true);
+  // patient id index
+  string tagPatientID(MK_TAG_STRING(DCM_PatientID));
+  while((p = tagPatientID.find(',')) != string::npos) tagPatientID.replace(p, 1, 0, '_');
+  hr = createKeyValueIndex(pXMLDom, tagPatientID.c_str(), "/wado_query/Patient/@PatientID");
   if (FAILED(hr))
   {
-	cerr << "Failed to create study date index: " << dayIndexFilePath << endl;
+	cerr << "Failed to save PatientID index\n";
 	return hr;
   }
 
   // main index OK, the following is other index.
 
+  string tagStudyDate(MK_TAG_STRING(DCM_StudyDate));
+  while((p = tagStudyDate.find(',')) != string::npos) tagStudyDate.replace(p, 1, 0, '_');
+  //dayIndexFilePath = "<indexBase>/<tagStudyDate>/YYYY/MM/DD.xml"
+  sprintf(buffer, "%s/%s/%s.xml", indexBase.c_str(), tagStudyDate.c_str(), studyDatePath.c_str());
+  string dayIndexFilePath = buffer;
+  hr = createDateIndex(pXMLDom, "xslt\\study.xsl", dayIndexFilePath, true);
+  if (FAILED(hr))
+	cerr << "Failed to create study date index: " << dayIndexFilePath << endl;
+
   // receive date index
-  HRESULT hrRec;
   time_t t = time( NULL );
   struct tm *today = localtime( &t );
   strftime(buffer, BUFF_SIZE, "\\receive\\%Y\\%m\\%d.xml", today );
   string receiveIndexFilePath = indexBase;
   receiveIndexFilePath.append(buffer);
-  hrRec = createDateIndex(pXMLDom, "xslt\\receive.xsl", receiveIndexFilePath, false);
-  if (FAILED(hrRec))
+  hr = createDateIndex(pXMLDom, "xslt\\receive.xsl", receiveIndexFilePath, false);
+  if (FAILED(hr))
 	cerr << "Failed to create receive date index: " << receiveIndexFilePath << endl;
 
-  // study instance uid
-  string::size_type p;
-  string tagStudyUID(MK_TAG_STRING(DCM_StudyInstanceUID));
-  while((p = tagStudyUID.find(',')) != string::npos) tagStudyUID.replace(p, 1, 0, '_');
-  HRESULT hrStudyUID;
-  hrStudyUID = createKeyValueIndex(pXMLDom, tagStudyUID.c_str(), "/wado_query/Patient/Study/@StudyInstanceUID");
-
-  // patient id index
-  string tagPatientID(MK_TAG_STRING(DCM_PatientID));
-  while((p = tagPatientID.find(',')) != string::npos) tagPatientID.replace(p, 1, 0, '_');
-  HRESULT hrPatientId;
-  hrPatientId = createKeyValueIndex(pXMLDom, tagPatientID.c_str(), "/wado_query/Patient/@PatientID");
-
-  return hr;
+  return S_OK;
 }
 
 bool operationRetry(int(*fn)(const char *), const char *param, int state, int seconds, const char *messageHeader)
