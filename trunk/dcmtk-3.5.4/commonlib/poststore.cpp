@@ -21,7 +21,7 @@ using namespace MSXML2;
 const char UNIT_SEPARATOR = 0x1F;
 const streamsize BUFF_SIZE = 1024;
 const int RMDIR_WAIT_SECONDS = 10;
-char buffer[BUFF_SIZE + 1];
+char buffer[BUFF_SIZE];
 string archivePath("archdir");
 string indexBase("indexdir");
 string baseurl, savePath, downloadUrl, dayIndexFilePath;
@@ -227,38 +227,21 @@ HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
   return S_OK;
 }
 
-HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile, string &indexFilePath, bool uniqueStudy)
+HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDocumentPtr &oldIndex)
 {
-  HRESULT hr;
-  MSXML2::IXMLDOMDocumentPtr pXsl;
-  hr = pXsl.CreateInstance(__uuidof(DOMDocument30));
-  if (FAILED(hr))
+  string indexFilePath = filePath;
+  string::size_type p;
+  while((p = indexFilePath.find('/')) != string::npos) indexFilePath.replace(p, 1, 1, '\\');
+  p = indexFilePath.rfind('\\');
+  string dirOnly = indexFilePath.substr(0, p);
+  if( ! MkdirRecursive(dirOnly.c_str()))
   {
-	cerr << "Failed to CreateInstance on an XSL DOM.\n";
-	return hr;
-  }
-  pXsl->preserveWhiteSpace = VARIANT_FALSE;
-  pXsl->async = VARIANT_FALSE;
-
-  if(pXsl->load(xslFile) == VARIANT_FALSE)
-  {
-	cerr << "Failed to load XSL DOM: " << xslFile << endl;
+	cerr << "Failed to create receive date index dir: " << dirOnly << endl;
 	return E_FAIL;
   }
 
-  string errorMessage;
-  HANDLE fh;
   try
   {
-	unsigned long written = 0;
-	const char *header = "<?xml version=\"1.0\" encoding=\"gbk\"?>\n";
-	_bstr_t xmlText(pXMLDom->transformNode(pXsl));
-	MSXML2::IXMLDOMDocumentPtr dayDomPtr;
-	dayDomPtr.CreateInstance(__uuidof(DOMDocument30));
-	dayDomPtr->loadXML(xmlText);
-	dayDomPtr->firstChild->attributes->getNamedItem("encoding")->text = "GBK";
-	MSXML2::IXMLDOMNodePtr day = dayDomPtr->lastChild;
-
 	fh = ::CreateFile(indexFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(fh == INVALID_HANDLE_VALUE)
 	{
@@ -285,38 +268,14 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 
 		if(fh == INVALID_HANDLE_VALUE) throw "Lock file timeout: ";
 
-		MSXML2::IXMLDOMDocumentPtr oldIndex;
 		oldIndex.CreateInstance(__uuidof(DOMDocument30));
 		oldIndex->load(indexFilePath.c_str());
-		if(uniqueStudy)
-		{
-		  string query("/Day/Study[text()='");
-		  query.append(day->firstChild->text).append("']");
-		  MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(query.c_str());
-		  if(existStudy) oldIndex->lastChild->removeChild(existStudy);
-		}
-		oldIndex->lastChild->appendChild(day->firstChild);
-		::SetEndOfFile(fh);
-		if( ! ( WriteFile(fh, header, strlen(header), &written, NULL) && 
-		  WriteFile(fh, (const char *)oldIndex->lastChild->xml, strlen((const char *)oldIndex->lastChild->xml), &written, NULL) ) )
-		{
-		  throw "Failed to write file ";
-		}
 	  }
 	  else
 	  {
 		throw "Failed to create file ";
 	  }
 	}
-	else
-	{
-	  if( ! ( WriteFile(fh, header, strlen(header), &written, NULL) && 
-		WriteFile(fh, (const char *)day->xml, strlen((const char *)day->xml), &written, NULL) ) )
-	  {
-		throw "Failed to write file ";
-	  }
-	}
-	::CloseHandle(fh);
   }
   catch(_com_error &ex) 
   {
@@ -330,6 +289,159 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 	return E_FAIL;
   }
   return S_OK;
+}
+
+HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile, string &indexFilePath, bool uniqueStudy)
+{
+  HRESULT hr;
+  MSXML2::IXMLDOMDocumentPtr pXsl;
+  hr = pXsl.CreateInstance(__uuidof(DOMDocument30));
+  if (FAILED(hr))
+  {
+	cerr << "Failed to CreateInstance on an XSL DOM.\n";
+	return hr;
+  }
+  pXsl->preserveWhiteSpace = VARIANT_FALSE;
+  pXsl->async = VARIANT_FALSE;
+
+  if(pXsl->load(xslFile) == VARIANT_FALSE)
+  {
+	cerr << "Failed to load XSL DOM: " << xslFile << endl;
+	return E_FAIL;
+  }
+
+  string errorMessage;
+  HANDLE fh = INVALID_HANDLE_VALUE;
+  try
+  {
+	unsigned long written = 0;
+	const char *header = "<?xml version=\"1.0\" encoding=\"gbk\"?>\n";
+	_bstr_t xmlText(pXMLDom->transformNode(pXsl));
+	MSXML2::IXMLDOMDocumentPtr dayDomPtr;
+	dayDomPtr.CreateInstance(__uuidof(DOMDocument30));
+	dayDomPtr->loadXML(xmlText);
+	dayDomPtr->firstChild->attributes->getNamedItem("encoding")->text = "GBK";
+	MSXML2::IXMLDOMNodePtr day = dayDomPtr->lastChild;
+
+	MSXML2::IXMLDOMDocumentPtr oldIndex;
+	hr = createOrOpenFile(indexFilePath, fh, oldIndex);
+	if(SUCCEEDED(hr))
+	{
+	  if(oldIndex)
+	  {
+		if(uniqueStudy)
+		{
+		  string query("/Day/Study[text()='");
+		  query.append(day->firstChild->text).append("']");
+		  MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(query.c_str());
+		  if(existStudy) oldIndex->lastChild->removeChild(existStudy);
+		}
+		oldIndex->lastChild->appendChild(day->firstChild);
+		::SetEndOfFile(fh);
+		if( ! ( WriteFile(fh, header, strlen(header), &written, NULL) && 
+		  WriteFile(fh, (const char *)oldIndex->lastChild->xml, strlen((const char *)oldIndex->lastChild->xml), &written, NULL) ) )
+		{
+		  ::CloseHandle(fh);
+		  throw "Failed to write file ";
+		}
+	  }
+	  else
+	  {
+		if( ! ( WriteFile(fh, header, strlen(header), &written, NULL) && 
+		  WriteFile(fh, (const char *)day->xml, strlen((const char *)day->xml), &written, NULL) ) )
+		{
+		  ::CloseHandle(fh);
+		  throw "Failed to write file ";
+		}
+	  }
+	  ::CloseHandle(fh);
+	}
+	else
+	{
+	  throw "Failed to create file ";
+	}
+  }
+  catch(_com_error &ex) 
+  {
+	cerr << "Failed to transform XML+XSLT: " << ex.ErrorMessage() << '\n';
+	return ex.Error();
+  }
+  catch(char * message)
+  {
+	if(fh != INVALID_HANDLE_VALUE) ::CloseHandle(fh);
+	cerr << message << indexFilePath << '\n';
+	return E_FAIL;
+  }
+  return S_OK;
+}
+
+HRESULT createPatientIdIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom)
+{
+  HRESULT hr;
+  _bstr_t patientId = pXMLDom->selectSingleNode("/wado_query/Patient/@PatientID")->Gettext();
+  unsigned int hash = hashCodeW(patientId);
+  if(patientId.length() == 0) patientId = "NULL";
+  
+  string tagPatientID(MK_TAG_STRING(DCM_PatientID));
+  string::size_type p;
+  while((p = tagPatientID.find(',')) != string::npos) tagPatientID.replace(p, 1, 0, '_');
+
+  sprintf(buffer, "%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.xml", indexBase.c_str(), tagPatientID.c_str(),
+	hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, (const char*)patientId);
+  string patientIdPath = buffer;
+  HANDLE fh = INVALID_HANDLE_VALUE;
+  try
+  {
+	unsigned long written = 0;
+	const char *header = "<?xml version=\"1.0\" encoding=\"gbk\"?>\n";
+	MSXML2::IXMLDOMDocumentPtr oldIndex;
+	hr = createOrOpenFile(patientIdPath, fh, oldIndex);
+	if(SUCCEEDED(hr))
+	{
+	  if(oldIndex)
+	  {
+		MSXML2::IXMLDOMNodePtr newStudy = pXMLDom->selectSingleNode("/wado_query/Patient/Study");
+		_bstr_t studyUid = newStudy->selectSingleNode("./@StudyInstanceUID")->Gettext();
+		sprintf(buffer, "/wado_query/Patient/Study[@StudyInstanceUID='%s']", (const char*)studyUid);
+		MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(buffer);
+		if(existStudy) oldIndex->lastChild->firstChild->removeChild(existStudy); // /wado_query/Patient ->removeChild(existStudy)
+		oldIndex->lastChild->firstChild->appendChild(newStudy); // /wado_query/Patient ->appendChild(newStudy)
+		::SetEndOfFile(fh);
+		if( ! ( WriteFile(fh, header, strlen(header), &written, NULL) && 
+		  WriteFile(fh, (const char *)oldIndex->lastChild->xml, strlen((const char *)oldIndex->lastChild->xml), &written, NULL) ) )
+		{
+		  ::CloseHandle(fh);
+		  throw "Failed to write file ";
+		}
+	  }
+	  else
+	  {
+		if( ! ( WriteFile(fh, header, strlen(header), &written, NULL) && 
+		  WriteFile(fh, (const char *)pXMLDom->lastChild->xml, strlen((const char *)pXMLDom->lastChild->xml), &written, NULL) ) )
+		{
+		  ::CloseHandle(fh);
+		  throw "Failed to write file ";
+		}
+	  }
+	  ::CloseHandle(fh);
+	}
+	else
+	{
+	  throw "Failed to create file ";
+	}
+  }
+  catch(_com_error &ex) 
+  {
+	cerr << "Failed to transform XML+XSLT: " << ex.ErrorMessage() << '\n';
+	return ex.Error();
+  }
+  catch(char * message)
+  {
+	if(fh != INVALID_HANDLE_VALUE) ::CloseHandle(fh);
+	cerr << message << patientIdPath << '\n';
+	return E_FAIL;
+  }
+  return hr;
 }
 
 HRESULT processInputStream(istream& istrm)
@@ -370,29 +482,28 @@ HRESULT processInputStream(istream& istrm)
 
   hr = createDateIndex(pXMLDom, "xslt\\study.xsl", dayIndexFilePath, true);
   if (FAILED(hr))
+  {
 	cerr << "Failed to create study date index: " << dayIndexFilePath << endl;
+	return hr;
+  }
 
+  // main index OK, the following is other index.
+
+  // receive date index
   HRESULT hrRec;
   time_t t = time( NULL );
-  struct tm *tmp = localtime( &t );
-  char date[128];
-  strftime(date, sizeof(date), "\\receive\\%Y\\%m\\%d.xml", tmp );
+  struct tm *today = localtime( &t );
+  strftime(buffer, BUFF_SIZE, "\\receive\\%Y\\%m\\%d.xml", today );
   string receiveIndexFilePath = indexBase;
-  receiveIndexFilePath.append(date);
-  string::size_type p = receiveIndexFilePath.rfind('\\');
-  string dirOnly = receiveIndexFilePath.substr(0, p);
-  if(MkdirRecursive(dirOnly.c_str()))
-  {
-	hrRec = createDateIndex(pXMLDom, "xslt\\receive.xsl", receiveIndexFilePath, false);
-	if (FAILED(hrRec))
-	  cerr << "Failed to create receive date index: " << receiveIndexFilePath << endl;
-  }
-  else
-  {
-	cerr << "Failed to create receive date index dir: " << dirOnly << endl;
-	hrRec = E_FAIL;
-  }
-  return FAILED(hr) ? hr : hrRec;
+  receiveIndexFilePath.append(buffer);
+  hrRec = createDateIndex(pXMLDom, "xslt\\receive.xsl", receiveIndexFilePath, false);
+  if (FAILED(hrRec))
+	cerr << "Failed to create receive date index: " << receiveIndexFilePath << endl;
+
+  // todo: patient id index
+  HRESULT hrPatientId;
+  hrPatientId = createPatientIdIndex(pXMLDom);
+  return hr;
 }
 
 bool operationRetry(int(*fn)(const char *), const char *param, int state, int seconds, const char *messageHeader)
