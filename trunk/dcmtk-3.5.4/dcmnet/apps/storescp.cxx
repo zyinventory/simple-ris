@@ -180,14 +180,14 @@ static OFString    opt_volumeLabel;   // default: output directory's full path
 static OFString    opt_workingDirectory;    		  // default: current directory
 static const char *opt_sortConcerningStudies = NULL;  // default: no sorting
 OFString           lastStudyInstanceUID;
-OFString           subdirectoryPathAndName, archiveStudyPath;
+OFString           subdirectoryPathAndName, archiveStudyPath, studyXml;
 OFList<OFString>   outputFileNameArray;
 ofstream		  inststrm;
 const char		  UNIT_SEPARATOR = 0x1F;
 static const char *opt_execOnReception = NULL;        // default: don't execute anything on reception
 static const char *opt_execOnEndOfStudy = NULL;       // default: don't execute anything on end of study
 
-OFString           lastStudySubdirectoryPathAndName, instanceCSVPath, lastArchiveFileName, lastArchiveStudyPath;
+OFString           lastStudySubdirectoryPathAndName, instanceCSVPath, lastArchiveFileName, lastArchiveStudyPath, lastStudyXml;
 static OFBool      opt_renameOnEndOfStudy = OFFalse;  // default: don't rename any files on end of study
 static long        opt_endOfStudyTimeout = 1L;         // default: 1 second
 static OFBool      endOfStudyThroughTimeoutEvent = OFFalse;
@@ -204,6 +204,7 @@ OFBool             opt_forkMode = OFFalse;
 #ifdef _WIN32
 OFBool             opt_forkedChild = OFFalse;
 OFBool             opt_execSync = OFFalse;            // default: execute in background
+OFBool             opt_msgOnly = OFFalse;
 #endif
 
 #ifdef WITH_OPENSSL
@@ -253,7 +254,7 @@ void exitHook()
 	inststrm.close();
 	CERR << "close index file on exit:" << instanceCSVPath << endl;
   }
-
+  CoUninitialize();
 #ifdef _DEBUG
   delete pCmd;
   dcmDataDict.clear();
@@ -267,8 +268,10 @@ void exitHook()
   lastStudyInstanceUID.~OFString();
   lastStudySubdirectoryPathAndName.~OFString();
   lastArchiveStudyPath.~OFString();
+  lastStudyXml.~OFString();
   subdirectoryPathAndName.~OFString();
   archiveStudyPath.~OFString();
+  studyXml.~OFString();
   instanceCSVPath.~OFString();
   opt_ciphersuites.~OFString();
   outputFileNameArray.clear();
@@ -282,7 +285,7 @@ int main(int argc, char *argv[])
 #ifdef _DEBUG
   _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 #endif
-
+  CoInitialize(NULL);
   atexit(exitHook);
 
   T_ASC_Network *net;
@@ -448,6 +451,7 @@ int main(int argc, char *argv[])
                                                              "specifies a timeout of t seconds for\nend-of-study determination, only affect --fork-child or single process mode, default is 1, --fork mode is always 1." );
 #ifdef _WIN32
     cmd.addOption(  "--exec-sync",              "-xs",       "execute command synchronously in foreground" );
+    cmd.addOption(  "--message-only",			"-mo",       "don't execute command, send message to queue only" );
 #endif
 
 #ifdef WITH_OPENSSL
@@ -865,6 +869,7 @@ int main(int argc, char *argv[])
 
 #ifdef _WIN32
     if (cmd.findOption("--exec-sync")) opt_execSync = OFTrue;
+	if (cmd.findOption("--message-only")) opt_msgOnly = OFTrue;
 #endif
 
   }
@@ -1684,6 +1689,7 @@ cleanup:
   lastStudySubdirectoryPathAndName = subdirectoryPathAndName;
   if(opt_debug) COUT << "association cleanup:" << lastStudySubdirectoryPathAndName << endl;
   lastArchiveStudyPath = archiveStudyPath;
+  lastStudyXml = studyXml;
   if(opt_debug) COUT << "association cleanup:" << lastArchiveStudyPath << endl;
   executeEndOfStudyEvents();
 
@@ -2018,6 +2024,7 @@ storeSCPCallback(
             lastStudySubdirectoryPathAndName = subdirectoryPathAndName;
 			if(opt_debug) COUT << "encounter new study:" << lastStudySubdirectoryPathAndName << endl;
 			lastArchiveStudyPath = archiveStudyPath;
+			lastStudyXml = studyXml;
 			if(opt_debug) COUT << "encounter new study:" << lastArchiveStudyPath << endl;
 			if(inststrm.is_open())
 			{
@@ -2063,11 +2070,20 @@ storeSCPCallback(
 		  instanceCSVPath = subdirectoryPathAndName;
 		  instanceCSVPath.append(1, PATH_SEPARATOR).append("instance.txt");
 		  if(opt_verbose) COUT << "open file: " << instanceCSVPath << '\n';
+		  OFOStringStream studyTextStream;
+		  studyTextStream << patientId << UNIT_SEPARATOR << patientsName << UNIT_SEPARATOR << birthdate << UNIT_SEPARATOR << sex << UNIT_SEPARATOR;
+		  studyTextStream << currentStudyInstanceUID << UNIT_SEPARATOR << studyDate << UNIT_SEPARATOR << accNumber;
 		  inststrm.open(instanceCSVPath.c_str(), ios_base::app | ios_base::out);
-		  inststrm << patientId << UNIT_SEPARATOR << patientsName << UNIT_SEPARATOR << birthdate << UNIT_SEPARATOR << sex << UNIT_SEPARATOR;
-		  inststrm << currentStudyInstanceUID << UNIT_SEPARATOR << studyDate << UNIT_SEPARATOR << accNumber << '\n';
+		  inststrm << studyTextStream.str().c_str() << endl;
+		  //     inststrm << patientId << UNIT_SEPARATOR << patientsName << UNIT_SEPARATOR << birthdate << UNIT_SEPARATOR << sex << UNIT_SEPARATOR;
+		  //     inststrm << currentStudyInstanceUID << UNIT_SEPARATOR << studyDate << UNIT_SEPARATOR << accNumber << '\n';
+		  OFOStringStream studyXmlStream;
+		  if(generateStudyXML(studyTextStream.str().c_str(), studyXmlStream))
+			studyXml = studyXmlStream.str().c_str();
+		  else
+			studyXml.clear();
 
-          // all objects of a study have been received, so a new subdirectory is started.
+		  // all objects of a study have been received, so a new subdirectory is started.
           // ->timename counter can be reset, because the next filename can't cause a duplicate.
           // if no reset would be done, files of a new study (->new directory) would start with a counter in filename
           if (opt_timeNames)
@@ -2371,6 +2387,7 @@ static void executeEndOfStudyEvents()
 
   lastStudySubdirectoryPathAndName.clear();
   lastArchiveStudyPath.clear();
+  lastStudyXml.clear();
 }
 
 #ifdef _WIN32
@@ -2437,7 +2454,10 @@ static void executeOnReception()
   // Execute command in a new process
   if(opt_verbose)
 	COUT << "Starting command On Reception: " << cmd << endl;
-  executeCommand( cmd );
+  if(opt_msgOnly)
+	SendArchiveMessageToQueue("Archive Instance", studyXml.c_str(), cmd.c_str());
+  else
+	executeCommand( cmd );
 }
 
 
@@ -2573,7 +2593,10 @@ static void executeOnEndOfStudy()
   // Execute command in a new process
   if(opt_verbose)
 	COUT << "exec on end of study: " << cmd << endl;
-  executeCommand( cmd );
+  if(opt_msgOnly)
+	SendArchiveMessageToQueue("Archive Study", lastStudyXml.c_str(), cmd.c_str());
+  else
+	executeCommand( cmd );
 }
 
 

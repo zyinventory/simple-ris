@@ -163,3 +163,15 @@ BOOL DeleteEmptyFile(const char *filePath)
   else
 	return FALSE;
 }
+
+time_t dcmdate2tm(int dcmdate)
+{
+  struct tm timeBirth;
+  timeBirth.tm_year = dcmdate / 10000 - 1900;
+  timeBirth.tm_mon = dcmdate % 10000 / 100 - 1;
+  timeBirth.tm_mday = dcmdate % 100;
+  timeBirth.tm_hour = 0;
+  timeBirth.tm_min = 0;
+  timeBirth.tm_sec = 0;
+  return mktime(&timeBirth);
+}

@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include <string>
+#include <memory>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -10,46 +11,33 @@
 #include <limits.h>
 #include <direct.h>
 #include <errno.h>
-#include <memory>
+#import <msxml3.dll>
+
 #include "commonlib.h"
 #include "poststore.h"
+#include "charhash.h"
 
 using namespace std;
-#import <msxml3.dll>
-using namespace MSXML2;
 
 const char UNIT_SEPARATOR = 0x1F;
 const streamsize BUFF_SIZE = 1024;
 const int RMDIR_WAIT_SECONDS = 10;
-char buffer[BUFF_SIZE];
+static char buffer[BUFF_SIZE];
 string archivePath("archdir");
 string indexBase("indexdir");
 string baseurl, downloadUrl, studyDatePath;
 
-time_t dcmdate2tm(int dcmdate)
+HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::IXMLDOMElementPtr& study)
 {
-  struct tm timeBirth;
-  timeBirth.tm_year = dcmdate / 10000 - 1900;
-  timeBirth.tm_mon = dcmdate % 10000 / 100 - 1;
-  timeBirth.tm_mday = dcmdate % 100;
-  timeBirth.tm_hour = 0;
-  timeBirth.tm_min = 0;
-  timeBirth.tm_sec = 0;
-  return mktime(&timeBirth);
-}
-
-HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::IXMLDOMElementPtr& study)
-{
-  string inputLine(buffer);
-  istringstream patientStrm(inputLine);
+  istringstream patientStrm(line);
 
   patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string patientId(buffer);
-  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
 
   patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string patientsName(buffer);
-  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
 
   patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string birthdate(buffer);
@@ -59,11 +47,11 @@ HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::
 
   patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string studyUID(buffer);
-  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
 
   patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
   string studyDate(buffer);
-  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << inputLine << endl; return E_FAIL; }
+  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
 
   patientStrm.getline(buffer, BUFF_SIZE);
   string accNum(buffer);
@@ -77,7 +65,7 @@ HRESULT getStudyNode(char *buffer, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::
   downloadUrl.append(studyDatePath).append(1, '/').append(studyUID).append(1, '/');
 
   HRESULT hr;
-  hr = pXMLDom.CreateInstance(__uuidof(DOMDocument30));
+  hr = pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
   if (FAILED(hr))
   {
 	cerr << "Failed to CreateInstance on an XML DOM.\n";
@@ -237,7 +225,7 @@ HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDocumentPt
 
 		if(fh == INVALID_HANDLE_VALUE) throw "Lock file timeout: ";
 
-		oldIndex.CreateInstance(__uuidof(DOMDocument30));
+		oldIndex.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 		oldIndex->load(indexFilePath.c_str());
 	  }
 	  else
@@ -264,7 +252,7 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 {
   HRESULT hr;
   MSXML2::IXMLDOMDocumentPtr pXsl;
-  hr = pXsl.CreateInstance(__uuidof(DOMDocument30));
+  hr = pXsl.CreateInstance(__uuidof(MSXML2::DOMDocument30));
   if (FAILED(hr))
   {
 	cerr << "Failed to CreateInstance on an XSL DOM.\n";
@@ -287,7 +275,7 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 	const char *header = "<?xml version=\"1.0\" encoding=\"gbk\"?>\n";
 	_bstr_t xmlText(pXMLDom->transformNode(pXsl));
 	MSXML2::IXMLDOMDocumentPtr dayDomPtr;
-	dayDomPtr.CreateInstance(__uuidof(DOMDocument30));
+	dayDomPtr.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 	dayDomPtr->loadXML(xmlText);
 	dayDomPtr->firstChild->attributes->getNamedItem("encoding")->text = "GBK";
 	MSXML2::IXMLDOMNodePtr day = dayDomPtr->lastChild;
@@ -549,4 +537,20 @@ HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *arc
 	hr = E_FAIL;
   }
   return hr;
+}
+
+bool generateStudyXML(const char *line, ostream &xmlStream)
+{
+  MSXML2::IXMLDOMDocumentPtr pXmlDom;
+  MSXML2::IXMLDOMElementPtr study;
+  HRESULT hr = getStudyNode(line, pXmlDom, study);
+  if(FAILED(hr)) return false;
+
+  MSXML2::IXMLDOMTextPtr cmdline = pXmlDom->createTextNode("%cmd%");
+  MSXML2::IXMLDOMElementPtr command = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "command", "http://www.weasis.org/xsd");
+  command->appendChild(cmdline);
+  pXmlDom->lastChild->appendChild(command);
+  xmlStream << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << endl;
+  xmlStream << (const char *)pXmlDom->lastChild->xml;
+  return true;
 }
