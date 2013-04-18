@@ -12,3 +12,6 @@ EXPORTS
 	generateIndex
 	SvcInit
 	ReportSvcStatus
+	SendArchiveMessageToQueue
+	dcmdate2tm
+	generateStudyXML

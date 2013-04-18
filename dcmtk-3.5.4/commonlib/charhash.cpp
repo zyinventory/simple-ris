@@ -5,9 +5,6 @@
 #include <vector>
 #include <algorithm>
 
-#define CHINESE_LOCAL "chinese"  // full name: Chinese_People's Republic of China.936, posix: zh_CN.GBK
-#define SET_LOCAL locale::global(locale(locale(CHINESE_LOCAL)))
-
 using namespace std;
 
 static char char32map[32] = {'0', '1', '2','3','4','5','6','7','8','9','A','B','C','D','E','F','G','H','J','K','M','N','P','Q','R','S','T','U','V','W','X','Y'};

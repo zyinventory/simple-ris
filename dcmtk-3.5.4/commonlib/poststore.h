@@ -4,6 +4,3 @@
 #define DCM_PatientID	"0010,0020"
 #define DCM_StudyInstanceUID	"0020,000d"
 #define MK_TAG_STRING(key) key
-
-int hashCode(const char *s);
-int hashCodeW(const wchar_t *s);
