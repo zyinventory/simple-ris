@@ -113,7 +113,25 @@ int _tmain(int argc, _TCHAR* argv[])
   char **endPos = argv + argc;
   char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
   if(pos == endPos) pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "--working-directory")));
-  if(pos != endPos) _chdir(*++pos);
+  if(pos != endPos)
+  {
+	_chdir(*++pos);
+  }
+  else
+  {
+	char* workingDirBuffer;
+	size_t requiredSize;
+	getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
+	if(requiredSize > 0)
+	{
+	  workingDirBuffer = new char[requiredSize];
+	  getenv_s( &requiredSize, workingDirBuffer, requiredSize, "PACS_BASE");
+	  string workingDir(workingDirBuffer);
+	  workingDir.append("\\pacs");
+	  _chdir(workingDir.c_str());
+	  delete workingDirBuffer;
+	}
+  }
 
   char *buffer = _getcwd(NULL, 0);
   cout << "working dir: " << buffer << endl;
