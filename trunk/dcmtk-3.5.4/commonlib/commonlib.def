@@ -15,3 +15,5 @@ EXPORTS
 	SendArchiveMessageToQueue
 	dcmdate2tm
 	generateStudyXML
+	setEnvParentPID
+	generateTime
