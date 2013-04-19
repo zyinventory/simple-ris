@@ -19,3 +19,5 @@ long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPa
 time_t dcmdate2tm(int dcmdate);
 bool generateStudyXML(const char *line, std::ostream &xmlStream);
 bool SendArchiveMessageToQueue(const char *label, const char *body, const char *cmd);
+errno_t setEnvParentPID();
+int generateTime(const char *format, char *timeBuffer);

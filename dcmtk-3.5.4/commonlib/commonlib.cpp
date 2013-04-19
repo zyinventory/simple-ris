@@ -13,6 +13,22 @@
 
 using namespace std;
 
+errno_t setEnvParentPID()
+{
+  char pidString[16];
+  return _putenv_s("PARENT_PID", _itoa(_getpid(), pidString, 10));
+}
+
+int generateTime(const char *format, char *timeBuffer)
+{
+  time_t t = time( NULL );
+  struct tm tmp;
+  if( localtime_s( &tmp, &t ) == 0 )
+	return strftime(timeBuffer, sizeof(timeBuffer), format, &tmp);
+  else
+	return 0;
+}
+
 bool IsASCII(const char *str)
 {
   bool isAscii = true;

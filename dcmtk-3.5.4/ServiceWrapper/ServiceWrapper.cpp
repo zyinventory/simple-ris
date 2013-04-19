@@ -21,15 +21,6 @@ static int argcSV;
 static char **argvSV;
 static bool runInSCM = false;
 static char timeBuffer[20];
-int generateTime(const char *format)
-{
-  time_t t = time( NULL );
-  struct tm tmp;
-  if( localtime_s( &tmp, &t ) == 0 )
-	return strftime(timeBuffer, sizeof(timeBuffer), format, &tmp);
-  else
-	return 0;
-}
 
 void mkcmd(ostringstream *cmdStream, char *s)
 {
@@ -61,7 +52,7 @@ int realMain(int argc, char **argv)
   logSA.lpSecurityDescriptor = NULL;
   logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
 
-  generateTime(DATE_FORMAT_COMPACT);
+  generateTime(DATE_FORMAT_COMPACT, timeBuffer);
   ostringstream filename;
   filename << "pacs_log\\" << SERVICE_NAME << '_' << timeBuffer << ".txt";
   HANDLE logFile = CreateFile(filename.str().c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -84,7 +75,7 @@ int realMain(int argc, char **argv)
 
 	while( ! GetSignalInterruptValue() )
 	{
-	  if ( generateTime(DATE_FORMAT_YEAR_TO_SECOND) )
+	  if ( generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer) )
 		cout << "waiting " << timeBuffer << endl;
 	  else
 		cerr << "get time error" << endl;
@@ -104,12 +95,6 @@ void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
   realMain(argcSV, argvSV);
 
   ReportSvcStatus( SERVICE_STOPPED, NO_ERROR, 0 );
-}
-
-errno_t setEnvParentPID()
-{
-  char pidString[16];
-  return _putenv_s("PARENT_PID", itoa(getpid(), pidString, 10));
 }
 
 int _tmain(int argc, _TCHAR* argv[])
