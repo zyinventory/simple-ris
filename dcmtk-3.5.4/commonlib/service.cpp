@@ -7,20 +7,15 @@
 #include <signal.h>
 
 #include "commonlib.h"
-#include "service.h"
 
 using namespace std;
+
+char SERVICE_NAME[128];
 
 static SERVICE_STATUS          gSvcStatus; 
 static SERVICE_STATUS_HANDLE   gSvcStatusHandle; 
 
-void changeWorkingDirectory(int argc, char **argv)
-{
-  char **endPos = argv + argc;
-  char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
-  if(pos == endPos) pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "--working-directory")));
-  if(pos != endPos) _chdir(*++pos);
-}
+char *getServiceName() { return SERVICE_NAME; }
 
 void ReportSvcStatus( DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
 {
@@ -64,25 +59,6 @@ static void WINAPI SvcCtrlHandler( DWORD dwCtrl )
   ReportSvcStatus(gSvcStatus.dwCurrentState, NO_ERROR, 0);
 }
 
-bool WINAPI SvcInit(DWORD dwWaitHint)
-{
-  gSvcStatusHandle = RegisterServiceCtrlHandler( SERVICE_NAME, SvcCtrlHandler);
-  if( !gSvcStatusHandle )
-  {
-	  SvcReportEvent(TEXT("RegisterServiceCtrlHandler"));
-	  return false;
-  }
-
-  // These SERVICE_STATUS members remain as set here.
-  gSvcStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
-  gSvcStatus.dwServiceSpecificExitCode = 0;
-
-  // Report initial status to the SCM.
-  ReportSvcStatus( SERVICE_START_PENDING, NO_ERROR, dwWaitHint);
-
-  return true;
-}
-
 void SvcReportEvent(LPCTSTR szFunction, WORD eventType, DWORD eventId)
 { 
   HANDLE hEventSource;
@@ -110,4 +86,23 @@ void SvcReportEvent(LPCTSTR szFunction, WORD eventType, DWORD eventId)
 
 	DeregisterEventSource(hEventSource);
   }
+}
+
+bool WINAPI SvcInit(DWORD dwWaitHint)
+{
+  gSvcStatusHandle = RegisterServiceCtrlHandler( SERVICE_NAME, SvcCtrlHandler);
+  if( !gSvcStatusHandle )
+  {
+	  SvcReportEvent(TEXT("RegisterServiceCtrlHandler"), EVENTLOG_ERROR_TYPE, SVC_ERROR);
+	  return false;
+  }
+
+  // These SERVICE_STATUS members remain as set here.
+  gSvcStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+  gSvcStatus.dwServiceSpecificExitCode = 0;
+
+  // Report initial status to the SCM.
+  ReportSvcStatus( SERVICE_START_PENDING, NO_ERROR, dwWaitHint);
+
+  return true;
 }

@@ -12,8 +12,10 @@ EXPORTS
 	generateIndex
 	SvcInit
 	ReportSvcStatus
+	getServiceName
 	SendArchiveMessageToQueue
 	dcmdate2tm
 	generateStudyXML
 	setEnvParentPID
 	generateTime
+	changeWorkingDirectory

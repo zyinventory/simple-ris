@@ -2,6 +2,8 @@
 
 #define CHINESE_LOCAL "chinese"  // full name: Chinese_People's Republic of China.936, posix: zh_CN.GBK
 #define SET_LOCAL locale::global(locale(locale(CHINESE_LOCAL)))
+#define SVC_ERROR ((DWORD)0xC0020001L)
+#define SVC_INFO  ((DWORD)0x60020002L)
 
 const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
   ADD_DEFAULT_CHARSET[] = "Add default character set ", UNKNOWN_CHARSET[] = "Unknown character set ", OVERRIDE_BY[] = " is override by ";
@@ -20,4 +22,5 @@ time_t dcmdate2tm(int dcmdate);
 bool generateStudyXML(const char *line, std::ostream &xmlStream);
 bool SendArchiveMessageToQueue(const char *label, const char *body, const char *cmd);
 errno_t setEnvParentPID();
-int generateTime(const char *format, char *timeBuffer);
+int generateTime(const char *format, char *timeBuffer, size_t bufferSize);
+void changeWorkingDirectory(int argc, char **argv);
