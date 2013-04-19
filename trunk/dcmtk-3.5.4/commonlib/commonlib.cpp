@@ -8,6 +8,8 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
+#include <functional>
 
 #define PATH_SEPARATOR '\\'
 
@@ -19,12 +21,12 @@ errno_t setEnvParentPID()
   return _putenv_s("PARENT_PID", _itoa(_getpid(), pidString, 10));
 }
 
-int generateTime(const char *format, char *timeBuffer)
+int generateTime(const char *format, char *timeBuffer, size_t bufferSize)
 {
   time_t t = time( NULL );
   struct tm tmp;
   if( localtime_s( &tmp, &t ) == 0 )
-	return strftime(timeBuffer, sizeof(timeBuffer), format, &tmp);
+	return strftime(timeBuffer, bufferSize, format, &tmp);
   else
 	return 0;
 }
@@ -190,4 +192,30 @@ time_t dcmdate2tm(int dcmdate)
   timeBirth.tm_min = 0;
   timeBirth.tm_sec = 0;
   return mktime(&timeBirth);
+}
+
+void changeWorkingDirectory(int argc, char **argv)
+{
+  char **endPos = argv + argc;
+  char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
+  if(pos == endPos) pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "--working-directory")));
+  if(pos != endPos)
+  {
+	_chdir(*++pos);
+  }
+  else
+  {
+	char* workingDirBuffer;
+	size_t requiredSize;
+	getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
+	if(requiredSize > 0)
+	{
+	  workingDirBuffer = new char[requiredSize];
+	  getenv_s( &requiredSize, workingDirBuffer, requiredSize, "PACS_BASE");
+	  string workingDir(workingDirBuffer);
+	  workingDir.append("\\pacs");
+	  _chdir(workingDir.c_str());
+	  delete workingDirBuffer;
+	}
+  }
 }

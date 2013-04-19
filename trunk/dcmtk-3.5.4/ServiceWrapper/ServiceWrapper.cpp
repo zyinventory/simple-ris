@@ -32,10 +32,9 @@ void mkcmd(ostringstream *cmdStream, char *s)
 
 int realMain(int argc, char **argv)
 {
-  cout << "begin real work:" << GetCurrentThreadId() << endl;
   // Perform work until service stops.
   ostringstream cmdStream;
-  for_each(argv + 1, argv + argc, bind1st(ptr_fun(mkcmd), &cmdStream));
+  for_each(argv + 2, argv + argc, bind1st(ptr_fun(mkcmd), &cmdStream)); // skip program and ServiceName
   string cmd(cmdStream.str());
   cmdStream.clear();
   cout << cmd << endl;
@@ -52,9 +51,9 @@ int realMain(int argc, char **argv)
   logSA.lpSecurityDescriptor = NULL;
   logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
 
-  generateTime(DATE_FORMAT_COMPACT, timeBuffer);
+  generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
   ostringstream filename;
-  filename << "pacs_log\\" << SERVICE_NAME << '_' << timeBuffer << ".txt";
+  filename << "pacs_log\\" << getServiceName() << '_' << timeBuffer << ".txt";
   HANDLE logFile = CreateFile(filename.str().c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
   filename.clear();
   if(logFile != INVALID_HANDLE_VALUE)
@@ -75,7 +74,7 @@ int realMain(int argc, char **argv)
 
 	while( ! GetSignalInterruptValue() )
 	{
-	  if ( generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer) )
+	  if ( generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer)) )
 		cout << "waiting " << timeBuffer << endl;
 	  else
 		cerr << "get time error" << endl;
@@ -99,9 +98,19 @@ void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+  if(argc < 3)
+  {
+	cout << "usage: ServiceWrapper [ServiceName] [CommandLine]" << endl;
+	return -2;
+  }
+  else
+  {
+	strcpy_s(getServiceName(), 128, argv[1]); // argv[1] must be ServiceName
+  }
+
   SERVICE_TABLE_ENTRY serviceTableEntry[] =
   {
-	{ SERVICE_NAME , SvcMain },
+	{ getServiceName() , SvcMain },
 	{ NULL, NULL }
   };
 
@@ -110,28 +119,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
   Capture_Ctrl_C();
 
-  char **endPos = argv + argc;
-  char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
-  if(pos == endPos) pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "--working-directory")));
-  if(pos != endPos)
-  {
-	_chdir(*++pos);
-  }
-  else
-  {
-	char* workingDirBuffer;
-	size_t requiredSize;
-	getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
-	if(requiredSize > 0)
-	{
-	  workingDirBuffer = new char[requiredSize];
-	  getenv_s( &requiredSize, workingDirBuffer, requiredSize, "PACS_BASE");
-	  string workingDir(workingDirBuffer);
-	  workingDir.append("\\pacs");
-	  _chdir(workingDir.c_str());
-	  delete workingDirBuffer;
-	}
-  }
+  changeWorkingDirectory(argc, argv);
 
   char *buffer = _getcwd(NULL, 0);
   cout << "working dir: " << buffer << endl;
