@@ -358,7 +358,7 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 		sprintf(buffer, "/wado_query/Patient/Study[@StudyInstanceUID='%s']", (const char*)studyUid);
 		MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(buffer);
 		if(existStudy) oldIndex->lastChild->firstChild->removeChild(existStudy); // /wado_query/Patient ->removeChild(existStudy)
-		oldIndex->lastChild->firstChild->appendChild(newStudy->cloneNode(true)); // /wado_query/Patient ->appendChild(newStudy)
+		oldIndex->lastChild->firstChild->appendChild(newStudy->cloneNode(VARIANT_TRUE)); // /wado_query/Patient ->appendChild(newStudy)
 		::SetEndOfFile(fh);
 		if( ! ( WriteFile(fh, header, strlen(header), &written, NULL) && 
 		  WriteFile(fh, (const char *)oldIndex->lastChild->xml, strlen((const char *)oldIndex->lastChild->xml), &written, NULL) ) )
