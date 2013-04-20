@@ -148,6 +148,14 @@ bool MkdirRecursive(const char *subdir)
   }
 }
 
+bool prepareFileDir(const char *path)
+{
+  string filePath = path;
+  string::size_type p = filePath.rfind(L'\\');
+  if(p == string::npos || p == 0) return true;
+  return MkdirRecursive(filePath.substr(0, p).c_str());
+}
+
 //return 0 if successful, otherwise errno
 int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator)
 {

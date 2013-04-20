@@ -2109,15 +2109,8 @@ storeSCPCallback(
 		char buf2[32];
 		sprintf(buf2, "%04ld", seriesNumber);
 		lastArchiveFileName.append(buf2); //.append(currentSeriesInstanceUID);
-		if( ! MkdirRecursive( lastArchiveFileName.c_str() ) )
-        {
-          CERR << "storescp: Could not create subdirectory " << subdirectoryPathAndName << endl;
-          rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
-          return;
-        }
-		lastArchiveFileName.append(1, PATH_SEPARATOR);
 		sprintf(buf2, "%08ld", instanceNumber);
-		lastArchiveFileName.append(buf2); // .append(sopInstanceUid).append(".DCM");
+		lastArchiveFileName.append(1, PATH_SEPARATOR).append(buf2); // .append(sopInstanceUid)
 
 		// integrate subdirectory name into file name (note that cbdata->imageFileName currently contains both
         // path and file name; however, the path refers to the output directory captured in opt_outputDirectory)

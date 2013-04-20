@@ -1,7 +1,7 @@
 #pragma once
 
 #define CHINESE_LOCAL "chinese"  // full name: Chinese_People's Republic of China.936, posix: zh_CN.GBK
-#define SET_LOCAL locale::global(locale(locale(CHINESE_LOCAL)))
+#define SET_LOCAL locale::global(locale(CHINESE_LOCAL))
 #define SVC_ERROR ((DWORD)0xC0020001L)
 #define SVC_INFO  ((DWORD)0x60020002L)
 
@@ -15,6 +15,7 @@ bool IsASCII(const char *str);
 char *rtrim(char *s, int maxLen = -1);
 LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime);
 bool MkdirRecursive(const char*);
+bool prepareFileDir(const char *path);
 int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator);
 BOOL DeleteEmptyFile(const char *filePath);
 long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath);
