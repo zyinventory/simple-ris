@@ -522,6 +522,16 @@ int main(int argc, char *argv[])
                 fileNames.push_back(param);
         }
     }
+
+	// remove DICOMDIR for avoiding warning message.
+	// algorithm copied from OFList<T>::remove
+	OFIterator<OFString> first = fileNames.begin();
+	while(first != fileNames.end())
+	{
+	  if ((*first).find(OFString("DICOMDIR")) != OFString_npos) first = fileNames.erase(first);
+	  else ++first;
+	}
+
     /* check whether there are any input files */
     if (fileNames.empty())
         app.printError("no input files: DICOMDIR not created");
