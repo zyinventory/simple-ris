@@ -74,6 +74,8 @@
 #endif
 
 #include <direct.h>
+#include <windows.h>
+#include "commonlib.h"
 
 #ifdef WITH_ZLIB
 #include <zlib.h>         /* for zlibVersion() */
@@ -535,6 +537,8 @@ int main(int argc, char *argv[])
     /* check whether there are any input files */
     if (fileNames.empty())
         app.printError("no input files: DICOMDIR not created");
+
+	prepareFileDir(opt_output);
 
 #ifdef BUILD_DCMGPDIR_AS_DCMMKDIR
     // add image support to DICOMDIR class

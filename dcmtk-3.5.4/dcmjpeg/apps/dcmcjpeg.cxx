@@ -55,6 +55,9 @@
 
 #include <errno.h>
 
+#include <windows.h>
+#include "commonlib.h"
+
 #ifdef WITH_ZLIB
 #include <zlib.h>      /* for zlibVersion() */
 #endif
@@ -712,6 +715,7 @@ int main(int argc, char *argv[])
 
 	  if (opt_verbose)
 		  COUT << "creating output file " << opt_ofname << endl;
+	  prepareFileDir(opt_ofname);
 
 	  fileformat.loadAllDataIntoMemory();
 	  error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
