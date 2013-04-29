@@ -215,7 +215,7 @@ int main(int argc, char *argv[])
 #endif
       cmd.addSubGroup("writing:");
         cmd.addOption("--replace",               "-A",     "replace existing DICOMDIR (default)");
-        cmd.addOption("--append",                "+A",     "append to existing DICOMDIR");
+        cmd.addOption("--append",                "+A",     "append to existing DICOMDIR, if doesn't exist DICOMDIR, create new DICOMDIR");
         cmd.addOption("--discard",               "-w",     "do not write out DICOMDIR");
         cmd.addOption("--no-backup",             "-nb",    "do not create a backup of existing DICOMDIR");
       cmd.addSubGroup("post-1993 value representations:");
@@ -489,7 +489,7 @@ int main(int argc, char *argv[])
         return 1;  /* DcmDicomDir class dumps core when no data dictionary */
     }
 
-	if(opt_csv)
+	if(opt_csv && *opt_csv != '\0')
 	{
 	  char buffer[512];
 	  strcpy_s(buffer, 512, opt_csv);
@@ -548,7 +548,7 @@ int main(int argc, char *argv[])
 
     OFCondition result;
     /* create new general purpose DICOMDIR or append to existing one */
-    if (opt_append)
+	if (opt_append && OFStandard::fileExists(opt_output))
         result = ddir.appendToDicomDir(opt_profile, opt_output);
     else
         result = ddir.createNewDicomDir(opt_profile, opt_output, opt_fileset);
