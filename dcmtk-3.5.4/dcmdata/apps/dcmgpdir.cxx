@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
     const char *opt_pattern = NULL;
 	const char *opt_archive = "archdir";
 	const char *opt_index = "indexdir";
-	const char *opt_csv;
+	const char *opt_csv = NULL;
 	const char *opt_weburl = NULL;
     DicomDirInterface::E_ApplicationProfile opt_profile = DicomDirInterface::AP_GeneralPurpose;
 
