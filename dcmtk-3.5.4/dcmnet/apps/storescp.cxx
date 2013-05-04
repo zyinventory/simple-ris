@@ -176,7 +176,7 @@ OFString           callingpresentationaddress;   // calling Presentation Adress 
 const char *       opt_respondingaetitle = APPLICATIONTITLE;
 static OFBool      opt_secureConnection = OFFalse;    // default: no secure connection
 static OFString    opt_outputDirectory(".");          // default: output directory equals "."
-static OFString    opt_volumeLabel;   // default: output directory's full path
+static OFString    opt_volumeLabel("archdir");   // default: output directory's full path
 static OFString    opt_workingDirectory;    		  // default: current directory
 static const char *opt_sortConcerningStudies = NULL;  // default: no sorting
 OFString           lastStudyInstanceUID;
@@ -322,7 +322,6 @@ int main(int argc, char *argv[])
     opt0 += opt_outputDirectory;
     opt0 += ")";
     cmd.addOption("--output-directory",          "-od",   1, "[p]ath: string", opt0.c_str());
-	cmd.addOption("--volume-label",              "-vl",   1, "[p]ath: string", "volume where the images are stored, default: output directory's full path");
 	cmd.addOption("--working-directory",         "-wd",   1, "[p]ath: string", "working directory, default: current directory");
 
 #if defined(HAVE_FORK) || defined(_WIN32)
@@ -599,7 +598,6 @@ int main(int argc, char *argv[])
       SetDebugLevel(3);
     }
     if (cmd.findOption("--output-directory")) app.checkValue(cmd.getValue(opt_outputDirectory));
-    if (cmd.findOption("--volume-label")) app.checkValue(cmd.getValue(opt_volumeLabel));
 	if (cmd.findOption("--working-directory")) app.checkValue(cmd.getValue(opt_workingDirectory));
 
     cmd.beginOptionBlock();
@@ -1036,15 +1034,6 @@ int main(int argc, char *argv[])
       CERR << "Error: invalid output directory encountered ('" << opt_outputDirectory << "')" << endl;
       return 1;
     }
-  }
-
-  if(opt_volumeLabel.length() == 0)
-  {
-	char *buffer = _getcwd(NULL, 0);
-	opt_volumeLabel = buffer;
-	free(buffer);
-	opt_volumeLabel += PATH_SEPARATOR;
-	opt_volumeLabel += opt_outputDirectory;
   }
 
 #ifdef HAVE_FORK
@@ -1621,9 +1610,10 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
   DIC_AE calledTitle;
   if (ASC_getAPTitles(assoc->params, callingTitle, calledTitle, NULL).good())
   {
-    callingaetitle = "\"";
-    callingaetitle += callingTitle;
-    callingaetitle += "\"";
+	callingaetitle = callingTitle;
+    //callingaetitle = "\"";
+    //callingaetitle += callingTitle;
+    //callingaetitle += "\"";
     calledaetitle = "\"";
     calledaetitle += calledTitle;
     calledaetitle += "\"";
@@ -2006,7 +1996,10 @@ storeSCPCallback(
           return;
         }
         if (tmpstr1) currentStudyInstanceUID = tmpstr1;
-
+		unsigned int hashStudy = hashCode(currentStudyInstanceUID.c_str());
+		if(currentStudyInstanceUID.length() == 0) currentStudyInstanceUID = "NULL";
+		
+		char buf[MAX_PATH];
         // if this is the first DICOM object that was received or if the study instance UID in the
         // current DICOM object does not equal the last object's study instance UID we need to create
         // a new subdirectory in which the current DICOM object will be stored
@@ -2038,21 +2031,20 @@ storeSCPCallback(
 		  // get the current time (needed for subdirectory name)
 		  OFDateTime dateTime;
 		  dateTime.setCurrentDateTime();
-		  char buf[32];
           // create the new lastStudyInstanceUID value according to the value in the current DICOM object
           lastStudyInstanceUID = currentStudyInstanceUID;
 
           // create a name for the new subdirectory. pattern: "[opt_sortConcerningStudies]_[YYYYMMDD]_[HHMMSSMMM]" (use current datetime)
-          sprintf(buf, "_%04u%02u%02u_%02u%02u%02u%03u_",
-          dateTime.getDate().getYear(), dateTime.getDate().getMonth(), dateTime.getDate().getDay(),
-          dateTime.getTime().getHour(), dateTime.getTime().getMinute(), dateTime.getTime().getIntSecond(), dateTime.getTime().getMilliSecond());
-          OFString subdirectoryName;
-		  subdirectoryName.reserve(256);
-		  subdirectoryName.append(opt_sortConcerningStudies).append(buf).append(currentStudyInstanceUID);
+          sprintf(buf, "%s_%04u%02u%02u_%02u%02u%02u%03u_%s", opt_sortConcerningStudies,
+			dateTime.getDate().getYear(), dateTime.getDate().getMonth(), dateTime.getDate().getDay(),
+			dateTime.getTime().getHour(), dateTime.getTime().getMinute(), dateTime.getTime().getIntSecond(), dateTime.getTime().getMilliSecond(),
+			currentStudyInstanceUID);
+          OFString subdirectoryName(buf);
 
-		  archiveStudyPath = studyDate.substr(0, 4);
-		  archiveStudyPath.append(1, PATH_SEPARATOR).append(studyDate.substr(4, 2)).append(1, PATH_SEPARATOR);		// year/month/
-		  archiveStudyPath.append(studyDate.substr(6, 2)).append(1, PATH_SEPARATOR).append(currentStudyInstanceUID);// year/month/day/studyUID
+		  sprintf_s(buf, sizeof(buf), "%02X\\%02X\\%02X\\%02X\\%s",
+			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff,
+			currentStudyInstanceUID.c_str());
+		  archiveStudyPath = buf;
 
           // create subdirectoryPathAndName (string with full path to new subdirectory)
           subdirectoryPathAndName = cbdata->imageFileName;
@@ -2072,7 +2064,7 @@ storeSCPCallback(
 		  if(opt_verbose) COUT << "open file: " << instanceCSVPath << '\n';
 		  OFOStringStream studyTextStream;
 		  studyTextStream << patientId << UNIT_SEPARATOR << patientsName << UNIT_SEPARATOR << birthdate << UNIT_SEPARATOR << sex << UNIT_SEPARATOR;
-		  studyTextStream << currentStudyInstanceUID << UNIT_SEPARATOR << studyDate << UNIT_SEPARATOR << accNumber;
+		  studyTextStream << currentStudyInstanceUID << UNIT_SEPARATOR << studyDate << UNIT_SEPARATOR << accNumber << UNIT_SEPARATOR << callingaetitle;
 		  inststrm.open(instanceCSVPath.c_str(), ios_base::app | ios_base::out);
 		  inststrm << studyTextStream.str().c_str() << endl;
 		  //     inststrm << patientId << UNIT_SEPARATOR << patientsName << UNIT_SEPARATOR << birthdate << UNIT_SEPARATOR << sex << UNIT_SEPARATOR;
@@ -2102,15 +2094,12 @@ storeSCPCallback(
 		(*imageDataSet)->findAndGetSint32( DCM_InstanceNumber, instanceNumber );
 		inststrm << instanceNumber << '\n';
 
-		lastArchiveFileName.clear();
-		lastArchiveFileName.append(opt_volumeLabel).append(1, PATH_SEPARATOR);
-		lastArchiveFileName.append(studyDate.substr(0, 4)).append(1, PATH_SEPARATOR).append(studyDate.substr(4, 2)).append(1, PATH_SEPARATOR).append(studyDate.substr(6, 2));
-		lastArchiveFileName.append(1, PATH_SEPARATOR).append(currentStudyInstanceUID).append(1, PATH_SEPARATOR);
-		char buf2[32];
-		sprintf(buf2, "%04ld", seriesNumber);
-		lastArchiveFileName.append(buf2); //.append(currentSeriesInstanceUID);
-		sprintf(buf2, "%08ld", instanceNumber);
-		lastArchiveFileName.append(1, PATH_SEPARATOR).append(buf2); // .append(sopInstanceUid)
+		unsigned int hashSeries = hashCode(currentSeriesInstanceUID.c_str());
+		unsigned int hashImage = hashCode(sopInstanceUid.c_str());
+		sprintf_s(buf, MAX_PATH, "%s\\%02X\\%02X\\%02X\\%02X\\%s\\%08X\\%08X\\%08X\\%d", opt_volumeLabel.c_str(),
+			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff,
+			currentStudyInstanceUID.c_str(), hashStudy, hashSeries, hashImage, instanceNumber);
+		lastArchiveFileName = buf;
 
 		// integrate subdirectory name into file name (note that cbdata->imageFileName currently contains both
         // path and file name; however, the path refers to the output directory captured in opt_outputDirectory)

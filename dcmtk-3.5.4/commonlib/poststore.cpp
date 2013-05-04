@@ -29,95 +29,111 @@ string baseurl, downloadUrl, studyDatePath;
 
 HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::IXMLDOMElementPtr& study)
 {
-  istringstream patientStrm(line);
+	istringstream patientStrm(line);
 
-  patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
-  string patientId(buffer);
-  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
+	patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
+	string patientId(buffer);
+	if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
 
-  patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
-  string patientsName(buffer);
-  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
+	patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
+	string patientsName(buffer);
+	if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
 
-  patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
-  string birthdate(buffer);
+	patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
+	string birthdate(buffer);
 
-  patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
-  string sex(buffer);
+	patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
+	string sex(buffer);
 
-  patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
-  string studyUID(buffer);
-  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
+	patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
+	string studyUID(buffer);
+	if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
 
-  patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
-  string studyDate(buffer);
-  if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
+	patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
+	string studyDate(buffer);
+	if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
 
-  patientStrm.getline(buffer, BUFF_SIZE);
-  string accNum(buffer);
+	patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
+	string accNum(buffer);
 
-  //studyDatePath = "/YYYY/MM/DD"
-  studyDatePath.append(1, '/').append(studyDate.substr(0, 4)).append(1, '/').append(studyDate.substr(4, 2));
-  studyDatePath.append(1, '/').append(studyDate.substr(6, 2));
+	patientStrm.getline(buffer, BUFF_SIZE);
+	string callingaetitle(buffer);
 
-  //downloadUrl = "<archivePath>/YYYY/MM/DD/<study uid>/"
-  downloadUrl = archivePath;
-  downloadUrl.append(studyDatePath).append(1, '/').append(studyUID).append(1, '/');
+	//studyDatePath = "/YYYY/MM/DD"
+	studyDatePath.append(1, '/').append(studyDate.substr(0, 4)).append(1, '/').append(studyDate.substr(4, 2));
+	studyDatePath.append(1, '/').append(studyDate.substr(6, 2));
 
-  HRESULT hr;
-  hr = pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
-  if (FAILED(hr))
-  {
-	cerr << "Failed to CreateInstance on an XML DOM.\n";
-	return hr;
-  }
-  pXMLDom->preserveWhiteSpace = VARIANT_FALSE;
-  pXMLDom->async = VARIANT_FALSE;
+	char buf[MAX_PATH];
+	unsigned int hashStudy = hashCode(studyUID.c_str());
+	if(studyUID.length() == 0) studyUID = "NULL";
+	sprintf_s(buf, sizeof(buf), "%s/%02X/%02X/%02X/%02X/%s/%08X", archivePath.c_str(),
+		hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID.c_str(), hashStudy);
+	downloadUrl = buf;  //downloadUrl = "<archivePath>/Ha/sh/Co/de/<study uid>/<study uid hashCode>"
 
-  MSXML2::IXMLDOMElementPtr wado;
-  MSXML2::IXMLDOMProcessingInstructionPtr pi;
-  pi = pXMLDom->createProcessingInstruction("xml", "version='1.0' encoding='gbk'");
-  if (pi != NULL)
-  {
-	pXMLDom->appendChild(pi);
-	pi.Release();
-  }
-  /*
-  pi = pXMLDom->createProcessingInstruction("xml-stylesheet", "type='text/xml' href='/xslt/study.xsl'");
-  if (pi != NULL)
-  {
-	pXMLDom->appendChild(pi);
-	pi.Release();
-  }
-  */
-  wado = pXMLDom->createNode(MSXML2::NODE_ELEMENT, "wado_query", "http://www.weasis.org/xsd");
-  wado->setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
-  wado->setAttribute("requireOnlySOPInstanceUID", "false");
-  pXMLDom->appendChild(wado);
-  wado->setAttribute("wadoURL", baseurl.c_str());
+	HRESULT hr;
+	hr = pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+	if (FAILED(hr))
+	{
+		cerr << "Failed to CreateInstance on an XML DOM.\n";
+		return hr;
+	}
+	pXMLDom->preserveWhiteSpace = VARIANT_FALSE;
+	pXMLDom->async = VARIANT_FALSE;
 
-  MSXML2::IXMLDOMElementPtr patient;
-  patient = pXMLDom->selectSingleNode("/wado_query/Patient");
-  if( ! patient )
-  {
-	patient = pXMLDom->createNode(MSXML2::NODE_ELEMENT, "Patient", "http://www.weasis.org/xsd");
-	wado->appendChild(patient);
-  }
-  patient->setAttribute("PatientID", patientId.c_str());
-  patient->setAttribute("PatientName", patientsName.c_str());
-  if( ! birthdate.empty() ) patient->setAttribute("PatientBirthDate", birthdate.c_str());
-  if( ! sex.empty() ) patient->setAttribute("PatientSex", sex.c_str());
+	MSXML2::IXMLDOMElementPtr wado;
+	MSXML2::IXMLDOMProcessingInstructionPtr pi;
+	pi = pXMLDom->createProcessingInstruction("xml", "version='1.0' encoding='gbk'");
+	if (pi != NULL)
+	{
+		pXMLDom->appendChild(pi);
+		pi.Release();
+	}
+	/*
+	pi = pXMLDom->createProcessingInstruction("xml-stylesheet", "type='text/xml' href='/xslt/study.xsl'");
+	if (pi != NULL)
+	{
+		pXMLDom->appendChild(pi);
+		pi.Release();
+	}
+	*/
+	wado = pXMLDom->createNode(MSXML2::NODE_ELEMENT, "wado_query", "http://www.weasis.org/xsd");
+	wado->setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+	wado->setAttribute("requireOnlySOPInstanceUID", "false");
+	pXMLDom->appendChild(wado);
+	wado->setAttribute("wadoURL", baseurl.c_str());
 
-  study = patient->selectSingleNode("./Study");
-  if( ! study )
-  {
-	study = pXMLDom->createNode(MSXML2::NODE_ELEMENT, "Study", "http://www.weasis.org/xsd");
-	study->setAttribute("StudyInstanceUID", studyUID.c_str());
-	patient->appendChild(study);
-  }
-  study->setAttribute("StudyDate", studyDate.c_str());
-  study->setAttribute("AccessionNumber", accNum.c_str());
-  return S_OK;
+	MSXML2::IXMLDOMElementPtr httpTag;
+	httpTag = pXMLDom->selectSingleNode("/wado_query/httpTag");
+	if( ! httpTag )
+	{
+		httpTag = pXMLDom->createNode(MSXML2::NODE_ELEMENT, "httpTag", "http://www.weasis.org/xsd");
+		wado->appendChild(httpTag);
+	}
+	httpTag->setAttribute("key", "callingAE");
+	httpTag->setAttribute("value", callingaetitle.c_str());
+
+	MSXML2::IXMLDOMElementPtr patient;
+	patient = pXMLDom->selectSingleNode("/wado_query/Patient");
+	if( ! patient )
+	{
+		patient = pXMLDom->createNode(MSXML2::NODE_ELEMENT, "Patient", "http://www.weasis.org/xsd");
+		wado->appendChild(patient);
+	}
+	patient->setAttribute("PatientID", patientId.c_str());
+	patient->setAttribute("PatientName", patientsName.c_str());
+	if( ! birthdate.empty() ) patient->setAttribute("PatientBirthDate", birthdate.c_str());
+	if( ! sex.empty() ) patient->setAttribute("PatientSex", sex.c_str());
+
+	study = patient->selectSingleNode("./Study");
+	if( ! study )
+	{
+		study = pXMLDom->createNode(MSXML2::NODE_ELEMENT, "Study", "http://www.weasis.org/xsd");
+		study->setAttribute("StudyInstanceUID", studyUID.c_str());
+		patient->appendChild(study);
+	}
+	study->setAttribute("StudyDate", studyDate.c_str());
+	study->setAttribute("AccessionNumber", accNum.c_str());
+	return S_OK;
 }
 
 HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
@@ -171,16 +187,9 @@ HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
 	series->appendChild(instance);
   }
   instance->setAttribute("InstanceNumber", instanceNumber.c_str());
-  ostringstream url;
-  url << downloadUrl;
-  if(seriesNumber.length() < 4)
-	for(int i = seriesNumber.length(); i < 4; i++) url << '0';
-  url << seriesNumber << '/';
-  if(instanceNumber.length() < 8)
-	for(int i = instanceNumber.length(); i < 8; i++) url << '0';
-  url << instanceNumber;
-  instance->setAttribute("DirectDownloadFile", url.str().c_str());
-  url.clear();
+  char buf[MAX_PATH];
+  sprintf_s(buf, sizeof(buf), "%s/%08X/%08X/%s", downloadUrl.c_str(), hashCode(seriesUID.c_str()), hashCode(instanceUID.c_str()), instanceNumber.c_str());
+  instance->setAttribute("DirectDownloadFile", buf);
   return S_OK;
 }
 
@@ -339,7 +348,7 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
   unsigned int hash = hashCodeW(tagValue);
   if(tagValue.length() == 0) tagValue = "NULL";
   
-  sprintf(buffer, "%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.xml", indexBase.c_str(), tag,
+  sprintf_s(buffer, BUFF_SIZE, "%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.xml", indexBase.c_str(), tag,
 	hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, (const char*)tagValue);
   string indexPath = buffer;
   HANDLE fh = INVALID_HANDLE_VALUE;
@@ -355,7 +364,7 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 	  {
 		MSXML2::IXMLDOMNodePtr newStudy = pXMLDom->selectSingleNode("/wado_query/Patient/Study");
 		_bstr_t studyUid = newStudy->selectSingleNode("./@StudyInstanceUID")->Gettext();
-		sprintf(buffer, "/wado_query/Patient/Study[@StudyInstanceUID='%s']", (const char*)studyUid);
+		sprintf_s(buffer, BUFF_SIZE, "/wado_query/Patient/Study[@StudyInstanceUID='%s']", (const char*)studyUid);
 		MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(buffer);
 		if(existStudy) oldIndex->lastChild->firstChild->removeChild(existStudy); // /wado_query/Patient ->removeChild(existStudy)
 		oldIndex->lastChild->firstChild->appendChild(newStudy->cloneNode(VARIANT_TRUE)); // /wado_query/Patient ->appendChild(newStudy)
@@ -452,7 +461,7 @@ HRESULT processInputStream(istream& istrm)
   string tagStudyDate(MK_TAG_STRING(DCM_StudyDate));
   while((p = tagStudyDate.find(',')) != string::npos) tagStudyDate.replace(p, 1, 0, '_');
   //dayIndexFilePath = "<indexBase>/<tagStudyDate>/YYYY/MM/DD.xml"
-  sprintf(buffer, "%s/%s/%s.xml", indexBase.c_str(), tagStudyDate.c_str(), studyDatePath.c_str());
+  sprintf_s(buffer, BUFF_SIZE, "%s/%s/%s.xml", indexBase.c_str(), tagStudyDate.c_str(), studyDatePath.c_str());
   string dayIndexFilePath = buffer;
   hr = createDateIndex(pXMLDom, "xslt\\study.xsl", dayIndexFilePath, true);
   if (FAILED(hr))
@@ -460,8 +469,9 @@ HRESULT processInputStream(istream& istrm)
 
   // receive date index
   time_t t = time( NULL );
-  struct tm *today = localtime( &t );
-  strftime(buffer, BUFF_SIZE, "\\receive\\%Y\\%m\\%d.xml", today );
+  struct tm today;
+  localtime_s(&today, &t);
+  strftime(buffer, BUFF_SIZE, "\\receive\\%Y\\%m\\%d.xml", &today );
   string receiveIndexFilePath = indexBase;
   receiveIndexFilePath.append(buffer);
   hr = createDateIndex(pXMLDom, "xslt\\receive.xsl", receiveIndexFilePath, false);

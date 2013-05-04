@@ -20,3 +20,5 @@ EXPORTS
 	setEnvParentPID
 	generateTime
 	changeWorkingDirectory
+	hashCode
+	hashCodeW
