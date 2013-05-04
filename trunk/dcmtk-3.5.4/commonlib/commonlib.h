@@ -25,3 +25,5 @@ bool SendArchiveMessageToQueue(const char *label, const char *body, const char *
 errno_t setEnvParentPID();
 int generateTime(const char *format, char *timeBuffer, size_t bufferSize);
 void changeWorkingDirectory(int argc, char **argv);
+int hashCode(const char *);
+int hashCodeW(const wchar_t *);
