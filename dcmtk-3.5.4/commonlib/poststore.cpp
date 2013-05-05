@@ -89,7 +89,7 @@ HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXM
 		pi.Release();
 	}
 	/*
-	pi = pXMLDom->createProcessingInstruction("xml-stylesheet", "type='text/xml' href='/xslt/study.xsl'");
+	pi = pXMLDom->createProcessingInstruction("xml-stylesheet", "type='text/xml' href='xslt/receive.xsl'");
 	if (pi != NULL)
 	{
 		pXMLDom->appendChild(pi);
@@ -366,8 +366,8 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 		_bstr_t studyUid = newStudy->selectSingleNode("./@StudyInstanceUID")->Gettext();
 		sprintf_s(buffer, BUFF_SIZE, "/wado_query/Patient/Study[@StudyInstanceUID='%s']", (const char*)studyUid);
 		MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(buffer);
-		if(existStudy) oldIndex->lastChild->firstChild->removeChild(existStudy); // /wado_query/Patient ->removeChild(existStudy)
-		oldIndex->lastChild->firstChild->appendChild(newStudy->cloneNode(VARIANT_TRUE)); // /wado_query/Patient ->appendChild(newStudy)
+		if(existStudy) oldIndex->lastChild->lastChild->removeChild(existStudy); // /wado_query/Patient ->removeChild(existStudy)
+		oldIndex->lastChild->lastChild->appendChild(newStudy->cloneNode(VARIANT_TRUE)); // /wado_query/Patient ->appendChild(newStudy)
 		::SetEndOfFile(fh);
 		if( ! ( WriteFile(fh, header, strlen(header), &written, NULL) && 
 		  WriteFile(fh, (const char *)oldIndex->lastChild->xml, strlen((const char *)oldIndex->lastChild->xml), &written, NULL) ) )
@@ -463,7 +463,7 @@ HRESULT processInputStream(istream& istrm)
   //dayIndexFilePath = "<indexBase>/<tagStudyDate>/YYYY/MM/DD.xml"
   sprintf_s(buffer, BUFF_SIZE, "%s/%s/%s.xml", indexBase.c_str(), tagStudyDate.c_str(), studyDatePath.c_str());
   string dayIndexFilePath = buffer;
-  hr = createDateIndex(pXMLDom, "xslt\\study.xsl", dayIndexFilePath, true);
+  hr = createDateIndex(pXMLDom, "xslt\\receive.xsl", dayIndexFilePath, true);
   if (FAILED(hr))
 	cerr << "Failed to create study date index: " << dayIndexFilePath << endl;
 
