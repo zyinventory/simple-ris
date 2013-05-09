@@ -631,6 +631,7 @@ static E_DirRecType sopClassToRecordType(const OFString &sopClass)
              compare(sopClass, UID_ComprehensiveSR) ||
              compare(sopClass, UID_MammographyCADSR) ||
              compare(sopClass, UID_ChestCADSR) ||
+             compare(sopClass, UID_XRayRadiationDoseSR) ||  // zy add
              compare(sopClass, UID_ProcedureLogStorage))
     {
         result = ERT_StructReport;
@@ -1369,6 +1370,8 @@ OFCondition DicomDirInterface::checkSOPClassAndXfer(DcmMetaInfo *metainfo,
                     found = found || compare(mediaSOPClassUID, UID_MRSpectroscopyStorage);
                     found = found || compare(mediaSOPClassUID, UID_EncapsulatedPDFStorage);
                     found = found || compare(mediaSOPClassUID, UID_HangingProtocolStorage);
+					/* zy add, is X-Ray Radiation Dose SR */
+					found = found || compare(mediaSOPClassUID, UID_XRayRadiationDoseSR);
                     if (ApplicationProfile == AP_GeneralPurpose)
                     {
                         /* a detached patient mgmt sop class is also ok */

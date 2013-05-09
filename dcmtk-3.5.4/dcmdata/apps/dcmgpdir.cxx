@@ -109,6 +109,7 @@ int main(int argc, char *argv[])
     OFBool opt_write = OFTrue;
     OFBool opt_append = OFFalse;
     OFBool opt_recurse = OFFalse;
+	OFBool opt_deleteSourceCSV = OFFalse;
     E_EncodingType opt_enctype = EET_ExplicitLength;
     E_GrpLenEncoding opt_glenc = EGL_withoutGL;
     const char *opt_output = DEFAULT_DICOMDIR_NAME;
@@ -231,6 +232,7 @@ int main(int argc, char *argv[])
 		cmd.addOption("--archive-directory",     "-ac", 1, "directory : string", "write DICOMDIR, default : archdir");
 		cmd.addOption("--index-directory",       "-ix", 1, "directory : string", "write index file, default : indexdir");
         cmd.addOption("--input-csv",             "-ic", 1, "filename : string", "read index information from csv file");
+		cmd.addOption("--delete-source-csv",     "-ds",    "if indexing is successful, delete source csv file");
         cmd.addOption("--web-url",               "-wu", 1, "web url : string", "add a web url to index file");
 
     /* evaluate command line */
@@ -467,6 +469,8 @@ int main(int argc, char *argv[])
             app.checkValue(cmd.getValue(opt_index));
 		if (cmd.findOption("--input-csv"))
             app.checkValue(cmd.getValue(opt_csv));
+		if (cmd.findOption("--delete-source-csv"))
+			opt_deleteSourceCSV = OFTrue;
 		if (cmd.findOption("--web-url"))
             app.checkValue(cmd.getValue(opt_weburl));
 		cmd.endOptionBlock();
@@ -489,13 +493,34 @@ int main(int argc, char *argv[])
         return 1;  /* DcmDicomDir class dumps core when no data dictionary */
     }
 
+	char timeBuffer[32];
 	if(opt_csv && *opt_csv != '\0')
 	{
-	  char buffer[512];
-	  strcpy_s(buffer, 512, opt_csv);
-	  long hr = generateIndex(buffer, opt_weburl, opt_archive, opt_index);
+#ifndef _DEBUG
+		if(ddir.verboseMode())
+#endif
+		{
+			generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer));
+			COUT << "begin generate Index " << timeBuffer << endl;
+		}
+		char buffer[MAX_PATH];
+		strcpy_s(buffer, MAX_PATH, opt_csv);
+		long hr = generateIndex(buffer, opt_weburl, opt_archive, opt_index, opt_deleteSourceCSV);
+#ifndef _DEBUG
+		if(ddir.verboseMode())
+#endif
+		{
+			generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer));
+			COUT << "end generate Index " << timeBuffer << endl;
+		}
 	}
-
+#ifndef _DEBUG
+	if(ddir.verboseMode())
+#endif
+	{
+		generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer));
+		COUT << "begin generate dicomdir " << timeBuffer << endl;
+	}
     /* create list of input files */
     OFList<OFString> fileNames;
     OFString pathname;
@@ -607,7 +632,13 @@ int main(int argc, char *argv[])
                 result = ddir.writeDicomDir(opt_enctype, opt_glenc);
         }
     }
-
+#ifndef _DEBUG
+	if(ddir.verboseMode())
+#endif
+	{
+		generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer));
+		COUT << "end generate dicomdir " << timeBuffer << endl;
+	}
 #ifdef BUILD_DCMGPDIR_AS_DCMMKDIR
     // deregister global decompression codecs
     DcmRLEDecoderRegistration::cleanup();

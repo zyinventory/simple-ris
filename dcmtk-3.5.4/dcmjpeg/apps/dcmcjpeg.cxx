@@ -89,6 +89,7 @@ int main(int argc, char *argv[])
   int opt_debugMode = 0;
   OFBool opt_verbose = OFFalse;
   OFBool opt_deleteSourceFile = OFFalse;
+  OFBool opt_skipCompressed = OFFalse;
   E_FileReadMode opt_readMode = ERM_autoDetect;
   E_TransferSyntax opt_ixfer = EXS_Unknown;
   E_GrpLenEncoding opt_oglenc = EGL_recalcGL;
@@ -137,7 +138,8 @@ int main(int argc, char *argv[])
    cmd.addOption("--version",                                "print version information and exit", OFTrue /* exclusive */);
    cmd.addOption("--verbose",                   "-v",        "verbose mode, print processing details");
    cmd.addOption("--debug",                     "-d",        "debug mode, print debug information");
-   cmd.addOption("--delete-source-file",        "-ds",       "if conversion is successful, delete source file");
+   cmd.addOption("--delete-source-file",        "-ds",       "if conversion is successful, delete source file.");
+   cmd.addOption("--skip-compressed",           "-sc",       "if source file is compressed, skip compressing, save directly");
 
   cmd.addGroup("input options:");
     cmd.addSubGroup("input file format:");
@@ -296,6 +298,7 @@ int main(int argc, char *argv[])
       if (cmd.findOption("--verbose")) opt_verbose = OFTrue;
       if (cmd.findOption("--debug")) opt_debugMode = 5;
 	  if (cmd.findOption("--delete-source-file")) opt_deleteSourceFile = OFTrue;
+	  if (cmd.findOption("--skip-compressed")) opt_skipCompressed = OFTrue;
 
       cmd.beginOptionBlock();
       if (cmd.findOption("--read-file")) opt_readMode = ERM_autoDetect;
@@ -657,16 +660,9 @@ int main(int argc, char *argv[])
     }
     DcmDataset *dataset = fileformat.getDataset();
 
-	bool skipCompress = false;
     DcmXfer original_xfer(dataset->getOriginalXfer());
-    if (original_xfer.isEncapsulated())
+    if (original_xfer.isEncapsulated() && ( ! opt_skipCompressed ))
     {
-	  if(opt_deleteSourceFile)
-	  {
-		skipCompress = true;
-	  }
-	  else
-	  {
 		if (opt_verbose)
 		  COUT << "DICOM file is already compressed, convert to uncompressed xfer syntax first\n";
 		if (EC_Normal != dataset->chooseRepresentation(EXS_LittleEndianExplicit, NULL))
@@ -674,10 +670,9 @@ int main(int argc, char *argv[])
 		  CERR << "No conversion from compressed original to uncompressed xfer syntax possible!\n";
 		  return 1;
 		}
-	  }
     }
 
-	if( ! skipCompress )
+	if( ! ( original_xfer.isEncapsulated()  && opt_skipCompressed ) )
 	{
 	  if (opt_verbose)
 		  COUT << "Convert DICOM file to compressed transfer syntax\n";
@@ -697,50 +692,48 @@ int main(int argc, char *argv[])
 	  if (dataset->canWriteXfer(opt_oxfer))
 	  {
 		  if (opt_verbose)
-			  COUT << "Output transfer syntax " << opt_oxferSyn.getXferName()
-				   << " can be written\n";
+			  COUT << "Output transfer syntax " << opt_oxferSyn.getXferName() << " can be written\n";
 	  } else {
-		  CERR << "No conversion to transfer syntax " << opt_oxferSyn.getXferName()
-			   << " possible!\n";
+		  CERR << "No conversion to transfer syntax " << opt_oxferSyn.getXferName() << " possible!\n";
 		  return 1;
 	  }
+	}
 
-	  // force meta-header to refresh SOP Class/Instance UIDs.
-	  DcmItem *metaInfo = fileformat.getMetaInfo();
-	  if (metaInfo)
-	  {
+	// force meta-header to refresh SOP Class/Instance UIDs.
+	DcmItem *metaInfo = fileformat.getMetaInfo();
+	if (metaInfo)
+	{
 		delete metaInfo->remove(DCM_MediaStorageSOPClassUID);
 		delete metaInfo->remove(DCM_MediaStorageSOPInstanceUID);
-	  }
-
-	  if (opt_verbose)
-		  COUT << "creating output file " << opt_ofname << endl;
-	  prepareFileDir(opt_ofname);
-
-	  fileformat.loadAllDataIntoMemory();
-	  error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
-				opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
-
-	  if (error.bad())
-	  {
-		  CERR << "Error: "
-			   << error.text()
-			   << ": writing file: " <<  opt_ofname << endl;
-		  return 1;
-	  }
-
-	  if (opt_verbose)
-		  COUT << "conversion successful\n";
 	}
+
+	if (opt_verbose)
+	  COUT << "creating output file " << opt_ofname << endl;
+	prepareFileDir(opt_ofname);
+
+	fileformat.loadAllDataIntoMemory();
+	error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
+			opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
+
+	if (error.bad())
+	{
+	  CERR << "Error: "
+		   << error.text()
+		   << ": writing file: " <<  opt_ofname << endl;
+	  return 1;
+	}
+
+	if (opt_verbose)
+	  COUT << "conversion successful\n";
 
     // deregister global codecs
     DJDecoderRegistration::cleanup();
     DJEncoderRegistration::cleanup();
-
+#ifndef _DEBUG
 	if(opt_deleteSourceFile)
 	{
 	  if (opt_verbose) COUT << "delete source file: " << opt_ifname << endl;
-	  if(skipCompress)
+	  if(opt_skipCompressed)
 	  {
 		if( remove(opt_ofname) )
 		{
@@ -755,6 +748,7 @@ int main(int argc, char *argv[])
 		if( remove(opt_ifname) ) perror(opt_ifname);
 	  }
 	}
+#endif
     return 0;
 }
 

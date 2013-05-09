@@ -511,7 +511,7 @@ bool operationRetry(int(*fn)(const char *), const char *param, int state, int se
   return ! opFail;
 }
 
-HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath)
+HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV)
 {
   HRESULT hr;
   if(paramBaseUrl) baseurl = paramBaseUrl;
@@ -525,7 +525,7 @@ HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *arc
 	CoUninitialize();
 	infile.close();
 #ifndef _DEBUG
-	if(hr == S_OK)
+	if(hr == S_OK && deleteSourceCSV)
 	{
 	  // dcmcjpeg inherit handle of instance.txt from storescp, wait dcmcjpeg close it.
 	  if( operationRetry(remove, inputFile, EACCES, RMDIR_WAIT_SECONDS, "error at remove file: ") )
