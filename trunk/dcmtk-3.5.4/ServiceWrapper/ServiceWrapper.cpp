@@ -12,7 +12,6 @@
 
 #include "commonlib.h"
 #include "service.h"
-#define DATE_FORMAT_YEAR_TO_SECOND "%Y-%m-%d %H:%M:%S"
 #define DATE_FORMAT_COMPACT "%Y%m%d%H%M%S"
 
 using namespace std;

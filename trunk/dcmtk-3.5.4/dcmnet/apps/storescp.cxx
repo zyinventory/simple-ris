@@ -2372,12 +2372,6 @@ static void executeEndOfStudyEvents()
   lastStudyXml.clear();
 }
 
-#ifdef _WIN32
-#define DATE_FORMAT_YEAR_TO_SECOND "%Y-%m-%d %H:%M:%S"
-#else
-#define DATE_FORMAT_YEAR_TO_SECOND "%F %T"
-#endif
-
 static void executeOnReception()
     /*
      * This function deals with the execution of the command line which was passed
