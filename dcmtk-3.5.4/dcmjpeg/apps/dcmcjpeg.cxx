@@ -672,7 +672,11 @@ int main(int argc, char *argv[])
 		}
     }
 
-	if( ! ( original_xfer.isEncapsulated()  && opt_skipCompressed ) )
+	if( original_xfer.isEncapsulated()  && opt_skipCompressed )
+	{
+		opt_oxfer = original_xfer.getXfer();
+	}
+	else
 	{
 	  if (opt_verbose)
 		  COUT << "Convert DICOM file to compressed transfer syntax\n";
