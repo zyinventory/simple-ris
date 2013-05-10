@@ -2649,18 +2649,23 @@ static void executeCommand( const OFString &cmd )
 
   // execute command (Attention: Do not pass DETACHED_PROCESS as sixth argument to the below
   // called function because in such a case the execution of batch-files is not going to work.)
-  if( !CreateProcess(NULL, OFconst_cast(char *, cmd.c_str()), NULL, NULL, 0, 0, NULL, NULL, &sinfo, &procinfo) )
-    fprintf( stderr, "storescp: Error while executing command '%s'.\n" , cmd.c_str() );
-
-  if (opt_execSync)
+  if( !CreateProcess(NULL, OFconst_cast(char *, cmd.c_str()), NULL, NULL, FALSE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
   {
-      // Wait until child process exits (makes execution synchronous).
-      WaitForSingleObject(procinfo.hProcess, INFINITE);
+    fprintf( stderr, "storescp: Error while executing command '%s'.\n" , cmd.c_str() );
   }
-
-  // Close process and thread handles to avoid resource leak
-  CloseHandle(procinfo.hProcess);
-  CloseHandle(procinfo.hThread);
+  else
+  {
+	SetPriorityClass(procinfo.hProcess, PROCESS_MODE_BACKGROUND_BEGIN);
+	WaitForInputIdle(procinfo.hProcess, INFINITE);
+	if (opt_execSync)
+	{
+		// Wait until child process exits (makes execution synchronous).
+		WaitForSingleObject(procinfo.hProcess, INFINITE);
+	}
+	// Close process and thread handles to avoid resource leak
+	CloseHandle(procinfo.hProcess);
+	CloseHandle(procinfo.hThread);
+  }
 #endif
 }
 

@@ -1731,7 +1731,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
         si.hStdInput = hChildStdInRead;
 		// si.wShowWindow |= SW_MINIMIZE;
 		// create child process. 
-        if (!CreateProcess(NULL,OFconst_cast(char *,cmdLine.c_str()),NULL,NULL,TRUE, NULL, NULL, NULL, &si, &pi))
+        if (!CreateProcess(NULL,OFconst_cast(char *,cmdLine.c_str()),NULL,NULL,TRUE, 0, NULL, NULL, &si, &pi))
         {
 			CloseHandle(hChildStdInWrite);
 			CloseHandle(hChildStdInRead);
