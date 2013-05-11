@@ -13,6 +13,7 @@
 const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
   ADD_DEFAULT_CHARSET[] = "Add default character set ", UNKNOWN_CHARSET[] = "Unknown character set ", OVERRIDE_BY[] = " is override by ";
 
+void displayErrorToCerr(TCHAR *lpszFunction);
 int GetSignalInterruptValue();
 void SignalInterruptHandler(int signal);
 void Capture_Ctrl_C();

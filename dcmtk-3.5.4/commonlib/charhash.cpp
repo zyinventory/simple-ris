@@ -221,7 +221,7 @@ bool decodeBase32(string &src, string &dec)
 	decvt.push_back(L'\0'); // end of string
 	size_t charlen = decvt.size();
 	wchar_t *wsrc = new wchar_t[charlen];
-	copy(decvt.begin(), decvt.end(), wsrc);
+	copy(decvt.begin(), decvt.end(), stdext::checked_array_iterator<wchar_t*>(wsrc, charlen));
 	size_t bytelen = 0;
 	errno_t en = wcstombs_s(&bytelen, NULL, 0, wsrc, 0);
 	if(en != 0)
