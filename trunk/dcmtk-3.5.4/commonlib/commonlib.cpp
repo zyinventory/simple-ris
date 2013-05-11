@@ -15,10 +15,28 @@
 
 using namespace std;
 
+void displayErrorToCerr(TCHAR *lpszFunction)
+{
+	TCHAR *lpMsgBuf;
+	TCHAR *lpDisplayBuf;
+	DWORD dw = GetLastError();
+
+	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) &lpMsgBuf, 0, NULL );
+	// Display the error message
+	lpDisplayBuf = (TCHAR *)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
+	sprintf_s(lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error %d: %s"), lpszFunction, dw, lpMsgBuf); 
+	//StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error %d: %s"), lpszFunction, dw, lpMsgBuf); 
+	cerr << lpDisplayBuf << endl;
+	LocalFree(lpMsgBuf);
+	LocalFree(lpDisplayBuf);
+}
+
 errno_t setEnvParentPID()
 {
   char pidString[16];
-  return _putenv_s("PARENT_PID", _itoa(_getpid(), pidString, 10));
+  _itoa_s(_getpid(), pidString, 16, 10);
+  return _putenv_s("PARENT_PID", pidString);
 }
 
 int generateTime(const char *format, char *timeBuffer, size_t bufferSize)
