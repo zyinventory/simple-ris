@@ -213,15 +213,15 @@ HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDocumentPt
 	{
 	  if(ERROR_FILE_EXISTS == ::GetLastError())
 	  {
-		for(int i = 0; i < 1000; ++i)  // 10 seconds
+		for(int i = 0; i < 182; ++i)  // 55 ms * 182 = 10 seconds
 		{
 		  fh = ::CreateFile(indexFilePath.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		  if(fh == INVALID_HANDLE_VALUE)
 		  {
 			if(ERROR_SHARING_VIOLATION == ::GetLastError())
 			{
-			  cerr << "Waiting lock...\n";
-			  ::Sleep(10);
+			  cerr << "Waiting lock " << indexFilePath << endl;
+			  ::Sleep(55);
 			}
 			else
 			  throw "Failed to lock file ";
@@ -252,6 +252,7 @@ HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDocumentPt
   {
 	if(fh != INVALID_HANDLE_VALUE) ::CloseHandle(fh);
 	cerr << message << indexFilePath << '\n';
+	displayErrorToCerr("createOrOpenFile");
 	return E_FAIL;
   }
   return S_OK;

@@ -12,7 +12,6 @@
 
 #include "commonlib.h"
 #include "service.h"
-#define DATE_FORMAT_COMPACT "%Y%m%d%H%M%S"
 
 using namespace std;
 
@@ -20,6 +19,8 @@ static int argcSV;
 static char **argvSV;
 static bool runInSCM = false;
 static char timeBuffer[20];
+
+int commandDispatcher(const char *queueName, int processorNumber);
 
 void mkcmd(ostringstream *cmdStream, char *s)
 {
@@ -70,18 +71,9 @@ int realMain(int argc, char **argv)
 		CloseHandle(procinfo.hProcess);
 		CloseHandle(procinfo.hThread);
 		if(logFile != INVALID_HANDLE_VALUE)	{ CloseHandle(logFile); logFile = INVALID_HANDLE_VALUE; }
-
-		while( ! GetSignalInterruptValue() )
-		{
-			if ( generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer)) )
-				cout << "waiting " << timeBuffer << endl;
-			else
-				cerr << "get time error" << endl;
-			Sleep(1000);
-		}
 	}
 	if(logFile != INVALID_HANDLE_VALUE) CloseHandle(logFile);
-	return 0;
+	return commandDispatcher(QUEUE_NAME, 4);
 }
 
 void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
@@ -97,6 +89,7 @@ void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+	locale::global(locale(CHINESE_LOCAL));
 	if(argc < 3)
 	{
 		cout << "usage: ServiceWrapper [ServiceName] [CommandLine]" << endl;
