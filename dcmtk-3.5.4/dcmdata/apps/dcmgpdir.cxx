@@ -93,8 +93,6 @@
 #define PATTERN_MATCHING_AVAILABLE
 #endif
 
-long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archivePath, const char *indexPath);
-
 static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v"
   OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 
@@ -464,18 +462,16 @@ int main(int argc, char *argv[])
             app.checkConflict("--icon-image-size", "--basic-cardiac, --xray-angiographic or --ct-and-mr", cmd.findOption("--icon-image-size"));
         }
 
-		cmd.beginOptionBlock();
 		if (cmd.findOption("--archive-directory"))
             app.checkValue(cmd.getValue(opt_archive));
 		if (cmd.findOption("--index-directory"))
             app.checkValue(cmd.getValue(opt_index));
 		if (cmd.findOption("--input-csv"))
             app.checkValue(cmd.getValue(opt_csv));
-		if (cmd.findOption("--delete-source-csv"))
-			opt_deleteSourceCSV = OFTrue;
 		if (cmd.findOption("--web-url"))
             app.checkValue(cmd.getValue(opt_weburl));
-		cmd.endOptionBlock();
+		if (cmd.findOption("--delete-source-csv"))
+			opt_deleteSourceCSV = OFTrue;
     }
 
     /* set debug mode and stream for log messages */
