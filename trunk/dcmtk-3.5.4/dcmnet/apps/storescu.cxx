@@ -97,6 +97,7 @@ static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v"
 static OFBool opt_verbose = OFFalse;
 static OFBool opt_showPresentationContexts = OFFalse;
 static OFBool opt_debug = OFFalse;
+static OFBool opt_startManually = OFFalse;
 static OFBool opt_abortAssociation = OFFalse;
 static OFCmdUnsignedInt opt_maxReceivePDULength = ASC_DEFAULTMAXPDU;
 static OFCmdUnsignedInt opt_maxSendPDULength = 0;
@@ -218,6 +219,7 @@ main(int argc, char *argv[])
    cmd.addOption("--verbose",                   "-v",        "verbose mode, print processing details");
    cmd.addOption("--verbose-pc",                "+v",        "verbose mode and show presentation contexts");
    cmd.addOption("--debug",                     "-d",        "debug mode, print debug information");
+   cmd.addOption("--start-manually",            "-sm",       "start transferring manually");
   cmd.addGroup("network options:");
     cmd.addSubGroup("application entity titles:");
       OFString opt1 = "set my calling AE title (default: ";
@@ -379,6 +381,7 @@ main(int argc, char *argv[])
         DIMSE_debug(OFTrue);
         SetDebugLevel(3);
       }
+      if (cmd.findOption("--start-manually")) opt_startManually = OFTrue;
       if (cmd.findOption("--aetitle")) app.checkValue(cmd.getValue(opt_ourTitle));
       if (cmd.findOption("--call")) app.checkValue(cmd.getValue(opt_peerTitle));
 
@@ -838,6 +841,11 @@ main(int argc, char *argv[])
         ASC_dumpParameters(params, COUT);
     }
 
+	if(opt_startManually)
+	{
+		COUT << "press ENTER to start transferring..." << endl;
+		cin.get();
+	}
     /* create association, i.e. try to establish a network connection to another */
     /* DICOM application. This call creates an instance of T_ASC_Association*. */
     if (opt_verbose)

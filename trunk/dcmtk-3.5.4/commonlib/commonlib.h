@@ -4,8 +4,11 @@
 #define SET_LOCAL locale::global(locale(CHINESE_LOCAL))
 #define SVC_ERROR ((DWORD)0xC0020001L)
 #define SVC_INFO  ((DWORD)0x60020002L)
+#define QUEUE_NAME ".\\private$\\archive"
+#define CMD_PLACE_HOLDER "%cmd%"
 #ifdef _WIN32
 #define DATE_FORMAT_YEAR_TO_SECOND "%Y-%m-%d %H:%M:%S"
+#define DATE_FORMAT_COMPACT "%Y%m%d%H%M%S"
 #else
 #define DATE_FORMAT_YEAR_TO_SECOND "%F %T"
 #endif

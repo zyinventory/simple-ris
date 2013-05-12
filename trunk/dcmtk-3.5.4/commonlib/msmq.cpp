@@ -1,13 +1,11 @@
 #include "stdafx.h"
 #include <iostream>
 #include <atlcom.h>
+#include "commonlib.h"
 #import <mqoa.dll>
 
 using namespace std;
 using namespace MSMQ;
-
-#define QUEUE_NAME OLESTR(".\\private$\\archive")
-#define CMD_PLACE_HOLDER "%cmd%"
 
 bool SendArchiveMessageToQueue(const char *label, const char *body, const char *cmd)
 {
