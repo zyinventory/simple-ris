@@ -14,7 +14,7 @@ using namespace MSMQ;
 static SECURITY_ATTRIBUTES logSA;
 static size_t procnum;
 static HANDLE *processHandles, *threadHandles, *logFileHandles;
-static string **logFilePathArray;
+static string *logFilePathArray;
 
 void closeProcHandle(int i)
 {
@@ -22,7 +22,6 @@ void closeProcHandle(int i)
 	threadHandles[i] = 0;
 	CloseHandle(processHandles[i]);
 	processHandles[i] = 0;
-	cout << "close process " << i << endl;
 }
 
 DWORD findIdle()
@@ -84,7 +83,7 @@ DWORD findIdle()
 	{
 		result = procnum;
 	}
-	delete workingHandles;
+	delete[] workingHandles;
 	return result;
 }
 
@@ -99,50 +98,46 @@ void runCommand(string &command, int index)
 
 	if( ! logFileHandles[index] )
 	{
-		char logFilePath[48];
-		generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_coordinator.txt", logFilePath, 48);
-		prepareFileDir(logFilePath);
-		HANDLE logFile = CreateFile(logFilePath, GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+		char timebuf[48];
+		generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", timebuf, 48);
+		ostringstream strbuf;
+		strbuf << timebuf << index << "_coordinator.txt";
+		logFilePathArray[index] = strbuf.str();
+		prepareFileDir(logFilePathArray[index].c_str());
+		HANDLE logFile = CreateFile(logFilePathArray[index].c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 		if(logFile == INVALID_HANDLE_VALUE)
-			cerr << "Error on create log file: " << logFilePath << endl;
-		else
-			cerr << "Create log file: " << logFilePath << endl;
-		if(logFile != INVALID_HANDLE_VALUE)
-		{
-			logFileHandles[index] = logFile;
-			logFilePathArray[index] = new string(logFilePath);
-			sinfo.dwFlags |= STARTF_USESTDHANDLES;
-			sinfo.hStdOutput = logFileHandles[index];
-			sinfo.hStdError = logFileHandles[index];
-			sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-		}
-		else
 		{
 			_com_error ce(AtlHresultFromLastError());
-			cerr << TEXT("Î´Öª´íÎó£º") << ce.ErrorMessage() << endl;
+			cerr << TEXT("runCommandÎ´Öª´íÎó£º") << ce.ErrorMessage() << endl;
 		}
+		else
+		{
+			logFileHandles[index] = logFile;
+		}
+	}
+
+	if(logFileHandles[index])
+	{
+		sinfo.dwFlags |= STARTF_USESTDHANDLES;
+		sinfo.hStdOutput = logFileHandles[index];
+		sinfo.hStdError = logFileHandles[index];
+		sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
 	}
 
 	char *commandLine = new char[command.length() + 1];
 	copy(command.begin(), command.end(), stdext::checked_array_iterator<char*>(commandLine, command.length()));
 	commandLine[command.length()] = '\0';
-#ifdef _DEBUG
-	cout << "creating process " << index << ':' << commandLine << endl;
-#endif
 	if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
 	{
 		SetPriorityClass(procinfo.hProcess, PROCESS_MODE_BACKGROUND_BEGIN);
-		WaitForInputIdle(procinfo.hProcess, INFINITE);
-		WaitForSingleObject(procinfo.hProcess, INFINITE);
-		// Close process and thread handles to avoid resource leak
-		CloseHandle(procinfo.hProcess);
-		CloseHandle(procinfo.hThread);
+		processHandles[index] = procinfo.hProcess;
+		threadHandles[index] = procinfo.hThread;
 	}
 	else
 	{
 		displayErrorToCerr("CreateProcess");
 	}
-	delete commandLine;
+	delete[] commandLine;
 }
 
 void processMessage(IMSMQMessagePtr pMsg)
@@ -158,11 +153,6 @@ void processMessage(IMSMQMessagePtr pMsg)
 			MSXML2::IXMLDOMNodePtr command = pXml->selectSingleNode("/wado_query/command");
 			if(command == NULL)  throw "no command";
 			string cmd = command->text;
-#ifdef _DEBUG
-			string::size_type p = cmd.find(" -ds ");
-			if(p != string::npos) cmd.replace(p, 4, 0, ' ');
-			cout << cmd << endl;
-#endif
 			DWORD index = findIdle();
 			if(index != WAIT_FAILED)
 			{
@@ -177,17 +167,17 @@ void processMessage(IMSMQMessagePtr pMsg)
 		}
 		catch(_com_error &comErr)
 		{
-			cerr << TEXT("´íÎó£º") << comErr.ErrorMessage() << endl;
+			cerr << TEXT("processMessage´íÎó£º") << comErr.ErrorMessage() << endl;
 		}
 		catch(...)
 		{
 			_com_error ce(AtlHresultFromLastError());
-			cerr << TEXT("Î´Öª´íÎó£º") << ce.ErrorMessage() << endl;
+			cerr << TEXT("processMessageÎ´Öª´íÎó£º") << ce.ErrorMessage() << endl;
 		}
 	}
 	else
 	{
-		cerr << TEXT("Unknown message: ") << pMsg->Label << TEXT(':');
+		cerr << TEXT("processMessage unknown message: ") << pMsg->Label << TEXT(':');
 		if(pMsg->Body.vt == VT_BSTR)
 			cerr << pMsg->Body.pbstrVal;
 		cerr << endl;
@@ -201,12 +191,10 @@ void closeLogFile(int i)
 		DWORD pos = SetFilePointer(logFileHandles[i], 0, NULL, FILE_CURRENT);
 		CloseHandle(logFileHandles[i]);
 		logFileHandles[i] = 0;
-		if(pos == 0) DeleteFile(logFilePathArray[i]->c_str());
+		if(pos == 0) DeleteFile(logFilePathArray[i].c_str());
 #ifdef _DEBUG
-		cout << "close log " << &logFilePathArray[i] << endl;
+		cout << "close log " << logFilePathArray[i] << endl;
 #endif
-		delete logFilePathArray[i];
-		logFilePathArray[i] = NULL;
 	}
 }
 
@@ -246,18 +234,18 @@ int pollQueue(const _TCHAR *queueName)
 	}
 	catch(_com_error &comErr)
 	{
-		cerr << TEXT("´íÎó£º") << comErr.ErrorMessage() << endl;
+		cerr << TEXT("pollQueue´íÎó£º") << comErr.ErrorMessage() << endl;
 		return -10;
 	}
 	catch(const char *message)
 	{
-		cerr << TEXT("´íÎó£º") << message << endl;
+		cerr << TEXT("pollQueue´íÎó£º") << message << endl;
 		return -10;
 	}
 	catch(...)
 	{
 		_com_error ce(AtlHresultFromLastError());
-		cerr << TEXT("Unknown error: ") << ce.ErrorMessage() << endl;
+		cerr << TEXT("pollQueue unknown error: ") << ce.ErrorMessage() << endl;
 		return -10;
 	}
 }
@@ -279,7 +267,7 @@ void waitAll()
 	// if some process is working, wait all
 	if(working > 0)
 		WaitForMultipleObjects(working, workingHandles, TRUE, INFINITE);
-	delete workingHandles;
+	delete[] workingHandles;
 }
 
 int commandDispatcher(const char *queueName, int processorNumber)
@@ -294,8 +282,7 @@ int commandDispatcher(const char *queueName, int processorNumber)
 	memset(threadHandles, 0, sizeof(HANDLE) * procnum);
 	logFileHandles = new HANDLE[procnum];
 	memset(logFileHandles, 0, sizeof(HANDLE) * procnum);
-	logFilePathArray = new string*[procnum];
-	memset(logFilePathArray, 0, sizeof(HANDLE) * procnum);
+	logFilePathArray = new string[procnum];
 
 	CoInitialize(NULL);
 	int ret = pollQueue(queueName);
@@ -310,6 +297,6 @@ int commandDispatcher(const char *queueName, int processorNumber)
 	delete processHandles;
 	delete threadHandles;
 	delete logFileHandles;
-	delete logFilePathArray;
+	delete[] logFilePathArray;
 	return ret;
 }
