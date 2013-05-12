@@ -2655,7 +2655,6 @@ static void executeCommand( const OFString &cmd )
   }
   else
   {
-	SetPriorityClass(procinfo.hProcess, PROCESS_MODE_BACKGROUND_BEGIN);
 	WaitForInputIdle(procinfo.hProcess, INFINITE);
 	if (opt_execSync)
 	{

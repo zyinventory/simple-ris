@@ -124,6 +124,8 @@ int main(int argc, char *argv[])
 	const char *opt_weburl = NULL;
     DicomDirInterface::E_ApplicationProfile opt_profile = DicomDirInterface::AP_GeneralPurpose;
 
+	if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
+
 #ifdef BUILD_DCMGPDIR_AS_DCMMKDIR
     // register global decompression codecs (no verbose/debug mode set)
     DcmRLEDecoderRegistration::registerCodecs();
