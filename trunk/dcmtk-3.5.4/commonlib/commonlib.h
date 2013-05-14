@@ -5,7 +5,10 @@
 #define SVC_ERROR ((DWORD)0xC0020001L)
 #define SVC_INFO  ((DWORD)0x60020002L)
 #define QUEUE_NAME ".\\private$\\archive"
-#define CMD_PLACE_HOLDER "%cmd%"
+#define REPLACE_PLACE_HOLDER "%replace%"
+#define MOVE_PLACE_HOLDER "%move%"
+#define ARCHIVE_STUDY "Archive Study"
+#define ARCHIVE_INSTANCE "Archive Instance"
 #ifdef _WIN32
 #define DATE_FORMAT_YEAR_TO_SECOND "%Y-%m-%d %H:%M:%S"
 #define DATE_FORMAT_COMPACT "%Y%m%d%H%M%S"
@@ -29,7 +32,7 @@ int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pa
 BOOL DeleteEmptyFile(const char *filePath);
 long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV = false);
 time_t dcmdate2tm(int dcmdate);
-bool generateStudyXML(const char *line, std::ostream &xmlStream);
+bool generateStudyXML(const char *line, std::ostream &xmlStream, bool isEncapsulated = false);
 bool SendArchiveMessageToQueue(const char *label, const char *body, const char *cmd);
 errno_t setEnvParentPID();
 int generateTime(const char *format, char *timeBuffer, size_t bufferSize);

@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include <iostream>
 #include <sstream>
+#include <comutil.h>
 #import <mqoa.dll>
 #import <msxml3.dll>
 
@@ -89,70 +90,98 @@ DWORD findIdle()
 
 void runCommand(string &command, int index)
 {
-	PROCESS_INFORMATION procinfo;
-	STARTUPINFO sinfo;
-
-	memset(&procinfo, 0, sizeof(PROCESS_INFORMATION));
-	memset(&sinfo, 0, sizeof(STARTUPINFO));
-	sinfo.cb = sizeof(STARTUPINFO);
-
-	if( ! logFileHandles[index] )
+	if(command.find("move") == 0) // start with "move"
 	{
-		char timebuf[48];
-		generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", timebuf, 48);
-		ostringstream strbuf;
-		strbuf << timebuf << index << "_coordinator.txt";
-		logFilePathArray[index] = strbuf.str();
-		prepareFileDir(logFilePathArray[index].c_str());
-		HANDLE logFile = CreateFile(logFilePathArray[index].c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-		if(logFile == INVALID_HANDLE_VALUE)
+		string::size_type p;
+		string src, dest;
+		if(string::npos != (p = command.find(' ', 5)))
 		{
-			_com_error ce(AtlHresultFromLastError());
-			cerr << TEXT("runCommandÎ´Öª´íÎó£º") << ce.ErrorMessage() << endl;
+			src = command.substr(5, p - 5);
+			dest = command.substr(++p);
+			if(GetFileAttributes(dest.c_str()) != INVALID_FILE_ATTRIBUTES)
+			{
+				if(remove(dest.c_str())) perror(dest.c_str());
+			}
+			else
+				prepareFileDir(dest.c_str());
+			if( rename(src.c_str(), dest.c_str()) ) perror(src.append(" -> ").append(dest).c_str());
 		}
 		else
 		{
-			logFileHandles[index] = logFile;
+			cerr << TEXT("runCommand moveÃüÁî¸ñÊ½´íÎó:") << command << endl;
 		}
-	}
-
-	if(logFileHandles[index])
-	{
-		sinfo.dwFlags |= STARTF_USESTDHANDLES;
-		sinfo.hStdOutput = logFileHandles[index];
-		sinfo.hStdError = logFileHandles[index];
-		sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-	}
-
-	char *commandLine = new char[command.length() + 1];
-	copy(command.begin(), command.end(), stdext::checked_array_iterator<char*>(commandLine, command.length()));
-	commandLine[command.length()] = '\0';
-	if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
-	{
-		SetPriorityClass(procinfo.hProcess, PROCESS_MODE_BACKGROUND_BEGIN);
-		processHandles[index] = procinfo.hProcess;
-		threadHandles[index] = procinfo.hThread;
 	}
 	else
 	{
-		displayErrorToCerr("CreateProcess");
+		PROCESS_INFORMATION procinfo;
+		STARTUPINFO sinfo;
+
+		memset(&procinfo, 0, sizeof(PROCESS_INFORMATION));
+		memset(&sinfo, 0, sizeof(STARTUPINFO));
+		sinfo.cb = sizeof(STARTUPINFO);
+
+		if( ! logFileHandles[index] )
+		{
+			char timebuf[48];
+			generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", timebuf, 48);
+			ostringstream strbuf;
+			strbuf << timebuf << index << "_coordinator.txt";
+			logFilePathArray[index] = strbuf.str();
+			prepareFileDir(logFilePathArray[index].c_str());
+			HANDLE logFile = CreateFile(logFilePathArray[index].c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+			if(logFile == INVALID_HANDLE_VALUE)
+			{
+				_com_error ce(AtlHresultFromLastError());
+				cerr << TEXT("runCommandÎ´Öª´íÎó£º") << ce.ErrorMessage() << endl;
+			}
+			else
+			{
+				logFileHandles[index] = logFile;
+			}
+		}
+
+		if(logFileHandles[index])
+		{
+			sinfo.dwFlags |= STARTF_USESTDHANDLES;
+			sinfo.hStdOutput = logFileHandles[index];
+			sinfo.hStdError = logFileHandles[index];
+			sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+		}
+
+		char *commandLine = new char[command.length() + 1];
+		copy(command.begin(), command.end(), stdext::checked_array_iterator<char*>(commandLine, command.length()));
+		commandLine[command.length()] = '\0';
+		if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
+		{
+			SetPriorityClass(procinfo.hProcess, PROCESS_MODE_BACKGROUND_BEGIN);
+			processHandles[index] = procinfo.hProcess;
+			threadHandles[index] = procinfo.hThread;
+		}
+		else
+		{
+			displayErrorToCerr("CreateProcess");
+		}
+		delete[] commandLine;
 	}
-	delete[] commandLine;
 }
 
 void processMessage(IMSMQMessagePtr pMsg)
 {
 	HRESULT hr;
-	if(pMsg->Label == _bstr_t("Archive Instance") || pMsg->Label == _bstr_t("Archive Study"))
+	if(pMsg->Label == _bstr_t(ARCHIVE_INSTANCE) || pMsg->Label == _bstr_t(ARCHIVE_STUDY))
 	{
 		try
 		{
 			MSXML2::IXMLDOMDocumentPtr pXml;
 			hr = pXml.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 			if(VARIANT_FALSE == pXml->loadXML(pMsg->Body.bstrVal)) throw "load xml error";
-			MSXML2::IXMLDOMNodePtr command = pXml->selectSingleNode("/wado_query/command");
-			if(command == NULL)  throw "no command";
-			string cmd = command->text;
+			MSXML2::IXMLDOMNodePtr command = pXml->selectSingleNode("/wado_query/httpTag[@key='command']");
+			if(command == NULL)
+			{
+				cerr << "no command: " << pXml->xml << endl;
+				throw "no command";
+			}
+			string cmd(command->Getattributes()->getNamedItem("value")->text);
 			DWORD index = findIdle();
 			if(index != WAIT_FAILED)
 			{

@@ -2070,7 +2070,8 @@ storeSCPCallback(
 		  //     inststrm << patientId << UNIT_SEPARATOR << patientsName << UNIT_SEPARATOR << birthdate << UNIT_SEPARATOR << sex << UNIT_SEPARATOR;
 		  //     inststrm << currentStudyInstanceUID << UNIT_SEPARATOR << studyDate << UNIT_SEPARATOR << accNumber << '\n';
 		  OFOStringStream studyXmlStream;
-		  if(generateStudyXML(studyTextStream.str().c_str(), studyXmlStream))
+		  DcmXfer original_xfer((*imageDataSet)->getOriginalXfer());
+		  if(generateStudyXML(studyTextStream.str().c_str(), studyXmlStream, original_xfer.isEncapsulated()))
 			studyXml = studyXmlStream.str().c_str();
 		  else
 			studyXml.clear();
@@ -2431,7 +2432,7 @@ static void executeOnReception()
   if(opt_verbose)
 	COUT << "Starting command On Reception: " << cmd << endl;
   if(opt_msgOnly)
-	SendArchiveMessageToQueue("Archive Instance", studyXml.c_str(), cmd.c_str());
+	SendArchiveMessageToQueue(ARCHIVE_INSTANCE, studyXml.c_str(), cmd.c_str());
   else
 	executeCommand( cmd );
 }
@@ -2570,7 +2571,7 @@ static void executeOnEndOfStudy()
   if(opt_verbose)
 	COUT << "exec on end of study: " << cmd << endl;
   if(opt_msgOnly)
-	SendArchiveMessageToQueue("Archive Study", lastStudyXml.c_str(), cmd.c_str());
+	SendArchiveMessageToQueue(ARCHIVE_STUDY, lastStudyXml.c_str(), cmd.c_str());
   else
 	executeCommand( cmd );
 }
