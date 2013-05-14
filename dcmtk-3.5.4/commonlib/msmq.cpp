@@ -13,8 +13,50 @@ bool SendArchiveMessageToQueue(const char *label, const char *body, const char *
 	try
 	{
 		string bodyXml(body);
-		string::size_type p = bodyXml.find(CMD_PLACE_HOLDER);
-		if(p != string::npos) bodyXml.replace(p, strnlen_s(CMD_PLACE_HOLDER, sizeof(CMD_PLACE_HOLDER)), cmd);
+		string::size_type p;
+		if(strcmp(label, ARCHIVE_STUDY))
+		{
+			if( string::npos != (p = bodyXml.find(REPLACE_PLACE_HOLDER)) ) // uncompressed file, call dcmcjpeg
+				bodyXml.replace(p, strnlen_s(REPLACE_PLACE_HOLDER, sizeof(REPLACE_PLACE_HOLDER)), cmd);
+			else if(string::npos != (p = bodyXml.find(MOVE_PLACE_HOLDER))) // compressed file, move only
+			{
+				string command(cmd);
+				string::size_type sp = string::npos;
+				if(string::npos != (sp = command.rfind(' ', sp)))
+				{
+					--sp;
+					sp = command.rfind(' ', sp);
+				}
+				if(string::npos != sp) // find src_file and dest_file OK, construct command: move src_file dest_file
+				{
+					string iofile("move");
+					iofile.append(command.substr(sp));
+					bodyXml.replace(p, strnlen_s(MOVE_PLACE_HOLDER, sizeof(MOVE_PLACE_HOLDER)), iofile.c_str());
+				}
+				else  // find src_file and dest_file failed, call cmd directly
+					bodyXml.replace(p, sizeof(MOVE_PLACE_HOLDER), cmd);
+			}
+			else
+			{
+				cerr << "command place holder not found:" << endl;
+				cerr << body << endl;
+				return false;
+			}
+		}
+		else
+		{
+			if( string::npos != (p = bodyXml.find(REPLACE_PLACE_HOLDER)) )
+				bodyXml.replace(p, strnlen_s(REPLACE_PLACE_HOLDER, sizeof(REPLACE_PLACE_HOLDER)), cmd);
+			else if( string::npos != (p = bodyXml.find(MOVE_PLACE_HOLDER)) )
+				bodyXml.replace(p, strnlen_s(MOVE_PLACE_HOLDER, sizeof(MOVE_PLACE_HOLDER)), cmd);
+			else
+			{
+				cerr << "command place holder not found:" << endl;
+				cerr << body << endl;
+				return false;
+			}
+		}
+
 		IMSMQQueueInfoPtr pInfo;
 		hr = pInfo.CreateInstance(OLESTR("MSMQ.MSMQQueueInfo"));
 		if(FAILED(hr)) throw _com_error(hr, NULL);

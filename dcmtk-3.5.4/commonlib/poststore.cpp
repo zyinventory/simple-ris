@@ -555,17 +555,22 @@ HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *arc
 	return hr;
 }
 
-bool generateStudyXML(const char *line, ostream &xmlStream)
+bool generateStudyXML(const char *line, ostream &xmlStream, bool isEncapsulated)
 {
 	MSXML2::IXMLDOMDocumentPtr pXmlDom;
 	MSXML2::IXMLDOMElementPtr study;
 	HRESULT hr = getStudyNode(line, pXmlDom, study);
 	if(FAILED(hr)) return false;
 
-	MSXML2::IXMLDOMTextPtr cmdline = pXmlDom->createTextNode("%cmd%");
-	MSXML2::IXMLDOMElementPtr command = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "command", "http://www.weasis.org/xsd");
-	command->appendChild(cmdline);
-	pXmlDom->lastChild->appendChild(command);
+	MSXML2::IXMLDOMElementPtr httpTag = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "httpTag", "http://www.weasis.org/xsd");
+	MSXML2::IXMLDOMElementPtr wado = pXmlDom->selectSingleNode("/wado_query");
+	wado->appendChild(httpTag);
+	httpTag->setAttribute("key", "command");
+	if(isEncapsulated)
+		httpTag->setAttribute("value", MOVE_PLACE_HOLDER);
+	else
+		httpTag->setAttribute("value", REPLACE_PLACE_HOLDER);
+
 	xmlStream << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << endl;
 	xmlStream << (const char *)pXmlDom->lastChild->xml;
 	return true;

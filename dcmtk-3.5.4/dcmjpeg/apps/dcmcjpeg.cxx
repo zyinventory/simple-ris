@@ -36,6 +36,7 @@
 #define INCLUDE_CSTDIO
 #define INCLUDE_CSTRING
 #include "dcmtk/ofstd/ofstdinc.h"
+#include "dcmtk/ofstd/ofstd.h"
 
 #ifdef HAVE_GUSI_H
 #include <GUSI.h>
@@ -597,6 +598,7 @@ int main(int argc, char *argv[])
 
 	}
 
+	OFBool needMove = OFFalse;
 	SetDebugLevel((opt_debugMode));
 
 	// register global decompression codecs
@@ -676,7 +678,10 @@ int main(int argc, char *argv[])
 
 	if( original_xfer.isEncapsulated()  && opt_skipCompressed )
 	{
+		if (opt_verbose)
+			COUT << "Convert DICOM file is already compressed, skip compressing, move original\n";
 		opt_oxfer = original_xfer.getXfer();
+		needMove = OFTrue;
 	}
 	else
 	{
@@ -692,7 +697,14 @@ int main(int argc, char *argv[])
 		const DcmRepresentationParameter *rp = &rp_lossy;
 		if ((opt_oxfer == EXS_JPEGProcess14SV1TransferSyntax)||
 			(opt_oxfer == EXS_JPEGProcess14TransferSyntax))
+		{
+			if (opt_verbose) COUT << "Representation Parameter is lossless" << endl;
 			rp = &rp_lossless;
+		}
+		else
+		{
+			if (opt_verbose) COUT << "Representation Parameter is lossy" << endl;
+		}
 
 		dataset->chooseRepresentation(opt_oxfer, rp);
 		if (dataset->canWriteXfer(opt_oxfer))
@@ -705,56 +717,63 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	// force meta-header to refresh SOP Class/Instance UIDs.
-	DcmItem *metaInfo = fileformat.getMetaInfo();
-	if (metaInfo)
+	if( ! needMove )
 	{
-		delete metaInfo->remove(DCM_MediaStorageSOPClassUID);
-		delete metaInfo->remove(DCM_MediaStorageSOPInstanceUID);
+		// force meta-header to refresh SOP Class/Instance UIDs.
+		DcmItem *metaInfo = fileformat.getMetaInfo();
+		if (metaInfo)
+		{
+			delete metaInfo->remove(DCM_MediaStorageSOPClassUID);
+			delete metaInfo->remove(DCM_MediaStorageSOPInstanceUID);
+		}
+
+		if (opt_verbose)
+			COUT << "creating output file " << opt_ofname << endl;
+		prepareFileDir(opt_ofname);
+
+		fileformat.loadAllDataIntoMemory();
+		error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
+			opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
+
+		if (error.bad())
+		{
+			CERR << "Error: "
+				<< error.text()
+				<< ": writing file: " <<  opt_ofname << endl;
+			return 1;
+		}
+
+		if (opt_verbose)
+			COUT << "conversion successful\n";
 	}
-
-	if (opt_verbose)
-		COUT << "creating output file " << opt_ofname << endl;
-	prepareFileDir(opt_ofname);
-
-	fileformat.loadAllDataIntoMemory();
-	error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
-		opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
-
-	if (error.bad())
-	{
-		CERR << "Error: "
-			<< error.text()
-			<< ": writing file: " <<  opt_ofname << endl;
-		return 1;
-	}
-
-	if (opt_verbose)
-		COUT << "conversion successful\n";
-
 	// deregister global codecs
 	DJDecoderRegistration::cleanup();
 	DJEncoderRegistration::cleanup();
-#ifndef _DEBUG
-	if(opt_deleteSourceFile)
+
+	if(needMove)
 	{
-		if (opt_verbose) COUT << "delete source file: " << opt_ifname << endl;
-		if(opt_skipCompressed)
+		if (opt_verbose) COUT << "move " << opt_ifname << " to " << opt_ofname << endl;
+		if(OFStandard::fileExists(opt_ofname))
 		{
-			if( remove(opt_ofname) )
+			if(remove(opt_ofname)) perror(opt_ofname);
+		}
+		else
+			prepareFileDir(opt_ofname);
+		if( rename(opt_ifname, opt_ofname) ) perror(opt_ofname);
+	}
+	else
+	{
+		if(opt_deleteSourceFile)
+		{
+			if (opt_verbose) COUT << "delete source file: " << opt_ifname << endl;
+			if( remove(opt_ifname) )
 			{
 				int errnoRmdir = 0;
 				_get_errno(&errnoRmdir);
-				if(errnoRmdir != ENOENT) perror(opt_ofname);
+				if(errnoRmdir != ENOENT) perror(opt_ifname);
 			}
-			if( rename(opt_ifname, opt_ofname) ) perror(opt_ifname);
-		}
-		else
-		{
-			if( remove(opt_ifname) ) perror(opt_ifname);
 		}
 	}
-#endif
 	return 0;
 }
 
