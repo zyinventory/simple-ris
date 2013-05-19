@@ -4,7 +4,6 @@
 #include "stdafx.h"
 #include <algorithm>
 #include <functional>
-#include <iostream>
 #include <sstream>
 #include <time.h>
 #include <direct.h>
@@ -73,7 +72,9 @@ int realMain(int argc, char **argv)
 		if(logFile != INVALID_HANDLE_VALUE)	{ CloseHandle(logFile); logFile = INVALID_HANDLE_VALUE; }
 	}
 	if(logFile != INVALID_HANDLE_VALUE) CloseHandle(logFile);
-	return commandDispatcher(QUEUE_NAME, 4);
+	SYSTEM_INFO sysInfo;
+	GetSystemInfo(&sysInfo);
+	return commandDispatcher(QUEUE_NAME, min(16, sysInfo.dwNumberOfProcessors));
 }
 
 void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)

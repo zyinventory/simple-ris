@@ -74,6 +74,8 @@ OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 #define SHORTCOL 4
 #define LONGCOL 21
 
+static HANDLE mutexIdle = NULL, mutexRec = NULL;
+
 int main(int argc, char *argv[])
 {
 
@@ -84,10 +86,9 @@ int main(int argc, char *argv[])
 
 	SetDebugLevel(( 0 ));
 
-	if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
-
 	const char *opt_ifname = NULL;
 	const char *opt_ofname = NULL;
+	OFCmdUnsignedInt opt_processNumber = 0;
 
 	int opt_debugMode = 0;
 	OFBool opt_verbose = OFFalse;
@@ -143,6 +144,7 @@ int main(int argc, char *argv[])
 	cmd.addOption("--debug",                     "-d",        "debug mode, print debug information");
 	cmd.addOption("--delete-source-file",        "-ds",       "if conversion is successful, delete source file.");
 	cmd.addOption("--skip-compressed",           "-sc",       "if source file is compressed, skip compressing, save directly");
+	cmd.addOption("--process-number",            "-pn",    1, "[pn]: integer (default: 0)", "process number");
 
 	cmd.addGroup("input options:");
 	cmd.addSubGroup("input file format:");
@@ -302,6 +304,7 @@ int main(int argc, char *argv[])
 		if (cmd.findOption("--debug")) opt_debugMode = 5;
 		if (cmd.findOption("--delete-source-file")) opt_deleteSourceFile = OFTrue;
 		if (cmd.findOption("--skip-compressed")) opt_skipCompressed = OFTrue;
+		if (cmd.findOption("--process-number")) app.checkValue(cmd.getValueAndCheckMin(opt_processNumber, 0));
 
 		cmd.beginOptionBlock();
 		if (cmd.findOption("--read-file")) opt_readMode = ERM_autoDetect;
@@ -650,130 +653,178 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (opt_verbose)
-		COUT << "reading input file " << opt_ifname << endl;
-
-	DcmFileFormat fileformat;
-	OFCondition error = fileformat.loadFile(opt_ifname, opt_ixfer, EGL_noChange, DCM_MaxReadLength, opt_readMode);
-	if (error.bad())
+	E_TransferSyntax opt_oxferBak = opt_oxfer;
+	char ifile[MAX_PATH], ofile[MAX_PATH];
+	OFBool readcmd = OFTrue;
+	if(*opt_ifname == '@')
 	{
-		CERR << "Error: "
-			<< error.text()
-			<< ": reading file: " <<  opt_ifname << endl;
-		return 1;
+		readcmd = OFFalse;
+		opt_ifname = ifile;
+		opt_ofname = ofile;
+		char buffer[32];
+		sprintf_s(buffer, 32, "Global\\dcmcjpeg%d", opt_processNumber);
+		mutexIdle = CreateMutex(NULL, TRUE, buffer);
+		if(mutexIdle && ERROR_ALREADY_EXISTS == GetLastError())
+			WaitForSingleObject(mutexIdle, INFINITE);
+		sprintf_s(buffer, 32, "Global\\receive%d", opt_processNumber);
+		mutexRec = CreateMutex(NULL, FALSE, buffer);
 	}
-	DcmDataset *dataset = fileformat.getDataset();
 
-	DcmXfer original_xfer(dataset->getOriginalXfer());
-	if (original_xfer.isEncapsulated() && ( ! opt_skipCompressed ))
+	while(true)
 	{
-		if (opt_verbose)
-			COUT << "DICOM file is already compressed, convert to uncompressed xfer syntax first\n";
-		if (EC_Normal != dataset->chooseRepresentation(EXS_LittleEndianExplicit, NULL))
+		if(mutexIdle && mutexRec)
+			if(WAIT_OBJECT_0 != SignalObjectAndWait(mutexIdle, mutexRec, INFINITE, FALSE)) displayErrorToCerr("enter idle");
+		COUT << "waiting input..." << endl;
+		if(readcmd || (cin.getline(ifile, MAX_PATH, ' ').good() && cin.getline(ofile, MAX_PATH, '\n').good()))
 		{
-			CERR << "No conversion from compressed original to uncompressed xfer syntax possible!\n";
-			return 1;
-		}
-	}
-
-	if( original_xfer.isEncapsulated()  && opt_skipCompressed )
-	{
-		if (opt_verbose)
-			COUT << "Convert DICOM file is already compressed, skip compressing, move original\n";
-		opt_oxfer = original_xfer.getXfer();
-		needMove = OFTrue;
-	}
-	else
-	{
-		if (opt_verbose)
-			COUT << "Convert DICOM file to compressed transfer syntax\n";
-
-		DcmXfer opt_oxferSyn(opt_oxfer);
-
-		// create representation parameters for lossy and lossless
-		DJ_RPLossless rp_lossless((int)opt_selection_value, (int)opt_point_transform);
-		DJ_RPLossy rp_lossy((int)opt_quality);
-
-		const DcmRepresentationParameter *rp = &rp_lossy;
-		if ((opt_oxfer == EXS_JPEGProcess14SV1TransferSyntax)||
-			(opt_oxfer == EXS_JPEGProcess14TransferSyntax))
-		{
-			if (opt_verbose) COUT << "Representation Parameter is lossless" << endl;
-			rp = &rp_lossless;
+			COUT << "input: " << opt_ifname << endl;
+			COUT << "output: " << opt_ofname << endl;
 		}
 		else
 		{
-			if (opt_verbose) COUT << "Representation Parameter is lossy" << endl;
+			COUT << "stdin readline failed" << endl;
+			break;
 		}
 
-		dataset->chooseRepresentation(opt_oxfer, rp);
-		if (dataset->canWriteXfer(opt_oxfer))
+		if(*opt_ifname == '\0' || *opt_ofname == '\0')
 		{
-			if (opt_verbose)
-				COUT << "Output transfer syntax " << opt_oxferSyn.getXferName() << " can be written\n";
-		} else {
-			CERR << "No conversion to transfer syntax " << opt_oxferSyn.getXferName() << " possible!\n";
-			return 1;
+			COUT << "stdin readline failed" << endl;
+			break;
 		}
-	}
 
-	if( ! needMove )
-	{
-		// force meta-header to refresh SOP Class/Instance UIDs.
-		DcmItem *metaInfo = fileformat.getMetaInfo();
-		if (metaInfo)
-		{
-			delete metaInfo->remove(DCM_MediaStorageSOPClassUID);
-			delete metaInfo->remove(DCM_MediaStorageSOPInstanceUID);
-		}
+		if(mutexIdle && mutexRec)
+			if(WAIT_OBJECT_0 != SignalObjectAndWait(mutexRec, mutexIdle, INFINITE, FALSE)) displayErrorToCerr("confirm command");
+
+		opt_oxfer = opt_oxferBak;
+		needMove = OFFalse;
 
 		if (opt_verbose)
-			COUT << "creating output file " << opt_ofname << endl;
-		prepareFileDir(opt_ofname);
+			COUT << "reading input file " << opt_ifname << endl;
 
-		fileformat.loadAllDataIntoMemory();
-		error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
-			opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
-
+		DcmFileFormat fileformat;
+		if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
+		OFCondition error = fileformat.loadFile(opt_ifname, opt_ixfer, EGL_noChange, DCM_MaxReadLength, opt_readMode);
+		if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END) ) displayErrorToCerr("SetPriorityClass");
 		if (error.bad())
 		{
-			CERR << "Error: "
-				<< error.text()
-				<< ": writing file: " <<  opt_ofname << endl;
-			return 1;
+			CERR << "Error: " << error.text() << ": reading file: " <<  opt_ifname << endl;
+			if(readcmd) return 1; else continue;
+		}
+		DcmDataset *dataset = fileformat.getDataset();
+
+		DcmXfer original_xfer(dataset->getOriginalXfer());
+		if (original_xfer.isEncapsulated() && ( ! opt_skipCompressed ))
+		{
+			if (opt_verbose)
+				COUT << "DICOM file is already compressed, convert to uncompressed xfer syntax first\n";
+			if (EC_Normal != dataset->chooseRepresentation(EXS_LittleEndianExplicit, NULL))
+			{
+				CERR << "No conversion from compressed original to uncompressed xfer syntax possible!\n";
+				if(readcmd) return 1; else continue;
+			}
 		}
 
-		if (opt_verbose)
-			COUT << "conversion successful\n";
+		if( original_xfer.isEncapsulated()  && opt_skipCompressed )
+		{
+			if (opt_verbose)
+				COUT << "Convert DICOM file is already compressed, skip compressing, move original\n";
+			opt_oxfer = original_xfer.getXfer();
+			needMove = OFTrue;
+		}
+		else
+		{
+			if (opt_verbose)
+				COUT << "Convert DICOM file to compressed transfer syntax\n";
+
+			DcmXfer opt_oxferSyn(opt_oxfer);
+
+			// create representation parameters for lossy and lossless
+			DJ_RPLossless rp_lossless((int)opt_selection_value, (int)opt_point_transform);
+			DJ_RPLossy rp_lossy((int)opt_quality);
+
+			const DcmRepresentationParameter *rp = &rp_lossy;
+			if ((opt_oxfer == EXS_JPEGProcess14SV1TransferSyntax)||
+				(opt_oxfer == EXS_JPEGProcess14TransferSyntax))
+			{
+				if (opt_verbose) COUT << "Representation Parameter is lossless" << endl;
+				rp = &rp_lossless;
+			}
+			else
+			{
+				if (opt_verbose) COUT << "Representation Parameter is lossy" << endl;
+			}
+
+			dataset->chooseRepresentation(opt_oxfer, rp);
+			if (dataset->canWriteXfer(opt_oxfer))
+			{
+				if (opt_verbose)
+					COUT << "Output transfer syntax " << opt_oxferSyn.getXferName() << " can be written\n";
+			} else {
+				CERR << "No conversion to transfer syntax " << opt_oxferSyn.getXferName() << " possible!\n";
+				if(readcmd) return 1; else continue;
+			}
+		}
+
+		if(needMove)
+		{
+			if (opt_verbose) COUT << "move " << opt_ifname << " to " << opt_ofname << endl;
+			if(OFStandard::fileExists(opt_ofname))
+			{
+				if(remove(opt_ofname)) perror(opt_ofname);
+			}
+			else
+				prepareFileDir(opt_ofname);
+			if( rename(opt_ifname, opt_ofname) ) perror(opt_ofname);
+		}
+		else
+		{
+			// force meta-header to refresh SOP Class/Instance UIDs.
+			DcmItem *metaInfo = fileformat.getMetaInfo();
+			if (metaInfo)
+			{
+				delete metaInfo->remove(DCM_MediaStorageSOPClassUID);
+				delete metaInfo->remove(DCM_MediaStorageSOPInstanceUID);
+			}
+
+			if (opt_verbose)
+				COUT << "creating output file " << opt_ofname << endl;
+			prepareFileDir(opt_ofname);
+
+			if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
+			fileformat.loadAllDataIntoMemory();
+			error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
+				opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
+			if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END) ) displayErrorToCerr("SetPriorityClass");
+
+			if (error.bad())
+			{
+				CERR << "Error: "
+					<< error.text()
+					<< ": writing file: " <<  opt_ofname << endl;
+				if(readcmd) return 1; else continue;
+			}
+
+			if (opt_verbose)
+				COUT << "conversion successful\n";
+
+			if(opt_deleteSourceFile)
+			{
+				if (opt_verbose) COUT << "delete source file: " << opt_ifname << endl;
+				if( remove(opt_ifname) )
+				{
+					int errnoRmdir = 0;
+					_get_errno(&errnoRmdir);
+					if(errnoRmdir != ENOENT) perror(opt_ifname);
+				}
+			}
+		}
+
+		if(readcmd) break;
 	}
+
 	// deregister global codecs
 	DJDecoderRegistration::cleanup();
 	DJEncoderRegistration::cleanup();
-
-	if(needMove)
-	{
-		if (opt_verbose) COUT << "move " << opt_ifname << " to " << opt_ofname << endl;
-		if(OFStandard::fileExists(opt_ofname))
-		{
-			if(remove(opt_ofname)) perror(opt_ofname);
-		}
-		else
-			prepareFileDir(opt_ofname);
-		if( rename(opt_ifname, opt_ofname) ) perror(opt_ofname);
-	}
-	else
-	{
-		if(opt_deleteSourceFile)
-		{
-			if (opt_verbose) COUT << "delete source file: " << opt_ifname << endl;
-			if( remove(opt_ifname) )
-			{
-				int errnoRmdir = 0;
-				_get_errno(&errnoRmdir);
-				if(errnoRmdir != ENOENT) perror(opt_ifname);
-			}
-		}
-	}
 	return 0;
 }
 
@@ -841,7 +892,3 @@ int main(int argc, char *argv[])
 *
 *
 */
-
-
-
-
