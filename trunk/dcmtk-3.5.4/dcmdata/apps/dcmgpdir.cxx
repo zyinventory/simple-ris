@@ -74,8 +74,10 @@
 #endif
 
 #include <direct.h>
-#include <windows.h>
+#include <atlbase.h>
+#include <atlcom.h>
 #include "commonlib.h"
+#import <mqoa.dll>
 
 #ifdef WITH_ZLIB
 #include <zlib.h>         /* for zlibVersion() */
@@ -100,6 +102,7 @@ OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 #define LONGCOL 23
 
 // ********************************************
+using namespace MSMQ;
 
 int main(int argc, char *argv[])
 {
@@ -116,7 +119,7 @@ int main(int argc, char *argv[])
 	const char *opt_charset = DEFAULT_DESCRIPTOR_CHARSET;
 	const char *opt_directory = NULL;
 	const char *opt_pattern = NULL;
-	const char *opt_archive = "archdir";
+	const char *opt_queueName = NULL;
 	const char *opt_index = "indexdir";
 	const char *opt_csv = NULL;
 	const char *opt_weburl = NULL;
@@ -229,7 +232,7 @@ int main(int argc, char *argv[])
 	cmd.addOption("--length-explicit",       "+e",     "write with explicit lengths (default)");
 	cmd.addOption("--length-undefined",      "-e",     "write with undefined lengths");
 	cmd.addSubGroup("index:");
-	cmd.addOption("--archive-directory",     "-ac", 1, "directory : string", "write DICOMDIR, default : archdir");
+	cmd.addOption("--queue-name",            "-qn", 1, "queue name : string", "msmq queue name");
 	cmd.addOption("--index-directory",       "-ix", 1, "directory : string", "write index file, default : indexdir");
 	cmd.addOption("--input-csv",             "-ic", 1, "filename : string", "read index information from csv file");
 	cmd.addOption("--delete-source-csv",     "-ds",    "if indexing is successful, delete source csv file");
@@ -462,8 +465,8 @@ int main(int argc, char *argv[])
 			app.checkConflict("--icon-image-size", "--basic-cardiac, --xray-angiographic or --ct-and-mr", cmd.findOption("--icon-image-size"));
 		}
 
-		if (cmd.findOption("--archive-directory"))
-			app.checkValue(cmd.getValue(opt_archive));
+		if (cmd.findOption("--queue-name"))
+			app.checkValue(cmd.getValue(opt_queueName));
 		if (cmd.findOption("--index-directory"))
 			app.checkValue(cmd.getValue(opt_index));
 		if (cmd.findOption("--input-csv"))
@@ -495,7 +498,7 @@ int main(int argc, char *argv[])
 	OFList<OFString> fileNames;
 	OFString pathname;
 	const char *param = NULL;
-	bool readInput = false;
+	bool readQueue = false;
 	const int count = cmd.getParamCount();
 	if (opt_recurse && ddir.verboseMode())
 		COUT << "determining input files ..." << endl;
@@ -513,10 +516,10 @@ int main(int argc, char *argv[])
 		{
 			cmd.getParam(i, param);
 			COUT << "param " << i << " is " << param << endl;
-			if(*param == '@')
+			if(*param == '@' && opt_queueName)
 			{
 				COUT << "read file path from input stream" << endl;
-				readInput = true;
+				readQueue = true;
 				break;
 			}
 			/* add input directory */
@@ -532,7 +535,7 @@ int main(int argc, char *argv[])
 	// remove DICOMDIR for avoiding warning message.
 	// algorithm copied from OFList<T>::remove
 	OFIterator<OFString> first = fileNames.begin();
-	if(!readInput)
+	if(!readQueue)
 	{
 		while(first != fileNames.end())
 		{
@@ -572,32 +575,114 @@ int main(int argc, char *argv[])
 			/* collect 'bad' files */
 			OFList<OFString> badFiles;
 			unsigned int goodFiles = 0;
-			if(readInput)
+			if(readQueue)
 			{
-				while(cin.getline(fileNameBuffer, MAX_PATH, '\n').good())
+				HRESULT hr;
+				string label;
+				CoInitialize(NULL);
+				try
 				{
-					COUT << "file " << fileNameBuffer << '/' << endl;
-					if(fileNameBuffer[0] == ':') // csv path, at end of input
+					IMSMQQueueInfoPtr pInfo;
+					hr = pInfo.CreateInstance(OLESTR("MSMQ.MSMQQueueInfo"));
+					if(FAILED(hr)) throw _com_error(hr, NULL);
+					string qname(opt_queueName);
+					if(qname.find(".\\private$\\") != 0)
+						qname.insert(0, ".\\private$\\");
+					pInfo->PathName = qname.c_str();
+					IMSMQQueuePtr pQueue;
+					try
 					{
-						COUT << "encounter study end" << endl;
-						break;
+						pQueue = pInfo->Open(MQ_RECEIVE_ACCESS, MQ_DENY_NONE);
 					}
-					/* add files to the DICOMDIR */
-					result = ddir.addDicomFile(fileNameBuffer, opt_directory);
-					if (result.bad())
+					catch(_com_error &openerr)
 					{
-						badFiles.push_back(fileNameBuffer);
-						if (!ddir.abortMode())
+						if(openerr.Error() == MQ_ERROR_QUEUE_NOT_FOUND)
 						{
-							/* ignore inconsistent file, just warn (already done inside "ddir") */
-							result = EC_Normal;
+							hr = pInfo->Create();
+							if(FAILED(hr)) throw _com_error(hr);
+							pQueue = pInfo->Open(MQ_RECEIVE_ACCESS, MQ_DENY_NONE);
 						}
-					} else
-					{
-						++goodFiles;
-						COUT << "good file: " << goodFiles << endl;
+						else
+						{
+							throw;
+						}
 					}
+
+					bool restart = true, remainMessage = false;;
+					IMSMQMessagePtr pMsg;
+					while(pMsg = restart ? pQueue->PeekCurrent() : pQueue->PeekNext())
+					{
+						label = pMsg->Label;
+						if(label.find("compressed") == 0)
+						{
+							pMsg = pQueue->ReceiveCurrent();
+							restart = true;
+							string strbody(_bstr_t(pMsg->Body.bstrVal));
+							string::size_type archpos = strbody.find(opt_directory);
+							if(archpos != string::npos)
+							{
+								size_t dirlen = strlen(opt_directory);
+								if(strbody[archpos + dirlen] == '\\') ++dirlen;
+								strbody.erase(archpos, dirlen);
+							}
+							copy(strbody.begin(), strbody.end(), stdext::checked_array_iterator<char*>(fileNameBuffer, MAX_PATH));
+							fileNameBuffer[strbody.length()] = '\0';
+							/* add files to the DICOMDIR */
+							result = ddir.addDicomFile(fileNameBuffer, opt_directory);
+							if (result.bad())
+							{
+								badFiles.push_back(fileNameBuffer);
+								if (!ddir.abortMode())
+								{
+									/* ignore inconsistent file, just warn (already done inside "ddir") */
+									result = EC_Normal;
+								}
+							} else
+							{
+								++goodFiles;
+								COUT << "good file: " << goodFiles << endl;
+							}
+						}
+						else if(label.find("dcmmkdir") == 0)
+						{
+							if(remainMessage)
+							{
+								restart = true;
+								remainMessage = false;
+								pQueue->Reset();
+								Sleep(1000);
+								continue;
+							}
+							else
+							{
+								pMsg = pQueue->ReceiveCurrent();
+								restart = true;
+								string strbody(_bstr_t(pMsg->Body.bstrVal));
+								copy(strbody.begin(), strbody.end(), stdext::checked_array_iterator<char*>(fileNameBuffer, MAX_PATH));
+								fileNameBuffer[strbody.length()] = '\0';
+								opt_csv = fileNameBuffer;
+								break;
+							}
+						}
+						else
+						{
+							restart = false;
+							remainMessage = true;
+						}
+					}
+					hr = pQueue->Close();
+					if(FAILED(hr)) throw _com_error(hr, NULL);
 				}
+				catch(_com_error &comErr)
+				{
+					cerr << "RedirectMessage´íÎó£º" << comErr.ErrorMessage() << endl;
+				}
+				catch(...)
+				{
+					_com_error ce(AtlHresultFromLastError());
+					cerr << "RedirectMessage unknown error: " << ce.ErrorMessage() << endl;
+				}
+				CoUninitialize();
 			}
 			else
 			{
@@ -656,12 +741,6 @@ int main(int argc, char *argv[])
 		COUT << "end generate dicomdir " << timeBuffer << endl;
 	}
 
-	if(readInput && fileNameBuffer[0] == ':')
-	{
-		opt_csv = &fileNameBuffer[1];
-		COUT << "csv path is " << opt_csv << endl;
-	}
-
 	if(opt_csv && *opt_csv != '\0')
 	{
 #ifndef _DEBUG
@@ -673,7 +752,7 @@ int main(int argc, char *argv[])
 		}
 		char buffer[MAX_PATH];
 		strcpy_s(buffer, MAX_PATH, opt_csv);
-		long hr = generateIndex(buffer, opt_weburl, opt_archive, opt_index, opt_deleteSourceCSV);
+		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
 #ifndef _DEBUG
 		if(ddir.verboseMode())
 #endif

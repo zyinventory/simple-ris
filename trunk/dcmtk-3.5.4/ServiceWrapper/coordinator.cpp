@@ -15,8 +15,9 @@ using namespace MSMQ;
 #include "commonlib.h"
 
 typedef struct _WorkerProcess {
-    HANDLE hProcess, hThread, hLogFile, mutexIdle, mutexRec, hChildStdInWrite; //hChildStdInRead
-	string *logFilePath, *instancePathCr, *studyUid, *csvPathCr;
+	string *instancePathCr, *csvPathCr, *studyUid; // command level
+    HANDLE hProcess, hThread, mutexIdle, mutexRec, hChildStdInWrite; // process level
+	HANDLE hLogFile; string *logFilePath; // slot level
 } WorkerProcess, *PWorkerProcess, *LPWorkerProcess;
 
 static string binPath;
@@ -100,42 +101,33 @@ bool predicatorEqual(WorkerProcess wp, const char *studyUid)
 	return wp.hProcess && wp.studyUid && 0 == wp.studyUid->compare(studyUid);
 }
 
-void addInstanceToDicomdir(string &studyUid, const string &instancePathCr)
+void runDcmmkdir(string &studyUid)
 {
-	WorkerProcess wp;
-	memset(&wp, 0, sizeof(WorkerProcess));
-	bool atEnd = false;
-	unsigned int hashStudy = hashCode(studyUid.c_str());
-	char archivedir[MAX_PATH];
-	int archlen = sprintf_s(archivedir, MAX_PATH, "archdir\\%02X\\%02X\\%02X\\%02X\\%s",
-		hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUid.c_str());
-	
 	list<WorkerProcess>::iterator iter = find_if(dirmakers.begin(), dirmakers.end(), bind2nd(ptr_fun(predicatorEqual), studyUid.c_str()));
 	if(iter == dirmakers.end())
 	{
+		WorkerProcess wp;
+		memset(&wp, 0, sizeof(WorkerProcess));
+		unsigned int hashStudy = hashCode(studyUid.c_str());
+		char archivedir[MAX_PATH];
+		int archlen = sprintf_s(archivedir, MAX_PATH, "archdir\\%02X\\%02X\\%02X\\%02X\\%s",
+			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUid.c_str());
+
 		PROCESS_INFORMATION procinfo;
 		STARTUPINFO sinfo;
 		memset(&procinfo, 0, sizeof(PROCESS_INFORMATION));
 		memset(&sinfo, 0, sizeof(STARTUPINFO));
 		sinfo.cb = sizeof(STARTUPINFO);
 
-		HANDLE hChildStdInRead;
-		CreatePipe(&hChildStdInRead, &wp.hChildStdInWrite, &logSA, 0);
-		SetHandleInformation(wp.hChildStdInWrite, HANDLE_FLAG_INHERIT, 0);
-		sinfo.dwFlags |= STARTF_USESTDHANDLES;
-		sinfo.hStdInput = hChildStdInRead;
-		sinfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-		sinfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-
 		string command(binPath);
-		command.append("dcmmkdir -ds +r --general-purpose-dvd -wu http://localhost/pacs/ +D #v\\#s\\DICOMDIR +id #v\\#s @");
+		command.append("dcmmkdir -ds +r --general-purpose-dvd -wu http://localhost/pacs/ +D #v\\#s\\DICOMDIR +id #v\\#s -qn ").append(studyUid).append(" @");
 		string::size_type pos = 0;
 		while(pos != string::npos)
 		{
 			pos = command.find( "#v\\#s", pos );
 			if(pos != string::npos)
 			{
-				command.replace(pos, sizeof("#v\\#s") - 1, archivedir); // sizeof("#v\\#s") include NULL terminator
+				command.replace(pos, sizeof("#v\\#s") - 1, archivedir); // sizeof("#v\\#s") include NULL terminator, minus it
 				pos += archlen;
 			}
 		}
@@ -150,76 +142,10 @@ void addInstanceToDicomdir(string &studyUid, const string &instancePathCr)
 			wp.hThread = procinfo.hThread;
 			wp.studyUid = new string(studyUid);
 			dirmakers.push_back(wp);
-			atEnd = true;
 		}
 		else
-		{
-			CloseHandle(wp.hChildStdInWrite);
-			wp.hChildStdInWrite = NULL;
-		}
-		CloseHandle(hChildStdInRead);
+			displayErrorToCerr("create process error");
 		delete[] commandLine;
-	}
-	else
-		wp = (*iter);
-
-	if(wp.hChildStdInWrite)
-	{
-		WaitForInputIdle(wp.hProcess, INFINITE);
-		DWORD bytesWritten;
-		string::size_type archpos = instancePathCr.find(archivedir);
-		if(archpos != string::npos)
-		{
-			string fileToArch;
-			fileToArch = instancePathCr.substr(archpos + archlen + 1);
-			if(atEnd)
-				dirmakers.back().instancePathCr = new string(fileToArch);
-			else
-			{
-				if((*iter).instancePathCr) delete (*iter).instancePathCr;
-				(*iter).instancePathCr = new string(fileToArch);
-			}
-			cout << "add instance to dicomdir " << fileToArch << endl;
-			WriteFile(wp.hChildStdInWrite, fileToArch.c_str(), fileToArch.length(), &bytesWritten, NULL);
-		}
-		else
-		{
-			if(atEnd)
-				dirmakers.back().instancePathCr = new string(instancePathCr);
-			else
-			{
-				if((*iter).instancePathCr) delete (*iter).instancePathCr;
-				(*iter).instancePathCr = new string(instancePathCr);
-			}
-			cout << "add instance to dicomdir " << instancePathCr << endl;
-			WriteFile(wp.hChildStdInWrite, instancePathCr.c_str(), instancePathCr.length(), &bytesWritten, NULL);
-		}
-	}
-	else
-		cerr << "work process no pipe" << endl;
-}
-
-void runArchiveStudy(string &studyUid, const string *csvPathCr)
-{
-	list<WorkerProcess>::iterator iter = find_if(dirmakers.begin(), dirmakers.end(), bind2nd(ptr_fun(predicatorEqual), studyUid.c_str()));
-	if(iter != dirmakers.end())
-	{
-		if(csvPathCr)
-		{
-			cout << "csv file " << *csvPathCr << endl;
-			if((*iter).csvPathCr) delete (*iter).csvPathCr;
-			(*iter).csvPathCr = new string(*csvPathCr);
-		}
-		PWorkerProcess endPos = workers + procnum;
-		PWorkerProcess pos = find_if(workers, endPos, bind2nd(ptr_fun(predicatorEqual), studyUid.c_str()));
-		if(pos == endPos && csvPathCr)
-		{
-			DWORD bytesWritten;
-			cout << "import csv " << csvPathCr << endl;
-			WriteFile((*iter).hChildStdInWrite, csvPathCr->c_str(), csvPathCr->length(), &bytesWritten, NULL);
-			closeProcHandle((*iter));
-			dirmakers.erase(iter);
-		}
 	}
 }
 
@@ -292,15 +218,14 @@ DWORD findIdleOrCompelete()
 
 	if(result >= 0 && result < procnum && workers[result].studyUid)
 	{
-		addInstanceToDicomdir(*workers[result].studyUid, *workers[result].instancePathCr);
 		string *studyUid = workers[result].studyUid, *instancePathCr = workers[result].instancePathCr;
 		workers[result].studyUid = NULL;
 		workers[result].instancePathCr = NULL;
-		if(studyUid)
-		{
-			runArchiveStudy(*studyUid, NULL);
-			delete studyUid;
-		}
+		char labelBuffer[250], bodyBuffer[250];
+		instancePathCr->insert(0, "archiving ");
+		string instancePath = (*instancePathCr).substr(0, instancePathCr->length() - 1);
+		RedirectMessageLabelEqualWith(labelBuffer, bodyBuffer, 250, instancePath.c_str(), studyUid->c_str());
+		if(studyUid) delete studyUid;
 		if(instancePathCr) delete instancePathCr;
 	}
 	return result;
@@ -420,10 +345,24 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 			{
 				workers[index].studyUid = new string(studyUid);
 				string::size_type destPos = iofile.find(' ') + 1;
-				if(string::npos == iofile.rfind('\n'))
-					workers[index].instancePathCr = new string(iofile.substr(destPos).append(1, '\n'));
+				string::size_type crPos = iofile.rfind('\n');
+				if(string::npos == crPos)
+				{
+					string body(iofile.substr(destPos));
+					string label("archiving ");
+					label.append(body);
+					SendCommonMessageToQueue(label.c_str(), body.c_str(), 7, studyUid.c_str());
+					workers[index].instancePathCr = new string(body.append(1, '\n'));
+				}
 				else
-					workers[index].instancePathCr = new string(iofile.substr(destPos));
+				{
+					string body(iofile.substr(destPos));
+					workers[index].instancePathCr = new string(body);
+					body.erase(body.rfind('\n'));
+					string label("archiving ");
+					label.append(body);
+					SendCommonMessageToQueue(label.c_str(), body.c_str(), 7, studyUid.c_str());
+				}
 				ReleaseMutex(workers[index].mutexRec);
 			}
 			else
@@ -508,10 +447,8 @@ void processMessage(IMSMQMessagePtr pMsg)
 							buffer[pos] = '>';
 							perror(buffer);
 						}
-						else
-						{
-							addInstanceToDicomdir(studyUid, string(dest).append(1, '\n'));
-						}
+						//else
+							//runDcmmkdir(studyUid);
 					}
 					else
 					{
@@ -519,7 +456,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 					}
 					delete[] buffer;
 				}
-				else
+				else  // dcmcjpeg
 				{
 					DWORD index = findIdleOrCompelete();
 					if(index != WAIT_FAILED)
@@ -536,7 +473,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 			}
 			else  //pMsg->Label == _bstr_t(ARCHIVE_STUDY)
 			{
-				string csvPathCr(":\n");
+				//runDcmmkdir(studyUid);
 				string::size_type begin = cmd.find("-ic ");
 				if(begin == string::npos)
 				{
@@ -548,9 +485,10 @@ void processMessage(IMSMQMessagePtr pMsg)
 				if(begin != string::npos)
 				{
 					string::size_type end = cmd.find(' ', begin);
-					csvPathCr.insert(1, cmd.substr(begin, end - begin));
+					SendCommonMessageToQueue("dcmmkdir", cmd.substr(begin, end - begin).c_str(), 0, studyUid.c_str());
 				}
-				runArchiveStudy(studyUid, &csvPathCr);
+				else
+					cerr << "process message error: no csv file: " << cmd << endl;
 			}
 		}
 		catch(_com_error &comErr)

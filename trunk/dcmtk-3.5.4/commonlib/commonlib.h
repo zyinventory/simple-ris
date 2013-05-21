@@ -33,6 +33,8 @@ BOOL DeleteEmptyFile(const char *filePath);
 long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV = false);
 time_t dcmdate2tm(int dcmdate);
 bool generateStudyXML(const char *line, std::ostream &xmlStream, bool isEncapsulated = false);
+bool RedirectMessageLabelEqualWith(char *label, char *body, const int bodyLength, const char *equalWith, const char *queueName);
+bool SendCommonMessageToQueue(const char *label, const char *body, const long priority, const char *queueName);
 bool SendArchiveMessageToQueue(const char *label, const char *body, const char *cmd);
 errno_t setEnvParentPID();
 int generateTime(const char *format, char *timeBuffer, size_t bufferSize);
