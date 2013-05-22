@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include <sstream>
 #include <list>
+#include <iterator>
 #include <algorithm>
 #include <functional>
 #include <comutil.h>
