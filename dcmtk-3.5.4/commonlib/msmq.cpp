@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include <iterator>
 #include <iostream>
 #include <functional>
 #include <atlcom.h>

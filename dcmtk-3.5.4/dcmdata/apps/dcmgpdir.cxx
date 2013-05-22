@@ -73,6 +73,7 @@
 #include "dcmtk/dcmjpeg/ddpiimpl.h"     /* for class DicomDirImageImplementation */
 #endif
 
+#include <iterator>
 #include <direct.h>
 #include <atlbase.h>
 #include <atlcom.h>
