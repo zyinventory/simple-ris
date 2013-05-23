@@ -74,7 +74,7 @@ int realMain(int argc, char **argv)
 	if(logFile != INVALID_HANDLE_VALUE) CloseHandle(logFile);
 	SYSTEM_INFO sysInfo;
 	GetSystemInfo(&sysInfo);
-	return commandDispatcher(QUEUE_NAME, min(16, sysInfo.dwNumberOfProcessors));
+	return commandDispatcher(QUEUE_NAME, min(MAX_CORE, sysInfo.dwNumberOfProcessors));
 }
 
 void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)

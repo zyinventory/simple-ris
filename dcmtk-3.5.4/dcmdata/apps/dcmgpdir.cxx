@@ -609,15 +609,20 @@ int main(int argc, char *argv[])
 						}
 					}
 
-					bool restart = true, remainMessage = false;;
+					bool restart = true, remainMessage = false;
 					IMSMQMessagePtr pMsg;
-					while(pMsg = restart ? pQueue->PeekCurrent() : pQueue->PeekNext())
+					VARIANT timeout, vtFalse;
+					timeout.lVal = 120 * 1000; //120 seconds
+					timeout.vt = VT_I4;
+					vtFalse.boolVal = VARIANT_FALSE;
+					vtFalse.vt = VT_BOOL;
+					while(pMsg = restart ? pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout) : pQueue->PeekNext(&vtMissing, &vtFalse, &timeout))
 					{
 						label = pMsg->Label;
 						if(label.find("compressed") == 0)
 						{
 							pMsg = pQueue->ReceiveCurrent();
-							restart = true;
+							remainMessage = true;
 							string strbody(_bstr_t(pMsg->Body.bstrVal));
 							string::size_type archpos = strbody.find(opt_directory);
 							if(archpos != string::npos)
@@ -657,7 +662,6 @@ int main(int argc, char *argv[])
 							else
 							{
 								pMsg = pQueue->ReceiveCurrent();
-								restart = true;
 								string strbody(_bstr_t(pMsg->Body.bstrVal));
 								copy(strbody.begin(), strbody.end(), stdext::checked_array_iterator<char*>(fileNameBuffer, MAX_PATH));
 								fileNameBuffer[strbody.length()] = '\0';
@@ -665,10 +669,13 @@ int main(int argc, char *argv[])
 								break;
 							}
 						}
+						else if(label.find("archiving") == 0)
+						{
+							remainMessage = true;
+						}
 						else
 						{
-							restart = false;
-							remainMessage = true;
+							cerr << "dicomdir maker has received an unknown message: " << label << endl;
 						}
 					}
 					hr = pQueue->Close();
