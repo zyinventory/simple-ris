@@ -154,7 +154,7 @@ DWORD findIdleOrCompelete()
 {
 	size_t working = 0, idle;
 	DWORD  wait, result = 0;
-	HANDLE workingHandles[16];
+	HANDLE workingHandles[MAX_CORE];
 	//collect all working process
 	for(size_t i = 0; i < procnum; ++i)
 	{
@@ -590,7 +590,7 @@ void waitAll()
 {
 	size_t working = 0;
 	DWORD  result = 0;
-	HANDLE workingHandles[16];
+	HANDLE workingHandles[MAX_CORE];
 	//collect all working process
 	for(size_t i = 0; i < procnum; ++i)
 	{

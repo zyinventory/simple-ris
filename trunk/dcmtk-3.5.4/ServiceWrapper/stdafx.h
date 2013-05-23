@@ -18,3 +18,5 @@
 
 // TODO: 在此处引用程序需要的其他头文件
 #include <iostream>
+
+#define MAX_CORE 16
