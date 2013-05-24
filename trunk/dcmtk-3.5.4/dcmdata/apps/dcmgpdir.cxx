@@ -611,11 +611,8 @@ int main(int argc, char *argv[])
 
 					bool restart = true, remainMessage = false;
 					IMSMQMessagePtr pMsg;
-					VARIANT timeout, vtFalse;
-					timeout.lVal = 120 * 1000; //120 seconds
-					timeout.vt = VT_I4;
-					vtFalse.boolVal = VARIANT_FALSE;
-					vtFalse.vt = VT_BOOL;
+					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 120L * 1000L }, 
+						vtFalse = { (WORD)VT_BOOL, (WORD)0, (WORD)0, (WORD)0, VARIANT_FALSE };
 					while(pMsg = restart ? pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout) : pQueue->PeekNext(&vtMissing, &vtFalse, &timeout))
 					{
 						label = pMsg->Label;

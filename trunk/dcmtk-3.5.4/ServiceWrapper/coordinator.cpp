@@ -97,57 +97,62 @@ void closeProcHandle(int i)
 	closeProcHandle(workers[i]);
 }
 
-bool predicatorEqual(WorkerProcess wp, const char *studyUid)
+bool predicatorStudyUidEqual(WorkerProcess wp, const char *studyUid)
 {
 	return wp.hProcess && wp.studyUid && 0 == wp.studyUid->compare(studyUid);
 }
 
-void runDcmmkdir(string &studyUid)
+bool predicatorProcessHandleEqual(WorkerProcess wp, const HANDLE handle)
 {
-	list<WorkerProcess>::iterator iter = find_if(dirmakers.begin(), dirmakers.end(), bind2nd(ptr_fun(predicatorEqual), studyUid.c_str()));
-	if(iter == dirmakers.end())
+	return wp.hProcess == handle;
+}
+
+bool runDcmmkdir(string &studyUid)
+{
+	list<WorkerProcess>::iterator iter = find_if(dirmakers.begin(), dirmakers.end(), bind2nd(ptr_fun(predicatorStudyUidEqual), studyUid.c_str()));
+	if(iter != dirmakers.end()) return false;
+
+	WorkerProcess wp;
+	memset(&wp, 0, sizeof(WorkerProcess));
+	unsigned int hashStudy = hashCode(studyUid.c_str());
+	char archivedir[MAX_PATH];
+	int archlen = sprintf_s(archivedir, MAX_PATH, "archdir\\%02X\\%02X\\%02X\\%02X\\%s",
+		hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUid.c_str());
+
+	PROCESS_INFORMATION procinfo;
+	STARTUPINFO sinfo;
+	memset(&procinfo, 0, sizeof(PROCESS_INFORMATION));
+	memset(&sinfo, 0, sizeof(STARTUPINFO));
+	sinfo.cb = sizeof(STARTUPINFO);
+
+	string command(binPath);
+	command.append("dcmmkdir -ds +r --general-purpose-dvd -wu http://localhost/pacs/ +D #v\\#s\\DICOMDIR +id #v\\#s -qn ").append(studyUid).append(" @");
+	string::size_type pos = 0;
+	while(pos != string::npos)
 	{
-		WorkerProcess wp;
-		memset(&wp, 0, sizeof(WorkerProcess));
-		unsigned int hashStudy = hashCode(studyUid.c_str());
-		char archivedir[MAX_PATH];
-		int archlen = sprintf_s(archivedir, MAX_PATH, "archdir\\%02X\\%02X\\%02X\\%02X\\%s",
-			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUid.c_str());
-
-		PROCESS_INFORMATION procinfo;
-		STARTUPINFO sinfo;
-		memset(&procinfo, 0, sizeof(PROCESS_INFORMATION));
-		memset(&sinfo, 0, sizeof(STARTUPINFO));
-		sinfo.cb = sizeof(STARTUPINFO);
-
-		string command(binPath);
-		command.append("dcmmkdir -ds +r --general-purpose-dvd -wu http://localhost/pacs/ +D #v\\#s\\DICOMDIR +id #v\\#s -qn ").append(studyUid).append(" @");
-		string::size_type pos = 0;
-		while(pos != string::npos)
+		pos = command.find( "#v\\#s", pos );
+		if(pos != string::npos)
 		{
-			pos = command.find( "#v\\#s", pos );
-			if(pos != string::npos)
-			{
-				command.replace(pos, sizeof("#v\\#s") - 1, archivedir); // sizeof("#v\\#s") include NULL terminator, minus it
-				pos += archlen;
-			}
+			command.replace(pos, sizeof("#v\\#s") - 1, archivedir); // sizeof("#v\\#s") include NULL terminator, minus it
+			pos += archlen;
 		}
-		char *commandLine = new char[command.length() + 1];
-		copy(command.begin(), command.end(), stdext::checked_array_iterator<char*>(commandLine, command.length()));
-		commandLine[command.length()] = '\0';
-
-		if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
-		{
-			cout << "create process: " << commandLine << endl;
-			wp.hProcess = procinfo.hProcess;
-			wp.hThread = procinfo.hThread;
-			wp.studyUid = new string(studyUid);
-			dirmakers.push_back(wp);
-		}
-		else
-			displayErrorToCerr("create process error");
-		delete[] commandLine;
 	}
+	char *commandLine = new char[command.length() + 1];
+	copy(command.begin(), command.end(), stdext::checked_array_iterator<char*>(commandLine, command.length()));
+	commandLine[command.length()] = '\0';
+
+	if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
+	{
+		cout << "create process: " << commandLine << endl;
+		wp.hProcess = procinfo.hProcess;
+		wp.hThread = procinfo.hThread;
+		wp.studyUid = new string(studyUid);
+		dirmakers.push_back(wp);
+	}
+	else
+		displayErrorToCerr("create process error");
+	delete[] commandLine;
+	return true;
 }
 
 DWORD findIdleOrCompelete()
@@ -217,17 +222,57 @@ DWORD findIdleOrCompelete()
 		result = procnum;
 	}
 
+	// detect dicomdir maker process exit
+	list<WorkerProcess>::iterator iter = dirmakers.begin();
+	working = 0;
+	while(iter != dirmakers.end())
+	{
+		workingHandles[working] = (*iter).hProcess;
+		++iter;
+		++working;
+	}
+	if(working > 0)
+	{
+		wait = WaitForMultipleObjects(working, workingHandles, FALSE, 0);
+		if(wait >= WAIT_OBJECT_0 && wait < WAIT_OBJECT_0 + working)
+		{
+			wait -= WAIT_OBJECT_0;
+			iter = find_if(dirmakers.begin(), dirmakers.end(), bind2nd(ptr_fun(predicatorProcessHandleEqual), workingHandles[wait]));
+			if(iter != dirmakers.end())
+			{
+				closeProcHandle(*iter);
+				// now, dir no log file, skip close log
+				dirmakers.erase(iter);
+			}
+			else
+				cerr << "findIdleOrCompelete: dir maker " << wait << " not found" << endl;
+		}
+	}
+
 	if(result >= 0 && result < procnum && workers[result].studyUid)
 	{
 		string *studyUid = workers[result].studyUid, *instancePathCr = workers[result].instancePathCr;
 		workers[result].studyUid = NULL;
 		workers[result].instancePathCr = NULL;
 		char labelBuffer[250], bodyBuffer[250];
-		instancePathCr->insert(0, "archiving ");
-		string instancePath = (*instancePathCr).substr(0, instancePathCr->length() - 1);
-		RedirectMessageLabelEqualWith(labelBuffer, bodyBuffer, 250, instancePath.c_str(), studyUid->c_str());
-		if(studyUid) delete studyUid;
-		if(instancePathCr) delete instancePathCr;
+		if(instancePathCr)
+		{
+			instancePathCr->insert(0, "archiving ");
+			string instancePath(instancePathCr->substr(0, instancePathCr->length() - 1));
+			RedirectMessageLabelEqualWith(labelBuffer, bodyBuffer, 250, instancePath.c_str(), studyUid->c_str());
+			delete instancePathCr;
+		}
+		else
+			cerr << "findIdleOrCompelete: worker process " << result << " has no instance path" << endl;
+		
+		// insert new dicomdir maker
+		if(studyUid)
+		{
+			runDcmmkdir(*studyUid);
+			delete studyUid;
+		}
+		else
+			cerr << "findIdleOrCompelete: worker process " << result << " has no study uid" << endl;
 	}
 	return result;
 }
@@ -409,7 +454,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 				string::size_type pos = cmd.find(' ');
 				pos = cmd.rfind('\\', pos);
 				binPath = cmd.substr(0, pos + 1);
-				cout << "bin path is " << binPath << endl;
+				//cout << "bin path is " << binPath << endl;
 			}
 
 			MSXML2::IXMLDOMNodePtr attrStudyUid = pXml->selectSingleNode("/wado_query/Patient/Study/@StudyInstanceUID");
