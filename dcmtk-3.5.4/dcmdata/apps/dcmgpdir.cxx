@@ -517,7 +517,7 @@ int main(int argc, char *argv[])
 			cmd.getParam(i, param);
 			if(*param == '@' && opt_queueName)
 			{
-				COUT << "read file path from input stream" << endl;
+				//COUT << "read file path from input stream" << endl;
 				readQueue = true;
 				break;
 			}
@@ -611,20 +611,16 @@ int main(int argc, char *argv[])
 					IMSMQMessagePtr pMsg;
 					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 120L * 1000L }, 
 						vtFalse = { (WORD)VT_BOOL, (WORD)0, (WORD)0, (WORD)0, VARIANT_FALSE };
-					int step;
 traversal_restart:
-					step = 0;
 					try
 					{
 						while(pMsg = cursorMoved ? pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout) : pQueue->PeekNext(&vtMissing, &vtFalse, &timeout))
 						{
-							step = 1;
 							label = pMsg->Label;
 							if(label.find("compressed") == 0)
 							{
 								//COUT << label << endl;
 								pMsg = pQueue->ReceiveCurrent();
-								step = 2;
 								cursorMoved = true;
 								remainMessage = true;
 								string strbody(_bstr_t(pMsg->Body.bstrVal));
@@ -658,32 +654,24 @@ traversal_restart:
 								//COUT << label << endl;
 								if(remainMessage)
 								{
-									step = 3;
 									remainMessage = false;
 									pQueue->Reset();
 									cursorMoved = true;
-									step = 4;
 									Sleep(1000);
-									step = 0;
+									//COUT << "remain message, restart" << endl;
 									continue;
 								}
 								else
 								{
-									step = 5;
 									pMsg = pQueue->ReceiveCurrent();
 									cursorMoved = true;
-									step = 6;
 									string strbody(_bstr_t(pMsg->Body.bstrVal));
 									copy(strbody.begin(), strbody.end(), stdext::checked_array_iterator<char*>(fileNameBuffer, MAX_PATH));
 									fileNameBuffer[strbody.length()] = '\0';
 									opt_csv = fileNameBuffer;
+									//COUT << "last message, csv = " << opt_csv << endl;
 									break;
 								}
-							}
-							else if(label.find("archiving") == 0)
-							{
-								//COUT << label << endl;
-								remainMessage = true;
 							}
 							else
 							{
@@ -698,7 +686,7 @@ traversal_restart:
 							remainMessage = false;
 							pQueue->Reset();
 							cursorMoved = true;
-							COUT << "make dicomdir: concurrence of receiving message, restart at step " << step << endl;
+							COUT << "make dicomdir: concurrence of receiving message, restart" << endl;
 							goto traversal_restart;
 						}
 					}
@@ -763,13 +751,14 @@ traversal_restart:
 				result = ddir.writeDicomDir(opt_enctype, opt_glenc);
 		}
 	}
-
 	if(opt_csv && *opt_csv != '\0')
 	{
+		//COUT << "dicomdir OK, create index from " << opt_csv << endl;
 		char buffer[MAX_PATH];
 		strcpy_s(buffer, MAX_PATH, opt_csv);
 		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
 	}
+	//COUT << "create index OK" << endl;
 
 #ifdef BUILD_DCMGPDIR_AS_DCMMKDIR
 	// deregister global decompression codecs
