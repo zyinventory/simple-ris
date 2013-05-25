@@ -15,11 +15,12 @@ using namespace std;
 using namespace MSMQ;
 #include "commonlib.h"
 
+IMSMQQueuePtr OpenOrCreateQueue(const char *queueName, MQACCESS access = MQ_SEND_ACCESS) throw(...);
 bool RedirectMessageLabelEqualWith(const char *equalWith, const char *queueName);
 bool SendCommonMessageToQueue(const char *label, const char *body, const long priority, const char *queueName);
 
 typedef struct _WorkerProcess {
-	string *instancePathCr, *csvPathCr, *studyUid; // command level
+	string *instancePath, *csvPath, *studyUid; // command level
     HANDLE hProcess, hThread, mutexIdle, mutexRec, hChildStdInWrite; // process level
 	HANDLE hLogFile; string *logFilePath; // slot level
 } WorkerProcess, *PWorkerProcess, *LPWorkerProcess;
@@ -32,40 +33,38 @@ static list<WorkerProcess> dirmakers;
 
 void closeProcHandle(WorkerProcess &wp)
 {
+	if(wp.csvPath)
+	{
+		cout << "close process csv = " << *wp.csvPath << endl;
+		delete wp.csvPath;
+		wp.csvPath = NULL;
+	}
+
 	bool hasStudyUid = false;
-	if(wp.csvPathCr) // dirmaker
+	if(wp.studyUid)
 	{
-		cout << "close process csv = " << wp.csvPathCr;
-		delete wp.csvPathCr;
-		wp.csvPathCr = NULL;
+		cout << "close process study = " << *wp.studyUid;
+		hasStudyUid = true;
 	}
-	else // worker
+	if(wp.instancePath)
 	{
-		if(wp.studyUid)
-		{
-			cout << "close process study = " << *wp.studyUid;
-			hasStudyUid = true;
-		}
-		if(wp.instancePathCr)
-		{
-			if(hasStudyUid)
-				cout << ", instance = " << *wp.instancePathCr;
-			else
-				cout << "close process instance = " << *wp.instancePathCr;
-		}
+		if(hasStudyUid)
+			cout << ", instance = " << *wp.instancePath;
 		else
-			cout << endl;
+			cout << "close process instance = " << *wp.instancePath;
 	}
+	else
+		cout << endl;
 
 	if(wp.studyUid)
 	{
 		delete wp.studyUid;
 		wp.studyUid = NULL;
 	}
-	if(wp.instancePathCr)
+	if(wp.instancePath)
 	{
-		delete wp.instancePathCr;
-		wp.instancePathCr = NULL;
+		delete wp.instancePath;
+		wp.instancePath = NULL;
 	}
 	if(wp.hChildStdInWrite)
 	{
@@ -110,10 +109,15 @@ bool predicatorProcessHandleEqual(WorkerProcess wp, const HANDLE handle)
 	return wp.hProcess == handle;
 }
 
-bool runDcmmkdir(string &studyUid)
+bool predicatorHasCsvPath(WorkerProcess wp)
+{
+	return wp.csvPath != NULL;
+}
+
+list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 {
 	list<WorkerProcess>::iterator iter = find_if(dirmakers.begin(), dirmakers.end(), bind2nd(ptr_fun(predicatorStudyUidEqual), studyUid.c_str()));
-	if(iter != dirmakers.end()) return false;
+	if(iter != dirmakers.end()) return iter;
 
 	WorkerProcess wp;
 	memset(&wp, 0, sizeof(WorkerProcess));
@@ -151,11 +155,12 @@ bool runDcmmkdir(string &studyUid)
 		wp.hThread = procinfo.hThread;
 		wp.studyUid = new string(studyUid);
 		dirmakers.push_back(wp);
+		iter = --(dirmakers.end());
 	}
 	else
 		displayErrorToCerr("create process error");
 	delete[] commandLine;
-	return true;
+	return iter;
 }
 
 DWORD findIdleOrCompelete()
@@ -252,25 +257,25 @@ DWORD findIdleOrCompelete()
 		}
 	}
 
+	//if compress command is accomplished, clear command level variant in WorkerProcess.
 	if(result >= 0 && result < procnum && workers[result].studyUid)
 	{
-		string *studyUid = workers[result].studyUid, *instancePathCr = workers[result].instancePathCr;
+		string *studyUid = workers[result].studyUid, *instancePath = workers[result].instancePath;
 		workers[result].studyUid = NULL;
-		workers[result].instancePathCr = NULL;
-		if(instancePathCr)
+		workers[result].instancePath = NULL;
+		if(instancePath)
 		{
-			instancePathCr->insert(0, "archiving ");
-			string instancePath(instancePathCr->substr(0, instancePathCr->length() - 1));
-			RedirectMessageLabelEqualWith(instancePath.c_str(), studyUid->c_str());
-			delete instancePathCr;
+			string label("compressed ");
+			label.append(*instancePath);
+			SendCommonMessageToQueue(label.c_str(), instancePath->c_str(), MQ_PRIORITY_COMPRESSED, studyUid->c_str());
+			delete instancePath;
 		}
 		else
 			cerr << "findIdleOrCompelete: worker process " << result << " has no instance path" << endl;
 		
-		// insert new dicomdir maker
 		if(studyUid)
 		{
-			runDcmmkdir(*studyUid);
+			runDcmmkdir(*studyUid); // make sure dicomdir maker existing
 			delete studyUid;
 		}
 		else
@@ -386,31 +391,15 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 		if(workers[index].mutexIdle && workers[index].mutexRec)
 		{
 			//cout << "writing " << iofile << endl;
-			iofile.append(1, '\n');  // for dcmcjpeg: cin.getline()
+			string iofileCr(iofile);
+			iofileCr.append(1, '\n');  // for dcmcjpeg: cin.getline()
 			DWORD bytesWritten;
-			WriteFile(workers[index].hChildStdInWrite, iofile.c_str(), iofile.length(), &bytesWritten, NULL);
+			WriteFile(workers[index].hChildStdInWrite, iofileCr.c_str(), iofileCr.length(), &bytesWritten, NULL);
 			if(WAIT_OBJECT_0 == SignalObjectAndWait(workers[index].mutexIdle, workers[index].mutexRec, INFINITE, FALSE))
 			{
 				workers[index].studyUid = new string(studyUid);
 				string::size_type destPos = iofile.find(' ') + 1;
-				string::size_type crPos = iofile.rfind('\n');
-				if(string::npos == crPos)
-				{
-					string body(iofile.substr(destPos));
-					string label("archiving ");
-					label.append(body);
-					SendCommonMessageToQueue(label.c_str(), body.c_str(), MQ_PRIORITY_ARCHIVING, studyUid.c_str());
-					workers[index].instancePathCr = new string(body.append(1, '\n'));
-				}
-				else
-				{
-					string body(iofile.substr(destPos));
-					workers[index].instancePathCr = new string(body);
-					body.erase(body.rfind('\n'));
-					string label("archiving ");
-					label.append(body);
-					SendCommonMessageToQueue(label.c_str(), body.c_str(), MQ_PRIORITY_ARCHIVING, studyUid.c_str());
-				}
+				workers[index].instancePath = new string(iofile.substr(destPos));
 				ReleaseMutex(workers[index].mutexRec);
 			}
 			else
@@ -431,6 +420,23 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 		cerr << "create process " << index << " failed" << ':' << commandLine << endl;
 	}
 	delete[] commandLine;
+}
+
+void checkStudyAccomplished()
+{
+	list<WorkerProcess>::iterator iter = dirmakers.begin();
+	while((iter = find_if(iter, dirmakers.end(), ptr_fun(predicatorHasCsvPath))) != dirmakers.end())
+	{
+		size_t i;
+		for(i = 0; i < procnum; ++i)
+		{
+			if(workers[i].hProcess && workers[i].studyUid && workers[i].studyUid->compare(*(*iter).studyUid) == 0)
+				break; //some command has not accomplished
+		}
+		if(i >= procnum) //no more command running
+			SendCommonMessageToQueue("dcmmkdir", (*iter).csvPath->c_str(), MQ_PRIORITY_DCMMKDIR, (*iter).studyUid->c_str());
+		++iter;
+	}
 }
 
 void processMessage(IMSMQMessagePtr pMsg)
@@ -495,8 +501,6 @@ void processMessage(IMSMQMessagePtr pMsg)
 							buffer[pos] = '>';
 							perror(buffer);
 						}
-						//else
-							//runDcmmkdir(studyUid);
 					}
 					else
 					{
@@ -511,6 +515,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 					{
 						if(index == procnum) index = 0;
 						runArchiveInstance(cmd, index, studyUid);
+						checkStudyAccomplished();
 					}
 					else
 					{
@@ -521,8 +526,8 @@ void processMessage(IMSMQMessagePtr pMsg)
 			}
 			else  //pMsg->Label == _bstr_t(ARCHIVE_STUDY)
 			{
-				//runDcmmkdir(studyUid);
-				string::size_type begin = cmd.find("-ic ");
+				string::size_type begin = cmd.find("-ic "), end;
+				string csvPath;
 				if(begin == string::npos)
 				{
 					begin = cmd.find("--input-csv ");
@@ -532,11 +537,19 @@ void processMessage(IMSMQMessagePtr pMsg)
 					begin += 4;
 				if(begin != string::npos)
 				{
-					string::size_type end = cmd.find(' ', begin);
-					SendCommonMessageToQueue("dcmmkdir", cmd.substr(begin, end - begin).c_str(), MQ_PRIORITY_DCMMKDIR, studyUid.c_str());
+					end = cmd.find(' ', begin);
+					csvPath = cmd.substr(begin, end - begin);
 				}
 				else
 					cerr << "process message error: no csv file: " << cmd << endl;
+				IMSMQQueuePtr pQueue = OpenOrCreateQueue(studyUid.c_str());
+				pQueue->Close();
+				list<WorkerProcess>::iterator iter = runDcmmkdir(studyUid);
+				if(iter != dirmakers.end() && csvPath.length() > 0)
+					(*iter).csvPath = new string(csvPath);
+				else
+					cerr << "process message error: create or find dicomdir maker process failed" << endl;
+				checkStudyAccomplished();
 			}
 		}
 		catch(_com_error &comErr)
@@ -579,26 +592,20 @@ int pollQueue(const _TCHAR *queueName)
 	HRESULT hr;
 	try
 	{
-		IMSMQQueueInfoPtr pInfo;
-		hr = pInfo.CreateInstance("MSMQ.MSMQQueueInfo");
-		if(FAILED(hr)) throw _com_error(hr, NULL);
-		pInfo->PathName = queueName;
-		IMSMQQueuePtr pQueue = pInfo->Open(MQ_RECEIVE_ACCESS, MQ_DENY_NONE);
+		IMSMQQueuePtr pQueue = OpenOrCreateQueue(queueName, MQ_RECEIVE_ACCESS);
 		_variant_t waitStart(1 * 1000); // 1 seconds
 		_variant_t waitNext(1 * 1000); // 1 seconds
 		while( ! GetSignalInterruptValue() )
 		{
 			IMSMQMessagePtr pMsg = pQueue->Receive(NULL, NULL, NULL, &waitStart);
-			if(pMsg)
+			while(pMsg)
 			{
-				while(pMsg)
-				{
-					processMessage(pMsg);
-					pMsg = pQueue->Receive(NULL, NULL, NULL, &waitNext);
-				}
+				processMessage(pMsg);
+				pMsg = pQueue->Receive(NULL, NULL, NULL, &waitNext);
 			}
 			// no message, try cleaning
 			DWORD index = findIdleOrCompelete();
+			checkStudyAccomplished();
 			if(index == WAIT_FAILED)
 				throw "findIdle error";
 			else if(index == procnum) // no process, close all log file
