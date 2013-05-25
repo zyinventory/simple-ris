@@ -53,7 +53,7 @@ void closeProcHandle(WorkerProcess &wp)
 		else
 			cout << "close process instance = " << *wp.instancePath;
 	}
-	else
+	if(wp.csvPath || wp.studyUid || wp.instancePath)
 		cout << endl;
 
 	if(wp.studyUid)
@@ -275,6 +275,7 @@ DWORD findIdleOrCompelete()
 		
 		if(studyUid)
 		{
+			//cout << "compress OK, make sure dcmmkdir start" << endl;
 			runDcmmkdir(*studyUid); // make sure dicomdir maker existing
 			delete studyUid;
 		}
@@ -434,7 +435,12 @@ void checkStudyAccomplished()
 				break; //some command has not accomplished
 		}
 		if(i >= procnum) //no more command running
-			SendCommonMessageToQueue("dcmmkdir", (*iter).csvPath->c_str(), MQ_PRIORITY_DCMMKDIR, (*iter).studyUid->c_str());
+		{
+			string *csvPath = (*iter).csvPath;
+			(*iter).csvPath = NULL;
+			SendCommonMessageToQueue("dcmmkdir", csvPath->c_str(), MQ_PRIORITY_DCMMKDIR, (*iter).studyUid->c_str());
+			delete csvPath;
+		}
 		++iter;
 	}
 }
@@ -544,6 +550,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 					cerr << "process message error: no csv file: " << cmd << endl;
 				IMSMQQueuePtr pQueue = OpenOrCreateQueue(studyUid.c_str());
 				pQueue->Close();
+				//cout << "receive message archive study, start dcmmkdir" << endl;
 				list<WorkerProcess>::iterator iter = runDcmmkdir(studyUid);
 				if(iter != dirmakers.end() && csvPath.length() > 0)
 					(*iter).csvPath = new string(csvPath);
