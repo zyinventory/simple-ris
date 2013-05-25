@@ -9,6 +9,45 @@
 using namespace std;
 using namespace MSMQ;
 
+IMSMQQueuePtr OpenOrCreateQueue(const char *queueName) throw(...)
+{
+	HRESULT hr;
+	IMSMQQueueInfoPtr pInfo;
+	hr = pInfo.CreateInstance(OLESTR("MSMQ.MSMQQueueInfo"));
+	if(FAILED(hr)) throw _com_error(hr, NULL);
+	if(queueName)
+	{
+		string qname(queueName);
+		if(qname.find(".\\private$\\") != 0)
+			qname.insert(0, ".\\private$\\");
+		pInfo->PathName = qname.c_str();
+	}
+	else
+		pInfo->PathName = QUEUE_NAME;
+	IMSMQQueuePtr pQueue;
+	try
+	{
+		pQueue = pInfo->Open(MQ_SEND_ACCESS, MQ_DENY_NONE);
+	}
+	catch(_com_error &openerr)
+	{
+		if(openerr.Error() == MQ_ERROR_QUEUE_NOT_FOUND)
+		{
+			hr = pInfo->Create();
+			if(FAILED(hr)) throw _com_error(hr);
+			pQueue = pInfo->Open(MQ_SEND_ACCESS, MQ_DENY_NONE);
+		}
+		else if(openerr.Error() == MQ_ERROR_ILLEGAL_QUEUE_PATHNAME)
+		{
+			cerr << "OpenOrCreateQueue error: Queue name: " << queueName << " invalid" << endl;
+			throw;
+		}
+		else
+			throw;
+	}
+	return pQueue;
+}
+
 bool SendArchiveMessageToQueue(const char *label, const char *body, const char *cmd)
 {
 	HRESULT hr;
@@ -59,29 +98,7 @@ bool SendArchiveMessageToQueue(const char *label, const char *body, const char *
 			}
 		}
 
-		IMSMQQueueInfoPtr pInfo;
-		hr = pInfo.CreateInstance(OLESTR("MSMQ.MSMQQueueInfo"));
-		if(FAILED(hr)) throw _com_error(hr, NULL);
-		pInfo->PathName = QUEUE_NAME;
-		IMSMQQueuePtr pQueue;
-		try
-		{
-			pQueue = pInfo->Open(MQ_SEND_ACCESS, MQ_DENY_NONE);
-		}
-		catch(_com_error &openerr)
-		{
-			if(openerr.Error() == MQ_ERROR_QUEUE_NOT_FOUND)
-			{
-				hr = pInfo->Create();
-				if(FAILED(hr)) throw _com_error(hr);
-				pQueue = pInfo->Open(MQ_SEND_ACCESS, MQ_DENY_NONE);
-			}
-			else
-			{
-				throw;
-			}
-		}
-
+		IMSMQQueuePtr pQueue = OpenOrCreateQueue(NULL);
 		IMSMQMessagePtr pMsg;
 		hr = pMsg.CreateInstance(OLESTR("MSMQ.MSMQMessage"));
 		if(FAILED(hr)) throw _com_error(hr, NULL);

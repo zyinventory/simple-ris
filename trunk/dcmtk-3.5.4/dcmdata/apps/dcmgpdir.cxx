@@ -511,12 +511,10 @@ int main(int argc, char *argv[])
 		else
 			app.printError("Missing parameter dcmfile-in");
 	} else {
-		COUT << "param count is " << count << endl;
 		/* iterate over all input filenames */
 		for (int i = 1; i <= count; i++)
 		{
 			cmd.getParam(i, param);
-			COUT << "param " << i << " is " << param << endl;
 			if(*param == '@' && opt_queueName)
 			{
 				COUT << "read file path from input stream" << endl;
@@ -624,7 +622,7 @@ traversal_restart:
 							label = pMsg->Label;
 							if(label.find("compressed") == 0)
 							{
-								COUT << label << endl;
+								//COUT << label << endl;
 								pMsg = pQueue->ReceiveCurrent();
 								step = 2;
 								cursorMoved = true;
@@ -657,7 +655,7 @@ traversal_restart:
 							}
 							else if(label.find("dcmmkdir") == 0)
 							{
-								COUT << label << endl;
+								//COUT << label << endl;
 								if(remainMessage)
 								{
 									step = 3;
@@ -684,7 +682,7 @@ traversal_restart:
 							}
 							else if(label.find("archiving") == 0)
 							{
-								COUT << label << endl;
+								//COUT << label << endl;
 								remainMessage = true;
 							}
 							else
@@ -709,12 +707,12 @@ traversal_restart:
 				}
 				catch(_com_error &comErr)
 				{
-					CERR << "make dicomdir: " << comErr.ErrorMessage() << endl;
+					CERR << "make dicomdir error: " << comErr.ErrorMessage() << endl;
 				}
 				catch(...)
 				{
 					_com_error ce(AtlHresultFromLastError());
-					CERR << "make dicomdir: unknown error " << ce.ErrorMessage() << endl;
+					CERR << "make dicomdir unknown error: " << ce.ErrorMessage() << endl;
 				}
 				CoUninitialize();
 			}
