@@ -674,21 +674,24 @@ int main(int argc, char *argv[])
 	{
 		if(mutexIdle && mutexRec)
 			if(WAIT_OBJECT_0 != SignalObjectAndWait(mutexIdle, mutexRec, INFINITE, FALSE)) displayErrorToCerr("enter idle");
-		COUT << "waiting input..." << endl;
+		if (opt_verbose) COUT << "waiting input..." << endl;
 		if(readcmd || (cin.getline(ifile, MAX_PATH, ' ').good() && cin.getline(ofile, MAX_PATH, '\n').good()))
 		{
-			COUT << "input: " << opt_ifname << endl;
-			COUT << "output: " << opt_ofname << endl;
+			if (opt_verbose)
+			{
+				COUT << "input: " << opt_ifname << endl;
+				COUT << "output: " << opt_ofname << endl;
+			}
 		}
 		else
 		{
-			COUT << "stdin readline failed" << endl;
+			if (opt_verbose) COUT << "stdin readline failed" << endl;
 			break;
 		}
 
 		if(*opt_ifname == '\0' || *opt_ofname == '\0')
 		{
-			COUT << "stdin readline failed" << endl;
+			if (opt_verbose) COUT << "stdin readline failed" << endl;
 			break;
 		}
 

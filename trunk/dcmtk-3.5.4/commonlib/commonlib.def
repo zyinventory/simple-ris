@@ -15,8 +15,6 @@ EXPORTS
 	SvcInit
 	ReportSvcStatus
 	getServiceName
-	RedirectMessageLabelEqualWith
-	SendCommonMessageToQueue
 	SendArchiveMessageToQueue
 	dcmdate2tm
 	generateStudyXML

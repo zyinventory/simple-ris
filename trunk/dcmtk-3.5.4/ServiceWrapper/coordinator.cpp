@@ -15,6 +15,9 @@ using namespace std;
 using namespace MSMQ;
 #include "commonlib.h"
 
+bool RedirectMessageLabelEqualWith(const char *equalWith, const char *queueName);
+bool SendCommonMessageToQueue(const char *label, const char *body, const long priority, const char *queueName);
+
 typedef struct _WorkerProcess {
 	string *instancePathCr, *csvPathCr, *studyUid; // command level
     HANDLE hProcess, hThread, mutexIdle, mutexRec, hChildStdInWrite; // process level
@@ -157,7 +160,7 @@ bool runDcmmkdir(string &studyUid)
 
 DWORD findIdleOrCompelete()
 {
-	size_t working = 0, idle;
+	size_t working = 0, idle = procnum;
 	DWORD  wait, result = 0;
 	HANDLE workingHandles[MAX_CORE];
 	//collect all working process
@@ -169,7 +172,7 @@ DWORD findIdleOrCompelete()
 			++working;
 		}
 		else
-			idle = i;
+			idle = idle == procnum ? i : idle;
 	}
 
 	if(working >= procnum)  // all process is working
@@ -254,12 +257,11 @@ DWORD findIdleOrCompelete()
 		string *studyUid = workers[result].studyUid, *instancePathCr = workers[result].instancePathCr;
 		workers[result].studyUid = NULL;
 		workers[result].instancePathCr = NULL;
-		char labelBuffer[250], bodyBuffer[250];
 		if(instancePathCr)
 		{
 			instancePathCr->insert(0, "archiving ");
 			string instancePath(instancePathCr->substr(0, instancePathCr->length() - 1));
-			RedirectMessageLabelEqualWith(labelBuffer, bodyBuffer, 250, instancePath.c_str(), studyUid->c_str());
+			RedirectMessageLabelEqualWith(instancePath.c_str(), studyUid->c_str());
 			delete instancePathCr;
 		}
 		else
@@ -345,7 +347,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 					!(workers[index].mutexIdle = OpenMutex(SYNCHRONIZE, FALSE, mutexIdleName.c_str())) && 
 					GetLastError() == ERROR_FILE_NOT_FOUND)
 				{
-					cout << "waiting " << mutexIdleName << endl;
+					//cout << "waiting " << mutexIdleName << endl;
 					Sleep(56);
 				}
 			}
@@ -357,7 +359,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 					!(workers[index].mutexRec = OpenMutex(SYNCHRONIZE, FALSE, mutexRecName.c_str())) && 
 					GetLastError() == ERROR_FILE_NOT_FOUND)
 				{
-					cout << "waiting " << mutexRecName << endl;
+					//cout << "waiting " << mutexRecName << endl;
 					Sleep(56);
 				}
 			}
@@ -383,7 +385,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 	{
 		if(workers[index].mutexIdle && workers[index].mutexRec)
 		{
-			cout << "writing " << iofile << endl;
+			//cout << "writing " << iofile << endl;
 			iofile.append(1, '\n');  // for dcmcjpeg: cin.getline()
 			DWORD bytesWritten;
 			WriteFile(workers[index].hChildStdInWrite, iofile.c_str(), iofile.length(), &bytesWritten, NULL);
@@ -397,7 +399,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 					string body(iofile.substr(destPos));
 					string label("archiving ");
 					label.append(body);
-					SendCommonMessageToQueue(label.c_str(), body.c_str(), 7, studyUid.c_str());
+					SendCommonMessageToQueue(label.c_str(), body.c_str(), MQ_PRIORITY_ARCHIVING, studyUid.c_str());
 					workers[index].instancePathCr = new string(body.append(1, '\n'));
 				}
 				else
@@ -407,7 +409,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 					body.erase(body.rfind('\n'));
 					string label("archiving ");
 					label.append(body);
-					SendCommonMessageToQueue(label.c_str(), body.c_str(), 7, studyUid.c_str());
+					SendCommonMessageToQueue(label.c_str(), body.c_str(), MQ_PRIORITY_ARCHIVING, studyUid.c_str());
 				}
 				ReleaseMutex(workers[index].mutexRec);
 			}
@@ -531,7 +533,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 				if(begin != string::npos)
 				{
 					string::size_type end = cmd.find(' ', begin);
-					SendCommonMessageToQueue("dcmmkdir", cmd.substr(begin, end - begin).c_str(), 0, studyUid.c_str());
+					SendCommonMessageToQueue("dcmmkdir", cmd.substr(begin, end - begin).c_str(), MQ_PRIORITY_DCMMKDIR, studyUid.c_str());
 				}
 				else
 					cerr << "process message error: no csv file: " << cmd << endl;

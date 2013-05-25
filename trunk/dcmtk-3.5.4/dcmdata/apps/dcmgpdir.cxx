@@ -609,70 +609,99 @@ int main(int argc, char *argv[])
 						}
 					}
 
-					bool restart = true, remainMessage = false;
+					bool remainMessage = false, cursorMoved = true;
 					IMSMQMessagePtr pMsg;
 					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 120L * 1000L }, 
 						vtFalse = { (WORD)VT_BOOL, (WORD)0, (WORD)0, (WORD)0, VARIANT_FALSE };
-					while(pMsg = restart ? pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout) : pQueue->PeekNext(&vtMissing, &vtFalse, &timeout))
+					int step;
+traversal_restart:
+					step = 0;
+					try
 					{
-						label = pMsg->Label;
-						if(label.find("compressed") == 0)
+						while(pMsg = cursorMoved ? pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout) : pQueue->PeekNext(&vtMissing, &vtFalse, &timeout))
 						{
-							pMsg = pQueue->ReceiveCurrent();
-							remainMessage = true;
-							string strbody(_bstr_t(pMsg->Body.bstrVal));
-							string::size_type archpos = strbody.find(opt_directory);
-							if(archpos != string::npos)
+							step = 1;
+							label = pMsg->Label;
+							if(label.find("compressed") == 0)
 							{
-								size_t dirlen = strlen(opt_directory);
-								if(strbody[archpos + dirlen] == '\\') ++dirlen;
-								strbody.erase(archpos, dirlen);
-							}
-							copy(strbody.begin(), strbody.end(), stdext::checked_array_iterator<char*>(fileNameBuffer, MAX_PATH));
-							fileNameBuffer[strbody.length()] = '\0';
-							/* add files to the DICOMDIR */
-							result = ddir.addDicomFile(fileNameBuffer, opt_directory);
-							if (result.bad())
-							{
-								badFiles.push_back(fileNameBuffer);
-								if (!ddir.abortMode())
+								COUT << label << endl;
+								pMsg = pQueue->ReceiveCurrent();
+								step = 2;
+								cursorMoved = true;
+								remainMessage = true;
+								string strbody(_bstr_t(pMsg->Body.bstrVal));
+								string::size_type archpos = strbody.find(opt_directory);
+								if(archpos != string::npos)
 								{
-									/* ignore inconsistent file, just warn (already done inside "ddir") */
-									result = EC_Normal;
+									size_t dirlen = strlen(opt_directory);
+									if(strbody[archpos + dirlen] == '\\') ++dirlen;
+									strbody.erase(archpos, dirlen);
 								}
-							} else
-							{
-								++goodFiles;
-								COUT << "good file: " << goodFiles << endl;
+								copy(strbody.begin(), strbody.end(), stdext::checked_array_iterator<char*>(fileNameBuffer, MAX_PATH));
+								fileNameBuffer[strbody.length()] = '\0';
+								/* add files to the DICOMDIR */
+								result = ddir.addDicomFile(fileNameBuffer, opt_directory);
+								if (result.bad())
+								{
+									badFiles.push_back(fileNameBuffer);
+									if (!ddir.abortMode())
+									{
+										/* ignore inconsistent file, just warn (already done inside "ddir") */
+										result = EC_Normal;
+									}
+								} else
+								{
+									++goodFiles;
+									if(ddir.verboseMode()) COUT << "dicomdir maker: add file " << fileNameBuffer << endl;
+								}
 							}
-						}
-						else if(label.find("dcmmkdir") == 0)
-						{
-							if(remainMessage)
+							else if(label.find("dcmmkdir") == 0)
 							{
-								restart = true;
-								remainMessage = false;
-								pQueue->Reset();
-								Sleep(1000);
-								continue;
+								COUT << label << endl;
+								if(remainMessage)
+								{
+									step = 3;
+									remainMessage = false;
+									pQueue->Reset();
+									cursorMoved = true;
+									step = 4;
+									Sleep(1000);
+									step = 0;
+									continue;
+								}
+								else
+								{
+									step = 5;
+									pMsg = pQueue->ReceiveCurrent();
+									cursorMoved = true;
+									step = 6;
+									string strbody(_bstr_t(pMsg->Body.bstrVal));
+									copy(strbody.begin(), strbody.end(), stdext::checked_array_iterator<char*>(fileNameBuffer, MAX_PATH));
+									fileNameBuffer[strbody.length()] = '\0';
+									opt_csv = fileNameBuffer;
+									break;
+								}
+							}
+							else if(label.find("archiving") == 0)
+							{
+								COUT << label << endl;
+								remainMessage = true;
 							}
 							else
 							{
-								pMsg = pQueue->ReceiveCurrent();
-								string strbody(_bstr_t(pMsg->Body.bstrVal));
-								copy(strbody.begin(), strbody.end(), stdext::checked_array_iterator<char*>(fileNameBuffer, MAX_PATH));
-								fileNameBuffer[strbody.length()] = '\0';
-								opt_csv = fileNameBuffer;
-								break;
+								CERR << "make dicomdir: unknown message: " << label << endl;
 							}
 						}
-						else if(label.find("archiving") == 0)
+					}
+					catch(_com_error &comErr)
+					{
+						if(comErr.Error() == MQ_ERROR_MESSAGE_ALREADY_RECEIVED)
 						{
-							remainMessage = true;
-						}
-						else
-						{
-							cerr << "dicomdir maker has received an unknown message: " << label << endl;
+							remainMessage = false;
+							pQueue->Reset();
+							cursorMoved = true;
+							COUT << "make dicomdir: concurrence of receiving message, restart at step " << step << endl;
+							goto traversal_restart;
 						}
 					}
 					hr = pQueue->Close();
@@ -680,12 +709,12 @@ int main(int argc, char *argv[])
 				}
 				catch(_com_error &comErr)
 				{
-					cerr << "RedirectMessage´íÎó£º" << comErr.ErrorMessage() << endl;
+					CERR << "make dicomdir: " << comErr.ErrorMessage() << endl;
 				}
 				catch(...)
 				{
 					_com_error ce(AtlHresultFromLastError());
-					cerr << "RedirectMessage unknown error: " << ce.ErrorMessage() << endl;
+					CERR << "make dicomdir: unknown error " << ce.ErrorMessage() << endl;
 				}
 				CoUninitialize();
 			}
@@ -737,41 +766,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	char timeBuffer[32];
-#ifndef _DEBUG
-	if(ddir.verboseMode())
-#endif
-	{
-		generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer));
-		COUT << "end generate dicomdir " << timeBuffer << endl;
-	}
-
 	if(opt_csv && *opt_csv != '\0')
 	{
-#ifndef _DEBUG
-		if(ddir.verboseMode())
-#endif
-		{
-			generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer));
-			COUT << "begin generate Index " << timeBuffer << endl;
-		}
 		char buffer[MAX_PATH];
 		strcpy_s(buffer, MAX_PATH, opt_csv);
 		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
-#ifndef _DEBUG
-		if(ddir.verboseMode())
-#endif
-		{
-			generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer));
-			COUT << "end generate Index " << timeBuffer << endl;
-		}
-	}
-#ifndef _DEBUG
-	if(ddir.verboseMode())
-#endif
-	{
-		generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer));
-		COUT << "begin generate dicomdir " << timeBuffer << endl;
 	}
 
 #ifdef BUILD_DCMGPDIR_AS_DCMMKDIR
