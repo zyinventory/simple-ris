@@ -65,7 +65,6 @@ bool SendCommonMessageToCurrentQueue(const char *label, const char *body, const 
 
 bool SendCommonMessageToQueue(const char *label, const char *body, const long priority, const char *queueName)
 {
-	HRESULT hr;
 	try
 	{
 		IMSMQQueuePtr pQueue = OpenOrCreateQueue(queueName, MQ_SEND_ACCESS);
