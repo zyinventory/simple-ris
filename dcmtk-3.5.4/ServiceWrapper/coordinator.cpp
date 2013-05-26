@@ -56,30 +56,10 @@ void closeProcHandle(WorkerProcess &wp)
 	if(wp.csvPath || wp.studyUid || wp.instancePath)
 		cout << endl;
 
-	if(wp.studyUid)
-	{
-		delete wp.studyUid;
-		wp.studyUid = NULL;
-	}
-	if(wp.instancePath)
-	{
-		delete wp.instancePath;
-		wp.instancePath = NULL;
-	}
 	if(wp.hChildStdInWrite)
 	{
 		CloseHandle(wp.hChildStdInWrite);
 		wp.hChildStdInWrite = NULL;
-	}
-	if(wp.hThread)
-	{
-		CloseHandle(wp.hThread);
-		wp.hThread = NULL;
-	}
-	if(wp.hProcess)
-	{
-		CloseHandle(wp.hProcess);
-		wp.hProcess = NULL;
 	}
 	if(wp.mutexIdle)
 	{
@@ -90,6 +70,27 @@ void closeProcHandle(WorkerProcess &wp)
 	{
 		CloseHandle(wp.mutexRec);
 		wp.mutexRec = NULL;
+	}
+	if(wp.studyUid)
+	{
+		delete wp.studyUid;
+		wp.studyUid = NULL;
+	}
+	if(wp.instancePath)
+	{
+		delete wp.instancePath;
+		wp.instancePath = NULL;
+	}
+	WaitForSingleObject(wp.hProcess, 10 * 1000);
+	if(wp.hThread)
+	{
+		CloseHandle(wp.hThread);
+		wp.hThread = NULL;
+	}
+	if(wp.hProcess)
+	{
+		CloseHandle(wp.hProcess);
+		wp.hProcess = NULL;
 	}
 }
 
@@ -132,6 +133,30 @@ list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 	memset(&sinfo, 0, sizeof(STARTUPINFO));
 	sinfo.cb = sizeof(STARTUPINFO);
 
+	char timebuf[48];
+	generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", timebuf, 48);
+	ostringstream strbuf;
+	strbuf << timebuf << studyUid << ".txt";
+	wp.logFilePath = new string(strbuf.str());
+	prepareFileDir(wp.logFilePath->c_str());
+	wp.hLogFile = CreateFile(wp.logFilePath->c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(wp.hLogFile == INVALID_HANDLE_VALUE)
+	{
+		wp.hLogFile = NULL;
+		delete wp.logFilePath;
+		wp.logFilePath = NULL;
+		_com_error ce(AtlHresultFromLastError());
+		cerr << TEXT("runCommandÎ´Öª´íÎó£º") << ce.ErrorMessage() << endl;
+	}
+
+	if(wp.hLogFile)
+	{
+		sinfo.dwFlags |= STARTF_USESTDHANDLES;
+		sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+		sinfo.hStdOutput = wp.hLogFile;
+		sinfo.hStdError = wp.hLogFile;
+	}
+
 	string command(binPath);
 	command.append("dcmmkdir -ds +r --general-purpose-dvd -wu http://localhost/pacs/ +D #v\\#s\\DICOMDIR +id #v\\#s -qn ").append(studyUid).append(" @");
 	string::size_type pos = 0;
@@ -159,8 +184,41 @@ list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 	}
 	else
 		displayErrorToCerr("create process error");
+
+	if(wp.hLogFile)
+		SetHandleInformation(wp.hLogFile, HANDLE_FLAG_INHERIT, 0);
+
 	delete[] commandLine;
 	return iter;
+}
+
+void closeLogFile(WorkerProcess &wp)
+{
+	if(wp.hLogFile)
+	{
+#ifdef _DEBUG
+		cout << "closing log " << *wp.logFilePath << endl;
+#endif
+		DWORD pos = SetFilePointer(wp.hLogFile, 0, NULL, FILE_CURRENT);
+		CloseHandle(wp.hLogFile);
+		wp.hLogFile = NULL;
+		string * logFilePath = NULL;
+		if(pos == 0)
+		{
+			if( ! DeleteFile(wp.logFilePath->c_str()) )
+			{
+				_com_error ce(AtlHresultFromLastError());
+				cerr << TEXT("closeLogFile error: ") << ce.ErrorMessage() << endl;
+			}
+		}
+		delete wp.logFilePath;
+		wp.logFilePath = NULL;
+	}
+}
+
+void closeLogFile(int i)
+{
+	closeLogFile(workers[i]);
 }
 
 DWORD findIdleOrCompelete()
@@ -248,8 +306,9 @@ DWORD findIdleOrCompelete()
 			iter = find_if(dirmakers.begin(), dirmakers.end(), bind2nd(ptr_fun(predicatorProcessHandleEqual), workingHandles[wait]));
 			if(iter != dirmakers.end())
 			{
+				DeleteQueue((*iter).studyUid->c_str());
 				closeProcHandle(*iter);
-				// now, dir no log file, skip close log
+				closeLogFile(*iter);
 				dirmakers.erase(iter);
 			}
 			else
@@ -318,6 +377,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 		sinfo.dwFlags |= STARTF_USESTDHANDLES;
 		sinfo.hStdOutput = workers[index].hLogFile;
 		sinfo.hStdError = workers[index].hLogFile;
+		SetHandleInformation(workers[index].hLogFile, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
 	}
 
 	string::size_type pos = cmd.rfind(' ');
@@ -384,6 +444,9 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 			CloseHandle(workers[index].hChildStdInWrite);
 			workers[index].hChildStdInWrite = NULL;
 		}
+
+		if(workers[index].hLogFile)
+			SetHandleInformation(workers[index].hLogFile, HANDLE_FLAG_INHERIT, 0);
 		CloseHandle(hChildStdInRead);
 	}
 
@@ -575,22 +638,6 @@ void processMessage(IMSMQMessagePtr pMsg)
 		if(pMsg->Body.vt == VT_BSTR)
 			cerr << pMsg->Body.pbstrVal;
 		cerr << endl;
-	}
-}
-
-void closeLogFile(int i)
-{
-	if(workers[i].hLogFile)
-	{
-#ifdef _DEBUG
-		cout << "closing log " << *workers[i].logFilePath << endl;
-#endif
-		DWORD pos = SetFilePointer(workers[i].hLogFile, 0, NULL, FILE_CURRENT);
-		CloseHandle(workers[i].hLogFile);
-		workers[i].hLogFile = NULL;
-		if(pos == 0) DeleteFile(workers[i].logFilePath->c_str());
-		delete workers[i].logFilePath;
-		workers[i].logFilePath = NULL;
 	}
 }
 

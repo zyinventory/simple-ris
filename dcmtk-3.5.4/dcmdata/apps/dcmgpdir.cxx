@@ -769,7 +769,6 @@ traversal_restart:
 #ifdef _DEBUG
 	dcmDataDict.clear();  /* useful for debugging with dmalloc */
 #endif
-
 	return result.status();
 }
 

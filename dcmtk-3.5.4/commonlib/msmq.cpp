@@ -124,3 +124,38 @@ bool SendArchiveMessageToQueue(const char *label, const char *body, const char *
 		return false;
 	}
 }
+
+bool DeleteQueue(const char *queueName)
+{
+	try
+	{
+		IMSMQQueueInfoPtr pInfo;
+		HRESULT hr = pInfo.CreateInstance(OLESTR("MSMQ.MSMQQueueInfo"));
+		if(FAILED(hr)) throw _com_error(hr, NULL);
+		if(queueName)
+		{
+			string qname(queueName);
+			if(qname.find(".\\private$\\") != 0)
+				qname.insert(0, ".\\private$\\");
+			pInfo->PathName = qname.c_str();
+			pInfo->Delete();
+			return true;
+		}
+		else
+		{
+			cerr << "DeleteQueue error£ºqueue name is NULL" << endl;
+			return false;
+		}
+	}
+	catch(_com_error &comErr)
+	{
+		cerr << "DeleteQueue error£º" << comErr.ErrorMessage() << endl;
+		return false;
+	}
+	catch(...)
+	{
+		_com_error ce(AtlHresultFromLastError());
+		cerr << "DeleteQueue unknown error: " << ce.ErrorMessage() << endl;
+		return false;
+	}
+}

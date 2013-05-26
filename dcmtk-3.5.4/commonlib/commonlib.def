@@ -16,6 +16,7 @@ EXPORTS
 	ReportSvcStatus
 	getServiceName
 	SendArchiveMessageToQueue
+	DeleteQueue
 	dcmdate2tm
 	generateStudyXML
 	setEnvParentPID

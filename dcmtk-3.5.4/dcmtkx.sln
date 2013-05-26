@@ -146,6 +146,10 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "commonlib", "commonlib\commonlib.vcxproj", "{2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ServiceWrapper", "ServiceWrapper\ServiceWrapper.vcxproj", "{E36F8B21-73DF-4CE8-B8B3-2557C18F9EDE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9675D0D8-C215-4D8D-BCCF-49CCB8AE8016} = {9675D0D8-C215-4D8D-BCCF-49CCB8AE8016}
+		{FE0F5CDA-B1C7-448C-972C-17AEACE2015F} = {FE0F5CDA-B1C7-448C-972C-17AEACE2015F}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mergedir", "mergedir\mergedir.vcxproj", "{D352DA0A-0D71-491D-9363-3276B443B168}"
 EndProject
