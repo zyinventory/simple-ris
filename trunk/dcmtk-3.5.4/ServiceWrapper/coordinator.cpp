@@ -15,6 +15,8 @@ using namespace std;
 using namespace MSMQ;
 #include "commonlib.h"
 
+extern const char *dirmakerCommand;
+
 IMSMQQueuePtr OpenOrCreateQueue(const char *queueName, MQACCESS access = MQ_SEND_ACCESS) throw(...);
 bool RedirectMessageLabelEqualWith(const char *equalWith, const char *queueName);
 bool SendCommonMessageToQueue(const char *label, const char *body, const long priority, const char *queueName);
@@ -25,7 +27,6 @@ typedef struct _WorkerProcess {
 	HANDLE hLogFile; string *logFilePath; // slot level
 } WorkerProcess, *PWorkerProcess, *LPWorkerProcess;
 
-static string binPath;
 static SECURITY_ATTRIBUTES logSA;
 static size_t procnum;
 static PWorkerProcess workers;
@@ -157,8 +158,9 @@ list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 		sinfo.hStdError = wp.hLogFile;
 	}
 
-	string command(binPath);
-	command.append("dcmmkdir -ds +r --general-purpose-dvd -wu http://localhost/pacs/ +D #v\\#s\\DICOMDIR +id #v\\#s -qn ").append(studyUid).append(" @");
+	string command(dirmakerCommand);
+	command.append(" -qn ").append(studyUid).append(" @");
+	//command.append("dcmmkdir -ds +r --general-purpose-dvd -wu http://localhost/pacs/ +D #v\\#s\\DICOMDIR +id #v\\#s -qn ").append(studyUid).append(" @");
 	string::size_type pos = 0;
 	while(pos != string::npos)
 	{
@@ -183,7 +185,7 @@ list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 		iter = --(dirmakers.end());
 	}
 	else
-		displayErrorToCerr("create process error");
+		displayErrorToCerr(commandLine);
 
 	if(wp.hLogFile)
 		SetHandleInformation(wp.hLogFile, HANDLE_FLAG_INHERIT, 0);
@@ -526,13 +528,6 @@ void processMessage(IMSMQMessagePtr pMsg)
 				throw "no command";
 			}
 			string cmd(command->Getattributes()->getNamedItem("value")->text);
-			if(binPath.length() == 0)
-			{
-				string::size_type pos = cmd.find(' ');
-				pos = cmd.rfind('\\', pos);
-				binPath = cmd.substr(0, pos + 1);
-				//cout << "bin path is " << binPath << endl;
-			}
 
 			MSXML2::IXMLDOMNodePtr attrStudyUid = pXml->selectSingleNode("/wado_query/Patient/Study/@StudyInstanceUID");
 			if(attrStudyUid == NULL)
@@ -569,6 +564,13 @@ void processMessage(IMSMQMessagePtr pMsg)
 						{
 							buffer[pos] = '>';
 							perror(buffer);
+						}
+						else
+						{
+							string label("compressed ");
+							label.append(dest);
+							SendCommonMessageToQueue(label.c_str(), dest, MQ_PRIORITY_DCMMKDIR, studyUid.c_str());
+							runDcmmkdir(studyUid);
 						}
 					}
 					else
