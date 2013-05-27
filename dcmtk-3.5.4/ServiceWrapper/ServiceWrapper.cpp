@@ -16,17 +16,29 @@ using namespace std;
 
 static int argcSV;
 static char **argvSV;
-static bool runInSCM = false;
+static bool runInSCM = false, startXCS = false, xcsFound = false;
 static char timeBuffer[20];
 
+const char *dirmakerCommand;
 int commandDispatcher(const char *queueName, int processorNumber);
 
-void mkcmd(ostringstream *cmdStream, char *s)
+void mkcmd(ostringstream *cmdStream, const char *s)
 {
 	if(strchr(s, ' '))
 		*cmdStream << '"' << s << '"' << ' ';
 	else
 		*cmdStream << s << ' ';
+
+	if(!xcsFound)
+	{
+		if(startXCS)
+		{
+			dirmakerCommand = s;
+			xcsFound = true;
+		}
+		else
+			startXCS = !strcmp("-xcs", s);
+	}
 }
 
 int realMain(int argc, char **argv)
