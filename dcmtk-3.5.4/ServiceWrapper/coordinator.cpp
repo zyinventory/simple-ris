@@ -175,7 +175,7 @@ list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 	copy(command.begin(), command.end(), stdext::checked_array_iterator<char*>(commandLine, command.length()));
 	commandLine[command.length()] = '\0';
 
-	if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
+	if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, NORMAL_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
 	{
 		cout << "create process: " << commandLine << endl;
 		wp.hProcess = procinfo.hProcess;
@@ -207,10 +207,13 @@ void closeLogFile(WorkerProcess &wp)
 		string * logFilePath = NULL;
 		if(pos == 0)
 		{
-			if( ! DeleteFile(wp.logFilePath->c_str()) )
+			int waitCloseTime = 0;
+			while(! DeleteFile(wp.logFilePath->c_str()) && waitCloseTime < 10 * 1000)
 			{
 				_com_error ce(AtlHresultFromLastError());
 				cerr << TEXT("closeLogFile error: ") << ce.ErrorMessage() << endl;
+				waitCloseTime += 1000;
+				Sleep(1000);
 			}
 		}
 		delete wp.logFilePath;
@@ -379,7 +382,11 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 		sinfo.dwFlags |= STARTF_USESTDHANDLES;
 		sinfo.hStdOutput = workers[index].hLogFile;
 		sinfo.hStdError = workers[index].hLogFile;
-		SetHandleInformation(workers[index].hLogFile, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+		if(!SetHandleInformation(workers[index].hLogFile, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT))
+		{
+			_com_error ce(AtlHresultFromLastError());
+			cerr << TEXT("runArchiveInstance SetHandleInformation enable inherit: ") << ce.ErrorMessage() << endl;
+		}
 	}
 
 	string::size_type pos = cmd.rfind(' ');
@@ -447,8 +454,11 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 			workers[index].hChildStdInWrite = NULL;
 		}
 
-		if(workers[index].hLogFile)
-			SetHandleInformation(workers[index].hLogFile, HANDLE_FLAG_INHERIT, 0);
+		if(workers[index].hLogFile && !SetHandleInformation(workers[index].hLogFile, HANDLE_FLAG_INHERIT, 0))
+		{
+			_com_error ce(AtlHresultFromLastError());
+			cerr << TEXT("runArchiveInstance SetHandleInformation disable inherit: ") << ce.ErrorMessage() << endl;
+		}
 		CloseHandle(hChildStdInRead);
 	}
 
@@ -671,7 +681,7 @@ int pollQueue(const _TCHAR *queueName)
 			else // close one process
 			{
 				closeProcHandle(index);
-				closeLogFile(index);
+				//closeLogFile(index);
 			}
 		}
 		hr = pQueue->Close();
