@@ -752,6 +752,25 @@ traversal_restart:
 				result = ddir.writeDicomDir(opt_enctype, opt_glenc);
 		}
 	}
+
+	PROCESS_INFORMATION procinfo;
+	STARTUPINFO sinfo;
+	memset(&procinfo, 0, sizeof(procinfo));
+	memset(&sinfo, 0, sizeof(sinfo));
+	sinfo.cb = sizeof(sinfo);
+	char cmdbuff[MAX_PATH];
+	sprintf_s(cmdbuff, "..\\bin\\burning cd 0 ..\\eFilmLite %s", opt_directory);
+	if( !CreateProcess(NULL, cmdbuff, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
+	{
+		fprintf( stderr, "burning cd: Error while executing command '%s'.\n" , cmdbuff );
+	}
+	else
+	{
+		// Close process and thread handles to avoid resource leak
+		CloseHandle(procinfo.hProcess);
+		CloseHandle(procinfo.hThread);
+	}
+
 	if(opt_csv && *opt_csv != '\0')
 	{
 		//COUT << "dicomdir OK, create index from " << opt_csv << endl;
