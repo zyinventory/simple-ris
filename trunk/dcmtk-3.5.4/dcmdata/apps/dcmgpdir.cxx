@@ -123,10 +123,10 @@ int main(int argc, char *argv[])
 	const char *opt_queueName = NULL;
 	const char *opt_index = "indexdir";
 	const char *opt_csv = NULL;
-	const char *opt_weburl = NULL;
+	const char *opt_weburl = "http://localhost/pacs/";
 	DicomDirInterface::E_ApplicationProfile opt_profile = DicomDirInterface::AP_GeneralPurpose;
 
-	if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
+	//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
 
 #ifdef BUILD_DCMGPDIR_AS_DCMMKDIR
 	// register global decompression codecs (no verbose/debug mode set)
@@ -237,7 +237,7 @@ int main(int argc, char *argv[])
 	cmd.addOption("--index-directory",       "-ix", 1, "directory : string", "write index file, default : indexdir");
 	cmd.addOption("--input-csv",             "-ic", 1, "filename : string", "read index information from csv file");
 	cmd.addOption("--delete-source-csv",     "-ds",    "if indexing is successful, delete source csv file");
-	cmd.addOption("--web-url",               "-wu", 1, "web url : string", "add a web url to index file");
+	cmd.addOption("--web-url",               "-wu", 1, "web url : string", "add a web url to index file, default : http://localhost/pacs/");
 
 	/* evaluate command line */
 	prepareCmdLineArgs(argc, argv, OFFIS_CONSOLE_APPLICATION);
@@ -609,7 +609,7 @@ int main(int argc, char *argv[])
 
 					bool remainMessage = false, cursorMoved = true;
 					IMSMQMessagePtr pMsg;
-					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 120L * 1000L }, 
+					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 20L * 1000L }, 
 						vtFalse = { (WORD)VT_BOOL, (WORD)0, (WORD)0, (WORD)0, VARIANT_FALSE };
 traversal_restart:
 					try
@@ -678,6 +678,7 @@ traversal_restart:
 								CERR << "make dicomdir: unknown message: " << label << endl;
 							}
 						}
+						if(!pMsg) CERR << "make dicomdir: wait message timeout, " << opt_queueName << endl;
 					}
 					catch(_com_error &comErr)
 					{

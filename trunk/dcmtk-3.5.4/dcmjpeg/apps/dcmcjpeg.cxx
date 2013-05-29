@@ -672,6 +672,8 @@ int main(int argc, char *argv[])
 
 	while(true)
 	{
+		//DWORD timerbase = GetTickCount();
+		//COUT << "start timing..." << endl;
 		if(mutexIdle && mutexRec)
 			if(WAIT_OBJECT_0 != SignalObjectAndWait(mutexIdle, mutexRec, INFINITE, FALSE)) displayErrorToCerr("enter idle");
 		if (opt_verbose) COUT << "waiting input..." << endl;
@@ -705,9 +707,12 @@ int main(int argc, char *argv[])
 			COUT << "reading input file " << opt_ifname << endl;
 
 		DcmFileFormat fileformat;
-		if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
+		//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
+		//COUT << "before load file " << GetTickCount() - timerbase << endl;
 		OFCondition error = fileformat.loadFile(opt_ifname, opt_ixfer, EGL_noChange, DCM_MaxReadLength, opt_readMode);
-		if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END) ) displayErrorToCerr("SetPriorityClass");
+		//COUT << "after load file " << GetTickCount() - timerbase << endl;
+		//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END) ) displayErrorToCerr("SetPriorityClass");
+
 		if (error.bad())
 		{
 			CERR << "Error: " << error.text() << ": reading file: " <<  opt_ifname << endl;
@@ -793,11 +798,14 @@ int main(int argc, char *argv[])
 				COUT << "creating output file " << opt_ofname << endl;
 			prepareFileDir(opt_ofname);
 
-			if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
+			//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
+			//COUT << "before load into mem " << GetTickCount() - timerbase << endl;
 			fileformat.loadAllDataIntoMemory();
+			//COUT << "after load into mem " << GetTickCount() - timerbase << endl;
 			error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
 				opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
-			if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END) ) displayErrorToCerr("SetPriorityClass");
+			//COUT << "after save " << GetTickCount() - timerbase << endl;
+			//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END) ) displayErrorToCerr("SetPriorityClass");
 
 			if (error.bad())
 			{
@@ -824,6 +832,9 @@ int main(int argc, char *argv[])
 
 		if(readcmd) break;
 	}
+
+	if(mutexIdle) { ReleaseMutex(mutexIdle); CloseHandle(mutexIdle); }
+	if(mutexRec) { ReleaseMutex(mutexRec); CloseHandle(mutexRec); }
 
 	// deregister global codecs
 	DJDecoderRegistration::cleanup();
