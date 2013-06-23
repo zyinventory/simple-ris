@@ -2,15 +2,6 @@
 //
 
 #include "stdafx.h"
-#include <string>
-#include <memory>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <time.h>
-#include <limits.h>
-#include <direct.h>
-#include <errno.h>
 #import <msxml3.dll>
 
 #include "commonlib.h"
@@ -282,7 +273,7 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 	try
 	{
 		unsigned long written = 0;
-		const char *header = "<?xml version=\"1.0\" encoding=\"gbk\"?>\n";
+		const char *header = "<?xml version=\"1.0\" encoding=\"gbk\"?>\r\n";
 		_bstr_t xmlText(pXMLDom->transformNode(pXsl));
 		MSXML2::IXMLDOMDocumentPtr dayDomPtr;
 		dayDomPtr.CreateInstance(__uuidof(MSXML2::DOMDocument30));

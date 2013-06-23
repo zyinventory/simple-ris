@@ -1,10 +1,5 @@
 #include "stdafx.h"
-#include <algorithm>
-#include <functional>
-#include <iostream>
 #include <strsafe.h>
-#include <direct.h>
-#include <signal.h>
 
 #include "commonlib.h"
 

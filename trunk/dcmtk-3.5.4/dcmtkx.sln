@@ -1,5 +1,5 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual C++ Express 2010
+# Visual Studio 2010
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ALL_BUILD", "ALL_BUILD.vcxproj", "{0384EC5F-FFD0-4547-9D5E-B549E124FF04}"
 	ProjectSection(ProjectDependencies) = postProject
 		{D352DA0A-0D71-491D-9363-3276B443B168} = {D352DA0A-0D71-491D-9363-3276B443B168}
@@ -146,10 +146,6 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "commonlib", "commonlib\commonlib.vcxproj", "{2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ServiceWrapper", "ServiceWrapper\ServiceWrapper.vcxproj", "{E36F8B21-73DF-4CE8-B8B3-2557C18F9EDE}"
-	ProjectSection(ProjectDependencies) = postProject
-		{9675D0D8-C215-4D8D-BCCF-49CCB8AE8016} = {9675D0D8-C215-4D8D-BCCF-49CCB8AE8016}
-		{FE0F5CDA-B1C7-448C-972C-17AEACE2015F} = {FE0F5CDA-B1C7-448C-972C-17AEACE2015F}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mergedir", "mergedir\mergedir.vcxproj", "{D352DA0A-0D71-491D-9363-3276B443B168}"
 EndProject
@@ -158,7 +154,19 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bridge", "bridge\bridge.vcx
 		{140C0096-4C8B-4854-A76D-DF0B659A6C52} = {140C0096-4C8B-4854-A76D-DF0B659A6C52}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libcgic", "libcgic\libcgic.vcxproj", "{E8824D64-00DF-42FF-A76B-7C1530D95D30}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "getindex", "getindex\getindex.vcxproj", "{BB2DD71F-379D-4CDB-AB67-D1F6422AC141}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E8824D64-00DF-42FF-A76B-7C1530D95D30} = {E8824D64-00DF-42FF-A76B-7C1530D95D30}
+		{2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205} = {2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205}
+	EndProjectSection
+EndProject
 Global
+	GlobalSection(SubversionScc) = preSolution
+		Svn-Managed = True
+		Manager = AnkhSVN - Subversion Support for Visual Studio
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		MinSizeRel|Win32 = MinSizeRel|Win32
@@ -710,12 +718,24 @@ Global
 		{86571892-0D7A-4178-896B-2A84AB61FEEF}.Release|Win32.Build.0 = Release|Win32
 		{86571892-0D7A-4178-896B-2A84AB61FEEF}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
 		{86571892-0D7A-4178-896B-2A84AB61FEEF}.RelWithDebInfo|Win32.Build.0 = Release|Win32
+		{E8824D64-00DF-42FF-A76B-7C1530D95D30}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E8824D64-00DF-42FF-A76B-7C1530D95D30}.Debug|Win32.Build.0 = Debug|Win32
+		{E8824D64-00DF-42FF-A76B-7C1530D95D30}.MinSizeRel|Win32.ActiveCfg = Release|Win32
+		{E8824D64-00DF-42FF-A76B-7C1530D95D30}.MinSizeRel|Win32.Build.0 = Release|Win32
+		{E8824D64-00DF-42FF-A76B-7C1530D95D30}.Release|Win32.ActiveCfg = Release|Win32
+		{E8824D64-00DF-42FF-A76B-7C1530D95D30}.Release|Win32.Build.0 = Release|Win32
+		{E8824D64-00DF-42FF-A76B-7C1530D95D30}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
+		{E8824D64-00DF-42FF-A76B-7C1530D95D30}.RelWithDebInfo|Win32.Build.0 = Release|Win32
+		{BB2DD71F-379D-4CDB-AB67-D1F6422AC141}.Debug|Win32.ActiveCfg = Debug|Win32
+		{BB2DD71F-379D-4CDB-AB67-D1F6422AC141}.Debug|Win32.Build.0 = Debug|Win32
+		{BB2DD71F-379D-4CDB-AB67-D1F6422AC141}.MinSizeRel|Win32.ActiveCfg = Release|Win32
+		{BB2DD71F-379D-4CDB-AB67-D1F6422AC141}.MinSizeRel|Win32.Build.0 = Release|Win32
+		{BB2DD71F-379D-4CDB-AB67-D1F6422AC141}.Release|Win32.ActiveCfg = Release|Win32
+		{BB2DD71F-379D-4CDB-AB67-D1F6422AC141}.Release|Win32.Build.0 = Release|Win32
+		{BB2DD71F-379D-4CDB-AB67-D1F6422AC141}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
+		{BB2DD71F-379D-4CDB-AB67-D1F6422AC141}.RelWithDebInfo|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(SubversionScc) = preSolution
-		Svn-Managed = True
-		Manager = AnkhSVN - Subversion Support for Visual Studio
 	EndGlobalSection
 EndGlobal

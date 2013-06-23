@@ -2,12 +2,6 @@
 //
 
 #include "stdafx.h"
-#include <sstream>
-#include <list>
-#include <iterator>
-#include <algorithm>
-#include <functional>
-#include <comutil.h>
 #import <mqoa.dll>
 #import <msxml3.dll>
 

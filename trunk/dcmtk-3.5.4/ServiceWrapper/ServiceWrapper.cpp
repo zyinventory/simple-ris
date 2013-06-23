@@ -2,12 +2,7 @@
 //
 
 #include "stdafx.h"
-#include <algorithm>
-#include <functional>
-#include <sstream>
-#include <time.h>
 #include <direct.h>
-#include <conio.h>
 
 #include "commonlib.h"
 #include "service.h"

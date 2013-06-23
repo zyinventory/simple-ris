@@ -17,11 +17,8 @@
 #include <atlstr.h>
 
 // TODO: 在此处引用程序需要的其他头文件
-#include <iostream>
-#include <sstream>
-#include <list>
-#include <iterator>
-#include <algorithm>
-#include <functional>
-
-#define MAX_CORE 16
+#include <fstream>
+#include <commonlib.h>
+extern "C" {
+#include "cgic.h"
+}

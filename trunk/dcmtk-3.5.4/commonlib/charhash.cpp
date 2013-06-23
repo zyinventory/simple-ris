@@ -1,10 +1,4 @@
 #include "stdafx.h"
-#include <locale>
-#include <iterator>
-#include <string>
-#include <sstream>
-#include <vector>
-#include <algorithm>
 
 using namespace std;
 
