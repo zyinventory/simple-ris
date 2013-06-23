@@ -18,3 +18,17 @@
 
 #include <atlbase.h>
 #include <atlstr.h>
+
+#include <locale>
+#include <string>
+#include <iterator>
+#include <vector>
+#include <algorithm>
+#include <functional>
+#include <memory>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
+#include <signal.h>
+#include <direct.h>        /* for _mkdir() */

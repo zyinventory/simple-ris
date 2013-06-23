@@ -1,15 +1,4 @@
 #include "stdafx.h"
-#include <signal.h>
-#include <time.h>
-#include <errno.h>
-#include <direct.h>        /* for _mkdir() */
-#include <process.h>
-
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <algorithm>
-#include <functional>
 
 #define PATH_SEPARATOR '\\'
 
