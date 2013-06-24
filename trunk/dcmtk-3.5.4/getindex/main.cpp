@@ -25,8 +25,8 @@ static const char jnlp1[] =                               "/weasis\" href=\"\">\
   <all-permissions/>\
 </security>\
 <resources>\
-  <j2se version=\"1.6.0_10+\" href=\"http://java.sun.com/products/autodl/j2se\" initial-heap-size=\"128m\" max-heap-size=\"512m\" />\
-  <j2se version=\"1.6.0_10+\" initial-heap-size=\"128m\" max-heap-size=\"512m\" />\
+  <j2se version=\"1.6.0_10+\" href=\"http://java.sun.com/products/autodl/j2se\" initial-heap-size=\"128m\" max-heap-size=\"1536m\" />\
+  <j2se version=\"1.6.0_10+\" initial-heap-size=\"128m\" max-heap-size=\"1536m\" />\
   <jar href=\"weasis-launcher.jar\" main=\"true\" />\
   <jar href=\"felix.jar\" />\
   <extension href=\"substance.jnlp\"/>\
