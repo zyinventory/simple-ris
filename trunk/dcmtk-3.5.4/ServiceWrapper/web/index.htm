@@ -1,0 +1,149 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=gbk" />
+	<title>PACS</title>
+	<link rel="stylesheet" type="text/css" href="styles/smoothness/jquery-ui-1.9.1.custom.css" />
+	<style type="text/css">
+		#containerBody table	{ border-style:solid; border-width:1px; border-color:black; border-collapse:collapse; margin:0px; width:100%; }
+		#containerBody thead	{ background-color:#aaa; }
+		#containerBody th		{ border-style:solid; border-width:1px; }
+		#containerBody td		{ border-style:solid; border-width:1px; }
+		#containerBody tr:nth-child(even)	{ background-color:#ccc; }
+		.highlight	{ background-color:yellow; }
+	</style>
+	<script type="text/javascript" src="scripts/jquery-1.8.2.min.js"></script>
+	<script type="text/javascript" src="scripts/jquery-ui-1.9.1.custom.min.js"></script>
+	<script type="text/javascript" src="scripts/jquery.ui.datepicker-zh-CN.js"></script>
+	<script type="text/javascript" src="scripts/charhash.js"></script>
+	<script type="text/javascript">
+	//<![CDATA[
+		var picker, xslDoc, xslDocCommon, xslResult;
+		
+		function viewStudy(event)
+		{
+			var studyUid = $('td.studyUID', event.currentTarget).attr('title');
+			var studyDate = $('td.studyDate', event.currentTarget).text();
+			var link = location.href;
+			link = link.replace(/\/[^\/]*$/, '/indexdir/0020000d/' + toHashPath(studyUid) + '/' + studyUid + '.xml');
+			if(getQueryString('debug') == '1') alertMessage(link);
+			//$('applet#socketProxy')[0].setText(link);
+		}
+		
+		function toggleHighlight(event)
+		{
+			$('td', event.currentTarget).toggleClass('highlight');
+		}
+		
+		function alertMessage(targetObject)
+		{
+			var MaxLine = 10;
+			var console = $('#console');
+			var leftstr = '<div><span class="ui-icon ui-icon-alert" style="float:left; margin-right:0.5em;"></span><span>';
+			var myDate = new Date();
+			leftstr += ("0" + myDate.getHours()).slice(-2) + ':' + ("0" + myDate.getMinutes()).slice(-2) + ':' + ("0" + myDate.getSeconds()).slice(-2) + ' | ';
+			var rightstr = '</span></div>';
+			if(typeof(targetObject) == 'string' || typeof(targetObject) == 'boolean' || typeof(targetObject) == 'number')
+			{
+				$('#console').prepend( leftstr + targetObject + rightstr );
+			}
+			else
+			{
+				var attrs = '';
+				for(var i in targetObject)
+				{
+					attrs += i;
+					attrs += ':';
+					var tagtype = typeof(targetObject[i]);
+					if(tagtype == 'number' || tagtype == 'string' || tagtype == 'boolean')
+						attrs += targetObject[i];
+					else
+						attrs += tagtype;
+					attrs += '<br/>';
+				}
+				$('#console').prepend( leftstr + attrs + rightstr );
+			}
+			var consoleDivs = $('div', console);
+			if(consoleDivs.size() > MaxLine) $('#console div:gt(' + --MaxLine + ')').remove();
+		}
+		
+		function transform(xmlDoc)
+		{
+			if(xslDoc == undefined)
+			{
+				alertMessage('Load XSLT failed: ' + xslResult.statusText);
+			}
+			else
+			{
+				var body = $('#containerBody');
+				if(window.ActiveXObject)    // IE
+				{
+					body.html(xmlDoc.transformNode(xslDoc));
+				}    
+				else    // FireFox， Chrome
+				{
+					try {
+						var xsltProcessor = new XSLTProcessor();
+						xsltProcessor.importStylesheet(xslDoc);
+						var xmlszer = new XMLSerializer();
+						var content = xsltProcessor.transformToDocument(xmlDoc);
+						body.html(xmlszer.serializeToString(content));
+					} catch(ex) {
+						alertMessage(ex);
+					}
+				}
+				$('tbody tr').mouseover(toggleHighlight).mouseout(toggleHighlight); //.click(viewStudy);
+			}
+		}
+
+		function pickDate(textValue, pickerWrapper)
+		{
+			var mode = getQueryString('mode');
+			if(mode == null) mode = 'receive';
+			var result = $.get('indexdir/' + mode + '/' + textValue + '.xml', {}, transform, 'xml');
+			if(result.status < 200 || result.status >= 300)
+			{
+				$('#containerBody').html("没有检查");
+				if(getQueryString('debug') == '1') alertMessage(textValue  + ' 没有检查, ' + result.statusText);
+			}
+		}
+
+		jQuery(document).ready(function() {
+			$.ajaxSetup({ async : false });
+			xslResult = $.get('xslt/dayrec.xsl', {}, function(body, txt, ref){ xslDoc = body; }, 'xml');
+
+			var today = $.datepicker.formatDate('yy/mm/dd',new Date());
+			picker = $('#datepicker');
+			picker.attr('readonly', true);
+			picker.val(today);
+			picker.datepicker({
+				changeMonth:true,
+				changeYear:true,
+				selectOtherMonths:true,
+				showButtonPanel:true,
+				showOtherMonths:true,
+				dateFormat:'yy/mm/dd',
+				defaultDate:today,
+				onSelect:pickDate
+			});
+			pickDate(today);
+		});
+	//]]>
+	</script>
+</head>
+<body>
+<div id="containerPane" class="ui-widget ui-widget-content ui-widget-helper-clearfix">
+	<div id="containerHeader" class="ui-widget-header ui-widget-helper-clearfix">
+		<label for="datepicker">检查日期:</label><input type="text" id="datepicker" style="width:6.5em"></input>
+		&nbsp;&nbsp;<a href="index.htm">传输日志</a>
+		&nbsp;&nbsp;<a href="index.htm?mode=00080020">检查日期归档</a>
+	</div>
+	<div id="containerBody"></div>
+</div>
+<div id="console" class="ui-state-error"></div>
+<!-- applet id="socketProxy" style="float:right" width="540" height="400" codebase="jars" archive="socketproxy.jar" code="com.walnut.applet.socketproxy.SocketProxy">
+    <PARAM NAME="java_arguments" VALUE="-Djnlp.packEnabled=true"/>
+</applet>
+    <param name="jnlp_href" value="socketproxy.jnlp" -->
+</body>
+</html>

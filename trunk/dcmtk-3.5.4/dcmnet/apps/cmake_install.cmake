@@ -88,8 +88,21 @@ IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspeci
     FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Debug/storescp.exe")
   ENDIF("${CMAKE_INSTALL_CONFIG_NAME}" MATCHES "^([Dd][Ee][Bb][Uu][Gg])$")
   IF("${CMAKE_INSTALL_CONFIG_NAME}" MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$")
-	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/cgi-bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Release/getindex.exe")
-	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/cgi-bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Release/commonlib.dll")
+	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/cgi-bin" TYPE EXECUTABLE FILES
+		"D:/workspace/dcmtk-3.5.4/Release/getindex.exe"
+		"D:/workspace/dcmtk-3.5.4/Release/commonlib.dll"
+	)
+	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/scripts" TYPE FILE FILES
+		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/scripts/charhash.js"
+		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/scripts/jquery.ui.datepicker-zh-CN.js"
+    )
+	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/xslt" TYPE FILE FILES
+		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/dayrec.xsl"
+		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/mktext.xsl"
+		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/receive.xsl"
+		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/wado_query.xsd"
+	)
+	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs" TYPE FILE FILES "D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/index.htm")
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Release/ServiceWrapper.exe")
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Release/commonlib.dll")
     FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Release/storescp.exe")

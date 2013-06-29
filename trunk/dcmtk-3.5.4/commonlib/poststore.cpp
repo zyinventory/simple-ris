@@ -338,11 +338,14 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 	HRESULT hr;
 	_bstr_t tagValue = pXMLDom->selectSingleNode(queryValue)->Gettext();
 	unsigned int hash = hashCodeW(tagValue);
-	if(tagValue.length() == 0) tagValue = "NULL";
+	if(tagValue.length() == 0) return FWP_E_NULL_POINTER;
 
-	sprintf_s(buffer, BUFF_SIZE, "%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.xml", indexBase.c_str(), tag,
+	sprintf_s(buffer, BUFF_SIZE, "%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s", indexBase.c_str(), tag,
 		hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, (const char*)tagValue);
 	string indexPath = buffer;
+	indexPath.append(".xml");
+	string fieldsPath = buffer;
+	fieldsPath.append(".txt");
 	HANDLE fh = INVALID_HANDLE_VALUE;
 	try
 	{
@@ -378,6 +381,27 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 				}
 			}
 			::CloseHandle(fh);
+
+			// print text fields
+			MSXML2::IXMLDOMDocumentPtr pXsl;
+			const char *xslFile = "xslt\\mktext.xsl";
+			hr = pXsl.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+			if (SUCCEEDED(hr))
+			{
+				pXsl->preserveWhiteSpace = VARIANT_FALSE;
+				pXsl->async = VARIANT_FALSE;
+				if(pXsl->load(xslFile) == VARIANT_FALSE)
+				{
+					cerr << "Failed to load XSL DOM: " << xslFile << endl;
+				}
+				else
+				{
+					_bstr_t textFields = oldIndex ? oldIndex->transformNode(pXsl) : pXMLDom->transformNode(pXsl);
+					ofstream ofs(fieldsPath.c_str(), ios_base::out | ios_base::trunc);
+					ofs << textFields;
+					ofs.close();
+				}
+			}
 		}
 		else
 		{
@@ -437,12 +461,12 @@ HRESULT processInputStream(istream& istrm)
 		cerr << "Failed to save StudyInstanceUID index\n";
 		return hr;
 	}
-
+	
 	// patient id index
 	string tagPatientID(MK_TAG_STRING(DCM_PatientID));
 	while((p = tagPatientID.find(',')) != string::npos) tagPatientID.replace(p, 1, 0, '_');
 	hr = createKeyValueIndex(pXMLDom, tagPatientID.c_str(), "/wado_query/Patient/@PatientID");
-	if (FAILED(hr))
+	if (FAILED(hr) && hr != FWP_E_NULL_POINTER)
 	{
 		cerr << "Failed to save PatientID index\n";
 		return hr;

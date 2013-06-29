@@ -753,6 +753,15 @@ traversal_restart:
 		}
 	}
 
+	if(opt_csv && *opt_csv != '\0')
+	{
+		//COUT << "dicomdir OK, create index from " << opt_csv << endl;
+		char buffer[MAX_PATH];
+		strcpy_s(buffer, MAX_PATH, opt_csv);
+		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
+	}
+	//COUT << "create index OK" << endl;
+/*
 	PROCESS_INFORMATION procinfo;
 	STARTUPINFO sinfo;
 	memset(&procinfo, 0, sizeof(procinfo));
@@ -770,16 +779,7 @@ traversal_restart:
 		CloseHandle(procinfo.hProcess);
 		CloseHandle(procinfo.hThread);
 	}
-
-	if(opt_csv && *opt_csv != '\0')
-	{
-		//COUT << "dicomdir OK, create index from " << opt_csv << endl;
-		char buffer[MAX_PATH];
-		strcpy_s(buffer, MAX_PATH, opt_csv);
-		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
-	}
-	//COUT << "create index OK" << endl;
-
+*/
 #ifdef BUILD_DCMGPDIR_AS_DCMMKDIR
 	// deregister global decompression codecs
 	DcmRLEDecoderRegistration::cleanup();

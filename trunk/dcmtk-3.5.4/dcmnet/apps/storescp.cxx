@@ -1973,7 +1973,7 @@ storeSCPCallback(
 		if( ec != EC_Normal )
 		{
           CERR << "storescp: No patient ID found in data set." << endl;
-		  patientId = "NULL";
+		  patientId = "";
 		}
 		(*imageDataSet)->findAndGetOFString(DCM_PatientsSex, sex);
 		(*imageDataSet)->findAndGetOFString(DCM_PatientsBirthDate, birthdate);
