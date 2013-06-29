@@ -75,8 +75,10 @@ bool SendArchiveMessageToQueue(const char *label, const char *body, const char *
 			}
 			else
 			{
-				cerr << "SendArchiveMessage: command place holder not found:" << endl;
-				cerr << body << endl;
+				cerr << "Send Archive Image Message: command place holder not found:" << endl;
+				cerr << "label: " << label << endl;
+				cerr << "body: " << body << endl;
+				cerr << "cmd: " << cmd << endl;
 				return false;
 			}
 		}
@@ -88,8 +90,10 @@ bool SendArchiveMessageToQueue(const char *label, const char *body, const char *
 				bodyXml.replace(p, strnlen_s(MOVE_PLACE_HOLDER, sizeof(MOVE_PLACE_HOLDER)), cmd);
 			else
 			{
-				cerr << "SendArchiveMessage: command place holder not found:" << endl;
-				cerr << body << endl;
+				cerr << "Send Archive Study Message: command place holder not found:" << endl;
+				cerr << "label: " << label << endl;
+				cerr << "body: " << body << endl;
+				cerr << "cmd: " << cmd << endl;
 				return false;
 			}
 		}

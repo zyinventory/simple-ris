@@ -189,7 +189,7 @@ static const char *opt_execOnEndOfStudy = NULL;       // default: don't execute 
 
 OFString           lastStudySubdirectoryPathAndName, instanceCSVPath, lastArchiveFileName, lastArchiveStudyPath, lastStudyXml;
 static OFBool      opt_renameOnEndOfStudy = OFFalse;  // default: don't rename any files on end of study
-static long        opt_endOfStudyTimeout = 1L;         // default: 1 second
+static long        opt_endOfStudyTimeout = 3L;         // default: 3 second
 static OFBool      endOfStudyThroughTimeoutEvent = OFFalse;
 static const char *opt_configFile = NULL;
 static const char *opt_profileName = NULL;
@@ -447,7 +447,7 @@ int main(int argc, char *argv[])
                                                              "execute command c after having received and\nprocessed all C-STORE-Request messages that\nbelong to one study" );
     cmd.addOption(  "--rename-on-eostudy",      "-rns",      "(only w/ -ss) Having received and processed\nall C-STORE-Request messages that belong to\none study, rename output files according to\na certain pattern" );
     cmd.addOption(  "--eostudy-timeout",        "-tos",  1,  "[t]imeout: integer (only w/ -ss, -xcs or -rns)",
-                                                             "specifies a timeout of t seconds for\nend-of-study determination, only affect --fork-child or single process mode, default is 1, --fork mode is always 1." );
+                                                             "specifies a timeout of t seconds for\nend-of-study determination, default is 3 seconds, if --fork-child is specified, it is infinite( -1 )." );
 #ifdef _WIN32
     cmd.addOption(  "--exec-sync",              "-xs",       "execute command synchronously in foreground" );
     cmd.addOption(  "--message-only",			"-mo",       "don't execute command, send message to queue only" );
@@ -858,12 +858,14 @@ int main(int argc, char *argv[])
       opt_renameOnEndOfStudy = OFTrue;
     }
 
-    if (cmd.findOption("--eostudy-timeout") && ! opt_forkMode)
-    {
-      if( opt_sortConcerningStudies == NULL && opt_execOnEndOfStudy == NULL && opt_renameOnEndOfStudy == OFFalse )
-        app.printError("--eostudy-timeout only in combination with --sort-conc-studies, --exec-on-eostudy or --rename-on-eostudy");
-	  app.checkValue(cmd.getValueAndCheckMin(opt_endOfStudyTimeout, 0));
-    }
+	if(opt_forkedChild)
+		opt_endOfStudyTimeout = -1;
+	else if (cmd.findOption("--eostudy-timeout"))
+	{
+		if( opt_sortConcerningStudies == NULL && opt_execOnEndOfStudy == NULL && opt_renameOnEndOfStudy == OFFalse )
+		app.printError("--eostudy-timeout only in combination with --sort-conc-studies, --exec-on-eostudy or --rename-on-eostudy");
+		app.checkValue(cmd.getValueAndCheckMin(opt_endOfStudyTimeout, 0));
+	}
 
 #ifdef _WIN32
     if (cmd.findOption("--exec-sync")) opt_execSync = OFTrue;
@@ -1730,36 +1732,25 @@ processCommands(T_ASC_Association * assoc)
     // received, check if certain other conditions are met
     if( cond == DIMSE_NODATAAVAILABLE )
     {
+      if(opt_verbose) CERR << "DIMSE_receiveCommand(...) return DIMSE_NODATAAVAILABLE, lastStudyInstanceUID: " << lastStudyInstanceUID << endl;
+	  
+	  // !!!! zhang yu modify the original algorithm !!!!
+
+	  // original algorithm:
       // If in addition to the fact that no data was received also option --eostudy-timeout is set and
       // if at the same time there is still a study which is considered to be open (i.e. we were actually
       // expecting to receive more objects that belong to this study) (this is the case if lastStudyInstanceUID
       // does not equal NULL), we have to consider that all objects for the current study have been received.
       // In such an "end-of-study" case, we might have to execute certain optional functions which were specified
       // by the user through command line options passed to storescp.
-      if( opt_endOfStudyTimeout != -1 && ! lastStudyInstanceUID.empty() )
-      {
-        // indicate that the end-of-study-event occured through a timeout event.
-        // This knowledge will be necessary in function renameOnEndOFStudy().
-        endOfStudyThroughTimeoutEvent = OFTrue;
 
-        // before we actually execute those optional functions, we need to determine the path and name
-        // of the subdirectory into which the DICOM files for the last study were written.
-        lastStudySubdirectoryPathAndName = subdirectoryPathAndName;
+	  // modified algorithm:
+	  // We do not know that all objects for the current study have been received.
+	  // In such case, we wait next command.
+	  // If new command is new study, exec end-of-study event. Otherwise, continue previous study.
+	  // If no next command, end-of-study event will exec on release asso.
 
-        // now we can finally handle end-of-study events which might have to be executed
-        executeEndOfStudyEvents();
-
-        // also, we need to clear lastStudyInstanceUID to indicate
-        // that the last study is not considered to be open any more.
-        lastStudyInstanceUID.clear();
-
-        // also, we need to clear subdirectoryPathAndName
-        subdirectoryPathAndName.clear();
-		archiveStudyPath.clear();
-
-        // reset the endOfStudyThroughTimeoutEvent variable.
-        endOfStudyThroughTimeoutEvent = OFFalse;
-      }
+	  // So, do nothing.
     }
 
     // if the command which was received has extra status
@@ -2015,10 +2006,10 @@ storeSCPCallback(
           if( ! lastStudyInstanceUID.empty() )
           {
             lastStudySubdirectoryPathAndName = subdirectoryPathAndName;
-			if(opt_debug) COUT << "encounter new study:" << lastStudySubdirectoryPathAndName << endl;
+			if(opt_debug) COUT << "new study path:" << lastStudySubdirectoryPathAndName << endl;
 			lastArchiveStudyPath = archiveStudyPath;
 			lastStudyXml = studyXml;
-			if(opt_debug) COUT << "encounter new study:" << lastArchiveStudyPath << endl;
+			if(opt_debug) COUT << "new study archive path:" << lastArchiveStudyPath << endl;
 			if(inststrm.is_open())
 			{
 			  inststrm.close();

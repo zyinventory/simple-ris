@@ -126,6 +126,7 @@ static const char *opt_profileName = NULL;
 T_DIMSE_BlockingMode opt_blockMode = DIMSE_BLOCKING;
 int opt_dimse_timeout = 0;
 int opt_acse_timeout = 30;
+int opt_sleep_time = 0;
 
 #ifdef WITH_ZLIB
 static OFCmdUnsignedInt opt_compressionLevel = 0;
@@ -263,6 +264,7 @@ main(int argc, char *argv[])
       cmd.addOption("--timeout",       "-to", 1, "[s]econds: integer (default: unlimited)", "timeout for connection requests");
       cmd.addOption("--acse-timeout",  "-ta", 1, "[s]econds: integer (default: 30)", "timeout for ACSE messages");
       cmd.addOption("--dimse-timeout", "-td", 1, "[s]econds: integer (default: unlimited)", "timeout for DIMSE messages");
+      cmd.addOption("--sleep-time", "-st",    1, "[s]econds: integer (default: 0)", "sleep after sending a file, for debug timeout action");
 
       OFString opt3 = "set max receive pdu to n bytes (default: ";
       sprintf(tempstr, "%ld", (long)ASC_DEFAULTMAXPDU);
@@ -484,6 +486,12 @@ main(int argc, char *argv[])
         opt_blockMode = DIMSE_NONBLOCKING;
       }
 
+      if (cmd.findOption("--sleep-time"))
+	  {
+        OFCmdSignedInt opt_timeout = 0;
+        app.checkValue(cmd.getValueAndCheckMin(opt_timeout, 0));
+        opt_sleep_time = OFstatic_cast(int, opt_timeout);
+	  }
 
       if (cmd.findOption("--max-pdu")) app.checkValue(cmd.getValueAndCheckMinMax(opt_maxReceivePDULength, ASC_MINIMUMPDUSIZE, ASC_MAXIMUMPDUSIZE));
 
@@ -903,6 +911,11 @@ main(int argc, char *argv[])
     {
         cond = cstore(assoc, *iter);
         ++iter;
+		if(opt_sleep_time > 0)
+		{
+			CERR << "sleep " << opt_sleep_time << " seconds" << endl;
+			Sleep(opt_sleep_time * 1000);
+		}
     }
 
     /* tear down association, i.e. terminate network connection to SCP */
