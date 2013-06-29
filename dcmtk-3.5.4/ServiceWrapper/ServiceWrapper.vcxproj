@@ -111,12 +111,27 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
+    <None Include="web\index.htm">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="web\scripts\charhash.js" />
+    <None Include="web\scripts\jquery.ui.datepicker-zh-CN.js" />
+    <None Include="web\xslt\dayrec.xsl" />
+    <None Include="web\xslt\mktext.xsl" />
+    <None Include="web\xslt\receive.xsl" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\commonlib\commonlib.vcxproj">
       <Project>{2ddd40cc-6ce9-483a-9b9c-73aad0dc8205}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Xsd Include="web\xslt\wado_query.xsd">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Template|Win32'">true</ExcludedFromBuild>
+    </Xsd>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

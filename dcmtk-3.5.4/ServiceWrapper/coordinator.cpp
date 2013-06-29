@@ -169,7 +169,7 @@ list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 	copy(command.begin(), command.end(), stdext::checked_array_iterator<char*>(commandLine, command.length()));
 	commandLine[command.length()] = '\0';
 
-	if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, NORMAL_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
+	if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
 	{
 		cout << "create process: " << commandLine << endl;
 		wp.hProcess = procinfo.hProcess;
