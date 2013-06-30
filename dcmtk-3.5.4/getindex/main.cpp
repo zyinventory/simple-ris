@@ -5,7 +5,7 @@ static char patientID[65], studyUID[65], host[65], indexPath[MAX_PATH];
 static const char jnlp0[] = 
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
 <jnlp spec=\"1.6+\" version=\"1.0.7\" codebase=\"http://";
-static const char jnlp1[] =                               "/weasis\" href=\"\">\
+static const char jnlp1[] =                               "/weasis-1.2.x\" href=\"\">\
 <information>\
   <title>Weasis</title>\
   <vendor>H&#244;pitaux Universitaires de Gen&#232;ve (HUG)</vendor>\
@@ -32,9 +32,9 @@ static const char jnlp1[] =                               "/weasis\" href=\"\">\
   <extension href=\"substance.jnlp\"/>\
   <property name=\"jnlp.packEnabled\" value=\"true\" />\
   <property name=\"felix.config.properties\" value=\"http://";
-static const char jnlp2[] =                                   "/weasis/conf/config.properties\" />\
+static const char jnlp2[] =                                   "/weasis-1.2.x/conf/config.properties\" />\
   <property name=\"weasis.codebase.url\" value=\"http://";
-static const char jnlp3[] =                               "/weasis\" />\
+static const char jnlp3[] =                               "/weasis-1.2.x\" />\
   <property name=\"gosh.args\" value=\"-sc telnetd -p 17179 start\" />\
   <property name=\"apple.laf.useScreenMenuBar\" value=\"true\" />\
   <property name=\"weasis.i18n\" value=\"http://";
