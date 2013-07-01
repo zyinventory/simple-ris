@@ -51,50 +51,40 @@ static const char jnlp8[] = "\
 </jnlp>";
 using namespace std;
 
-int work()
+void jnlp(int hostLength)
 {
-	//locale::global(locale(CHINESE_LOCAL));
-	changeWorkingDirectory(0, NULL); // switch to ${PACS_BASE}/pacs
+	int indexPathLength = 0;
+	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
+		indexPathLength = sprintf_s(indexPath, MAX_PATH, "studyUID=%s", studyUID);
+	else if(cgiFormNotFound != cgiFormString("patientID", patientID, 65) && strlen(patientID) > 0)
+		indexPathLength = sprintf_s(indexPath, MAX_PATH, "patientID=%s", patientID);
 
-	int hostLength = 0;
-	if(strcmp(cgiServerPort, "80"))  // host = http://servername[:port]/
-		hostLength = sprintf_s(host, 64, "%s:%s", cgiServerName, cgiServerPort);
-	else
-		hostLength = sprintf_s(host, 64, "%s", cgiServerName);
-
-	if(cgiFormNotFound != cgiFormString("jnlp", studyUID, 65) && strlen(studyUID) > 0)
+	int contentLength = sizeof(jnlp0) - 1 + sizeof(jnlp1) - 1 + sizeof(jnlp2) - 1 + sizeof(jnlp3) - 1 + sizeof(jnlp4) - 1 + hostLength * 4
+		+ (indexPathLength > 0 ? sizeof(jnlp5) - 1 + sizeof(jnlp6) - 1 + sizeof(jnlp7) - 1 + hostLength + indexPathLength : 0)
+		+ sizeof(jnlp8) - 1;
+	fprintf(cgiOut, "Content-type: application/x-java-jnlp-file; charset=UTF-8\r\nContent-Length: %d\r\n\r\n", contentLength);
+	fprintf(cgiOut, jnlp0);
+	fprintf(cgiOut, host);
+	fprintf(cgiOut, jnlp1);
+	fprintf(cgiOut, host);
+	fprintf(cgiOut, jnlp2);
+	fprintf(cgiOut, host);
+	fprintf(cgiOut, jnlp3);
+	fprintf(cgiOut, host);
+	fprintf(cgiOut, jnlp4);
+	if(indexPathLength > 0)
 	{
-		int indexPathLength = 0;
-		if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
-			indexPathLength = sprintf_s(indexPath, MAX_PATH, "studyUID=%s", studyUID);
-		else if(cgiFormNotFound != cgiFormString("patientID", patientID, 65) && strlen(patientID) > 0)
-			indexPathLength = sprintf_s(indexPath, MAX_PATH, "patientID=%s", patientID);
-
-		int contentLength = sizeof(jnlp0) - 1 + sizeof(jnlp1) - 1 + sizeof(jnlp2) - 1 + sizeof(jnlp3) - 1 + sizeof(jnlp4) - 1 + hostLength * 4
-			+ (indexPathLength > 0 ? sizeof(jnlp5) - 1 + sizeof(jnlp6) - 1 + sizeof(jnlp7) - 1 + hostLength + indexPathLength : 0)
-			+ sizeof(jnlp8) - 1;
-		fprintf(cgiOut, "Content-type: application/x-java-jnlp-file; charset=UTF-8\r\nContent-Length: %d\r\n\r\n", contentLength);
-		fprintf(cgiOut, jnlp0);
+		fprintf(cgiOut, jnlp5);
 		fprintf(cgiOut, host);
-		fprintf(cgiOut, jnlp1);
-		fprintf(cgiOut, host);
-		fprintf(cgiOut, jnlp2);
-		fprintf(cgiOut, host);
-		fprintf(cgiOut, jnlp3);
-		fprintf(cgiOut, host);
-		fprintf(cgiOut, jnlp4);
-		if(indexPathLength > 0)
-		{
-			fprintf(cgiOut, jnlp5);
-			fprintf(cgiOut, host);
-			fprintf(cgiOut, jnlp6);
-			fprintf(cgiOut, indexPath);
-			fprintf(cgiOut, jnlp7);
-		}
-		fprintf(cgiOut, jnlp8);
+		fprintf(cgiOut, jnlp6);
+		fprintf(cgiOut, indexPath);
+		fprintf(cgiOut, jnlp7);
 	}
-	else
-	{
+	fprintf(cgiOut, jnlp8);
+}
+
+bool queryXml(int hostLength)
+{
 		ifstream xmlFile;
 		if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 		{
@@ -133,10 +123,28 @@ int work()
 			fprintf(cgiOut, host);
 			fprintf(cgiOut, p);
 			delete buffer;
+			return true;
 		}
 		else
-			return -1;
-	}
+			return false;
+}
+
+int work()
+{
+	char *pPacsBase = NULL;
+	//locale::global(locale(CHINESE_LOCAL));
+	changeWorkingDirectory(0, NULL, &pPacsBase); // switch to ${PACS_BASE}/pacs
+
+	int hostLength = 0;
+	if(strcmp(cgiServerPort, "80"))  // host = http://servername[:port]/
+		hostLength = sprintf_s(host, 64, "%s:%s", cgiServerName, cgiServerPort);
+	else
+		hostLength = sprintf_s(host, 64, "%s", cgiServerName);
+
+	if(cgiFormNotFound != cgiFormString("jnlp", studyUID, 65) && strlen(studyUID) > 0)
+		jnlp(hostLength);
+	else
+		if(!queryXml(hostLength)) return -1;
 	return 0;
 }
 

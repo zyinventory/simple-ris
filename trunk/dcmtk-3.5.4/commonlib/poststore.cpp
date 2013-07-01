@@ -382,24 +382,61 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 			}
 			::CloseHandle(fh);
 
-			// print text fields
+			// cd label fields value
 			MSXML2::IXMLDOMDocumentPtr pXsl;
 			const char *xslFile = "xslt\\mktext.xsl";
 			hr = pXsl.CreateInstance(__uuidof(MSXML2::DOMDocument30));
-			if (SUCCEEDED(hr))
+			pXsl->preserveWhiteSpace = VARIANT_FALSE;
+			pXsl->async = VARIANT_FALSE;
+			if(pXsl->load(xslFile) == VARIANT_FALSE)
 			{
-				pXsl->preserveWhiteSpace = VARIANT_FALSE;
-				pXsl->async = VARIANT_FALSE;
-				if(pXsl->load(xslFile) == VARIANT_FALSE)
+				cerr << "Failed to load XSL DOM: " << xslFile << endl;
+			}
+			else
+			{
+				_bstr_t textFields = oldIndex ? oldIndex->transformNode(pXsl) : pXMLDom->transformNode(pXsl);
+				ofstream ofs(fieldsPath.c_str(), ios_base::out | ios_base::trunc);
+				ofs << textFields;
+				ofs.close();
+			}
+
+			// jdf file
+			if(!strcmp(tag, "0020000d"))
+			{
+				string pacsBase;
+				size_t requiredSize;
+				getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
+				if(requiredSize > 0)
 				{
-					cerr << "Failed to load XSL DOM: " << xslFile << endl;
+					char* pPacsBase = NULL;
+					pPacsBase = new char[requiredSize];
+					getenv_s( &requiredSize, pPacsBase, requiredSize, "PACS_BASE");
+					pacsBase = pPacsBase;
+					delete pPacsBase;
 				}
-				else
+				if(!pacsBase.empty())
 				{
-					_bstr_t textFields = oldIndex ? oldIndex->transformNode(pXsl) : pXMLDom->transformNode(pXsl);
-					ofstream ofs(fieldsPath.c_str(), ios_base::out | ios_base::trunc);
-					ofs << textFields;
+					sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.jdf", pacsBase.c_str(), indexBase.c_str(), tag,
+						hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, (const char*)tagValue);
+					string jdfPath(buffer);
+					sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%02X\\%02X\\%02X\\%02X\\%s", pacsBase.c_str(), archivePath.c_str(),
+						hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, (const char*)tagValue);
+					ofstream ofs(jdfPath.c_str(), ios_base::out | ios_base::trunc);
+					ofs << "COPIES=1" << endl;
+					ofs << "DISC_TYPE=CD" << endl;
+					ofs << "FORMAT=ISO9660L2" << endl;
+					ofs << "DATA=" << pacsBase << "\\eFilmLite\\Autorun.inf" << endl;
+					ofs << "DATA=" << pacsBase << "\\eFilmLite\teFilmLite" << endl;
+					ofs << "DATA=" << buffer << endl;
+					ofs << "VOLUME_LABEL=SMARTPUB" << endl;
+					ofs << "LABEL=" << pacsBase << "\\tdd\\patientInfo.tdd" << endl;
+					ofs << "REPLACE_FIELD=" << pacsBase << "\\pacs\\" << fieldsPath << endl;
 					ofs.close();
+					char timeBuffer[16];
+					generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
+					sprintf_s(buffer, BUFF_SIZE, "%s\\orders\\%s_%s.jdf", pacsBase.c_str(), timeBuffer, (const char*)tagValue);
+					if(!rename(jdfPath.c_str(), buffer))
+						cerr << "move " << jdfPath << " to " << buffer << " failed" << endl;
 				}
 			}
 		}

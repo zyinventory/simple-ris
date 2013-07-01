@@ -209,7 +209,7 @@ time_t dcmdate2tm(int dcmdate)
   return mktime(&timeBirth);
 }
 
-void changeWorkingDirectory(int argc, char **argv)
+int changeWorkingDirectory(int argc, char **argv, char **ppPacsBase)
 {
   char **endPos = argv + argc;
   char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
@@ -225,12 +225,18 @@ void changeWorkingDirectory(int argc, char **argv)
 	getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
 	if(requiredSize > 0)
 	{
-	  workingDirBuffer = new char[requiredSize];
-	  getenv_s( &requiredSize, workingDirBuffer, requiredSize, "PACS_BASE");
-	  string workingDir(workingDirBuffer);
-	  workingDir.append("\\pacs");
-	  _chdir(workingDir.c_str());
-	  delete workingDirBuffer;
+		workingDirBuffer = new char[requiredSize];
+		getenv_s( &requiredSize, workingDirBuffer, requiredSize, "PACS_BASE");
+		string workingDir(workingDirBuffer);
+		workingDir.append("\\pacs");
+		_chdir(workingDir.c_str());
+		if(ppPacsBase)
+			*ppPacsBase = workingDirBuffer;
+		else
+			delete workingDirBuffer;
 	}
+	else
+		return -1;
   }
+  return 0;
 }
