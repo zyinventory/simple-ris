@@ -243,6 +243,11 @@ int changeWorkingDirectory(int argc, char **argv, char **ppPacsBase)
 	{
 		if(!_chdir("C:\\usr\\local\\dicom\\pacs"))
 			return -1;
+		if(ppPacsBase)
+		{
+			char base[] = "C:\\usr\\local\\dicom";
+			strcpy_s(*ppPacsBase, sizeof(base), base);
+		}
 	}
   }
   return 0;
