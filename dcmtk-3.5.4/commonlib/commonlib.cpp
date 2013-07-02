@@ -216,7 +216,7 @@ int changeWorkingDirectory(int argc, char **argv, char **ppPacsBase)
   if(pos == endPos) pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "--working-directory")));
   if(pos != endPos)
   {
-	_chdir(*++pos);
+	if(! _chdir(*++pos)) return -1;
   }
   else
   {
@@ -229,14 +229,21 @@ int changeWorkingDirectory(int argc, char **argv, char **ppPacsBase)
 		getenv_s( &requiredSize, workingDirBuffer, requiredSize, "PACS_BASE");
 		string workingDir(workingDirBuffer);
 		workingDir.append("\\pacs");
-		_chdir(workingDir.c_str());
+		if(! _chdir(workingDir.c_str()))
+		{
+			delete workingDirBuffer;
+			return -1;
+		}
 		if(ppPacsBase)
 			*ppPacsBase = workingDirBuffer;
 		else
 			delete workingDirBuffer;
 	}
 	else
-		return -1;
+	{
+		if(!_chdir("C:\\usr\\local\\dicom\\pacs"))
+			return -1;
+	}
   }
   return 0;
 }

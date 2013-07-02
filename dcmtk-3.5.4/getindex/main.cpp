@@ -51,7 +51,7 @@ static const char jnlp8[] = "\
 </jnlp>";
 using namespace std;
 
-void jnlp(int hostLength)
+int jnlp(int hostLength)
 {
 	int indexPathLength = 0;
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
@@ -81,9 +81,10 @@ void jnlp(int hostLength)
 		fprintf(cgiOut, jnlp7);
 	}
 	fprintf(cgiOut, jnlp8);
+	return 0;
 }
 
-bool queryXml(int hostLength)
+int queryXml(int hostLength)
 {
 		ifstream xmlFile;
 		if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
@@ -123,10 +124,29 @@ bool queryXml(int hostLength)
 			fprintf(cgiOut, host);
 			fprintf(cgiOut, p);
 			delete buffer;
-			return true;
+			return 0;
 		}
 		else
-			return false;
+			return -1;
+}
+
+int burningStudy(const char *media)
+{
+	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
+	{
+		int result = generateStudyJDF("0020000d", studyUID);
+		if(result == 0)
+		{
+			char okMessage[] = "¿ªÊ¼¿ÌÂ¼CD/DVD...";
+			fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(okMessage) - 1);
+			fprintf(cgiOut, okMessage);
+			return 0;
+		}
+	}
+	char errorMessage[] = "¿ÌÂ¼CD/DVD´íÎó";
+	fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(errorMessage) - 1);
+	fprintf(cgiOut, errorMessage);
+	return -1;
 }
 
 int work()
@@ -140,12 +160,13 @@ int work()
 		hostLength = sprintf_s(host, 64, "%s:%s", cgiServerName, cgiServerPort);
 	else
 		hostLength = sprintf_s(host, 64, "%s", cgiServerName);
-
-	if(cgiFormNotFound != cgiFormString("jnlp", studyUID, 65) && strlen(studyUID) > 0)
-		jnlp(hostLength);
+	char flag[16];
+	if(cgiFormNotFound != cgiFormString("media", flag, sizeof(flag)) && strlen(flag) > 0)
+		return burningStudy(flag);
+	else if(cgiFormNotFound != cgiFormString("jnlp", flag, sizeof(flag)) && strlen(flag) > 0)
+		return jnlp(hostLength);
 	else
-		if(!queryXml(hostLength)) return -1;
-	return 0;
+		return queryXml(hostLength);
 }
 
 extern "C" int cppWrapper()

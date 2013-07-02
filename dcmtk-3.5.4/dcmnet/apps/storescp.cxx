@@ -177,7 +177,6 @@ const char *       opt_respondingaetitle = APPLICATIONTITLE;
 static OFBool      opt_secureConnection = OFFalse;    // default: no secure connection
 static OFString    opt_outputDirectory(".");          // default: output directory equals "."
 static OFString    opt_volumeLabel("archdir");   // default: output directory's full path
-static OFString    opt_workingDirectory;    		  // default: current directory
 static const char *opt_sortConcerningStudies = NULL;  // default: no sorting
 OFString           lastStudyInstanceUID;
 OFString           subdirectoryPathAndName, archiveStudyPath, studyXml;
@@ -264,7 +263,6 @@ void exitHook()
   callingpresentationaddress.~OFString();
   opt_outputDirectory.~OFString();
   opt_volumeLabel.~OFString();
-  opt_workingDirectory.~OFString();
   lastStudyInstanceUID.~OFString();
   lastStudySubdirectoryPathAndName.~OFString();
   lastArchiveStudyPath.~OFString();
@@ -322,7 +320,6 @@ int main(int argc, char *argv[])
     opt0 += opt_outputDirectory;
     opt0 += ")";
     cmd.addOption("--output-directory",          "-od",   1, "[p]ath: string", opt0.c_str());
-	cmd.addOption("--working-directory",         "-wd",   1, "[p]ath: string", "working directory, default: current directory");
 
 #if defined(HAVE_FORK) || defined(_WIN32)
   cmd.addGroup("multi-process options:", LONGCOL, SHORTCOL+2);
@@ -598,7 +595,6 @@ int main(int argc, char *argv[])
       SetDebugLevel(3);
     }
     if (cmd.findOption("--output-directory")) app.checkValue(cmd.getValue(opt_outputDirectory));
-	if (cmd.findOption("--working-directory")) app.checkValue(cmd.getValue(opt_workingDirectory));
 
     cmd.beginOptionBlock();
     if (cmd.findOption("--prefer-uncompr"))      opt_networkTransferSyntax = EXS_Unknown;
@@ -983,24 +979,8 @@ int main(int argc, char *argv[])
     }
   }
 #endif
-
-  if(opt_workingDirectory.length() != 0)
-  {
-	if(opt_verbose || opt_debug)
-	{
-  	  char *buffer = _getcwd(NULL, 0);
-	  COUT << "Old working directory: " << buffer << endl;
-	  free(buffer);
-	}
-	_chdir(opt_workingDirectory.c_str());
-	if(opt_verbose || opt_debug)
-	{
-	  char *buffer = _getcwd(NULL, 0);
-	  COUT << "New working directory: " << buffer << endl;
-	  free(buffer);
-	}
-  }
-  else if(opt_verbose || opt_debug)
+  changeWorkingDirectory(argc, argv);
+  if(opt_verbose || opt_debug)
   {
   	char *buffer = _getcwd(NULL, 0);
 	COUT << "working directory: " << buffer << endl;
