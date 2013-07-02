@@ -370,7 +370,7 @@ int generateStudyJDF(const char *tag, const char *tagValue)
 				ofs << "DATA=" << buffer << endl;
 				ofs << "VOLUME_LABEL=SMARTPUB" << endl;
 				ofs << "LABEL=" << pacsBase << "\\tdd\\patientInfo.tdd" << endl;
-				ofs << "REPLACE_FIELD=" << pacsBase << "\\pacs\\" << fieldsPath << endl;
+				ofs << "REPLACE_FIELD=" << fieldsPath << endl;
 				ofs.close();
 			}
 			catch(...)
