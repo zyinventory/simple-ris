@@ -333,6 +333,63 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 	return S_OK;
 }
 
+int generateStudyJDF(const char *tag, const char *tagValue)
+{
+	if(!strcmp(tag, "0020000d"))
+	{
+		string pacsBase;
+		size_t requiredSize;
+		getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
+		if(requiredSize > 0)
+		{
+			char* pPacsBase = NULL;
+			pPacsBase = new char[requiredSize];
+			getenv_s( &requiredSize, pPacsBase, requiredSize, "PACS_BASE");
+			pacsBase = pPacsBase;
+			delete pPacsBase;
+		}
+		if(!pacsBase.empty())
+		{
+			unsigned int hash = hashCode(tagValue);
+			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.jdf", pacsBase.c_str(), indexBase.c_str(), tag,
+				hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, tagValue);
+			string jdfPath(buffer);
+			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.txt", pacsBase.c_str(), indexBase.c_str(), tag,
+				hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, tagValue);
+			string fieldsPath(buffer);
+			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%02X\\%02X\\%02X\\%02X\\%s", pacsBase.c_str(), archivePath.c_str(),
+				hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, tagValue);
+			try
+			{
+				ofstream ofs(jdfPath.c_str(), ios_base::out | ios_base::trunc);
+				ofs << "COPIES=1" << endl;
+				ofs << "DISC_TYPE=CD" << endl;
+				ofs << "FORMAT=ISO9660L2" << endl;
+				ofs << "DATA=" << pacsBase << "\\eFilmLite\\Autorun.inf" << endl;
+				ofs << "DATA=" << pacsBase << "\\eFilmLite\teFilmLite" << endl;
+				ofs << "DATA=" << buffer << endl;
+				ofs << "VOLUME_LABEL=SMARTPUB" << endl;
+				ofs << "LABEL=" << pacsBase << "\\tdd\\patientInfo.tdd" << endl;
+				ofs << "REPLACE_FIELD=" << pacsBase << "\\pacs\\" << fieldsPath << endl;
+				ofs.close();
+			}
+			catch(...)
+			{
+				cerr << "write jdf error" << endl;
+				return -2;
+			}
+			char timeBuffer[16];
+			generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
+			sprintf_s(buffer, BUFF_SIZE, "%s\\orders\\%s_%s.jdf", pacsBase.c_str(), timeBuffer, tagValue);
+			if(!rename(jdfPath.c_str(), buffer))
+				return 0;
+			else
+				cerr << "move " << jdfPath << " to " << buffer << " failed" << endl;
+		}
+	}
+	return -1;
+}
+
 HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag, const char *queryValue)
 {
 	HRESULT hr;
@@ -401,44 +458,7 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 			}
 
 			// jdf file
-			if(!strcmp(tag, "0020000d"))
-			{
-				string pacsBase;
-				size_t requiredSize;
-				getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
-				if(requiredSize > 0)
-				{
-					char* pPacsBase = NULL;
-					pPacsBase = new char[requiredSize];
-					getenv_s( &requiredSize, pPacsBase, requiredSize, "PACS_BASE");
-					pacsBase = pPacsBase;
-					delete pPacsBase;
-				}
-				if(!pacsBase.empty())
-				{
-					sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.jdf", pacsBase.c_str(), indexBase.c_str(), tag,
-						hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, (const char*)tagValue);
-					string jdfPath(buffer);
-					sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%02X\\%02X\\%02X\\%02X\\%s", pacsBase.c_str(), archivePath.c_str(),
-						hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, (const char*)tagValue);
-					ofstream ofs(jdfPath.c_str(), ios_base::out | ios_base::trunc);
-					ofs << "COPIES=1" << endl;
-					ofs << "DISC_TYPE=CD" << endl;
-					ofs << "FORMAT=ISO9660L2" << endl;
-					ofs << "DATA=" << pacsBase << "\\eFilmLite\\Autorun.inf" << endl;
-					ofs << "DATA=" << pacsBase << "\\eFilmLite\teFilmLite" << endl;
-					ofs << "DATA=" << buffer << endl;
-					ofs << "VOLUME_LABEL=SMARTPUB" << endl;
-					ofs << "LABEL=" << pacsBase << "\\tdd\\patientInfo.tdd" << endl;
-					ofs << "REPLACE_FIELD=" << pacsBase << "\\pacs\\" << fieldsPath << endl;
-					ofs.close();
-					char timeBuffer[16];
-					generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
-					sprintf_s(buffer, BUFF_SIZE, "%s\\orders\\%s_%s.jdf", pacsBase.c_str(), timeBuffer, (const char*)tagValue);
-					if(!rename(jdfPath.c_str(), buffer))
-						cerr << "move " << jdfPath << " to " << buffer << " failed" << endl;
-				}
-			}
+			generateStudyJDF(tag, (const char*)tagValue);
 		}
 		else
 		{

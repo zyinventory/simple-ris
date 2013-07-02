@@ -56,6 +56,7 @@
 				<th title="Accession Number"> ‹¿Ì∫≈</th>
 				<th>AE Title</th>
 				<th>ºÏ≤ÈUID</th>
+        <th>øÃ¬º</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -93,7 +94,16 @@
 							<xsl:with-param name="by" select="'.&#x200B;'"/>
 						</xsl:call-template>
 					</a>
-				</td>
+        </td>
+        <td>
+          <form target="_blank" method="POST" action="cgi-bin/getindex.exe">
+            <input type="hidden" name="media" value="CD" />
+            <input type="hidden" name="studyUID">
+              <xsl:attribute name="value"><xsl:value-of select="./text()" /></xsl:attribute>
+            </input>
+            <input type="submit" value="øÃ¬º" />
+          </form>
+        </td>
 			</tr>
 			</xsl:for-each>
 		</tbody>
