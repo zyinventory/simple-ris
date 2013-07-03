@@ -93,8 +93,7 @@ int main(int argc, char *argv[])
 		{ CERR << "create or open output file " << opt_output << " error" << endl; exit(1); }
 	DcmDirectoryRecord *outputRoot = &(output->getRootRecord());
 
-	OFListIterator(OFString) curr = fileNames.begin();
-	for(; curr != fileNames.end(); ++curr)
+	for(OFListIterator(OFString) curr = fileNames.begin(); curr != fileNames.end(); ++curr)
 	{
 		DcmDicomDir *inputDir = new DcmDicomDir((*curr).c_str());
 		if (inputDir != NULL)
@@ -106,6 +105,7 @@ int main(int argc, char *argv[])
 		DcmStack resultStack;
 
 		// find all image
+		/*
 		DcmUniqueIdentifier *ptrInstanceUID = NULL;
 		resultStack.push(rootRecord);
 		while(rootRecord->search(DCM_ReferencedSOPInstanceUIDInFile, resultStack, ESM_afterStackTop).good())
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
-
+		*/
 		// find patientId in patient
 		if(DcmDirectoryRecord *patient = rootRecord->nextSub(NULL))
 		{
