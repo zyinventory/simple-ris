@@ -10,9 +10,9 @@
 using namespace std;
 
 static int argcSV;
-static char **argvSV;
-static bool runInSCM = false, startXCS = false, xcsFound = false;
-static char timeBuffer[20];
+static char **argvSV, timeBuffer[20];
+static bool startXCS = false, xcsFound = false;
+static HANDLE logFile = INVALID_HANDLE_VALUE;
 
 const char *dirmakerCommand;
 int commandDispatcher(const char *queueName, int processorNumber);
@@ -47,21 +47,11 @@ int realMain(int argc, char **argv)
 
 	PROCESS_INFORMATION procinfo;
 	STARTUPINFO sinfo;
-	SECURITY_ATTRIBUTES logSA;
 
 	memset(&procinfo, 0, sizeof(PROCESS_INFORMATION));
 	memset(&sinfo, 0, sizeof(STARTUPINFO));
 	sinfo.cb = sizeof(STARTUPINFO);
-
-	logSA.bInheritHandle = TRUE;
-	logSA.lpSecurityDescriptor = NULL;
-	logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
-
-	generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
-	ostringstream filename;
-	filename << "pacs_log\\" << getServiceName() << '_' << timeBuffer << ".txt";
-	HANDLE logFile = CreateFile(filename.str().c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-	filename.clear();
+/*
 	if(logFile != INVALID_HANDLE_VALUE)
 	{
 		sinfo.dwFlags |= STARTF_USESTDHANDLES;
@@ -69,16 +59,14 @@ int realMain(int argc, char **argv)
 		sinfo.hStdError = logFile;
 		sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
 	}
-
+*/
 	if( CreateProcess(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, CREATE_NEW_PROCESS_GROUP, NULL, NULL, &sinfo, &procinfo) )
 	{
 		WaitForInputIdle(procinfo.hProcess, INFINITE);
 		// Close process and thread handles to avoid resource leak
 		CloseHandle(procinfo.hProcess);
 		CloseHandle(procinfo.hThread);
-		if(logFile != INVALID_HANDLE_VALUE)	{ CloseHandle(logFile); logFile = INVALID_HANDLE_VALUE; }
 	}
-	if(logFile != INVALID_HANDLE_VALUE) CloseHandle(logFile);
 	SYSTEM_INFO sysInfo;
 	GetSystemInfo(&sysInfo);
 	return commandDispatcher(QUEUE_NAME, min(MAX_CORE, sysInfo.dwNumberOfProcessors - 1));
@@ -118,30 +106,73 @@ int _tmain(int argc, _TCHAR* argv[])
 	argvSV = argv;
 
 	Capture_Ctrl_C();
+	
+	setEnvParentPID();
 
 	changeWorkingDirectory(argc, argv);
-
+/*
 	char *buffer = _getcwd(NULL, 0);
 	cout << "working dir: " << buffer << endl;
 	free(buffer);
+*/
+	SECURITY_ATTRIBUTES logSA;
+	logSA.bInheritHandle = TRUE;
+	logSA.lpSecurityDescriptor = NULL;
+	logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
 
-	setEnvParentPID();
+	generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
+	ostringstream filename;
+	filename << "pacs_log\\" << getServiceName() << '_' << timeBuffer;
+	string dicomLogPath = filename.str();
+	dicomLogPath.append("_dicom.txt");
+	string serviceLogPath = filename.str();
+	serviceLogPath.append("_service.txt");
+	filename.clear();
+	HANDLE logFile = CreateFile(dicomLogPath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 
+	HANDLE oldStdOut = INVALID_HANDLE_VALUE, oldStdErr = INVALID_HANDLE_VALUE;
+	if(logFile != INVALID_HANDLE_VALUE)
+	{
+		oldStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+		oldStdErr = GetStdHandle(STD_ERROR_HANDLE);
+		SetStdHandle(STD_OUTPUT_HANDLE, logFile);
+		SetStdHandle(STD_ERROR_HANDLE, logFile);
+	}
+
+	streambuf *outBuf = cout.rdbuf(), *errBuf = cerr.rdbuf();
+	ofstream ofs(serviceLogPath.c_str());
+	cout.rdbuf(ofs.rdbuf());
+	cerr.rdbuf(ofs.rdbuf());
+
+	int ret = 0;
 	if( StartServiceCtrlDispatcher( serviceTableEntry ) )
 	{
 		// This call returns when the service has stopped. 
 		// The process should simply terminate when the call returns.
-		runInSCM = true;
-		return 0;
+		ret = 0;
 	}
 	else if( ERROR_FAILED_SERVICE_CONTROLLER_CONNECT == GetLastError() )
 	{
 		// console mode
-		return realMain(argcSV, argvSV);
+		ret = realMain(argcSV, argvSV);
 	}
 	else
 	{
 		cerr << "TestDaemon start error" << endl;
-		return -1;
+		ret = -1;
 	}
+
+	if(logFile != INVALID_HANDLE_VALUE)
+	{
+		SetStdHandle(STD_OUTPUT_HANDLE, oldStdOut);
+		SetStdHandle(STD_ERROR_HANDLE, oldStdErr);
+		CloseHandle(logFile);
+	}
+	cout.flush();
+	cerr.flush();
+	cout.rdbuf(outBuf);
+	cerr.rdbuf(errBuf);
+	ofs.flush();
+	ofs.close();
+	return ret;
 }
