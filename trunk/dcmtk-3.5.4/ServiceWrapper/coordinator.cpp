@@ -141,7 +141,7 @@ list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 		delete wp.logFilePath;
 		wp.logFilePath = NULL;
 		_com_error ce(AtlHresultFromLastError());
-		cerr << TEXT("runCommandÎ´Öª´íÎó£º") << ce.ErrorMessage() << endl;
+		cerr << TEXT("run dcmmkdir error: ") << ce.ErrorMessage() << endl;
 	}
 
 	if(wp.hLogFile)
@@ -367,7 +367,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 			delete workers[index].logFilePath;
 			workers[index].logFilePath = NULL;
 			_com_error ce(AtlHresultFromLastError());
-			cerr << TEXT("runCommandÎ´Öª´íÎó£º") << ce.ErrorMessage() << endl;
+			cerr << TEXT("run archive command error: ") << ce.ErrorMessage() << endl;
 		}
 	}
 
@@ -579,7 +579,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 					}
 					else
 					{
-						cerr << TEXT("moveÃüÁî¸ñÊ½´íÎó:") << command << endl;
+						cerr << TEXT("move command format error: ") << command << endl;
 					}
 					delete[] buffer;
 				}
@@ -630,12 +630,12 @@ void processMessage(IMSMQMessagePtr pMsg)
 		}
 		catch(_com_error &comErr)
 		{
-			cerr << TEXT("processMessage´íÎó£º") << comErr.ErrorMessage() << endl;
+			cerr << TEXT("processMessage COM error: ") << comErr.ErrorMessage() << endl;
 		}
 		catch(...)
 		{
 			_com_error ce(AtlHresultFromLastError());
-			cerr << TEXT("processMessageÎ´Öª´íÎó£º") << ce.ErrorMessage() << endl;
+			cerr << TEXT("processMessage unknown error: ") << ce.ErrorMessage() << endl;
 		}
 	}
 	else
@@ -684,12 +684,12 @@ int pollQueue(const _TCHAR *queueName)
 	}
 	catch(_com_error &comErr)
 	{
-		cerr << TEXT("pollQueue´íÎó£º") << comErr.ErrorMessage() << endl;
+		cerr << TEXT("pollQueue COM error: ") << comErr.ErrorMessage() << endl;
 		return -10;
 	}
 	catch(const char *message)
 	{
-		cerr << TEXT("pollQueue´íÎó£º") << message << endl;
+		cerr << TEXT("pollQueue error: ") << message << endl;
 		return -10;
 	}
 	catch(...)

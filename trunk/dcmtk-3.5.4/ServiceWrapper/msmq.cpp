@@ -5,13 +5,13 @@
 using namespace std;
 using namespace MSMQ;
 
-IMSMQQueuePtr createQueue(IMSMQQueueInfoPtr &pInfo)
+IMSMQQueuePtr createQueueAndOpen(IMSMQQueueInfoPtr &pInfo, MQACCESS access) throw(...)
 {
 	_variant_t vtrue(true);
 	_variant_t vfalse(false);
 	HRESULT hr = pInfo->Create(vfalse.GetAddress(), vtrue.GetAddress());
 	if(FAILED(hr)) throw _com_error(hr);
-	return pInfo->Open(MQ_SEND_ACCESS, MQ_DENY_NONE);
+	return pInfo->Open(access, MQ_DENY_NONE);
 }
 
 IMSMQQueuePtr OpenOrCreateQueue(const char *queueName, MQACCESS access) throw(...)
@@ -38,7 +38,7 @@ IMSMQQueuePtr OpenOrCreateQueue(const char *queueName, MQACCESS access) throw(..
 	{
 		if(openerr.Error() == MQ_ERROR_QUEUE_NOT_FOUND)
 		{
-			pQueue = createQueue(pInfo);
+			pQueue = createQueueAndOpen(pInfo, access);
 		}
 		else if(openerr.Error() == MQ_ERROR_ILLEGAL_QUEUE_PATHNAME)
 		{
