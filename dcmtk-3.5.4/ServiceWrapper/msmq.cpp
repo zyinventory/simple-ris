@@ -29,7 +29,9 @@ IMSMQQueuePtr OpenOrCreateQueue(const char *queueName, MQACCESS access) throw(..
 	{
 		if(openerr.Error() == MQ_ERROR_QUEUE_NOT_FOUND)
 		{
-			hr = pInfo->Create();
+			_variant_t vtrue(true);
+			_variant_t vfalse(false);
+			hr = pInfo->Create(vfalse.GetAddress(), vtrue.GetAddress());
 			if(FAILED(hr)) throw _com_error(hr);
 			pQueue = pInfo->Open(MQ_SEND_ACCESS, MQ_DENY_NONE);
 		}
