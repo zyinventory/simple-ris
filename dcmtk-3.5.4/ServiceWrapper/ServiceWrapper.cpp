@@ -10,7 +10,7 @@
 using namespace std;
 
 static int argcSV;
-static char **argvSV, timeBuffer[20];
+static char **argvSV, timeBuffer[48];
 static bool startXCS = false, xcsFound = false;
 static HANDLE logFile = INVALID_HANDLE_VALUE;
 
@@ -43,7 +43,7 @@ int realMain(int argc, char **argv)
 	for_each(argv + 2, argv + argc, bind1st(ptr_fun(mkcmd), &cmdStream)); // skip program and ServiceName
 	string cmd(cmdStream.str());
 	cmdStream.clear();
-	cout << cmd << endl;
+	//cout << cmd << endl;
 
 	PROCESS_INFORMATION procinfo;
 	STARTUPINFO sinfo;
@@ -51,7 +51,17 @@ int realMain(int argc, char **argv)
 	memset(&procinfo, 0, sizeof(PROCESS_INFORMATION));
 	memset(&sinfo, 0, sizeof(STARTUPINFO));
 	sinfo.cb = sizeof(STARTUPINFO);
-/*
+
+	SECURITY_ATTRIBUTES logSA;
+	logSA.bInheritHandle = TRUE;
+	logSA.lpSecurityDescriptor = NULL;
+	logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
+
+	HANDLE logFile = INVALID_HANDLE_VALUE;
+	generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_storescp.txt", timeBuffer, sizeof(timeBuffer));
+	if(prepareFileDir(timeBuffer))
+		logFile = CreateFile(timeBuffer, GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+
 	if(logFile != INVALID_HANDLE_VALUE)
 	{
 		sinfo.dwFlags |= STARTF_USESTDHANDLES;
@@ -59,7 +69,7 @@ int realMain(int argc, char **argv)
 		sinfo.hStdError = logFile;
 		sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
 	}
-*/
+
 	if( CreateProcess(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, CREATE_NEW_PROCESS_GROUP, NULL, NULL, &sinfo, &procinfo) )
 	{
 		WaitForInputIdle(procinfo.hProcess, INFINITE);
@@ -115,34 +125,20 @@ int _tmain(int argc, _TCHAR* argv[])
 	cout << "working dir: " << buffer << endl;
 	free(buffer);
 */
-	SECURITY_ATTRIBUTES logSA;
-	logSA.bInheritHandle = TRUE;
-	logSA.lpSecurityDescriptor = NULL;
-	logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
-
-	generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
-	ostringstream filename;
-	filename << "pacs_log\\" << getServiceName() << '_' << timeBuffer;
-	string dicomLogPath = filename.str();
-	dicomLogPath.append("_dicom.txt");
-	string serviceLogPath = filename.str();
-	serviceLogPath.append("_service.txt");
-	filename.clear();
-	HANDLE logFile = CreateFile(dicomLogPath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-
-	HANDLE oldStdOut = INVALID_HANDLE_VALUE, oldStdErr = INVALID_HANDLE_VALUE;
-	if(logFile != INVALID_HANDLE_VALUE)
+	int stdfile = -1, oldstdout = -1, oldstderr = -1;
+	generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", timeBuffer, sizeof(timeBuffer));
+	if(prepareFileDir(timeBuffer)
+		&& ! _sopen_s(&stdfile, timeBuffer, _O_APPEND | _O_CREAT | _O_TEXT | _O_WRONLY, _SH_DENYWR, _S_IREAD | _S_IWRITE))
 	{
-		oldStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-		oldStdErr = GetStdHandle(STD_ERROR_HANDLE);
-		SetStdHandle(STD_OUTPUT_HANDLE, logFile);
-		SetStdHandle(STD_ERROR_HANDLE, logFile);
+		oldstdout = _dup(_fileno(stdout));
+		oldstderr = _dup(_fileno(stderr));
+		_dup2(stdfile, _fileno(stdout));
+		_dup2(stdfile, _fileno(stderr));
+		_close(stdfile);
 	}
 
-	streambuf *outBuf = cout.rdbuf(), *errBuf = cerr.rdbuf();
-	ofstream ofs(serviceLogPath.c_str());
-	cout.rdbuf(ofs.rdbuf());
-	cerr.rdbuf(ofs.rdbuf());
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
 
 	int ret = 0;
 	if( StartServiceCtrlDispatcher( serviceTableEntry ) )
@@ -161,18 +157,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		cerr << "TestDaemon start error" << endl;
 		ret = -1;
 	}
-
-	if(logFile != INVALID_HANDLE_VALUE)
-	{
-		SetStdHandle(STD_OUTPUT_HANDLE, oldStdOut);
-		SetStdHandle(STD_ERROR_HANDLE, oldStdErr);
-		CloseHandle(logFile);
-	}
-	cout.flush();
-	cerr.flush();
-	cout.rdbuf(outBuf);
-	cerr.rdbuf(errBuf);
-	ofs.flush();
-	ofs.close();
+	if(oldstdout != -1) _dup2(oldstdout, _fileno(stdout));
+	if(oldstderr != -1) _dup2(oldstderr, _fileno(stderr));
 	return ret;
 }
