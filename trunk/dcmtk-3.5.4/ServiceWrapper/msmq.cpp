@@ -5,13 +5,17 @@
 using namespace std;
 using namespace MSMQ;
 
+HRESULT QLetEveryoneFullControl(LPCWSTR wszFormatNameBuffer);
+
 IMSMQQueuePtr createQueueAndOpen(IMSMQQueueInfoPtr &pInfo, MQACCESS access) throw(...)
 {
 	_variant_t vtrue(true);
 	_variant_t vfalse(false);
 	HRESULT hr = pInfo->Create(vfalse.GetAddress(), vtrue.GetAddress());
 	if(FAILED(hr)) throw _com_error(hr);
-	return pInfo->Open(access, MQ_DENY_NONE);
+	IMSMQQueuePtr pQueue = pInfo->Open(access, MQ_DENY_NONE);
+	QLetEveryoneFullControl(pInfo->FormatName);
+	return pQueue;
 }
 
 IMSMQQueuePtr OpenOrCreateQueue(const char *queueName, MQACCESS access) throw(...)
