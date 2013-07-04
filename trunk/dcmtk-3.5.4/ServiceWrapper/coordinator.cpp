@@ -357,7 +357,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 		char timebuf[48];
 		generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", timebuf, 48);
 		ostringstream strbuf;
-		strbuf << timebuf << index << "_coordinator.txt";
+		strbuf << timebuf << index << "_dcmcjpeg.txt";
 		workers[index].logFilePath = new string(strbuf.str());
 		prepareFileDir(workers[index].logFilePath->c_str());
 		workers[index].hLogFile = CreateFile(workers[index].logFilePath->c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
