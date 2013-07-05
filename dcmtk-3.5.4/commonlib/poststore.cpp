@@ -6,7 +6,6 @@
 
 #include "commonlib.h"
 #include "poststore.h"
-#include "charhash.h"
 
 using namespace std;
 
@@ -179,7 +178,7 @@ HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
 	}
 	instance->setAttribute("InstanceNumber", instanceNumber.c_str());
 	char buf[MAX_PATH];
-	sprintf_s(buf, sizeof(buf), "%s/%08X/%08X/%s", downloadUrl.c_str(), hashCode(seriesUID.c_str()), hashCode(instanceUID.c_str()), instanceNumber.c_str());
+	sprintf_s(buf, sizeof(buf), "%s/%08X/%08X/%08X", downloadUrl.c_str(), hashCode(seriesUID.c_str()), hashCode(instanceUID.c_str()), hashCode(instanceUID.c_str(), 131));
 	instance->setAttribute("DirectDownloadFile", buf);
 	return S_OK;
 }

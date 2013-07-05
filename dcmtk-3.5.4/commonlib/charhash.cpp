@@ -38,26 +38,26 @@ int toUTF8(wchar_t *pWide, string &dest)
   return nBytes;
 }
 
-int hashCodeW(const wchar_t *s)
+int hashCodeW(const wchar_t *s, unsigned int seed)
 {
   size_t wlen = wcsnlen_s(s, 128);
   if(wlen == 0) return 0;
   unsigned int hash = 0;
   for(size_t i = 0; i < wlen; i++)
   {
-	hash = hash * 31 + s[i];
+	hash = hash * seed + s[i];
   }
   return hash;
 }
 
-int hashCode(const char *s)
+int hashCode(const char *s, unsigned int seed)
 {
   if(s == NULL) return 0;
   string src(s);
   wchar_t *p = NULL;
   size_t wlen = toWchar(src, &p);
   if(wlen == 0) return 0;
-  unsigned int hash = hashCodeW(p);
+  unsigned int hash = hashCodeW(p, seed);
   delete p;
   return hash;
 }

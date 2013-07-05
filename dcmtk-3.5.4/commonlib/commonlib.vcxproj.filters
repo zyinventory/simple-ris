@@ -41,9 +41,6 @@
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="charhash.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="commonlib.h">
       <Filter>头文件</Filter>
     </ClInclude>

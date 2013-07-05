@@ -119,7 +119,6 @@
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="charhash.h" />
     <ClInclude Include="commonlib.h" />
     <ClInclude Include="poststore.h" />
     <ClInclude Include="service.h" />

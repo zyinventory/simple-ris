@@ -2068,9 +2068,10 @@ storeSCPCallback(
 
 		unsigned int hashSeries = hashCode(currentSeriesInstanceUID.c_str());
 		unsigned int hashImage = hashCode(sopInstanceUid.c_str());
-		sprintf_s(buf, MAX_PATH, "%s\\%02X\\%02X\\%02X\\%02X\\%s\\%08X\\%08X\\%08X\\%d", opt_volumeLabel.c_str(),
+		unsigned int hashImage131 = hashCode(sopInstanceUid.c_str(), 131);
+		sprintf_s(buf, MAX_PATH, "%s\\%02X\\%02X\\%02X\\%02X\\%s\\%08X\\%08X\\%08X\\%08X", opt_volumeLabel.c_str(),
 			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff,
-			currentStudyInstanceUID.c_str(), hashStudy, hashSeries, hashImage, instanceNumber);
+			currentStudyInstanceUID.c_str(), hashStudy, hashSeries, hashImage, hashImage131);
 		lastArchiveFileName = buf;
 
 		// integrate subdirectory name into file name (note that cbdata->imageFileName currently contains both
