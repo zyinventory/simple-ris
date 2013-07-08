@@ -1,3 +1,5 @@
+#include <io.h>
+#include <Shlwapi.h>
 #include "dcmtk/config/osconfig.h"     /* make sure OS specific configuration is included first */
 
 #include "dcmtk/dcmdata/dctk.h"
@@ -110,6 +112,31 @@ int main(int argc, char *argv[])
 		DcmDirectoryRecord *srcRoot = &(src->getRootRecord());
 		DcmStack resultStack;
 
+		size_t bufferlen = (*curr).length() + 1;
+		char *filepathbuffer = new char[bufferlen];
+		(*curr).copy(filepathbuffer, (*curr).length());
+		filepathbuffer[bufferlen - 1] = '\0';
+		PathRemoveFileSpec(filepathbuffer);
+		OFString filespec(filepathbuffer);
+		delete[] filepathbuffer;
+		filespec.append("\\*");
+		_finddata_t fileinfo;
+		int nextfound = 0;
+		intptr_t searchHandle = _findfirst(filespec.c_str(), &fileinfo);
+		while(nextfound == 0 && searchHandle != -1)
+		{
+			if(fileinfo.attrib & _A_SUBDIR)
+				COUT << "dir: ";
+			else
+				COUT << "file: ";
+			COUT << fileinfo.name << ", last modify: ";
+			struct tm lastmodify;
+			localtime_s(&lastmodify, &fileinfo.time_write);
+			COUT << lastmodify.tm_year + 1900 << '-' << lastmodify.tm_mon + 1 << '-' << lastmodify.tm_mday << ' '
+				<< lastmodify.tm_hour << ':' << lastmodify.tm_min << ':' << lastmodify.tm_sec << endl;
+			nextfound = _findnext(searchHandle, &fileinfo);
+		}
+		if(searchHandle != -1) _findclose(searchHandle);
 		// find all image
 		/*
 		DcmUniqueIdentifier *ptrInstanceUID = NULL;
