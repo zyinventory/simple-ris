@@ -63,9 +63,9 @@
 			<xsl:for-each select="Collection/Study">
 			<tr>
 				<td class="patientID">
-          <a>
+          <a target="_blank">
             <xsl:attribute name="href">
-              cgi-bin/getindex.exe?jnlp=1&amp;patientID=<xsl:value-of select="@PatientID" />
+              index.htm?mode=00100020&amp;patientID=<xsl:value-of select="@PatientID" />
             </xsl:attribute>
             <xsl:value-of select="@PatientID" />
           </a>

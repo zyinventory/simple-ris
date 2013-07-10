@@ -18,8 +18,10 @@
 	<script type="text/javascript" src="scripts/charhash.js"></script>
 	<script type="text/javascript">
 	//<![CDATA[
-		var picker, xslDoc, xslDocCommon, xslResult;
-		
+	    var picker, xslDoc, xslDoc2, xslDocCommon, xslResult, xslResult2;
+		var mode = getQueryString('mode');
+		if (! mode) mode = 'receive';
+
 		function viewStudy(event)
 		{
 			var studyUid = $('td.studyUID', event.currentTarget).attr('title');
@@ -66,40 +68,50 @@
 			var consoleDivs = $('div', console);
 			if(consoleDivs.size() > MaxLine) $('#console div:gt(' + --MaxLine + ')').remove();
 		}
-		
-		function transform(xmlDoc)
-		{
-			if(xslDoc == undefined)
-			{
-				alertMessage('Load XSLT failed: ' + xslResult.statusText);
-			}
-			else
-			{
-				var body = $('#containerBody');
-				if(window.ActiveXObject)    // IE
-				{
-					body.html(xmlDoc.transformNode(xslDoc));
-				}    
-				else    // FireFox， Chrome
-				{
-					try {
-						var xsltProcessor = new XSLTProcessor();
-						xsltProcessor.importStylesheet(xslDoc);
-						var xmlszer = new XMLSerializer();
-						var content = xsltProcessor.transformToDocument(xmlDoc);
-						body.html(xmlszer.serializeToString(content));
-					} catch(ex) {
-						alertMessage(ex);
-					}
-				}
-				$('tbody tr').mouseover(toggleHighlight).mouseout(toggleHighlight); //.click(viewStudy);
-			}
+
+		function xslt(xml, xsl, result, outputDOM) {
+		    if (result.status != 200) {
+		        alertMessage('Load XSLT failed: ' + result.statusText);
+		    }
+		    else {
+		        if (window.ActiveXObject)    // IE
+		        {
+		            if (outputDOM) {
+		                var outputXml = new ActiveXObject('Msxml2.DOMDocument.3.0');
+		                outputXml.async = false;
+		                xml.transformNodeToObject(xsl, outputXml);
+		                return outputXml;
+		            }
+                    else
+		                return xml.transformNode(xsl);
+		        }
+		        else    // FireFox， Chrome
+		        {
+		            try {
+		                var xsltProcessor = new XSLTProcessor();
+		                xsltProcessor.importStylesheet(xsl);
+		                var xmlszer = new XMLSerializer();
+		                var content = xsltProcessor.transformToDocument(xml);
+		                if (outputDOM)
+		                    return content;
+                        else
+		                    return xmlszer.serializeToString(content);
+		            } catch (ex) {
+		                alertMessage(ex);
+		            }
+		        }
+		    }
 		}
 
-		function pickDate(textValue, pickerWrapper)
+		function transform(xmlDoc)
 		{
-			var mode = getQueryString('mode');
-			if(mode == null) mode = 'receive';
+		    var body = $('#containerBody');
+		    body.html(xslt(xmlDoc, xslDoc, xslResult));
+			$('tbody tr').mouseover(toggleHighlight).mouseout(toggleHighlight); //.click(viewStudy);
+		}
+
+		function displayContent(textValue, pickerWrapper)
+		{
 			var result = $.get('indexdir/' + mode + '/' + textValue + '.xml', {}, transform, 'xml');
 			if(result.status < 200 || result.status >= 300)
 			{
@@ -108,25 +120,42 @@
 			}
 		}
 
-		jQuery(document).ready(function() {
-			$.ajaxSetup({ async : false });
-			xslResult = $.get('xslt/dayrec.xsl', {}, function(body, txt, ref){ xslDoc = body; }, 'xml');
+		function displayPaitent(textValue) {
+		    var result = $.get('indexdir/' + mode + '/' + textValue + '.xml', {}, function (xmlDoc) {
+		        transform(xslt(xmlDoc, xslDoc2, xslResult2, true));
+		    }, 'xml');
+		    if (result.status < 200 || result.status >= 300) {
+		        $('#containerBody').html("没有检查");
+		        if (getQueryString('debug') == '1') alertMessage(textValue + ' 没有检查, ' + result.statusText);
+		    }
+		}
 
-			var today = $.datepicker.formatDate('yy/mm/dd',new Date());
-			picker = $('#datepicker');
-			picker.attr('readonly', true);
-			picker.val(today);
-			picker.datepicker({
-				changeMonth:true,
-				changeYear:true,
-				selectOtherMonths:true,
-				showButtonPanel:true,
-				showOtherMonths:true,
-				dateFormat:'yy/mm/dd',
-				defaultDate:today,
-				onSelect:pickDate
-			});
-			pickDate(today);
+		jQuery(document).ready(function () {
+		    $.ajaxSetup({ async: false });
+		    xslResult = $.get('xslt/dayrec.xsl', {}, function (body, txt, ref) { xslDoc = body; }, 'xml');
+		    xslResult2 = $.get('xslt/receive.xsl', {}, function (body, txt, ref) { xslDoc2 = body; }, 'xml');
+
+		    var today = $.datepicker.formatDate('yy/mm/dd', new Date());
+		    picker = $('#datepicker');
+		    picker.attr('readonly', true);
+		    picker.val(today);
+		    picker.datepicker({
+		        changeMonth: true,
+		        changeYear: true,
+		        selectOtherMonths: true,
+		        showButtonPanel: true,
+		        showOtherMonths: true,
+		        dateFormat: 'yy/mm/dd',
+		        defaultDate: today,
+		        onSelect: displayContent
+		    });
+		    if (mode == 'receive' || mode == '00080020') {
+		        displayContent(today);
+		    }
+		    else {
+		        var patientId = getQueryString('patientID');
+		        displayPaitent(toHashPath(patientId) + '/' + patientId);
+		    }
 		});
 	//]]>
 	</script>
