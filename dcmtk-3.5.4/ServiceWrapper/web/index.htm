@@ -18,7 +18,7 @@
 	<script type="text/javascript" src="scripts/charhash.js"></script>
 	<script type="text/javascript">
 	//<![CDATA[
-	    var picker, xslDoc, xslDoc2, xslDocCommon, xslResult, xslResult2;
+	    var picker, xslDoc, xslDoc2, xslDocCommon;
 		var mode = getQueryString('mode');
 		if (! mode) mode = 'receive';
 
@@ -69,36 +69,31 @@
 			if(consoleDivs.size() > MaxLine) $('#console div:gt(' + --MaxLine + ')').remove();
 		}
 
-		function xslt(xml, xsl, result, outputDOM) {
-		    if (result.status != 200) {
-		        alertMessage('Load XSLT failed: ' + result.statusText);
-		    }
-		    else {
-		        if (window.ActiveXObject)    // IE
-		        {
-		            if (outputDOM) {
-		                var outputXml = new ActiveXObject('Msxml2.DOMDocument.3.0');
-		                outputXml.async = false;
-		                xml.transformNodeToObject(xsl, outputXml);
-		                return outputXml;
-		            }
-                    else
-		                return xml.transformNode(xsl);
+		function xslt(xml, xsl, outputDOM) {
+		    if (window.ActiveXObject)    // IE
+		    {
+		        if (outputDOM) {
+		            var outputXml = new ActiveXObject('Msxml2.DOMDocument.3.0');
+		            outputXml.async = false;
+		            xml.transformNodeToObject(xsl, outputXml);
+		            return outputXml;
 		        }
-		        else    // FireFox， Chrome
-		        {
-		            try {
-		                var xsltProcessor = new XSLTProcessor();
-		                xsltProcessor.importStylesheet(xsl);
-		                var xmlszer = new XMLSerializer();
-		                var content = xsltProcessor.transformToDocument(xml);
-		                if (outputDOM)
-		                    return content;
-                        else
-		                    return xmlszer.serializeToString(content);
-		            } catch (ex) {
-		                alertMessage(ex);
-		            }
+                else
+		            return xml.transformNode(xsl);
+		    }
+		    else    // FireFox， Chrome
+		    {
+		        try {
+		            var xsltProcessor = new XSLTProcessor();
+		            xsltProcessor.importStylesheet(xsl);
+		            var xmlszer = new XMLSerializer();
+		            var content = xsltProcessor.transformToDocument(xml);
+		            if (outputDOM)
+		                return content;
+                    else
+		                return xmlszer.serializeToString(content);
+		        } catch (ex) {
+		            alertMessage(ex);
 		        }
 		    }
 		}
@@ -106,7 +101,7 @@
 		function transform(xmlDoc)
 		{
 		    var body = $('#containerBody');
-		    body.html(xslt(xmlDoc, xslDoc, xslResult));
+		    body.html(xslt(xmlDoc, xslDoc));
 			$('tbody tr').mouseover(toggleHighlight).mouseout(toggleHighlight); //.click(viewStudy);
 		}
 
@@ -122,7 +117,7 @@
 
 		function displayPaitent(textValue) {
 		    var result = $.get('indexdir/' + mode + '/' + textValue + '.xml', {}, function (xmlDoc) {
-		        transform(xslt(xmlDoc, xslDoc2, xslResult2, true));
+		        transform(xslt(xmlDoc, xslDoc2, true));
 		    }, 'xml');
 		    if (result.status < 200 || result.status >= 300) {
 		        $('#containerBody').html("没有检查");
@@ -132,8 +127,14 @@
 
 		jQuery(document).ready(function () {
 		    $.ajaxSetup({ async: false });
-		    xslResult = $.get('xslt/dayrec.xsl', {}, function (body, txt, ref) { xslDoc = body; }, 'xml');
-		    xslResult2 = $.get('xslt/receive.xsl', {}, function (body, txt, ref) { xslDoc2 = body; }, 'xml');
+		    var result = $.get('xslt/dayrec.xsl', {}, function (body, txt, ref) { xslDoc = body; }, 'xml');
+		    if (result.status != 200) {
+		        alertMessage('Load XSLT dayrec failed: ' + result.statusText);
+		    }
+		    result = $.get('xslt/receive.xsl', {}, function (body, txt, ref) { xslDoc2 = body; }, 'xml');
+		    if (result.status != 200) {
+		        alertMessage('Load XSLT receive failed: ' + result.statusText);
+		    }
 
 		    var today = $.datepicker.formatDate('yy/mm/dd', new Date());
 		    picker = $('#datepicker');
@@ -149,12 +150,33 @@
 		        defaultDate: today,
 		        onSelect: displayContent
 		    });
+
 		    if (mode == 'receive' || mode == '00080020') {
 		        displayContent(today);
 		    }
 		    else {
 		        var patientId = getQueryString('patientID');
 		        displayPaitent(toHashPath(patientId) + '/' + patientId);
+		    }
+
+		    switch (mode) {
+		        case 'receive':
+		            $('div#containerHeader > label#dateDesc').text('传输日期:');
+		            $('div#containerHeader > a#receive').css('display', 'none');
+		            $('div#containerHeader > a#00100020').css('display', 'none');
+		            break;
+		        case '00080020':
+		            $('div#containerHeader > label#dateDesc').text('检查日期:');
+		            $('div#containerHeader > a#00080020').css('display', 'none');
+		            $('div#containerHeader > a#00100020').css('display', 'none');
+		            break;
+		        case '00100020':
+		            $('div#containerHeader > label#dateDesc').css('display', 'none');
+		            $('div#containerHeader > input#datepicker').css('display', 'none');
+		            $('div#containerHeader > a#00100020').attr('href', 'cgi-bin/getindex.exe?jnlp=1&patientID=' + getQueryString('patientID'));
+		            break;
+		        default:
+		            break;
 		    }
 		});
 	//]]>
@@ -163,9 +185,10 @@
 <body>
 <div id="containerPane" class="ui-widget ui-widget-content ui-widget-helper-clearfix">
 	<div id="containerHeader" class="ui-widget-header ui-widget-helper-clearfix">
-		<label for="datepicker">检查日期:</label><input type="text" id="datepicker" style="width:6.5em"></input>
-		&nbsp;&nbsp;<a href="index.htm">传输日志</a>
-		&nbsp;&nbsp;<a href="index.htm?mode=00080020">检查日期归档</a>
+		<label id="dateDesc" for="datepicker">传输日期:</label><input type="text" id="datepicker" style="width:6.5em"></input>
+		&nbsp;&nbsp;<a id="receive" href="index.htm">传输日志</a>
+		&nbsp;&nbsp;<a id="00080020" href="index.htm?mode=00080020">检查日期归档</a>
+        &nbsp;&nbsp;<a id="00100020" href="#">打开所有检查</a>
 	</div>
 	<div id="containerBody"></div>
 </div>
