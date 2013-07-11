@@ -29,9 +29,15 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 	pXmlDom->preserveWhiteSpace = VARIANT_FALSE;
 	pXmlDom->async = VARIANT_FALSE;
 
-	MSXML2::IXMLDOMProcessingInstructionPtr pi;
-	pi = pXmlDom->createProcessingInstruction("xml", "version=\"1.0\" encoding=\"gbk\"");
+	MSXML2::IXMLDOMProcessingInstructionPtr pi = pXmlDom->createProcessingInstruction("xml", "version=\"1.0\" encoding=\"gbk\"");
 	if (pi != NULL) pXmlDom->appendChild(pi);
+
+	MSXML2::IXMLDOMProcessingInstructionPtr pXslt = NULL;
+	if(strcmp(statusFlag, "xml"))
+	{
+		pXslt = pXmlDom->createProcessingInstruction("xml-stylesheet", "type=\"text/xml\" href=\"../xslt/status.xsl\"");
+		if (pXslt != NULL) pXmlDom->appendChild(pXslt);
+	}
 
 	MSXML2::IXMLDOMElementPtr root = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "tdb_status", "");
 	pXmlDom->appendChild(root);
@@ -81,7 +87,7 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 		++sec;
 	}
 	if(hasError) root->appendChild(errorInfos);
-	buffer << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << root->xml;
+	buffer << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml;
 	outputContent(false);
 	return 0;
 }

@@ -100,6 +100,7 @@ IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspeci
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/dayrec.xsl"
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/mktext.xsl"
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/receive.xsl"
+		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/status.xsl"
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/wado_query.xsd"
 	)
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs" TYPE FILE FILES "D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/index.htm")

@@ -68,6 +68,9 @@
     <None Include="web\xslt\receive.xsl">
       <Filter>web\xslt</Filter>
     </None>
+    <None Include="web\xslt\status.xsl">
+      <Filter>web\xslt</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Xsd Include="web\xslt\wado_query.xsd">

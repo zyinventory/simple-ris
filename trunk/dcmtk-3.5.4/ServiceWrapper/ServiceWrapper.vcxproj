@@ -131,6 +131,7 @@
     <None Include="web\xslt\dayrec.xsl" />
     <None Include="web\xslt\mktext.xsl" />
     <None Include="web\xslt\receive.xsl" />
+    <None Include="web\xslt\status.xsl" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\commonlib\commonlib.vcxproj">
