@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+int statusXml(CSimpleIni &ini, const char *statusFlag);
+
 #define CHINESE_LOCAL "chinese"  // full name: Chinese_People's Republic of China.936, posix: zh_CN.GBK
 static char patientID[65], studyUID[65], host[65], indexPath[MAX_PATH];
 static const char jnlp0[] = 
@@ -149,6 +151,25 @@ int burningStudy(const char *media)
 	return -1;
 }
 
+int reportStatus(const char *flag)
+{
+    CSimpleIni ini(false, false, false);
+    //std::ifstream instream;
+    //instream.open("..\\orders\\TDBStatus.txt", std::ifstream::in | std::ifstream::binary, _SH_DENYNO);
+	SI_Error rc = ini.LoadFile("..\\orders\\TDBStatus.txt");
+	//instream.close();
+    if (rc < 0) {
+		char okMessage[] = "没有任务";
+		fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(okMessage) - 1);
+		fprintf(cgiOut, okMessage);
+		return 0;
+	}
+	CoInitialize(NULL);
+	int result = statusXml(ini, flag);
+	CoUninitialize();
+	return result;
+}
+
 int work()
 {
 	char *pPacsBase = NULL;
@@ -165,6 +186,8 @@ int work()
 		return burningStudy(flag);
 	else if(cgiFormNotFound != cgiFormString("jnlp", flag, sizeof(flag)) && strlen(flag) > 0)
 		return jnlp(hostLength);
+	else if(cgiFormNotFound != cgiFormString("status", flag, sizeof(flag)) && strlen(flag) > 0)
+		return reportStatus(flag);
 	else
 		return queryXml(hostLength);
 }
