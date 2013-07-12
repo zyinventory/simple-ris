@@ -43,9 +43,9 @@
       </xsl:call-template>
     </dd>
     <dd>
-        ≈Ã≤’2ΩÈ÷ £∫<xsl:call-template name="transformStackMediaType">
-          <xsl:with-param name="media" select="STACKER2_SETTING"/>
-        </xsl:call-template>
+      ≈Ã≤’2ΩÈ÷ £∫<xsl:call-template name="transformStackMediaType">
+        <xsl:with-param name="media" select="STACKER2_SETTING"/>
+      </xsl:call-template>
     </dd>
     <dd>
       ≈Ã≤’3”√Õæ£∫<xsl:call-template name="transformStackUsageType">
