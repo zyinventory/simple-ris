@@ -48,34 +48,67 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 	CSimpleIni::TNamesDepend::iterator sec = sections.begin();
 	while(sec != sections.end())
 	{
-		const char *currentSection = NULL, *currentKey = NULL, *currentValue = NULL;
+		string currentSection;
+		const char *currentKey = NULL, *currentValue = NULL;
 		try
 		{
 			currentSection = (*sec).pItem;
-			MSXML2::IXMLDOMElementPtr sectionNode = pXmlDom->createNode(MSXML2::NODE_ELEMENT, currentSection, "");
-
-			CSimpleIni::TNamesDepend keys;
-			ini.GetAllKeys((*sec).pItem, keys);
-			CSimpleIni::TNamesDepend::iterator key = keys.begin();
-			while(key != keys.end())
+			if(string::npos != currentSection.find("PUBLISHER", 0) || currentSection == "TDB_INFO"
+				|| currentSection == "ACTIVE_JOB" || currentSection == "COMPLETE_JOB")
 			{
-				currentKey = (*key).pItem;
-				MSXML2::IXMLDOMElementPtr item = pXmlDom->createNode(MSXML2::NODE_ELEMENT, currentKey, "");
-				currentValue = ini.GetValue(currentSection, currentKey);
-				item->appendChild(pXmlDom->createTextNode(currentValue));
-				sectionNode->appendChild(item);
-				currentKey = NULL;
-				currentValue = NULL;
-				++key;
+				MSXML2::IXMLDOMElementPtr sectionNode = pXmlDom->createNode(MSXML2::NODE_ELEMENT, currentSection.c_str(), "");
+				CSimpleIni::TNamesDepend keys;
+				ini.GetAllKeys((*sec).pItem, keys);
+				CSimpleIni::TNamesDepend::iterator key = keys.begin();
+				while(key != keys.end())
+				{
+					currentKey = (*key).pItem;
+					currentValue = ini.GetValue(currentSection.c_str(), currentKey);
+					MSXML2::IXMLDOMElementPtr item;
+					if(currentSection == "ACTIVE_JOB" || currentSection == "COMPLETE_JOB")
+					{
+						item = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "JOB", "");
+						item->setAttribute("id", currentValue);
+					}
+					else
+					{
+						item = pXmlDom->createNode(MSXML2::NODE_ELEMENT, currentKey, "");
+						item->appendChild(pXmlDom->createTextNode(currentValue));
+					}
+					sectionNode->appendChild(item);
+					currentKey = NULL;
+					currentValue = NULL;
+					++key;
+				}
+				root->appendChild(sectionNode);
 			}
-			root->appendChild(sectionNode);
+			else  // treats it as job
+			{
+				MSXML2::IXMLDOMElementPtr sectionNode = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "JOB_STATUS", "");
+				sectionNode->setAttribute("id", currentSection.c_str());
+				CSimpleIni::TNamesDepend keys;
+				ini.GetAllKeys((*sec).pItem, keys);
+				CSimpleIni::TNamesDepend::iterator key = keys.begin();
+				while(key != keys.end())
+				{
+					currentKey = (*key).pItem;
+					currentValue = ini.GetValue(currentSection.c_str(), currentKey);
+					MSXML2::IXMLDOMElementPtr item = pXmlDom->createNode(MSXML2::NODE_ELEMENT, currentKey, "");
+					item->appendChild(pXmlDom->createTextNode(currentValue));
+					sectionNode->appendChild(item);
+					currentKey = NULL;
+					currentValue = NULL;
+					++key;
+				}
+				root->appendChild(sectionNode);
+			}
 		}
 		catch(_com_error &ex) 
 		{
 			hasError = true;
 			ostringstream errbuf;
 			errbuf << "Éè±¸×´Ì¬´íÎó: 0x" << hex << ex.Error() << ',' << ex.ErrorMessage();
-			if(currentSection)
+			if(! currentSection.empty())
 			{
 				errbuf << ", [" << currentSection  << ']';
 				if(currentKey) errbuf << ", " << currentKey	<< " = " << (currentValue ? currentValue : "");
