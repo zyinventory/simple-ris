@@ -129,6 +129,7 @@
     <None Include="web\scripts\charhash.js" />
     <None Include="web\scripts\jquery.ui.datepicker-zh-CN.js" />
     <None Include="web\xslt\dayrec.xsl" />
+    <None Include="web\xslt\job.xsl" />
     <None Include="web\xslt\mktext.xsl" />
     <None Include="web\xslt\receive.xsl" />
     <None Include="web\xslt\status.xsl">

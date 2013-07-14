@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="gbk"?>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+  <xsl:output indent="no" method="html" encoding="gbk" doctype-public="-//W3C//DTD XHTML 1.0 Transitional//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"/>
+  <xsl:template name="transformJobStatus">
+    <xsl:param name="status"/>
+    任务状态：<xsl:value-of select ="$status"/>,
+    <xsl:choose>
+      <xsl:when test="$status=1">待机</xsl:when>
+      <xsl:when test="$status=2">处理中</xsl:when>
+      <xsl:when test="$status=3">暂停</xsl:when>
+      <xsl:when test="$status=4">已完成</xsl:when>
+      <xsl:when test="$status=5">异常结束</xsl:when>
+      <xsl:when test="$status=6">拒绝</xsl:when>
+      <xsl:otherwise>未知</xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  <xsl:template name="transformJobDetail">
+    <xsl:param name="detail"/>
+    详细：<xsl:value-of select ="$detail"/>,
+    <xsl:choose>
+      <xsl:when test="$detail=1">接受中</xsl:when>
+      <xsl:when test="$detail=2">等待处理</xsl:when>
+      <xsl:when test="$detail=3">处理中</xsl:when>
+      <xsl:when test="$detail=4">暂停中</xsl:when>
+      <xsl:when test="$detail=5">恢复中</xsl:when>
+      <xsl:when test="$detail=6">取消中</xsl:when>
+      <xsl:when test="$detail=7">已暂停</xsl:when>
+      <xsl:when test="$detail=8">已恢复</xsl:when>
+      <xsl:when test="$detail=9">已完成</xsl:when>
+      <xsl:when test="$detail=10">已完成(有警告)</xsl:when>
+      <xsl:when test="$detail=11">已完成(有警告,盘错误)</xsl:when>
+      <xsl:when test="$detail=12">用户取消</xsl:when>
+      <xsl:when test="$detail=13">错误中止</xsl:when>
+      <xsl:when test="$detail=14">拒绝接受</xsl:when>
+      <xsl:otherwise>未知</xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  <xsl:template name="transformCode">
+    <xsl:param name="code"/>
+    错误码：<xsl:value-of select ="$code"/>,
+    <xsl:choose>
+      <xsl:when test="$code='SYS001'">接受任务失败</xsl:when>
+      <xsl:when test="$code='SYS002'">与设备通信失败</xsl:when>
+      <xsl:when test="$code='SYS003'">磁盘临时空间不足</xsl:when>
+      <xsl:when test="$code='JDF0100'">拒绝接受原因：JOB_ID —〉JOB_ID已存在</xsl:when>
+      <xsl:when test="$code='JDF0101'">拒绝接受原因：JOB_ID —〉JOB_ID长度超过40个字符</xsl:when>
+      <xsl:when test="$code='JDF0102'">拒绝接受原因：JOB_ID —〉JOB_ID包含无效字符，只能是：字母，数字，_，-</xsl:when>
+      <xsl:when test="$code='JDF0200'">拒绝接受原因：PUBLISHER —〉该设备未注册</xsl:when>
+      <xsl:when test="$code='JDF0201'">拒绝接受原因：PUBLISHER —〉检测到多个设备，未指定使用哪个设备</xsl:when>
+      <xsl:when test="$code='JDF0202'">拒绝接受原因：PUBLISHER —〉设备模式错误</xsl:when>
+      <xsl:when test="$code='JDF0203'">拒绝接受原因：PUBLISHER —〉没有检测到已连接设备</xsl:when>
+      <xsl:when test="$code='JDF0300'">拒绝接受原因：COPIES —〉复制数量错误</xsl:when>
+      <xsl:when test="$code='JDF0400'">拒绝接受原因：OUT_STACKER —〉输出盘舱错误</xsl:when>
+      <xsl:when test="$code='JDF0500'">拒绝接受原因：DISC_TYPE —〉指定光盘类型与源盘舱不符</xsl:when>
+      <xsl:when test="$code='JDF0501'">拒绝接受原因：DISC_TYPE —〉未指定光盘类型</xsl:when>
+      <xsl:when test="$code='JDF0502'">拒绝接受原因：DISC_TYPE —〉不支持的光盘类型，支持的光盘类型：CD、DVD、DVD-DL、BD(仅PP-7050BD)、BD-DL(仅PP-7050BD)</xsl:when>
+      <xsl:when test="$code='JDF0600'">拒绝接受原因：WRITING_SPEED —〉写入速度错误</xsl:when>
+      <xsl:when test="$code='JDF0700'">拒绝接受原因：COMPARE —〉值必须为YES或NO</xsl:when>
+      <xsl:when test="$code='JDF0800'">拒绝接受原因：CLOSE_DISC —〉值必须为YES或NO</xsl:when>
+      <xsl:when test="$code='JDF0900'">拒绝接受原因：DATA —〉源路径与目的路径都未指定</xsl:when>
+      <xsl:when test="$code='JDF0901'">拒绝接受原因：DATA —〉同一目录下文件名重复</xsl:when>
+      <xsl:when test="$code='JDF0902'">拒绝接受原因：DATA —〉目录名或文件名不符合光盘类型(超长或包含无效字符)</xsl:when>
+      <xsl:when test="$code='JDF0903'">拒绝接受原因：DATA —〉源文件大小超过光盘容量</xsl:when>
+      <xsl:when test="$code='JDF0904'">拒绝接受原因：DATA —〉目的目录深度超过128层</xsl:when>
+      <xsl:when test="$code='JDF0905'">拒绝接受原因：DATA —〉存储源文件的驱动器不可用</xsl:when>
+      <xsl:when test="$code='JDF0907'">拒绝接受原因：DATA —〉源文件不存在</xsl:when>
+      <xsl:when test="$code='JDF0908'">拒绝接受原因：DATA —〉无法读取源文件，权限不足</xsl:when>
+      <xsl:when test="$code='JDF0909'">拒绝接受原因：DATA —〉源文件正在使用中</xsl:when>
+      <xsl:when test="$code='JDF0910'">拒绝接受原因：DATA —〉源文件清单不存在</xsl:when>
+      <xsl:when test="$code='JDF0911'">拒绝接受原因：DATA —〉无法读取源文件清单，权限不足</xsl:when>
+      <xsl:when test="$code='JDF0912'">拒绝接受原因：DATA —〉源文件清单正在使用中</xsl:when>
+      <xsl:when test="$code='JDF0913'">拒绝接受原因：DATA —〉存储源文件清单中源文件的驱动器不可用</xsl:when>
+      <xsl:when test="$code='JDF0914'">拒绝接受原因：DATA —〉文件超过4095M，无法写入</xsl:when>
+      <xsl:when test="$code='JDF1000'">拒绝接受原因：VOLUME_LABEL —〉卷标格式错误</xsl:when>
+      <xsl:when test="$code='JDF1100'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1101'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1103'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1104'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1105'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1106'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1107'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1108'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1150'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1151'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1152'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1153'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1154'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1155'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1156'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1157'">拒绝接受原因：VIDEO —〉</xsl:when>
+      <xsl:when test="$code='JDF1200'">拒绝接受原因：VIDEO_TITLE —〉</xsl:when>
+      <xsl:when test="$code='JDF1201'">拒绝接受原因：VIDEO_TITLE —〉</xsl:when>
+      <xsl:when test="$code='JDF1300'">拒绝接受原因：IMAGE —〉不支持的图像文件格式</xsl:when>
+      <xsl:when test="$code='JDF1301'">拒绝接受原因：IMAGE —〉图像文件大小太大</xsl:when>
+      <xsl:when test="$code='JDF1302'">拒绝接受原因：IMAGE —〉图像文件不存在</xsl:when>
+      <xsl:when test="$code='JDF1303'">拒绝接受原因：IMAGE —〉无法读取图像文件，权限不足</xsl:when>
+      <xsl:when test="$code='JDF1304'">拒绝接受原因：IMAGE —〉图像文件正在使用中</xsl:when>
+      <xsl:when test="$code='JDF1305'">拒绝接受原因：IMAGE —〉存储图像文件的驱动器不可用</xsl:when>
+      <xsl:when test="$code='JDF1306'">拒绝接受原因：IMAGE —〉与源盘舱的光盘类型不符</xsl:when>
+      <xsl:when test="$code='JDF1400'">拒绝接受原因：FORMAT —〉CD光盘格式错误，只能是ISO9660L2、JOLIET或UDF102</xsl:when>
+      <xsl:when test="$code='JDF1401'">拒绝接受原因：FORMAT —〉DVD光盘格式错误，只能是UDF102或UDF102_BRIDGE</xsl:when>
+      <xsl:when test="$code='JDF1402'">拒绝接受原因：FORMAT —〉蓝光盘格式错误，只能是UDF102或UDF260</xsl:when>
+      <xsl:when test="$code='JDF1500'">拒绝接受原因：LABEL —〉打印模板文件格式错误</xsl:when>
+      <xsl:when test="$code='JDF1501'">拒绝接受原因：LABEL —〉打印模板文件不存在</xsl:when>
+      <xsl:when test="$code='JDF1502'">拒绝接受原因：LABEL —〉无法读取打印模板文件，权限不足</xsl:when>
+      <xsl:when test="$code='JDF1503'">拒绝接受原因：LABEL —〉打印模板文件正在使用中</xsl:when>
+      <xsl:when test="$code='JDF1504'">拒绝接受原因：LABEL —〉存储打印模板文件的驱动器不可用</xsl:when>
+      <xsl:when test="$code='JDF1505'">拒绝接受原因：LABEL —〉打印模板文件中引用的文件不存在</xsl:when>
+      <xsl:when test="$code='JDF1506'">拒绝接受原因：LABEL —〉打印模板文件中引用的文件无法读取，权限不足</xsl:when>
+      <xsl:when test="$code='JDF1507'">拒绝接受原因：LABEL —〉打印模板文件中引用的驱动器不可用</xsl:when>
+      <xsl:when test="$code='JDF1600'">拒绝接受原因：REPLACE_FIELD —〉打印值文件不存在</xsl:when>
+      <xsl:when test="$code='JDF1601'">拒绝接受原因：REPLACE_FIELD —〉无法读取打印值文件，权限不足</xsl:when>
+      <xsl:when test="$code='JDF1602'">拒绝接受原因：REPLACE_FIELD —〉打印值文件正在使用中</xsl:when>
+      <xsl:when test="$code='JDF1603'">拒绝接受原因：REPLACE_FIELD —〉存储打印值文件的驱动器不可用</xsl:when>
+      <xsl:when test="$code='JDF1604'">拒绝接受原因：REPLACE_FIELD —〉打印值文件解析错误：包含无效字符？字段值长度超过1024个字符？字段数超过255？</xsl:when>
+      <xsl:when test="$code='JDF1610'">拒绝接受原因：REPLACE_FIELD —〉条码值不符合条码规范</xsl:when>
+      <xsl:when test="$code='JDF1611'">拒绝接受原因：REPLACE_FIELD —〉条码文件不存在</xsl:when>
+      <xsl:when test="$code='JDF1612'">拒绝接受原因：REPLACE_FIELD —〉无法读取条码文件，权限不足</xsl:when>
+      <xsl:when test="$code='JDF1613'">拒绝接受原因：REPLACE_FIELD —〉条码文件正在使用中</xsl:when>
+      <xsl:when test="$code='JDF1614'">拒绝接受原因：REPLACE_FIELD —〉存储条码文件的驱动器不可用</xsl:when>
+      <xsl:when test="$code='JDF1615'">拒绝接受原因：REPLACE_FIELD —〉条码的关键字不正确</xsl:when>
+      <xsl:when test="$code='JDF1616'">拒绝接受原因：REPLACE_FIELD —〉条码无法打印</xsl:when>
+      <xsl:when test="$code='JDF1620'">拒绝接受原因：REPLACE_FIELD —〉图像文件不存在</xsl:when>
+      <xsl:when test="$code='JDF1621'">拒绝接受原因：REPLACE_FIELD —〉不支持的图像文件格式</xsl:when>
+      <xsl:when test="$code='JDF1622'">拒绝接受原因：REPLACE_FIELD —〉无法读取图像文件，权限不足</xsl:when>
+      <xsl:when test="$code='JDF1623'">拒绝接受原因：REPLACE_FIELD —〉图像文件正在使用中</xsl:when>
+      <xsl:when test="$code='JDF1624'">拒绝接受原因：REPLACE_FIELD —〉存储图像文件的驱动器不可用</xsl:when>
+      <xsl:when test="$code='JDF1625'">拒绝接受原因：REPLACE_FIELD —〉图像关键字无效</xsl:when>
+      <xsl:otherwise>未知</xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  <xsl:template name="transformJob">
+    <xsl:param name="job"/>
+    <dd><xsl:call-template name="transformJobStatus"><xsl:with-param name="status" select="$job/STATUS"/></xsl:call-template></dd>
+    <dd><xsl:call-template name="transformJobDetail"><xsl:with-param name="detail" select="$job/DETAIL_STATUS"/></xsl:call-template></dd>
+    <dd><xsl:call-template name="transformCode"><xsl:with-param name="code" select="$job/ERROR"/></xsl:call-template></dd>
+  </xsl:template>
+  <xsl:template  match="/tdb_status/COMPLETE_JOB">
+    已完成任务：
+    <ul>
+      <xsl:for-each select="JOB">
+        <dt>任务ID：<xsl:value-of select="@id"/></dt>
+        <xsl:call-template name="transformJob">
+          <xsl:with-param name="job" select="/tdb_status/JOB_STATUS[@id=@id]"/>
+        </xsl:call-template>
+      </xsl:for-each>
+    </ul>
+  </xsl:template>
+</xsl:stylesheet>

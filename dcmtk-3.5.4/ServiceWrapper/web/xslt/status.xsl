@@ -1,27 +1,28 @@
-<?xml version="1.0" encoding="gb2312"?>
+<?xml version="1.0" encoding="gbk"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <xsl:output indent="no" method="html" encoding="gbk" doctype-public="-//W3C//DTD XHTML 1.0 Transitional//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"/>
+  <xsl:include href="job.xsl"/>
   <xsl:template name="transformStackSetting">
     <xsl:param name="usage"/>
     <xsl:param name="percentage"/>
     <xsl:choose>
       <xsl:when test="$usage=0">
-        输出舱,盘舱空间：<xsl:value-of select="100-$percentage"/>%
+        输出舱,盘舱已用空间：<xsl:value-of select="$percentage"/>%
       </xsl:when>
       <xsl:when test="$usage=1">
-        CD,盘舱空间：<xsl:value-of select="100-$percentage"/>%
+        CD,盘舱已用空间：<xsl:value-of select="$percentage"/>%
       </xsl:when>
       <xsl:when test="$usage=4">
-        DVD,盘舱空间：<xsl:value-of select="100-$percentage"/>%
+        DVD,盘舱已用空间：<xsl:value-of select="$percentage"/>%
       </xsl:when>
       <xsl:when test="$usage=7">
-        双层DVD,盘舱空间：<xsl:value-of select="100-$percentage"/>%
+        双层DVD,盘舱已用空间：<xsl:value-of select="$percentage"/>%
       </xsl:when>
       <xsl:when test="$usage=8">
-        蓝光盘,盘舱空间：<xsl:value-of select="100-$percentage"/>%
+        蓝光盘,盘舱已用空间：<xsl:value-of select="$percentage"/>%
       </xsl:when>
       <xsl:when test="$usage=9">
-        双层蓝光盘,盘舱空间：<xsl:value-of select="100-$percentage"/>%
+        双层蓝光盘,盘舱已用空间：<xsl:value-of select="$percentage"/>%
       </xsl:when>
       <xsl:when test="$usage=99">未使用</xsl:when>
       <xsl:when test="$usage=100">源</xsl:when>
@@ -163,10 +164,6 @@
     <dd xmlns="http://www.w3.org/1999/xhtml">版本：<xsl:value-of select="VERSION/text()"/></dd>
   </xsl:template>
   <xsl:template match="/tdb_status">
-    <xsl:apply-templates select="PUBLISHER1"/>
-    <xsl:apply-templates select="TDB_INFO"/>
-  </xsl:template>
-  <xsl:template match="/">
     <html xmlns="http://www.w3.org/1999/xhtml">
       <head>
         <meta http-equiv="Content-Type" content="text/html; charset=gbk" />
@@ -177,7 +174,9 @@
       </head>
       <body>
         <dl>
-          <xsl:apply-templates select="/tdb_status"/>
+          <xsl:apply-templates select="COMPLETE_JOB"/>
+          <xsl:apply-templates select="PUBLISHER1"/>
+          <xsl:apply-templates select="TDB_INFO"/>
         </dl>
       </body>
     </html>
