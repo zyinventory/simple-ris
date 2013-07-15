@@ -163,6 +163,20 @@
       <xsl:when test="$code='JDF0001'">拒绝接受原因：Others —〉光盘类型为DVD，却没有指定数据文件</xsl:when>
       <xsl:when test="$code='JDF0002'">拒绝接受原因：Others —〉没有打印数据</xsl:when>
       <xsl:when test="$code='JDF0003'">拒绝接受原因：Others —〉光盘类型为蓝光盘，却没有指定数据文件</xsl:when>
+
+      <xsl:when test="$code='CAN000'">任务结束原因：Cancel —〉从驱动器或打印机中取出光盘失败<br/>建议：重启设备</xsl:when>
+      <xsl:when test="$code='CAN001'">任务结束原因：Cancel —〉光盘滑落<br/>建议：首先关闭设备，人工取出滑落的光盘，然后再开启设备</xsl:when>
+      <xsl:when test="$code='CAN002'">任务结束原因：Cancel —〉退出光盘失败<br/>建议：重启设备</xsl:when>
+      <xsl:when test="$code='CAN003'">任务结束原因：Cancel —〉无法在光驱或打印机中检测到光盘<br/>建议：首先关闭设备，取出设备中外来物体，然后再开启设备</xsl:when>
+      <xsl:when test="$code='CAN004'">任务结束原因：Cancel —〉输出盘舱(盘舱3)已满<br/>可能原因：当设备处于模式3(批量模式)时，开始刻录之前未清空盘舱3<br/>建议：清空盘舱3，将空白光盘放入盘舱1、盘舱2，重新开始任务</xsl:when>
+      <xsl:when test="$code='CAN005'">任务结束原因：Cancel —〉机械臂移动错误<br/>建议：首先关闭设备，取出设备中外来物体，然后再开启设备</xsl:when>
+      <xsl:when test="$code='CAN006'">任务结束原因：Cancel —〉机械臂马达过热<br/>建议：首先关闭设备，取出设备中外来物体，然后再开启设备</xsl:when>
+      <xsl:when test="$code='CAN007'">任务结束原因：Cancel —〉光驱托盘失效<br/>建议：首先关闭设备，取出设备中外来物体，然后再开启设备</xsl:when>
+      <xsl:when test="$code='CAN008'">任务结束原因：Cancel —〉光驱错误<br/>建议：重启设备</xsl:when>
+      <xsl:when test="$code='CAN009'">任务结束原因：Cancel —〉打印机托盘失效<br/>建议：首先关闭设备，取出设备中外来物体，然后再开启设备</xsl:when>
+      <xsl:when test="$code='CAN010'">任务结束原因：Cancel —〉光驱错误<br/>建议：重启设备</xsl:when>
+      <xsl:when test="$code='CAN011'">任务结束原因：Cancel —〉与打印机通信失败<br/>建议：检查打印机端口设置</xsl:when>
+      <xsl:when test="$code='CAN012'">任务结束原因：Cancel —〉打印机名称错误，EPJ文件指定的打印机没有找到<br/>建议：打印机名称设置</xsl:when>
       <xsl:otherwise>未知</xsl:otherwise>
     </xsl:choose>
   </xsl:template>
