@@ -174,6 +174,7 @@
       </head>
       <body>
         <dl>
+          <xsl:apply-templates select="ACTIVE_JOB"/>
           <xsl:apply-templates select="COMPLETE_JOB"/>
           <xsl:apply-templates select="PUBLISHER1"/>
           <xsl:apply-templates select="TDB_INFO"/>

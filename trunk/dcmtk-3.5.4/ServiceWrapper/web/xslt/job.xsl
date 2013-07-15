@@ -37,7 +37,7 @@
   </xsl:template>
   <xsl:template name="transformCode">
     <xsl:param name="code"/>
-    错误码：<xsl:value-of select ="$code"/>,
+    错误码：<xsl:value-of select ="$code"/><xsl:if test="$code!=''">,</xsl:if>
     <xsl:choose>
       <xsl:when test="$code='SYS001'">接受任务失败</xsl:when>
       <xsl:when test="$code='SYS002'">与设备通信失败</xsl:when>
@@ -211,22 +211,47 @@
       <xsl:when test="$code='RTN017'">任务结束原因：Automatic recover —〉维护箱无法识别<br/>建议：正确安装维护箱</xsl:when>
 
       <xsl:when test="$code='OTH000'">任务结束原因：Others —〉无法取得任务状态，请查看 INFORMATION Code</xsl:when>
-      <xsl:otherwise>未知</xsl:otherwise>
+      <xsl:otherwise></xsl:otherwise>
     </xsl:choose>
   </xsl:template>
-  <xsl:template name="transformJob">
-    <xsl:param name="job"/>
-    <dd><xsl:call-template name="transformJobStatus"><xsl:with-param name="status" select="$job/STATUS"/></xsl:call-template></dd>
-    <dd><xsl:call-template name="transformJobDetail"><xsl:with-param name="detail" select="$job/DETAIL_STATUS"/></xsl:call-template></dd>
-    <dd><xsl:call-template name="transformCode"><xsl:with-param name="code" select="$job/ERROR"/></xsl:call-template></dd>
+  <xsl:template name="dispalyJob">
+    <xsl:param name="jobId"/>
+    <dd>
+      <xsl:call-template name="transformJobStatus">
+        <xsl:with-param name="status" select="/tdb_status/JOB_STATUS[@id=$jobId]/STATUS"/>
+      </xsl:call-template>
+    </dd>
+    <dd>
+      <xsl:call-template name="transformJobDetail">
+        <xsl:with-param name="detail" select="/tdb_status/JOB_STATUS[@id=$jobId]/DETAIL_STATUS"/>
+      </xsl:call-template>
+    </dd>
+    <dd>
+      <xsl:call-template name="transformCode">
+        <xsl:with-param name="code" select="/tdb_status/JOB_STATUS[@id=$jobId]/ERROR"/>
+      </xsl:call-template>
+    </dd>
   </xsl:template>
-  <xsl:template  match="/tdb_status/COMPLETE_JOB">
+  <xsl:template match="/tdb_status/ACTIVE_JOB">
+    未完成任务：
+    <ul>
+      <xsl:for-each select="JOB">
+        <dt>
+          任务ID：<xsl:value-of select="@id"/>
+        </dt>
+        <xsl:call-template name="dispalyJob">
+          <xsl:with-param name="jobId" select="@id"/>
+        </xsl:call-template>
+      </xsl:for-each>
+    </ul>
+  </xsl:template>
+  <xsl:template match="/tdb_status/COMPLETE_JOB">
     已完成任务：
     <ul>
       <xsl:for-each select="JOB">
         <dt>任务ID：<xsl:value-of select="@id"/></dt>
-        <xsl:call-template name="transformJob">
-          <xsl:with-param name="job" select="/tdb_status/JOB_STATUS[@id=@id]"/>
+        <xsl:call-template name="dispalyJob">
+          <xsl:with-param name="jobId" select="@id"/>
         </xsl:call-template>
       </xsl:for-each>
     </ul>
