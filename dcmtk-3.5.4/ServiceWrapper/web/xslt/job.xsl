@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="gbk"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <xsl:output indent="no" method="html" encoding="gbk" doctype-public="-//W3C//DTD XHTML 1.0 Transitional//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"/>
+  <xsl:template name="transformJobType">
+    <xsl:param name="type"/>
+    <xsl:choose>
+      <xsl:when test="$type=1">仅刻录光盘</xsl:when>
+      <xsl:when test="$type=2">仅打印盘面</xsl:when>
+      <xsl:when test="$type=3">刻录及打印盘面</xsl:when>
+      <xsl:when test="$type=4">错误率度量</xsl:when>
+      <xsl:otherwise>未知</xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
   <xsl:template name="transformJobStatus">
     <xsl:param name="status"/>
-    任务状态：<xsl:value-of select ="$status"/>,
+    状态：<xsl:value-of select ="$status"/>,
     <xsl:choose>
       <xsl:when test="$status=1">待机</xsl:when>
       <xsl:when test="$status=2">处理中</xsl:when>
@@ -37,7 +47,7 @@
   </xsl:template>
   <xsl:template name="transformCode">
     <xsl:param name="code"/>
-    错误码：<xsl:value-of select ="$code"/><xsl:if test="$code!=''">,</xsl:if>
+    错误码：<xsl:value-of select ="$code"/><xsl:if test="$code">,</xsl:if>
     <xsl:choose>
       <xsl:when test="$code='SYS001'">接受任务失败</xsl:when>
       <xsl:when test="$code='SYS002'">与设备通信失败</xsl:when>
@@ -214,23 +224,46 @@
       <xsl:otherwise></xsl:otherwise>
     </xsl:choose>
   </xsl:template>
-  <xsl:template name="dispalyJob">
-    <xsl:param name="jobId"/>
+  <xsl:template name="dispalyJobImpl">
+    <xsl:param name="job"/>
     <dd>
       <xsl:call-template name="transformJobStatus">
-        <xsl:with-param name="status" select="/tdb_status/JOB_STATUS[@id=$jobId]/STATUS"/>
+        <xsl:with-param name="status" select="$job/STATUS"/>
       </xsl:call-template>
     </dd>
     <dd>
       <xsl:call-template name="transformJobDetail">
-        <xsl:with-param name="detail" select="/tdb_status/JOB_STATUS[@id=$jobId]/DETAIL_STATUS"/>
+        <xsl:with-param name="detail" select="$job/DETAIL_STATUS"/>
       </xsl:call-template>
     </dd>
     <dd>
       <xsl:call-template name="transformCode">
-        <xsl:with-param name="code" select="/tdb_status/JOB_STATUS[@id=$jobId]/ERROR"/>
+        <xsl:with-param name="code" select="$job/ERROR/text()"/>
       </xsl:call-template>
     </dd>
+    <xsl:if test="$job/TYPE">
+      <dd>
+        类型：<xsl:call-template name="transformJobType"><xsl:with-param name="type" select="$job/TYPE"/></xsl:call-template>
+      </dd>
+    </xsl:if>
+    <xsl:if test="$job/PUBLISHER"><dd>设备：<xsl:value-of select ="$job/PUBLISHER"/></dd></xsl:if>
+    <xsl:if test="$job/PUBLICATION_NUMBER"><dd>计划刻录数：<xsl:value-of select ="$job/PUBLICATION_NUMBER"/></dd></xsl:if>
+    <xsl:if test="$job/COMPLETION_NUMBER"><dd>完成刻录数：<xsl:value-of select ="$job/COMPLETION_NUMBER"/></dd></xsl:if>
+    <xsl:if test="$job/ERRORDISC_NUMBER"><dd>刻录错误数：<xsl:value-of select ="$job/ERRORDISC_NUMBER"/></dd></xsl:if>
+    <xsl:if test="$job/IN_STACKER"><dd>源盘仓：<xsl:value-of select ="$job/IN_STACKER"/></dd></xsl:if>
+    <xsl:if test="$job/OUT_STACKER"><dd>输出盘仓：<xsl:value-of select ="$job/OUT_STACKER"/></dd></xsl:if>
+    <xsl:if test="$job/ESTIMATION_TIME">
+      <dd>估算时间：<xsl:value-of select ="floor($job/ESTIMATION_TIME div 60)"/>分<xsl:value-of select ="$job/ESTIMATION_TIME mod 60"/>秒</dd>
+    </xsl:if>
+    <xsl:if test="$job/ESTIMATION_TIME_REMAIN">
+      <dd>估算剩余时间：<xsl:value-of select ="floor($job/ESTIMATION_TIME_REMAIN div 60)"/>分<xsl:value-of select ="$job/ESTIMATION_TIME_REMAIN mod 60"/>秒</dd>
+    </xsl:if>
+  </xsl:template>
+  <xsl:template name="dispalyJob">
+    <xsl:param name="jobId"/>
+    <xsl:call-template name="dispalyJobImpl">
+      <xsl:with-param name="job" select="/tdb_status/JOB_STATUS[@id=$jobId]"/>
+    </xsl:call-template>
   </xsl:template>
   <xsl:template match="/tdb_status/ACTIVE_JOB">
     未完成任务：
