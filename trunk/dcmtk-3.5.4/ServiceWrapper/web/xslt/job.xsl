@@ -50,8 +50,8 @@
       <xsl:when test="$code='JDF0202'">拒绝接受原因：PUBLISHER —〉设备模式错误</xsl:when>
       <xsl:when test="$code='JDF0203'">拒绝接受原因：PUBLISHER —〉没有检测到已连接设备</xsl:when>
       <xsl:when test="$code='JDF0300'">拒绝接受原因：COPIES —〉复制数量错误</xsl:when>
-      <xsl:when test="$code='JDF0400'">拒绝接受原因：OUT_STACKER —〉输出盘舱错误</xsl:when>
-      <xsl:when test="$code='JDF0500'">拒绝接受原因：DISC_TYPE —〉指定光盘类型与源盘舱不符</xsl:when>
+      <xsl:when test="$code='JDF0400'">拒绝接受原因：OUT_STACKER —〉输出盘仓错误</xsl:when>
+      <xsl:when test="$code='JDF0500'">拒绝接受原因：DISC_TYPE —〉指定光盘类型与源盘仓不符</xsl:when>
       <xsl:when test="$code='JDF0501'">拒绝接受原因：DISC_TYPE —〉未指定光盘类型</xsl:when>
       <xsl:when test="$code='JDF0502'">拒绝接受原因：DISC_TYPE —〉不支持的光盘类型，支持的光盘类型：CD、DVD、DVD-DL、BD(仅PP-7050BD)、BD-DL(仅PP-7050BD)</xsl:when>
       <xsl:when test="$code='JDF0600'">拒绝接受原因：WRITING_SPEED —〉写入速度错误</xsl:when>
@@ -96,7 +96,7 @@
       <xsl:when test="$code='JDF1303'">拒绝接受原因：IMAGE —〉无法读取图像文件，权限不足</xsl:when>
       <xsl:when test="$code='JDF1304'">拒绝接受原因：IMAGE —〉图像文件正在使用中</xsl:when>
       <xsl:when test="$code='JDF1305'">拒绝接受原因：IMAGE —〉存储图像文件的驱动器不可用</xsl:when>
-      <xsl:when test="$code='JDF1306'">拒绝接受原因：IMAGE —〉与源盘舱的光盘类型不符</xsl:when>
+      <xsl:when test="$code='JDF1306'">拒绝接受原因：IMAGE —〉与源盘仓的光盘类型不符</xsl:when>
       <xsl:when test="$code='JDF1400'">拒绝接受原因：FORMAT —〉CD光盘格式错误，只能是ISO9660L2、JOLIET或UDF102</xsl:when>
       <xsl:when test="$code='JDF1401'">拒绝接受原因：FORMAT —〉DVD光盘格式错误，只能是UDF102或UDF102_BRIDGE</xsl:when>
       <xsl:when test="$code='JDF1402'">拒绝接受原因：FORMAT —〉蓝光盘格式错误，只能是UDF102或UDF260</xsl:when>
@@ -155,7 +155,7 @@
       <xsl:when test="$code='JDF2601'">拒绝接受原因：PRINT_MODE —〉当打印模式为2(快速)或3(最快)时，光盘打印类型不能为3(EPSON认证，设备默认)</xsl:when>
       <xsl:when test="$code='JDF2602'">拒绝接受原因：PRINT_MODE —〉当打印模式为2(快速)或3(最快)时，光盘打印类型不能为3(EPSON认证)</xsl:when>
       <xsl:when test="$code='JDF2603'">拒绝接受原因：PRINT_MODE —〉只有PP-100AP，打印模式才能为3(最快)</xsl:when>
-      <xsl:when test="$code='JDF2700'">拒绝接受原因：IN_STACKER —〉源盘舱只能是1、2或AUTO</xsl:when>
+      <xsl:when test="$code='JDF2700'">拒绝接受原因：IN_STACKER —〉源盘仓只能是1、2或AUTO</xsl:when>
       <xsl:when test="$code='JDF2800'">拒绝接受原因：MEASURE —〉值只能是1或2</xsl:when>
       <xsl:when test="$code='JDF2801'">拒绝接受原因：MEASURE —〉当设备处于错误率度量模式，值只能是1</xsl:when>
       <xsl:when test="$code='JDF2900'">拒绝接受原因：ARCHIVE_DISC_ONLY —〉值只能是YES或NO</xsl:when>
@@ -168,7 +168,7 @@
       <xsl:when test="$code='CAN001'">任务结束原因：Cancel —〉光盘滑落<br/>建议：首先关闭设备，人工取出滑落的光盘，然后再开启设备</xsl:when>
       <xsl:when test="$code='CAN002'">任务结束原因：Cancel —〉退出光盘失败<br/>建议：重启设备</xsl:when>
       <xsl:when test="$code='CAN003'">任务结束原因：Cancel —〉无法在光驱或打印机中检测到光盘<br/>建议：首先关闭设备，取出设备中外来物体，然后再开启设备</xsl:when>
-      <xsl:when test="$code='CAN004'">任务结束原因：Cancel —〉输出盘舱(盘舱3)已满<br/>可能原因：当设备处于模式3(批量模式)时，开始刻录之前未清空盘舱3<br/>建议：清空盘舱3，将空白光盘放入盘舱1、盘舱2，重新开始任务</xsl:when>
+      <xsl:when test="$code='CAN004'">任务结束原因：Cancel —〉输出盘仓(盘仓3)已满<br/>可能原因：当设备处于模式3(批量模式)时，开始刻录之前未清空盘仓3<br/>建议：清空盘仓3，将空白光盘放入盘仓1、盘仓2，重新开始任务</xsl:when>
       <xsl:when test="$code='CAN005'">任务结束原因：Cancel —〉机械臂移动错误<br/>建议：首先关闭设备，取出设备中外来物体，然后再开启设备</xsl:when>
       <xsl:when test="$code='CAN006'">任务结束原因：Cancel —〉机械臂马达过热<br/>建议：首先关闭设备，取出设备中外来物体，然后再开启设备</xsl:when>
       <xsl:when test="$code='CAN007'">任务结束原因：Cancel —〉光驱托盘失效<br/>建议：首先关闭设备，取出设备中外来物体，然后再开启设备</xsl:when>
@@ -177,6 +177,40 @@
       <xsl:when test="$code='CAN010'">任务结束原因：Cancel —〉光驱错误<br/>建议：重启设备</xsl:when>
       <xsl:when test="$code='CAN011'">任务结束原因：Cancel —〉与打印机通信失败<br/>建议：检查打印机端口设置</xsl:when>
       <xsl:when test="$code='CAN012'">任务结束原因：Cancel —〉打印机名称错误，EPJ文件指定的打印机没有找到<br/>建议：打印机名称设置</xsl:when>
+      <xsl:when test="$code='CAN013'">任务结束原因：Cancel —〉打印机维护错误<br/>建议：与维修服务商联系</xsl:when>
+      <xsl:when test="$code='CAN014'">任务结束原因：Cancel —〉废墨垫需要更换<br/>建议：与维修服务商联系</xsl:when>
+      <xsl:when test="$code='CAN015'">任务结束原因：Cancel —〉状态错误<br/>建议：重启设备</xsl:when>
+      <xsl:when test="$code='CAN016'">任务结束原因：Cancel —〉数据无法读取<br/>建议：检查文件读取权限</xsl:when>
+      <xsl:when test="$code='CAN017'">任务结束原因：Cancel —〉不支持的固件版本<br/>建议：升级设备固件</xsl:when>
+      <xsl:when test="$code='CAN018'">任务结束原因：Cancel —〉设备模式与任务模式不一致<br/>建议：重新设置设备模式</xsl:when>
+      <xsl:when test="$code='CAN019'">任务结束原因：Cancel —〉源文件路径无效<br/>建议：检查源文件路径</xsl:when>
+      <xsl:when test="$code='CAN020'">任务结束原因：Cancel —〉与打印机通信失败<br/>建议：检查数据线(USB或网线)是否连接</xsl:when>
+      <xsl:when test="$code='CAN021'">任务结束原因：Cancel —〉错误率日志保存失败<br/>建议：检查日志保存路径及其写入权限</xsl:when>
+
+      <xsl:when test="$code='STP000'">任务结束原因：Pause —〉光盘类型错误或到达重试次数上限<br/>建议：检查空白光盘质量</xsl:when>
+      <xsl:when test="$code='STP001'">任务结束原因：Pause —〉到达重试次数上限<br/>建议：检查空白光盘质量；如果空白光盘来自正规渠道，请联系维修服务商</xsl:when>
+      <xsl:when test="$code='STP002'">任务结束原因：Pause —〉持续错误发生几率超过阈限<br/>建议：检查空白光盘质量；如果空白光盘来自正规渠道，请联系维修服务商</xsl:when>
+
+      <xsl:when test="$code='RTN000'">任务结束原因：Automatic recover —〉源盘仓里没有空白光盘<br/>建议：在源盘仓中放入空白光盘</xsl:when>
+      <xsl:when test="$code='RTN001'">任务结束原因：Automatic recover —〉输出盘仓已满<br/>建议：清空输出盘仓</xsl:when>
+      <xsl:when test="$code='RTN002'">任务结束原因：Automatic recover —〉设备的光盘盖未关闭<br/>建议：关闭设备的光盘盖</xsl:when>
+      <xsl:when test="$code='RTN003'">任务结束原因：Automatic recover —〉设备的墨水盖未关闭<br/>建议：关闭设备的墨水盖</xsl:when>
+      <xsl:when test="$code='RTN004'">任务结束原因：Automatic recover —〉墨水不足<br/>建议：更换墨盒</xsl:when>
+      <xsl:when test="$code='RTN005'">任务结束原因：Automatic recover —〉未安装墨盒<br/>建议：安装墨盒</xsl:when>
+      <xsl:when test="$code='RTN006'">任务结束原因：Automatic recover —〉未安装盘仓<br/>建议：安装盘仓</xsl:when>
+      <xsl:when test="$code='RTN007'">任务结束原因：Automatic recover —〉外部输出模式不需要盘仓3<br/>建议：卸下盘仓3</xsl:when>
+      <xsl:when test="$code='RTN008'">任务结束原因：Automatic recover —〉盘仓4未关闭<br/>建议：关闭盘仓4</xsl:when>
+      <xsl:when test="$code='RTN009'">任务结束原因：Automatic recover —〉多张光盘被传送到光驱<br/>建议：打开光盘盖，取出光驱托盘上的光盘，关闭光盘盖</xsl:when>
+      <xsl:when test="$code='RTN010'">任务结束原因：Automatic recover —〉多张光盘被传送到打印机<br/>建议：打开光盘盖，取出光驱托盘上的光盘，关闭光盘盖</xsl:when>
+      <xsl:when test="$code='RTN011'">任务结束原因：Automatic recover —〉墨盒无法识别<br/>建议：正确安装墨盒</xsl:when>
+      <xsl:when test="$code='RTN012'">任务结束原因：Automatic recover —〉从源光盘仓取光盘失败<br/>建议：检查光盘是否粘连</xsl:when>
+      <xsl:when test="$code='RTN013'">任务结束原因：Automatic recover —〉源光盘仓中的光盘数量超过上限<br/>建议：取出多余的光盘</xsl:when>
+      <xsl:when test="$code='RTN014'">任务结束原因：Automatic recover —〉维护箱盖未关闭<br/>建议：关闭维护箱盖</xsl:when>
+      <xsl:when test="$code='RTN015'">任务结束原因：Automatic recover —〉维护箱过期<br/>建议：更换维护箱</xsl:when>
+      <xsl:when test="$code='RTN016'">任务结束原因：Automatic recover —〉未安装维护箱<br/>建议：安装维护箱</xsl:when>
+      <xsl:when test="$code='RTN017'">任务结束原因：Automatic recover —〉维护箱无法识别<br/>建议：正确安装维护箱</xsl:when>
+
+      <xsl:when test="$code='OTH000'">任务结束原因：Others —〉无法取得任务状态，请查看 INFORMATION Code</xsl:when>
       <xsl:otherwise>未知</xsl:otherwise>
     </xsl:choose>
   </xsl:template>

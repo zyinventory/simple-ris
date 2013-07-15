@@ -7,22 +7,22 @@
     <xsl:param name="percentage"/>
     <xsl:choose>
       <xsl:when test="$usage=0">
-        输出舱,盘舱已用空间：<xsl:value-of select="$percentage"/>%
+        输出仓,盘仓已用空间：<xsl:value-of select="$percentage"/>%
       </xsl:when>
       <xsl:when test="$usage=1">
-        CD,盘舱已用空间：<xsl:value-of select="$percentage"/>%
+        CD,盘仓已用空间：<xsl:value-of select="$percentage"/>%
       </xsl:when>
       <xsl:when test="$usage=4">
-        DVD,盘舱已用空间：<xsl:value-of select="$percentage"/>%
+        DVD,盘仓已用空间：<xsl:value-of select="$percentage"/>%
       </xsl:when>
       <xsl:when test="$usage=7">
-        双层DVD,盘舱已用空间：<xsl:value-of select="$percentage"/>%
+        双层DVD,盘仓已用空间：<xsl:value-of select="$percentage"/>%
       </xsl:when>
       <xsl:when test="$usage=8">
-        蓝光盘,盘舱已用空间：<xsl:value-of select="$percentage"/>%
+        蓝光盘,盘仓已用空间：<xsl:value-of select="$percentage"/>%
       </xsl:when>
       <xsl:when test="$usage=9">
-        双层蓝光盘,盘舱已用空间：<xsl:value-of select="$percentage"/>%
+        双层蓝光盘,盘仓已用空间：<xsl:value-of select="$percentage"/>%
       </xsl:when>
       <xsl:when test="$usage=99">未使用</xsl:when>
       <xsl:when test="$usage=100">源</xsl:when>
@@ -99,7 +99,7 @@
     </xsl:if>
     <dd xmlns="http://www.w3.org/1999/xhtml"></dd>
     <dd xmlns="http://www.w3.org/1999/xhtml">
-      <span>盘舱：</span>
+      <span>盘仓：</span>
       <ul>
         <li>
           <xsl:call-template name="transformStackSetting">
