@@ -126,6 +126,43 @@
       <xsl:when test="$code='JDF1623'">拒绝接受原因：REPLACE_FIELD —〉图像文件正在使用中</xsl:when>
       <xsl:when test="$code='JDF1624'">拒绝接受原因：REPLACE_FIELD —〉存储图像文件的驱动器不可用</xsl:when>
       <xsl:when test="$code='JDF1625'">拒绝接受原因：REPLACE_FIELD —〉图像关键字无效</xsl:when>
+      <xsl:when test="$code='JDF1700'">拒绝接受原因：AUDIO_TITLE —〉</xsl:when>
+      <xsl:when test="$code='JDF1701'">拒绝接受原因：AUDIO_TITLE —〉</xsl:when>
+      <xsl:when test="$code='JDF1800'">拒绝接受原因：AUDIO_PERFORMER —〉</xsl:when>
+      <xsl:when test="$code='JDF1801'">拒绝接受原因：AUDIO_PERFORMER —〉</xsl:when>
+      <xsl:when test="$code='JDF1900'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1901'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1910'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1911'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1912'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1913'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1914'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1915'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1916'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1920'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1921'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1930'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1931'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1940'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF1950'">拒绝接受原因：AUDIO_TRACK —〉</xsl:when>
+      <xsl:when test="$code='JDF2000'">拒绝接受原因：LABEL_AREA —〉打印区域超出范围，取值范围700—1194(70mm—119.4mm)</xsl:when>
+      <xsl:when test="$code='JDF2001'">拒绝接受原因：LABEL_AREA —〉打印区域超出范围，取值范围180—500(18mm—50mm)</xsl:when>
+      <xsl:when test="$code='JDF2300'">拒绝接受原因：PRIORITY —〉任务优先级必须为“HIGH”</xsl:when>
+      <xsl:when test="$code='JDF2400'">拒绝接受原因：AUDIO_CATALOG_CODE —〉</xsl:when>
+      <xsl:when test="$code='JDF2500'">拒绝接受原因：LABEL_TYPE —〉光盘打印类型必须为1(普通)、2(高质量)或3(EPSON认证)</xsl:when>
+      <xsl:when test="$code='JDF2501'">拒绝接受原因：LABEL_TYPE —〉当光盘打印类型为3(EPSON认证)时，打印模式必须为1(高质量)</xsl:when>
+      <xsl:when test="$code='JDF2600'">拒绝接受原因：PRINT_MODE —〉打印模式必须为1(高质量)、2(快速)或3(最快)</xsl:when>
+      <xsl:when test="$code='JDF2601'">拒绝接受原因：PRINT_MODE —〉当打印模式为2(快速)或3(最快)时，光盘打印类型不能为3(EPSON认证，设备默认)</xsl:when>
+      <xsl:when test="$code='JDF2602'">拒绝接受原因：PRINT_MODE —〉当打印模式为2(快速)或3(最快)时，光盘打印类型不能为3(EPSON认证)</xsl:when>
+      <xsl:when test="$code='JDF2603'">拒绝接受原因：PRINT_MODE —〉只有PP-100AP，打印模式才能为3(最快)</xsl:when>
+      <xsl:when test="$code='JDF2700'">拒绝接受原因：IN_STACKER —〉源盘舱只能是1、2或AUTO</xsl:when>
+      <xsl:when test="$code='JDF2800'">拒绝接受原因：MEASURE —〉值只能是1或2</xsl:when>
+      <xsl:when test="$code='JDF2801'">拒绝接受原因：MEASURE —〉当设备处于错误率度量模式，值只能是1</xsl:when>
+      <xsl:when test="$code='JDF2900'">拒绝接受原因：ARCHIVE_DISC_ONLY —〉值只能是YES或NO</xsl:when>
+      <xsl:when test="$code='JDF0000'">拒绝接受原因：Others —〉光盘类型为CD，却没有指定数据文件</xsl:when>
+      <xsl:when test="$code='JDF0001'">拒绝接受原因：Others —〉光盘类型为DVD，却没有指定数据文件</xsl:when>
+      <xsl:when test="$code='JDF0002'">拒绝接受原因：Others —〉没有打印数据</xsl:when>
+      <xsl:when test="$code='JDF0003'">拒绝接受原因：Others —〉光盘类型为蓝光盘，却没有指定数据文件</xsl:when>
       <xsl:otherwise>未知</xsl:otherwise>
     </xsl:choose>
   </xsl:template>
