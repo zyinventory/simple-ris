@@ -18,6 +18,7 @@
 
 // TODO: 在此处引用程序需要的其他头文件
 #include <fstream>
+#include <sstream>
 #include <commonlib.h>
 #include "SimpleIni.h"
 extern "C" {
