@@ -1,19 +1,9 @@
 #include "stdafx.h"
-#include <sstream>
 #import <msxml3.dll>
 using namespace std;
 
-static ostringstream buffer;
-
-void outputContent(bool error)
-{
-	string content = buffer.str();
-	if(error)
-		fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", content.length());
-	else
-		fprintf(cgiOut, "Content-type: text/xml; charset=GBK\r\nContent-Length: %d\r\n\r\n", content.length());
-	fprintf(cgiOut, content.c_str());
-}
+extern ostringstream buffer;
+void outputContent(bool error);
 
 int statusXml(CSimpleIni &ini, const char *statusFlag)
 {

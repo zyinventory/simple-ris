@@ -1,5 +1,8 @@
 #include "stdafx.h"
+#include <direct.h>
 
+static char pPacsBase[MAX_PATH];
+std::ostringstream buffer;
 int statusXml(CSimpleIni &ini, const char *statusFlag);
 
 #define CHINESE_LOCAL "chinese"  // full name: Chinese_People's Republic of China.936, posix: zh_CN.GBK
@@ -53,6 +56,16 @@ static const char jnlp8[] = "\
 </jnlp>";
 using namespace std;
 
+void outputContent(bool error)
+{
+	string content = buffer.str();
+	if(error)
+		fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", content.length());
+	else
+		fprintf(cgiOut, "Content-type: text/xml; charset=GBK\r\nContent-Length: %d\r\n\r\n", content.length());
+	fprintf(cgiOut, content.c_str());
+}
+
 int jnlp(int hostLength)
 {
 	int indexPathLength = 0;
@@ -102,6 +115,13 @@ int queryXml(int hostLength)
 			sprintf_s(indexPath, MAX_PATH, "indexdir\\00100020\\%02X\\%02X\\%02X\\%02X\\%s.xml",
 				hashPatient >> 24 & 0xff, hashPatient >> 16 & 0xff, hashPatient >> 8 & 0xff, hashPatient & 0xff, patientID);
 			xmlFile.open(indexPath, ios_base::in);
+		}
+		else
+		{
+			if(cgiQueryString) buffer << "ÎÞÐ§ÇëÇó:" << cgiQueryString << endl;
+			if(pPacsBase) buffer << "PACS_BASE:" << pPacsBase << endl;;
+			outputContent(true);
+			return 0;
 		}
 
 		if(xmlFile.is_open() && xmlFile.good())
@@ -172,10 +192,15 @@ int reportStatus(const char *flag)
 
 int work()
 {
-	char *pPacsBase = NULL;
 	//locale::global(locale(CHINESE_LOCAL));
-	changeWorkingDirectory(0, NULL, &pPacsBase); // switch to ${PACS_BASE}/pacs
-
+	int chdirOK = changeWorkingDirectory(0, NULL, pPacsBase);
+	if(chdirOK < 0)
+	{
+		buffer << "init working dir failed:" << -1 << ',' << chdirOK << endl;
+		if(pPacsBase) buffer << "PACS_BASE:" << pPacsBase << endl;
+		outputContent(true);
+		return -1;
+	}
 	int hostLength = 0;
 	if(strcmp(cgiServerPort, "80"))  // host = http://servername[:port]/
 		hostLength = sprintf_s(host, 64, "%s:%s", cgiServerName, cgiServerPort);

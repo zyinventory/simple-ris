@@ -209,14 +209,21 @@ time_t dcmdate2tm(int dcmdate)
   return mktime(&timeBirth);
 }
 
-int changeWorkingDirectory(int argc, char **argv, char **ppPacsBase)
+int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
 {
-  char **endPos = argv + argc;
-  char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
-  if(pos == endPos) pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "--working-directory")));
-  if(pos != endPos)
+  if(argc > 0)
   {
-	if(! _chdir(*++pos)) return -1;
+	  char **endPos = argv + argc;
+	  char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
+	  if(pos == endPos) pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "--working-directory")));
+	  if(pos != endPos)
+	  {
+		if(! _chdir(*++pos))
+		{
+			if(pPacsBase) strcpy_s(pPacsBase, MAX_PATH, *++pos);
+			return -2;
+		}
+	  }
   }
   else
   {
@@ -225,28 +232,24 @@ int changeWorkingDirectory(int argc, char **argv, char **ppPacsBase)
 	getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
 	if(requiredSize > 0)
 	{
-		workingDirBuffer = new char[requiredSize];
+		char pacsdir[] = "\\pacs";
+		workingDirBuffer = new char[requiredSize + sizeof(pacsdir)];
 		getenv_s( &requiredSize, workingDirBuffer, requiredSize, "PACS_BASE");
-		string workingDir(workingDirBuffer);
-		workingDir.append("\\pacs");
-		if(! _chdir(workingDir.c_str()))
-		{
-			delete workingDirBuffer;
-			return -1;
-		}
-		if(ppPacsBase)
-			*ppPacsBase = workingDirBuffer;
-		else
-			delete workingDirBuffer;
+		if(pPacsBase)
+			strcpy_s(pPacsBase, MAX_PATH, workingDirBuffer);
+		strcpy_s(workingDirBuffer + requiredSize - 1, sizeof(pacsdir), pacsdir);
+		int chdirFail = _chdir(workingDirBuffer);
+		delete workingDirBuffer;
+		if(chdirFail) return -1;
 	}
 	else
 	{
 		if(!_chdir("C:\\usr\\local\\dicom\\pacs"))
-			return -1;
-		if(ppPacsBase)
+			return -3;
+		if(pPacsBase)
 		{
 			char base[] = "C:\\usr\\local\\dicom";
-			strcpy_s(*ppPacsBase, sizeof(base), base);
+			strcpy_s(pPacsBase, sizeof(base), base);
 		}
 	}
   }

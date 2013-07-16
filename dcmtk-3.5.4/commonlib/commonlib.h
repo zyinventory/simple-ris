@@ -41,6 +41,6 @@ bool SendArchiveMessageToQueue(const char *label, const char *body, const char *
 bool DeleteQueue(const char *queueName);
 errno_t setEnvParentPID();
 int generateTime(const char *format, char *timeBuffer, size_t bufferSize);
-int changeWorkingDirectory(int argc, char **argv, char **ppPacsBase = NULL);
+int changeWorkingDirectory(int argc, char **argv, char *pPacsBase = NULL);
 int hashCode(const char *, unsigned int seed = 31);
 int hashCodeW(const wchar_t *, unsigned int seed = 31);
