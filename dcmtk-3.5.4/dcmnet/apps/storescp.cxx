@@ -1649,7 +1649,7 @@ cleanup:
 	return cond;
   }
 
-  if(opt_debug) COUT << "association closing\n";
+  //if(opt_debug) COUT << "association closing\n";
 
   if(inststrm.is_open())
   {
@@ -1659,10 +1659,10 @@ cleanup:
 	instanceCSVPath.clear();
   }
   lastStudySubdirectoryPathAndName = subdirectoryPathAndName;
-  if(opt_debug) COUT << "association cleanup:" << lastStudySubdirectoryPathAndName << endl;
+  //if(opt_debug) COUT << "association cleanup:" << lastStudySubdirectoryPathAndName << endl;
   lastArchiveStudyPath = archiveStudyPath;
   lastStudyXml = studyXml;
-  if(opt_debug) COUT << "association cleanup:" << lastArchiveStudyPath << endl;
+  //if(opt_debug) COUT << "association cleanup:" << lastArchiveStudyPath << endl;
   executeEndOfStudyEvents();
 
   cond = ASC_dropSCPAssociation(assoc);
