@@ -76,10 +76,16 @@ int realMain(int argc, char **argv)
 		// Close process and thread handles to avoid resource leak
 		CloseHandle(procinfo.hProcess);
 		CloseHandle(procinfo.hThread);
+
+		SYSTEM_INFO sysInfo;
+		GetSystemInfo(&sysInfo);
+		return commandDispatcher(QUEUE_NAME, min(MAX_CORE, sysInfo.dwNumberOfProcessors - 1));
 	}
-	SYSTEM_INFO sysInfo;
-	GetSystemInfo(&sysInfo);
-	return commandDispatcher(QUEUE_NAME, min(MAX_CORE, sysInfo.dwNumberOfProcessors - 1));
+	else
+	{
+		cerr << "create process error: " << cmd << endl;;
+		return -2;
+	}
 }
 
 void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)

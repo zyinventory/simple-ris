@@ -211,22 +211,24 @@ time_t dcmdate2tm(int dcmdate)
 
 int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
 {
-  if(argc > 0)
-  {
-	  char **endPos = argv + argc;
-	  char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
-	  if(pos == endPos) pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "--working-directory")));
-	  if(pos != endPos)
-	  {
-		if(! _chdir(*++pos))
+	if(argc > 0)
+	{
+		char **endPos = argv + argc;
+		char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
+		if(pos == endPos) pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "--working-directory")));
+		if(pos != endPos)
 		{
-			if(pPacsBase) strcpy_s(pPacsBase, MAX_PATH, *++pos);
-			return -2;
+			if(! _chdir(*++pos))
+			{
+				if(pPacsBase) strcpy_s(pPacsBase, MAX_PATH, *++pos);
+				return -2;
+			}
+			else
+				return 0;
 		}
-	  }
-  }
-  else
-  {
+		// else get working dir from PACS_BASE in env
+	}
+
 	char* workingDirBuffer;
 	size_t requiredSize;
 	getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
@@ -252,6 +254,5 @@ int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
 			strcpy_s(pPacsBase, sizeof(base), base);
 		}
 	}
-  }
-  return 0;
+	return 0;
 }
