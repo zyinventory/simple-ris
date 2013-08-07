@@ -154,20 +154,23 @@ int queryXml(int hostLength)
 
 int burningStudy(const char *media)
 {
+	ostringstream errstream;
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
-		int result = generateStudyJDF("0020000d", studyUID);
+		int result = generateStudyJDF("0020000d", studyUID, errstream);
 		if(result == 0)
 		{
-			char okMessage[] = "¿ªÊ¼¿ÌÂ¼CD/DVD...";
-			fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(okMessage) - 1);
-			fprintf(cgiOut, okMessage);
+			cgiHeaderLocation("getindex.exe?status=html");
+			cgiHeaderContentType("text/html");
+			//char okMessage[] = "¿ªÊ¼¿ÌÂ¼CD/DVD...";
+			//fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(okMessage) - 1);
+			//fprintf(cgiOut, okMessage);
 			return 0;
 		}
 	}
-	char errorMessage[] = "¿ÌÂ¼CD/DVD´íÎó";
-	fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(errorMessage) - 1);
-	fprintf(cgiOut, errorMessage);
+	string errmsg = errstream.str();
+	fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", errmsg.length());
+	fprintf(cgiOut, errmsg.c_str());
 	return -1;
 }
 
