@@ -10,7 +10,7 @@
 using namespace std;
 
 const char UNIT_SEPARATOR = 0x1F;
-const streamsize BUFF_SIZE = 1024;
+const size_t BUFF_SIZE = 1024;
 const int RMDIR_WAIT_SECONDS = 10;
 static char buffer[BUFF_SIZE];
 string archivePath("archdir");
@@ -332,7 +332,7 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 	return S_OK;
 }
 
-int generateStudyJDF(const char *tag, const char *tagValue)
+int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm)
 {
 	if(!strcmp(tag, "0020000d"))
 	{
@@ -350,8 +350,7 @@ int generateStudyJDF(const char *tag, const char *tagValue)
 		if(!pacsBase.empty())
 		{
 			unsigned int hash = hashCode(tagValue);
-			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.jdf", pacsBase.c_str(), indexBase.c_str(), tag,
-				hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, tagValue);
+			sprintf_s(buffer, BUFF_SIZE, "%s\\tdd\\%s.jdf", pacsBase.c_str(), tagValue);
 			string jdfPath(buffer);
 			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.txt", pacsBase.c_str(), indexBase.c_str(), tag,
 				hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, tagValue);
@@ -361,21 +360,33 @@ int generateStudyJDF(const char *tag, const char *tagValue)
 			try
 			{
 				ofstream ofs(jdfPath.c_str(), ios_base::out | ios_base::trunc);
-				ofs << "COPIES=1" << endl;
-				ofs << "DISC_TYPE=CD" << endl;
-				ofs << "FORMAT=ISO9660L2" << endl;
-				ofs << "DATA=" << pacsBase << "\\eFilmLite\\Autorun.inf" << endl;
-				ofs << "DATA=" << pacsBase << "\\eFilmLite\teFilmLite" << endl;
-				ofs << "DATA=" << buffer << endl;
-				ofs << "VOLUME_LABEL=SMARTPUB" << endl;
-				ofs << "LABEL=" << pacsBase << "\\tdd\\patientInfo.tdd" << endl;
-				ofs << "REPLACE_FIELD=" << fieldsPath << endl;
-				ofs.close();
+				if(ofs.good())
+				{
+					ofs << "COPIES=1" << endl;
+					ofs << "DISC_TYPE=CD" << endl;
+					ofs << "FORMAT=ISO9660L2" << endl;
+					ofs << "DATA=" << pacsBase << "\\eFilmLite\\Autorun.inf" << endl;
+					ofs << "DATA=" << pacsBase << "\\eFilmLite\teFilmLite" << endl;
+					ofs << "DATA=" << buffer << endl;
+					ofs << "VOLUME_LABEL=SMARTPUB" << endl;
+					ofs << "LABEL=" << pacsBase << "\\tdd\\patientInfo.tdd" << endl;
+					ofs << "REPLACE_FIELD=" << fieldsPath << endl;
+					ofs.close();
+				}
+				else
+				{
+					throw jdfPath;
+				}
+			}
+			catch(string &outPath)
+			{
+				errstrm << "create file failed: " << outPath << endl;
+				return -2;
 			}
 			catch(...)
 			{
-				cerr << "write jdf error" << endl;
-				return -2;
+				errstrm << "write jdf error" << endl;
+				return -3;
 			}
 			char timeBuffer[16];
 			generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
@@ -383,7 +394,7 @@ int generateStudyJDF(const char *tag, const char *tagValue)
 			if(!rename(jdfPath.c_str(), buffer))
 				return 0;
 			else
-				cerr << "move " << jdfPath << " to " << buffer << " failed" << endl;
+				errstrm << "move " << jdfPath << " to " << buffer << " failed" << endl;
 		}
 	}
 	return -1;
@@ -457,7 +468,7 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 			}
 
 			// jdf file
-			generateStudyJDF(tag, (const char*)tagValue);
+			generateStudyJDF(tag, (const char*)tagValue, cerr);
 		}
 		else
 		{
