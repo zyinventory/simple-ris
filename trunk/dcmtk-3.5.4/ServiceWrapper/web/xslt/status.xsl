@@ -167,6 +167,7 @@
     <html xmlns="http://www.w3.org/1999/xhtml">
       <head>
         <meta http-equiv="Content-Type" content="text/html; charset=gbk" />
+        <meta http-equiv="refresh" content="10" />
         <style type="text/css">
           ul li{ list-style-type:decimal; }
         </style>
