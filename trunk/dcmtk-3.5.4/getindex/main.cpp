@@ -157,7 +157,7 @@ int burningStudy(const char *media)
 	ostringstream errstream;
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
-		int result = generateStudyJDF("0020000d", studyUID, errstream);
+		int result = generateStudyJDF("0020000d", studyUID, errstream, media);
 		if(result == 0)
 		{
 			cgiHeaderLocation("getindex.exe?status=html");

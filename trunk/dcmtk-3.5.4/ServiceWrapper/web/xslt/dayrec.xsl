@@ -97,7 +97,7 @@
         </td>
         <td>
           <form target="ppstatus" method="POST" action="cgi-bin/getindex.exe">
-            <input type="hidden" name="media" value="CD" />
+            <input type="hidden" name="media" value="DVD" />
             <input type="hidden" name="studyUID">
               <xsl:attribute name="value"><xsl:value-of select="./text()" /></xsl:attribute>
             </input>

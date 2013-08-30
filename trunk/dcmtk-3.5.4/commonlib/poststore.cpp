@@ -332,7 +332,7 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 	return S_OK;
 }
 
-int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm)
+int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, const char *media)
 {
 	if(!strcmp(tag, "0020000d"))
 	{
@@ -363,7 +363,7 @@ int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm)
 				if(ofs.good())
 				{
 					ofs << "COPIES=1" << endl;
-					ofs << "DISC_TYPE=CD" << endl;
+					ofs << "DISC_TYPE=" << media << endl;
 					ofs << "FORMAT=ISO9660L2" << endl;
 					ofs << "DATA=" << pacsBase << "\\eFilmLite\\Autorun.inf" << endl;
 					ofs << "DATA=" << pacsBase << "\\eFilmLite\teFilmLite" << endl;

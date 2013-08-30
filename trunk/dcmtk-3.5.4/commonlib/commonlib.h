@@ -9,6 +9,7 @@
 #define MOVE_PLACE_HOLDER "%move%"
 #define ARCHIVE_STUDY "Archive Study"
 #define ARCHIVE_INSTANCE "Archive Instance"
+#define DEFAULT_MEDIA "DVD"
 #define MQ_PRIORITY_ARCHIVING	7
 #define MQ_PRIORITY_COMPRESSED	4
 #define MQ_PRIORITY_DCMMKDIR	0
@@ -33,7 +34,7 @@ bool MkdirRecursive(const char*);
 bool prepareFileDir(const char *path);
 int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator);
 BOOL DeleteEmptyFile(const char *filePath);
-int generateStudyJDF(const char *tag, const char *tagValue, std::ostream &errstrm);
+int generateStudyJDF(const char *tag, const char *tagValue, std::ostream &errstrm, const char *media = DEFAULT_MEDIA);
 long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV = false);
 time_t dcmdate2tm(int dcmdate);
 bool generateStudyXML(const char *line, std::ostream &xmlStream, bool isEncapsulated = false);
