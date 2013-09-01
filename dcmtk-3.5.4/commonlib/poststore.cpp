@@ -5,6 +5,7 @@
 #import <msxml3.dll>
 
 #include "commonlib.h"
+#include "SimpleIni.h"
 #include "poststore.h"
 
 using namespace std;
@@ -363,7 +364,57 @@ int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, co
 				if(ofs.good())
 				{
 					ofs << "COPIES=1" << endl;
-					ofs << "DISC_TYPE=" << media << endl;
+					if(strcmp(MEDIA_AUTO, media))
+					{
+						ofs << "DISC_TYPE=" << media << endl;
+					}
+					else
+					{
+						bool mediaOK = false;
+						CSimpleIni ini(false, false, false);
+						SI_Error rc = SI_Error::SI_OK;
+						for(int i = 0; i < 5; ++i)
+						{
+							rc = ini.LoadFile("..\\orders\\TDBStatus.txt");
+							if(rc >= 0) break;
+							Sleep(100);
+						}
+						if (rc >= 0)
+						{
+							bool hasMulti = false;
+							long mediaType1 = 100, mediaType2 = 100;
+							mediaType1 = ini.GetLongValue("PUBLISHER1", "STACKER1_SETTING", 100, &hasMulti);
+							if(mediaType1 != 1 && mediaType1 != 4 && mediaType1 != 7 && mediaType1 != 8 && mediaType1 != 9) mediaType1 = 100;
+							mediaType2 = ini.GetLongValue("PUBLISHER1", "STACKER2_SETTING", 100, &hasMulti);
+							if(mediaType2 != 1 && mediaType2 != 4 && mediaType2 != 7 && mediaType2 != 8 && mediaType2 != 9) mediaType2 = 100;
+							switch(min(mediaType1, mediaType2))
+							{
+							case 1:
+								ofs << "DISC_TYPE=" << MEDIA_CD << endl;
+								mediaOK = true;
+								break;
+							case 4:
+								ofs << "DISC_TYPE=" << MEDIA_DVD << endl;
+								mediaOK = true;
+								break;
+							case 7:
+								ofs << "DISC_TYPE=" << MEDIA_DVD_DL << endl;
+								mediaOK = true;
+								break;
+							case 8:
+								ofs << "DISC_TYPE=" << MEDIA_BD << endl;
+								mediaOK = true;
+								break;
+							case 9:
+								ofs << "DISC_TYPE=" << MEDIA_BD_DL << endl;
+								mediaOK = true;
+								break;
+							default:
+								mediaOK = false;
+							}
+						}
+						if(! mediaOK) ofs << "DISC_TYPE=" << MEDIA_CD << endl;
+					}
 					ofs << "FORMAT=ISO9660L2" << endl;
 					ofs << "DATA=" << pacsBase << "\\eFilmLite\\Autorun.inf" << endl;
 					ofs << "DATA=" << pacsBase << "\\eFilmLite\teFilmLite" << endl;
