@@ -363,59 +363,71 @@ int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, co
 				ofstream ofs(jdfPath.c_str(), ios_base::out | ios_base::trunc);
 				if(ofs.good())
 				{
-					ofs << "COPIES=1" << endl;
+					CSimpleIni ini(false, false, false);
+					SI_Error rc = SI_OK;
+					for(int i = 0; i < 5; ++i)
+					{
+						rc = ini.LoadFile("..\\orders\\TDBStatus.txt");
+						if(rc >= 0) break;
+						Sleep(100);
+					}
+
+					bool paramOK = false;
+					if(rc >= 0)
+					{
+						string publisherName(ini.GetValue("PUBLISHER1", "NAME", ""));
+						if(publisherName.find_first_of("PP-100 ") == 0)
+						{
+							ofs << "FORMAT=ISO9660L2" << endl;
+							paramOK = true;
+						}
+					}
+					if(! paramOK) ofs << "FORMAT=UDF102" << endl;
+
+					paramOK = false;
 					if(strcmp(MEDIA_AUTO, media))
 					{
 						ofs << "DISC_TYPE=" << media << endl;
 					}
 					else
 					{
-						bool mediaOK = false;
-						CSimpleIni ini(false, false, false);
-						SI_Error rc = SI_Error::SI_OK;
-						for(int i = 0; i < 5; ++i)
-						{
-							rc = ini.LoadFile("..\\orders\\TDBStatus.txt");
-							if(rc >= 0) break;
-							Sleep(100);
-						}
 						if (rc >= 0)
 						{
-							bool hasMulti = false;
 							long mediaType1 = 100, mediaType2 = 100;
-							mediaType1 = ini.GetLongValue("PUBLISHER1", "STACKER1_SETTING", 100, &hasMulti);
+							mediaType1 = ini.GetLongValue("PUBLISHER1", "STACKER1_SETTING", 100);
 							if(mediaType1 != 1 && mediaType1 != 4 && mediaType1 != 7 && mediaType1 != 8 && mediaType1 != 9) mediaType1 = 100;
-							mediaType2 = ini.GetLongValue("PUBLISHER1", "STACKER2_SETTING", 100, &hasMulti);
+							mediaType2 = ini.GetLongValue("PUBLISHER1", "STACKER2_SETTING", 100);
 							if(mediaType2 != 1 && mediaType2 != 4 && mediaType2 != 7 && mediaType2 != 8 && mediaType2 != 9) mediaType2 = 100;
 							switch(min(mediaType1, mediaType2))
 							{
 							case 1:
 								ofs << "DISC_TYPE=" << MEDIA_CD << endl;
-								mediaOK = true;
+								paramOK = true;
 								break;
 							case 4:
 								ofs << "DISC_TYPE=" << MEDIA_DVD << endl;
-								mediaOK = true;
+								paramOK = true;
 								break;
 							case 7:
 								ofs << "DISC_TYPE=" << MEDIA_DVD_DL << endl;
-								mediaOK = true;
+								paramOK = true;
 								break;
 							case 8:
 								ofs << "DISC_TYPE=" << MEDIA_BD << endl;
-								mediaOK = true;
+								paramOK = true;
 								break;
 							case 9:
 								ofs << "DISC_TYPE=" << MEDIA_BD_DL << endl;
-								mediaOK = true;
+								paramOK = true;
 								break;
 							default:
-								mediaOK = false;
+								paramOK = false;
 							}
 						}
-						if(! mediaOK) ofs << "DISC_TYPE=" << MEDIA_CD << endl;
+						if(! paramOK) ofs << "DISC_TYPE=" << MEDIA_CD << endl;
 					}
-					ofs << "FORMAT=ISO9660L2" << endl;
+
+					ofs << "COPIES=1" << endl;
 					ofs << "DATA=" << pacsBase << "\\eFilmLite\\Autorun.inf" << endl;
 					ofs << "DATA=" << pacsBase << "\\eFilmLite\teFilmLite" << endl;
 					ofs << "DATA=" << buffer << endl;
