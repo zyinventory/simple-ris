@@ -376,7 +376,7 @@ int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, co
 					if(rc >= 0)
 					{
 						string publisherName(ini.GetValue("PUBLISHER1", "NAME", ""));
-						if(publisherName.find_first_of("PP-100 ") == 0)
+						if(publisherName.find("PP-100 ") == 0 || publisherName.find("PP-100N") == 0)
 						{
 							ofs << "FORMAT=ISO9660L2" << endl;
 							paramOK = true;
