@@ -526,6 +526,8 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 			{
 				_bstr_t textFields = oldIndex ? oldIndex->transformNode(pXsl) : pXMLDom->transformNode(pXsl);
 				ofstream ofs(fieldsPath.c_str(), ios_base::out | ios_base::trunc);
+				if(strcmp(DCM_StudyInstanceUID, tag) == 0)
+					ofs << "StudySize=" << diskUsage("..", (const char*)tagValue) << endl;
 				ofs << textFields;
 				ofs.close();
 			}
@@ -719,4 +721,71 @@ bool generateStudyXML(const char *line, ostream &xmlStream, bool isEncapsulated)
 	xmlStream << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << endl;
 	xmlStream << (const char *)pXmlDom->lastChild->xml;
 	return true;
+}
+
+static void searchRecursively(string &path, long long &filesizes)
+{
+	WIN32_FIND_DATA wfd;
+
+	string::size_type pathLength = path.length();
+	path.append("\\*.*");
+	HANDLE hDiskSearch = FindFirstFile(path.c_str(), &wfd);
+	path.resize(pathLength);
+
+	if (hDiskSearch != INVALID_HANDLE_VALUE)  // 如果没有找到或查找失败
+    {
+		do
+		{
+			if (strcmp(wfd.cFileName, ".") == 0 || strcmp(wfd.cFileName, "..") == 0) 
+				continue; // skip . ..
+			if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			{// 如果找到的是目录，则递归查找
+				path.append(1, '\\');
+				path.append(wfd.cFileName);
+				//cout << path << '\\' << endl;
+				searchRecursively(path, filesizes);
+				path.resize(pathLength);
+			}
+			else
+			{
+				LARGE_INTEGER temp;
+				temp.LowPart = wfd.nFileSizeLow;
+				temp.HighPart = wfd.nFileSizeHigh;
+				filesizes += temp.QuadPart;
+				//cout << path << '\\' << wfd.cFileName << '\t' << wfd.nFileSizeLow << endl;
+			}
+		} while (FindNextFile(hDiskSearch, &wfd));
+		FindClose(hDiskSearch); // 关闭查找句柄
+	}
+}
+
+long long diskUsage(const char *pacsBase, const char *studyUID)
+{
+	long long filesizes = 0LL;
+	unsigned int hashStudy = hashCode(studyUID);
+	if(strlen(studyUID) == 0) studyUID = "NULL";
+	sprintf_s(buffer, sizeof(buffer), "%s\\pacs\\%s\\%02X\\%02X\\%02X\\%02X\\%s", pacsBase, archivePath.c_str(),
+		hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
+	string strbuf(MAX_PATH, ' ');
+	strbuf = buffer;
+
+	WIN32_FIND_DATA wfd;
+	HANDLE hDiskSearch = FindFirstFile(strbuf.c_str(), &wfd);
+	if (hDiskSearch != INVALID_HANDLE_VALUE)  // 如果没有找到或查找失败
+    {
+		if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			FindClose(hDiskSearch); // 关闭查找句柄
+			searchRecursively(strbuf, filesizes);
+		}
+		else
+		{
+			LARGE_INTEGER temp;
+			temp.LowPart = wfd.nFileSizeLow;
+			temp.HighPart = wfd.nFileSizeHigh;
+			filesizes += temp.QuadPart;
+			FindClose(hDiskSearch); // 关闭查找句柄
+		}
+	}
+	return filesizes;
 }

@@ -50,3 +50,4 @@ int generateTime(const char *format, char *timeBuffer, size_t bufferSize);
 int changeWorkingDirectory(int argc, char **argv, char *pPacsBase = NULL);
 int hashCode(const char *, unsigned int seed = 31);
 int hashCodeW(const wchar_t *, unsigned int seed = 31);
+long long diskUsage(const char *pacsBase, const char *studyUID);

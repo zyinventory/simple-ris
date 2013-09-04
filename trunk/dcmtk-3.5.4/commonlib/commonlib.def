@@ -25,3 +25,4 @@ EXPORTS
 	changeWorkingDirectory
 	hashCode
 	hashCodeW
+	diskUsage
