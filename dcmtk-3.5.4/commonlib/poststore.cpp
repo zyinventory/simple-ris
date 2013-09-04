@@ -526,7 +526,7 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 			{
 				_bstr_t textFields = oldIndex ? oldIndex->transformNode(pXsl) : pXMLDom->transformNode(pXsl);
 				ofstream ofs(fieldsPath.c_str(), ios_base::out | ios_base::trunc);
-				if(strcmp(DCM_StudyInstanceUID, tag) == 0)
+				if(strcmp(TAG_StudyInstanceUID, tag) == 0)
 					ofs << "StudySize=" << diskUsage("..", (const char*)tagValue) << endl;
 				ofs << textFields;
 				ofs.close();
@@ -584,10 +584,7 @@ HRESULT processInputStream(istream& istrm)
 	if( ! successOnce ) return E_FAIL;
 
 	// study instance uid
-	string::size_type p;
-	string tagStudyUID(MK_TAG_STRING(DCM_StudyInstanceUID));
-	while((p = tagStudyUID.find(',')) != string::npos) tagStudyUID.replace(p, 1, 0, '_');
-	hr = createKeyValueIndex(pXMLDom, tagStudyUID.c_str(), "/wado_query/Patient/Study/@StudyInstanceUID");
+	hr = createKeyValueIndex(pXMLDom, TAG_StudyInstanceUID, "/wado_query/Patient/Study/@StudyInstanceUID");
 	if (FAILED(hr))
 	{
 		cerr << "Failed to save StudyInstanceUID index\n";
@@ -595,9 +592,7 @@ HRESULT processInputStream(istream& istrm)
 	}
 	
 	// patient id index
-	string tagPatientID(MK_TAG_STRING(DCM_PatientID));
-	while((p = tagPatientID.find(',')) != string::npos) tagPatientID.replace(p, 1, 0, '_');
-	hr = createKeyValueIndex(pXMLDom, tagPatientID.c_str(), "/wado_query/Patient/@PatientID");
+	hr = createKeyValueIndex(pXMLDom, TAG_PatientID, "/wado_query/Patient/@PatientID");
 	if (FAILED(hr) && hr != FWP_E_NULL_POINTER)
 	{
 		cerr << "Failed to save PatientID index\n";
@@ -606,10 +601,8 @@ HRESULT processInputStream(istream& istrm)
 
 	// main index OK, the following is other index.
 
-	string tagStudyDate(MK_TAG_STRING(DCM_StudyDate));
-	while((p = tagStudyDate.find(',')) != string::npos) tagStudyDate.replace(p, 1, 0, '_');
 	//dayIndexFilePath = "<indexBase>/<tagStudyDate>/YYYY/MM/DD.xml"
-	sprintf_s(buffer, BUFF_SIZE, "%s/%s/%s.xml", indexBase.c_str(), tagStudyDate.c_str(), studyDatePath.c_str());
+	sprintf_s(buffer, BUFF_SIZE, "%s/%s/%s.xml", indexBase.c_str(), TAG_StudyDate, studyDatePath.c_str());
 	string dayIndexFilePath = buffer;
 	hr = createDateIndex(pXMLDom, "xslt\\receive.xsl", dayIndexFilePath, true);
 	if (FAILED(hr))
