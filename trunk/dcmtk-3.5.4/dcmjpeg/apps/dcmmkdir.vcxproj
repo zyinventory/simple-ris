@@ -99,7 +99,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;$(SolutionDir)getindex;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -121,10 +121,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>ws2_32.lib;netapi32.lib;..\..\ofstd\libsrc\Debug\ofstd.lib;..\..\dcmdata\libsrc\Debug\dcmdata.lib;..\..\dcmimgle\libsrc\Debug\dcmimgle.lib;..\..\dcmimage\libsrc\Debug\dcmimage.lib;..\libsrc\Debug\dcmjpeg.lib;..\libijg8\Debug\ijg8.lib;..\libijg12\Debug\ijg12.lib;..\libijg16\Debug\ijg16.lib;$(SolutionDir)$(Configuration)\commonlib.lib;zlib_d.lib</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;netapi32.lib;..\..\ofstd\libsrc\Debug\ofstd.lib;..\..\dcmdata\libsrc\Debug\dcmdata.lib;..\..\dcmimgle\libsrc\Debug\dcmimgle.lib;..\..\dcmimage\libsrc\Debug\dcmimage.lib;..\libsrc\Debug\dcmjpeg.lib;..\libijg8\Debug\ijg8.lib;..\libijg12\Debug\ijg12.lib;..\libijg16\Debug\ijg16.lib;$(SolutionDir)$(Configuration)\commonlib.lib;cdll5.lib;zlib_d.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmimgle\$(OutDir);..\..\dcmimgle;..\..\dcmimage\$(OutDir);..\..\dcmimage;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\tiff-3.7.4\lib\$(OutDir);D:\workspace\dcmtk-support\tiff-3.7.4\lib;D:\workspace\dcmtk-support\libpng-1.2.8\lib\$(OutDir);D:\workspace\dcmtk-support\libpng-1.2.8\lib;..\..\ofstd\libsrc\Debug\$(OutDir);..\..\ofstd\libsrc\Debug;..\..\dcmdata\libsrc\Debug\$(OutDir);..\..\dcmdata\libsrc\Debug;..\..\dcmimgle\libsrc\Debug\$(OutDir);..\..\dcmimgle\libsrc\Debug;..\..\dcmimage\libsrc\Debug\$(OutDir);..\..\dcmimage\libsrc\Debug;..\libsrc\Debug\$(OutDir);..\libsrc\Debug;..\libijg8\Debug\$(OutDir);..\libijg8\Debug;..\libijg12\Debug\$(OutDir);..\libijg12\Debug;..\libijg16\Debug\$(OutDir);..\libijg16\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmimgle\$(OutDir);..\..\dcmimgle;..\..\dcmimage\$(OutDir);..\..\dcmimage;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib\$(OutDir);$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\tiff-3.7.4\lib\$(OutDir);$(SolutionDir)..\dcmtk-support\tiff-3.7.4\lib;$(SolutionDir)..\dcmtk-support\libpng-1.2.8\lib\$(OutDir);$(SolutionDir)..\dcmtk-support\libpng-1.2.8\lib;..\..\ofstd\libsrc\Debug\$(OutDir);..\..\ofstd\libsrc\Debug;..\..\dcmdata\libsrc\Debug\$(OutDir);..\..\dcmdata\libsrc\Debug;..\..\dcmimgle\libsrc\Debug\$(OutDir);..\..\dcmimgle\libsrc\Debug;..\..\dcmimage\libsrc\Debug\$(OutDir);..\..\dcmimage\libsrc\Debug;..\libsrc\Debug\$(OutDir);..\libsrc\Debug;..\libijg8\Debug\$(OutDir);..\libijg8\Debug;..\libijg12\Debug\$(OutDir);..\libijg12\Debug;..\libijg16\Debug\$(OutDir);..\libijg16\Debug;$(SolutionDir)..\dcmtk-support\lock;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>Debug/dcmmkdir.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
@@ -147,7 +147,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;$(SolutionDir)getindex;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -168,10 +168,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>ws2_32.lib;netapi32.lib;..\..\ofstd\libsrc\Release\ofstd.lib;..\..\dcmdata\libsrc\Release\dcmdata.lib;..\..\dcmimgle\libsrc\Release\dcmimgle.lib;..\..\dcmimage\libsrc\Release\dcmimage.lib;..\libsrc\Release\dcmjpeg.lib;..\libijg8\Release\ijg8.lib;..\libijg12\Release\ijg12.lib;..\libijg16\Release\ijg16.lib;$(SolutionDir)$(Configuration)\commonlib.lib;zlib_o.lib</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;netapi32.lib;..\..\ofstd\libsrc\Release\ofstd.lib;..\..\dcmdata\libsrc\Release\dcmdata.lib;..\..\dcmimgle\libsrc\Release\dcmimgle.lib;..\..\dcmimage\libsrc\Release\dcmimage.lib;..\libsrc\Release\dcmjpeg.lib;..\libijg8\Release\ijg8.lib;..\libijg12\Release\ijg12.lib;..\libijg16\Release\ijg16.lib;$(SolutionDir)$(Configuration)\commonlib.lib;cdll5.lib;zlib_o.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmimgle\$(OutDir);..\..\dcmimgle;..\..\dcmimage\$(OutDir);..\..\dcmimage;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\tiff-3.7.4\lib\$(OutDir);D:\workspace\dcmtk-support\tiff-3.7.4\lib;D:\workspace\dcmtk-support\libpng-1.2.8\lib\$(OutDir);D:\workspace\dcmtk-support\libpng-1.2.8\lib;..\..\ofstd\libsrc\Release\$(OutDir);..\..\ofstd\libsrc\Release;..\..\dcmdata\libsrc\Release\$(OutDir);..\..\dcmdata\libsrc\Release;..\..\dcmimgle\libsrc\Release\$(OutDir);..\..\dcmimgle\libsrc\Release;..\..\dcmimage\libsrc\Release\$(OutDir);..\..\dcmimage\libsrc\Release;..\libsrc\Release\$(OutDir);..\libsrc\Release;..\libijg8\Release\$(OutDir);..\libijg8\Release;..\libijg12\Release\$(OutDir);..\libijg12\Release;..\libijg16\Release\$(OutDir);..\libijg16\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmimgle\$(OutDir);..\..\dcmimgle;..\..\dcmimage\$(OutDir);..\..\dcmimage;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib\$(OutDir);$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\tiff-3.7.4\lib\$(OutDir);$(SolutionDir)..\dcmtk-support\tiff-3.7.4\lib;$(SolutionDir)..\dcmtk-support\libpng-1.2.8\lib\$(OutDir);$(SolutionDir)..\dcmtk-support\libpng-1.2.8\lib;..\..\ofstd\libsrc\Release\$(OutDir);..\..\ofstd\libsrc\Release;..\..\dcmdata\libsrc\Release\$(OutDir);..\..\dcmdata\libsrc\Release;..\..\dcmimgle\libsrc\Release\$(OutDir);..\..\dcmimgle\libsrc\Release;..\..\dcmimage\libsrc\Release\$(OutDir);..\..\dcmimage\libsrc\Release;..\libsrc\Release\$(OutDir);..\libsrc\Release;..\libijg8\Release\$(OutDir);..\libijg8\Release;..\libijg12\Release\$(OutDir);..\libijg12\Release;..\libijg16\Release\$(OutDir);..\libijg16\Release;$(SolutionDir)..\dcmtk-support\lock;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>Release/dcmmkdir.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>Release\dcmmkdir.lib</ImportLibrary>
@@ -193,7 +193,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;$(SolutionDir)getindex;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="MinSizeRel";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -239,7 +239,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;$(SolutionDir)getindex;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="RelWithDebInfo";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>

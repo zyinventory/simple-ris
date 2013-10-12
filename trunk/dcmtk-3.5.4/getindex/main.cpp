@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include <direct.h>
+#include "lock.h"
 
 static char pPacsBase[MAX_PATH];
 std::ostringstream buffer;
@@ -157,16 +158,42 @@ int burningStudy(const char *media)
 	ostringstream errstream;
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
-		int result = generateStudyJDF("0020000d", studyUID, errstream, media);
-		if(result == 0)
+		int licenseCount = 0;
+		int r = rand();
+		if(shieldPC(r) == Lock32_Function(r))
 		{
-			cgiHeaderLocation("getindex.exe?status=html");
-			cgiHeaderContentType("text/html");
-			//char okMessage[] = "开始刻录CD/DVD...";
-			//fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(okMessage) - 1);
-			//fprintf(cgiOut, okMessage);
-			return 0;
+			char lockData[16];
+			memset(lockData, 0, sizeof(lockData));
+			int operateResult = ReadLock(0, (unsigned char*)lockData, lock_passwd);
+			if(operateResult == 0)
+			{
+				licenseCount = atoi(lockData);
+				if(licenseCount <= 0 || licenseCount > 9999)
+				{
+					int result = generateStudyJDF("0020000d", studyUID, errstream, media);
+					if(result == 0)
+					{
+						memset(lockData, 0, sizeof(lockData));
+						_itoa_s(--licenseCount, lockData, sizeof(lockData), 10);
+						WriteLock(0, (unsigned char*)lockData, lock_passwd);
+						cgiHeaderLocation("getindex.exe?status=html");
+						cgiHeaderContentType("text/html");
+						//char okMessage[] = "开始刻录CD/DVD...";
+						//fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(okMessage) - 1);
+						//fprintf(cgiOut, okMessage);
+						return 0;
+					}
+					else
+						errstream << "生成光盘刻录任务失败" << endl;
+				}
+				else
+					errstream << "可刻录光盘数不足" << endl;
+			}
+			else
+				errstream << "此程序没有合法的授权" << endl;
 		}
+		else
+			errstream << "此程序没有合法的授权" << endl;
 	}
 	string errmsg = errstream.str();
 	fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", errmsg.length());

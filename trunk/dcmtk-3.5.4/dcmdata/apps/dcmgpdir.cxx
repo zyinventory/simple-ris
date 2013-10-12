@@ -78,6 +78,7 @@
 #include <atlbase.h>
 #include <atlcom.h>
 #include "commonlib.h"
+#include "lock.h"
 #import <mqoa.dll>
 
 #ifdef WITH_ZLIB
@@ -531,6 +532,21 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	int licenseCount = 0;
+	int r = rand();
+	if(shieldPC(r) != Lock32_Function(r)) return -1;
+	char lockData[16];
+	memset(lockData, 0, sizeof(lockData));
+	int operateResult = ReadLock(0, (unsigned char*)lockData, lock_passwd);
+	if(operateResult == 0)
+	{
+		licenseCount = atoi(lockData);
+		if(licenseCount <= 0 || licenseCount > 9999)
+			return -2;
+	}
+	else
+		return operateResult;
+
 	// remove DICOMDIR for avoiding warning message.
 	// algorithm copied from OFList<T>::remove
 	OFIterator<OFString> first = fileNames.begin();
@@ -759,6 +775,12 @@ traversal_restart:
 		char buffer[MAX_PATH];
 		strcpy_s(buffer, MAX_PATH, opt_csv);
 		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
+		if(hr == S_OK)
+		{
+			memset(lockData, 0, sizeof(lockData));
+			_itoa_s(--licenseCount, lockData, sizeof(lockData), 10);
+			WriteLock(0, (unsigned char*)lockData, lock_passwd);
+		}
 	}
 	//COUT << "create index OK" << endl;
 /*
