@@ -81,21 +81,28 @@ ENDIF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unsp
 
 IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
   IF("${CMAKE_INSTALL_CONFIG_NAME}" MATCHES "^([Dd][Ee][Bb][Uu][Gg])$")
-	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/cgi-bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Debug/getindex.exe")
-	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/cgi-bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Debug/commonlib.dll")
-	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Debug/ServiceWrapper.exe")
-	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Debug/commonlib.dll")
-    FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Debug/storescp.exe")
+	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/cgi-bin" TYPE EXECUTABLE FILES 
+		"D:/workspace/dcmtk-3.5.4/Debug/getindex.exe"
+		"D:/workspace/dcmtk-3.5.4/Debug/commonlib.dll"
+		"D:/workspace/dcmtk-3.5.4/Debug/cdll5.dll"
+	)
+	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES 
+		"D:/workspace/dcmtk-3.5.4/Debug/ServiceWrapper.exe"
+		"D:/workspace/dcmtk-3.5.4/Debug/commonlib.dll"
+		"D:/workspace/dcmtk-3.5.4/Debug/cdll5.dll"
+		"D:/workspace/dcmtk-3.5.4/Debug/storescp.exe"
+	)
   ENDIF("${CMAKE_INSTALL_CONFIG_NAME}" MATCHES "^([Dd][Ee][Bb][Uu][Gg])$")
   IF("${CMAKE_INSTALL_CONFIG_NAME}" MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$")
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/cgi-bin" TYPE EXECUTABLE FILES
 		"D:/workspace/dcmtk-3.5.4/Release/getindex.exe"
 		"D:/workspace/dcmtk-3.5.4/Release/commonlib.dll"
+		"D:/workspace/dcmtk-3.5.4/Release/cdll5.dll"
 	)
-	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/scripts" TYPE FILE FILES
+	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/scripts" TYPE FILE FILES 
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/scripts/charhash.js"
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/scripts/jquery.ui.datepicker-zh-CN.js"
-    )
+	)
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/xslt" TYPE FILE FILES
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/dayrec.xsl"
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/job.xsl"
@@ -105,9 +112,12 @@ IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspeci
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/wado_query.xsd"
 	)
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs" TYPE FILE FILES "D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/index.htm")
-	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Release/ServiceWrapper.exe")
-	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Release/commonlib.dll")
-    FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/Release/storescp.exe")
+	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES 
+		"D:/workspace/dcmtk-3.5.4/Release/ServiceWrapper.exe"
+		"D:/workspace/dcmtk-3.5.4/Release/commonlib.dll"
+		"D:/workspace/dcmtk-3.5.4/Release/cdll5.dll"
+		"D:/workspace/dcmtk-3.5.4/Release/storescp.exe"
+	)
   ENDIF("${CMAKE_INSTALL_CONFIG_NAME}" MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$")
   IF("${CMAKE_INSTALL_CONFIG_NAME}" MATCHES "^([Mm][Ii][Nn][Ss][Ii][Zz][Ee][Rr][Ee][Ll])$")
     FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "D:/workspace/dcmtk-3.5.4/dcmnet/apps/MinSizeRel/storescp.exe")

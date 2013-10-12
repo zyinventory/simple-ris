@@ -37,6 +37,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmftest", "dcmdata\apps\dcmftest.vcxproj", "{11B6F89F-E251-45E0-BE0A-0D8467AAC1F0}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmgpdir", "dcmdata\apps\dcmgpdir.vcxproj", "{F73EA149-3D69-4395-B466-349173F7316A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{BB2DD71F-379D-4CDB-AB67-D1F6422AC141} = {BB2DD71F-379D-4CDB-AB67-D1F6422AC141}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmimage", "dcmimage\libsrc\dcmimage.vcxproj", "{1506887F-55C2-4159-8A98-31C3543854BE}"
 EndProject
@@ -49,6 +52,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmmkcrv", "dcmpstat\apps\dcmmkcrv.vcxproj", "{AAA0D534-5FA4-4621-AD32-8A9C5F754646}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmmkdir", "dcmjpeg\apps\dcmmkdir.vcxproj", "{9675D0D8-C215-4D8D-BCCF-49CCB8AE8016}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F73EA149-3D69-4395-B466-349173F7316A} = {F73EA149-3D69-4395-B466-349173F7316A}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmmklut", "dcmpstat\apps\dcmmklut.vcxproj", "{C98348D1-B39D-4D19-87D2-128C3A0A275A}"
 EndProject

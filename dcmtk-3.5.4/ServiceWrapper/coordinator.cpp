@@ -621,6 +621,8 @@ void processMessage(IMSMQMessagePtr pMsg)
 				pQueue->Close();
 				//cout << "receive message archive study, start dcmmkdir" << endl;
 				list<WorkerProcess>::iterator iter = runDcmmkdir(studyUid);
+				//dcmmkdir shall poll the study-queue, get instance message, add the instance to dicomdir.
+				//at the end of queue, generate dicomdir, generate index.
 				if(iter != dirmakers.end() && csvPath.length() > 0)
 					(*iter).csvPath = new string(csvPath);
 				else

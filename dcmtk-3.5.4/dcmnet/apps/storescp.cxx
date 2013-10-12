@@ -203,7 +203,7 @@ OFBool             opt_forkMode = OFFalse;
 #ifdef _WIN32
 OFBool             opt_forkedChild = OFFalse;
 OFBool             opt_execSync = OFFalse;            // default: execute in background
-OFBool             opt_msgOnly = OFFalse;
+OFBool             opt_disableMSMQ = OFFalse;
 #endif
 
 #ifdef WITH_OPENSSL
@@ -447,7 +447,7 @@ int main(int argc, char *argv[])
                                                              "specifies a timeout of t seconds for\nend-of-study determination, default is 3 seconds, if --fork-child is specified, it is infinite( -1 )." );
 #ifdef _WIN32
     cmd.addOption(  "--exec-sync",              "-xs",       "execute command synchronously in foreground" );
-    cmd.addOption(  "--message-only",			"-mo",       "don't execute command, send message to queue only" );
+    //cmd.addOption(  "--disable-msmq",			"-dm",       "don't send message to queue, execute command directly" );
 #endif
 
 #ifdef WITH_OPENSSL
@@ -865,7 +865,7 @@ int main(int argc, char *argv[])
 
 #ifdef _WIN32
     if (cmd.findOption("--exec-sync")) opt_execSync = OFTrue;
-	if (cmd.findOption("--message-only")) opt_msgOnly = OFTrue;
+	if (cmd.findOption("--disable-msmq")) opt_disableMSMQ = OFTrue;
 #endif
 
   }
@@ -2403,10 +2403,10 @@ static void executeOnReception()
   // Execute command in a new process
   if(opt_verbose)
 	COUT << "Starting command On Reception: " << cmd << endl;
-  if(opt_msgOnly)
-	SendArchiveMessageToQueue(ARCHIVE_INSTANCE, studyXml.c_str(), cmd.c_str());
-  else
+  if(opt_disableMSMQ)
 	executeCommand( cmd );
+  else
+	SendArchiveMessageToQueue(ARCHIVE_INSTANCE, studyXml.c_str(), cmd.c_str());
 }
 
 
@@ -2542,10 +2542,10 @@ static void executeOnEndOfStudy()
   // Execute command in a new process
   if(opt_verbose)
 	COUT << "exec on end of study: " << cmd << endl;
-  if(opt_msgOnly)
-	SendArchiveMessageToQueue(ARCHIVE_STUDY, lastStudyXml.c_str(), cmd.c_str());
-  else
+  if(opt_disableMSMQ)
 	executeCommand( cmd );
+  else
+	SendArchiveMessageToQueue(ARCHIVE_STUDY, lastStudyXml.c_str(), cmd.c_str());
 }
 
 

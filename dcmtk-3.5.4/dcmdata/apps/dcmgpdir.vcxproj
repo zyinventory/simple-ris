@@ -99,7 +99,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmimage\include;..\..\dcmimgle\include;..\..\dcmjpeg\include;$(SolutionDir)commonlib;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmimage\include;..\..\dcmimgle\include;..\..\dcmjpeg\include;$(SolutionDir)commonlib;$(SolutionDir)getindex;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -121,10 +121,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>..\..\dcmimage\libsrc\$(Configuration)\dcmimage.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\libsrc\$(Configuration)\dcmdata.lib;$(SolutionDir)$(Configuration)\commonlib.lib;zlib_d.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\..\dcmimage\libsrc\$(Configuration)\dcmimage.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\libsrc\$(Configuration)\dcmdata.lib;$(SolutionDir)$(Configuration)\commonlib.lib;cdll5.lib;zlib_d.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\libxml2-2.6.26\lib\$(OutDir);D:\workspace\dcmtk-support\libxml2-2.6.26\lib;..\..\ofstd\libsrc\Debug\$(OutDir);..\..\ofstd\libsrc\Debug;..\libsrc\Debug\$(OutDir);..\libsrc\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib\$(OutDir);$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\libxml2-2.6.26\lib\$(OutDir);$(SolutionDir)..\dcmtk-support\libxml2-2.6.26\lib;..\..\ofstd\libsrc\Debug\$(OutDir);..\..\ofstd\libsrc\Debug;..\libsrc\Debug\$(OutDir);..\libsrc\Debug;$(SolutionDir)..\dcmtk-support\lock;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>Debug/dcmgpdir.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
@@ -147,7 +147,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmimage\include;..\..\dcmimgle\include;..\..\dcmjpeg\include;$(SolutionDir)commonlib;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmimage\include;..\..\dcmimgle\include;..\..\dcmjpeg\include;$(SolutionDir)commonlib;$(SolutionDir)getindex;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -168,10 +168,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>..\..\dcmimage\libsrc\$(Configuration)\dcmimage.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\libsrc\$(Configuration)\dcmdata.lib;$(SolutionDir)$(Configuration)\commonlib.lib;zlib_o.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\..\dcmimage\libsrc\$(Configuration)\dcmimage.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\libsrc\$(Configuration)\dcmdata.lib;$(SolutionDir)$(Configuration)\commonlib.lib;cdll5.lib;zlib_o.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\libxml2-2.6.26\lib\$(OutDir);D:\workspace\dcmtk-support\libxml2-2.6.26\lib;..\..\ofstd\libsrc\Release\$(OutDir);..\..\ofstd\libsrc\Release;..\libsrc\Release\$(OutDir);..\libsrc\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib\$(OutDir);$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\libxml2-2.6.26\lib\$(OutDir);$(SolutionDir)..\dcmtk-support\libxml2-2.6.26\lib;..\..\ofstd\libsrc\Release\$(OutDir);..\..\ofstd\libsrc\Release;..\libsrc\Release\$(OutDir);..\libsrc\Release;$(SolutionDir)..\dcmtk-support\lock;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>Release/dcmgpdir.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>Release\dcmgpdir.lib</ImportLibrary>
@@ -193,7 +193,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmimage\include;..\..\dcmimgle\include;..\..\dcmjpeg\include;$(SolutionDir)commonlib;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmimage\include;..\..\dcmimgle\include;..\..\dcmjpeg\include;$(SolutionDir)commonlib;$(SolutionDir)getindex;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="MinSizeRel";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -239,7 +239,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmimage\include;..\..\dcmimgle\include;..\..\dcmjpeg\include;$(SolutionDir)commonlib;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmimage\include;..\..\dcmimgle\include;..\..\dcmjpeg\include;$(SolutionDir)commonlib;$(SolutionDir)getindex;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="RelWithDebInfo";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -299,6 +299,9 @@
       <Project>{cf43b823-39a1-4e0e-b6bb-0d267f5a3fb1}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\getindex\lock.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

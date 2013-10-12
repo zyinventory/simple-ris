@@ -4,10 +4,18 @@
     <Filter Include="Source Files">
       <UniqueIdentifier>{7686c1b5-0cba-4573-ac70-4d27741b4c77}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{f6b0821c-b0df-4eea-a512-7c0d82a24f22}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dcmgpdir.cxx">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\getindex\lock.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
