@@ -168,6 +168,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "getindex", "getindex\getind
 		{2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205} = {2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "initlock", "initlock\initlock.vcxproj", "{25B17570-D3A1-4663-8010-65F04B2612F4}"
+EndProject
 Global
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True
@@ -740,6 +742,14 @@ Global
 		{BB2DD71F-379D-4CDB-AB67-D1F6422AC141}.Release|Win32.Build.0 = Release|Win32
 		{BB2DD71F-379D-4CDB-AB67-D1F6422AC141}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
 		{BB2DD71F-379D-4CDB-AB67-D1F6422AC141}.RelWithDebInfo|Win32.Build.0 = Release|Win32
+		{25B17570-D3A1-4663-8010-65F04B2612F4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{25B17570-D3A1-4663-8010-65F04B2612F4}.Debug|Win32.Build.0 = Debug|Win32
+		{25B17570-D3A1-4663-8010-65F04B2612F4}.MinSizeRel|Win32.ActiveCfg = Release|Win32
+		{25B17570-D3A1-4663-8010-65F04B2612F4}.MinSizeRel|Win32.Build.0 = Release|Win32
+		{25B17570-D3A1-4663-8010-65F04B2612F4}.Release|Win32.ActiveCfg = Release|Win32
+		{25B17570-D3A1-4663-8010-65F04B2612F4}.Release|Win32.Build.0 = Release|Win32
+		{25B17570-D3A1-4663-8010-65F04B2612F4}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
+		{25B17570-D3A1-4663-8010-65F04B2612F4}.RelWithDebInfo|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
