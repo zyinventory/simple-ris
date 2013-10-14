@@ -20,6 +20,7 @@
 #include <strsafe.h>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <iomanip>
 #include <regex>
 #include "lock.h"
@@ -31,3 +32,4 @@
 #define String string		//wstring
 #define REGEX regex			//wregex
 #define SCANF_S sscanf_s	//swscanf_s
+#define IFSTREAM ifstream   //wifstream

@@ -126,7 +126,7 @@ protected:
 int _tmain(int argc, _TCHAR* argv[])
 {
 	WIN32_FIND_DATA ffd;
-	TCHAR szDir[MAX_PATH];
+	_TCHAR buffer[MAX_PATH];
 	size_t length_of_arg;
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	DWORD lockNumber = 0;
@@ -143,21 +143,21 @@ int _tmain(int argc, _TCHAR* argv[])
 	// Check that the input path plus 3 is not longer than MAX_PATH.
   	// Three characters are for the "\*" plus NULL appended below.
 	StringCchLength(argv[1], MAX_PATH, &length_of_arg);
-	if (length_of_arg > (MAX_PATH - 3))
+	if (length_of_arg > (MAX_PATH - 18))  // 18 = strlen("\\12345678\\key.txt") + 1
 	{
 		CERR << TEXT("Directory path is too long.") << endl;
 		return -2;
 	}
 	// Prepare string for use with FindFile functions.  First, copy the
 	// string to a buffer, then append '\*' to the directory name.
-	StringCchCopy(szDir, MAX_PATH, argv[1]);
-	PathAppend(szDir, TEXT("*"));
+	StringCchCopy(buffer, MAX_PATH, argv[1]);
+	PathAppend(buffer, TEXT("*"));
   
 	// Find the first file in the directory.
-	hFind = FindFirstFile(szDir, &ffd);
+	hFind = FindFirstFile(buffer, &ffd);
 	if (INVALID_HANDLE_VALUE == hFind) 
 	{
-		CERR << TEXT("FindFirstFile Error in ") << szDir << endl;
+		CERR << TEXT("FindFirstFile Error in ") << buffer << endl;
 		return -3;
 	} 
 	// List all the files in the directory with some info about them.
@@ -180,7 +180,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		DWORD dwError = GetLastError();
 		if (dwError != ERROR_NO_MORE_FILES) CERR << TEXT("FindNextFile error ") << dwError << endl;
 		FindClose(hFind);
-		CERR << TEXT("Can't find lock number in ") << szDir << endl;
+		CERR << TEXT("Can't find lock number in ") << buffer << endl;
 		return -4;
 	}
 	FindClose(hFind);
@@ -198,7 +198,40 @@ int _tmain(int argc, _TCHAR* argv[])
 	String serialString = serialStringStream.str();
 	COUT << TEXT("锁序列号:") << serialString << endl;
 	
-	String hash(md5crypt("D5EACDB6E6529C7E", "1", serialString.c_str()));
-	COUT << hash.substr(hash.length() - 8, 8) << endl;
+	StringCchCopy(buffer, MAX_PATH, argv[1]);
+	PathAppend(buffer, lockName.c_str());
+	PathAppend(buffer, TEXT("key.txt"));
+	IFSTREAM keystrm(buffer);
+	if(keystrm.bad())
+	{
+		COUT << buffer << TEXT(" open failed") << endl;
+		return -6;
+	}
+	DWORD key[4] = {0, 0, 0, 0};
+	bool keyOK = false;
+	REGEX linePattern(TEXT("^key(\\d) *= *(\\d+)$"));
+	while(! keystrm.getline(buffer, MAX_PATH).fail())
+	{
+		match_results<const _TCHAR*> result;
+		if(regex_match(buffer, result, linePattern))
+		{
+			COUT << TEXT("key") << result[1] << TEXT(" = ") << result[2] << endl;
+			int index = (int)result[1].str()[0] - (int)TEXT('1');
+			key[index] = atoi(result[2].str().c_str());
+			if(keyOK = !any_of(key, key + 4, [](int value) { return value == 0; })) break;
+		}
+	}
+	keystrm.close();
+	if(!keyOK)
+	{
+		COUT << TEXT("key文件格式错误") << endl;
+		return -7;
+	}
+	sprintf_s(buffer, "%04X%04X%04X%04X", key[0], key[1], key[2], key[3]);
+	String hash(md5crypt(buffer, "1", serialString.c_str()));
+	COUT << TEXT("密码:") << hash.substr(hash.length() - 8, 8) << endl;
+	// todo: set new passwd
+
+	// todo: generate license file, charge 100
 	return 0;
 }
