@@ -168,7 +168,7 @@ int burningStudy(const char *media)
 			if(operateResult == 0)
 			{
 				licenseCount = atoi(lockData);
-				if(licenseCount <= 0 || licenseCount > 9999)
+				if(licenseCount > 0 && licenseCount < 9999)
 				{
 					int result = generateStudyJDF("0020000d", studyUID, errstream, media);
 					if(result == 0)
@@ -184,10 +184,10 @@ int burningStudy(const char *media)
 						return 0;
 					}
 					else
-						errstream << "生成光盘刻录任务失败" << endl;
+						errstream << "生成光盘刻录任务失败:" << result << endl;
 				}
 				else
-					errstream << "可刻录光盘数不足" << endl;
+					errstream << "可刻录光盘数不足:" << licenseCount << endl;
 			}
 			else
 				errstream << "此程序没有合法的授权" << endl;
