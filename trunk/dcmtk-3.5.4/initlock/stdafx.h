@@ -28,7 +28,7 @@
 extern "C"
 {
 	char *md5crypt(const char *passwd, const char *magic, const char *salt);
-	int genrsa(int num, char *outfile);
+	int genrsa(int num, char *privateKey, char *publicKey);
 }
 
 #define COUT cout			//wcout
