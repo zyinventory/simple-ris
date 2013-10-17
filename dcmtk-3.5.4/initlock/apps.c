@@ -201,9 +201,127 @@ static int MS_CALLBACK genrsa_cb(int p, int n, BN_GENCB *cb)
 	return 1;
 }
 
-int genrsa(int num, char *outfile)
+static EVP_PKEY *load_key(BIO *err, const char *file, int format, int maybe_stdin,
+	const char *pass, ENGINE *e, const char *key_descrip)
 {
-	const EVP_CIPHER *enc=NULL;
+	BIO *key=NULL;
+	EVP_PKEY *pkey=NULL;
+	PW_CB_DATA cb_data;
+
+	cb_data.password = pass;
+	cb_data.prompt_info = file;
+
+	if (file == NULL && (!maybe_stdin || format == FORMAT_ENGINE))
+	{
+		BIO_printf(err,"no keyfile specified\n");
+		goto end;
+	}
+#ifndef OPENSSL_NO_ENGINE
+	if (format == FORMAT_ENGINE)
+		{
+		if (!e)
+			BIO_printf(bio_err,"no engine specified\n");
+		else
+			pkey = ENGINE_load_private_key(e, file,
+				ui_method, &cb_data);
+		goto end;
+		}
+#endif
+	key=BIO_new(BIO_s_file());
+	if (key == NULL)
+	{
+		ERR_print_errors(err);
+		goto end;
+	}
+	if (file == NULL && maybe_stdin)
+	{
+		setvbuf(stdin, NULL, _IONBF, 0);
+		BIO_set_fp(key,stdin,BIO_NOCLOSE);
+	}
+	else if (BIO_read_filename(key,file) <= 0)
+	{
+		BIO_printf(err, "Error opening %s %s\n", key_descrip, file);
+		ERR_print_errors(err);
+		goto end;
+	}
+	if (format == FORMAT_ASN1)
+	{
+		pkey=d2i_PrivateKey_bio(key, NULL);
+	}
+	else if (format == FORMAT_PEM)
+	{
+		pkey=PEM_read_bio_PrivateKey(key,NULL, (pem_password_cb *)password_callback, &cb_data);
+	}
+#if defined(PACS_USING_FORMAT_NETSCAPE_OR_PKCS12)
+#if !defined(OPENSSL_NO_RC4) && !defined(OPENSSL_NO_RSA)
+	else if (format == FORMAT_NETSCAPE || format == FORMAT_IISSGC)
+		pkey = load_netscape_key(err, key, file, key_descrip, format);
+#endif
+	else if (format == FORMAT_PKCS12)
+	{
+		if (!load_pkcs12(err, key, key_descrip,
+				(pem_password_cb *)password_callback, &cb_data,
+				&pkey, NULL, NULL))
+			goto end;
+	}
+	else
+	{
+		BIO_printf(err,"bad input format specified for key file\n");
+		goto end;
+	}
+#endif
+ end:
+	if (key != NULL) BIO_free(key);
+	if (pkey == NULL)
+		BIO_printf(err,"unable to load %s\n", key_descrip);
+	return(pkey);
+}
+
+static RSA * loadCheckPrivateKey(char *privateKey)
+{
+	RSA *rsaLoadPrivate = NULL;
+	{
+		EVP_PKEY *pkey = load_key(bio_err, privateKey, FORMAT_PEM, 1, NULL, NULL, "Private Key");
+		if (pkey != NULL)
+			rsaLoadPrivate = pkey == NULL ? NULL : EVP_PKEY_get1_RSA(pkey);
+		EVP_PKEY_free(pkey);
+	}
+
+	if (rsaLoadPrivate == NULL)
+	{
+		ERR_print_errors(bio_err);
+		return NULL;
+	}
+	else
+	{
+		//check loaded private key
+		int r = RSA_check_key(rsaLoadPrivate);
+		if (r == 1)
+			BIO_printf(bio_err, "RSA private key check ok\n");
+		else if (r == 0)
+		{
+			unsigned long err;
+			while ((err = ERR_peek_error()) != 0 &&
+				ERR_GET_LIB(err) == ERR_LIB_RSA &&
+				ERR_GET_FUNC(err) == RSA_F_RSA_CHECK_KEY &&
+				ERR_GET_REASON(err) != ERR_R_MALLOC_FAILURE)
+			{
+				BIO_printf(bio_err, "RSA private key error: %s\n", ERR_reason_error_string(err));
+				ERR_get_error(); // remove e from error stack
+			}
+		}
+
+		if (r == -1 || ERR_peek_error() != 0) // should happen only if r == -1
+		{
+			ERR_print_errors(bio_err);
+			return NULL;
+		}
+	}
+	return rsaLoadPrivate;
+}
+
+int genrsa(int num, char *privateKey, char *publicKey)
+{
 	char *passargout = NULL, *passout = NULL;
 	unsigned long f4 = RSA_F4;
 	long l = 0L;
@@ -211,31 +329,31 @@ int genrsa(int num, char *outfile)
 	BN_GENCB cb;
 	BIGNUM *bn = BN_new();
 	RSA *rsa = RSA_new();
-	BIO *out=NULL;
+	BIO *out = NULL;
 
 	apps_startup();
 	BN_GENCB_set(&cb, genrsa_cb, bio_err);
 	if (bio_err == NULL)
 		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
-			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE|BIO_FP_TEXT);
+			BIO_set_fp(bio_err, stderr, BIO_NOCLOSE|BIO_FP_TEXT);
 
 	if (!load_config(bio_err, NULL))
 		goto err;
-	if ((out=BIO_new(BIO_s_file())) == NULL)
+	if ((out = BIO_new(BIO_s_file())) == NULL)
 	{
 		BIO_printf(bio_err,"unable to create BIO for output\n");
 		goto err;
 	}
 
-	if (outfile == NULL)
+	if (privateKey == NULL)
 	{
-		BIO_set_fp(out,stdout,BIO_NOCLOSE);
+		BIO_set_fp(out, stdout, BIO_NOCLOSE);
 	}
 	else
 	{
-		if (BIO_write_filename(out,outfile) <= 0)
+		if (BIO_write_filename(out, privateKey) <= 0)
 		{
-			perror(outfile);
+			perror(privateKey);
 			goto err;
 		}
 	}
@@ -247,23 +365,51 @@ int genrsa(int num, char *outfile)
 	RSA_generate_key_ex(rsa, num, bn, &cb);
 	app_RAND_write_file(NULL, bio_err);
 
-	for (i=0; i<rsa->e->top; i++)
+	for (i = 0; i < rsa->e->top; ++i)
 	{
 #ifndef SIXTY_FOUR_BIT
-		l<<=BN_BITS4;
-		l<<=BN_BITS4;
+		l <<= BN_BITS4;
+		l <<= BN_BITS4;
 #endif
-		l+=rsa->e->d[i];
+		l += rsa->e->d[i];
 	}
-	BIO_printf(bio_err,"e is %ld (0x%lX)\n",l,l);
+	BIO_printf(bio_err,"e is %ld (0x%lX)\nwriting RSA private key\n",l,l);
 	{
 		PW_CB_DATA cb_data;
 		cb_data.password = passout;
-		cb_data.prompt_info = outfile;
-		if (!PEM_write_bio_RSAPrivateKey(out,rsa,enc,NULL,0,(pem_password_cb *)password_callback,&cb_data))
+		cb_data.prompt_info = privateKey;
+		if (!PEM_write_bio_RSAPrivateKey(out, rsa, NULL, NULL, 0, (pem_password_cb *)password_callback, &cb_data))
 			goto err;
 	}
+	BIO_free_all(out); // flush out, complete writing private key
+	out = NULL;
+	BIO_printf(bio_err,"RSA private key OK\n");
 
+	// private key OK, export public key
+	/*
+	rsaLoadPrivate = loadCheckPrivateKey(privateKey);
+	if(rsaLoadPrivate == NULL)
+	{
+		BIO_printf(bio_err,"loading and checking RSA private key failed\n");
+		goto err;
+	}
+	*/
+	// set output to public key file
+	out = BIO_new(BIO_s_file());
+	if (BIO_write_filename(out, publicKey) <= 0)
+	{
+		perror(publicKey);
+		goto err;
+	}
+	BIO_printf(bio_err,"writing RSA public key\n");
+	i = PEM_write_bio_RSA_PUBKEY(out, rsa);
+	if (!i)
+	{
+		BIO_printf(bio_err,"unable to write key\n");
+		ERR_print_errors(bio_err);
+		goto err;
+	}
+	BIO_printf(bio_err,"RSA public key OK\n");
 	ret=0;
 err:
 	if (bn) BN_free(bn);

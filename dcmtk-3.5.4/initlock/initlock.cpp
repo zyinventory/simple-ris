@@ -118,16 +118,16 @@ int _tmain(int argc, _TCHAR* argv[])
 	COUT << TEXT("ÃÜÂë:") << hash.substr(hash.length() - 8, 8) << endl;
 	// todo: set new passwd
 
-	_TCHAR *rsaPrivateKey = "private.rsa";
-	int ret = genrsa(512, rsaPrivateKey);
+	_TCHAR *rsaPrivateKey = "private.rsa", *rsaPublicKey = "public.rsa";
+	int ret = genrsa(512, rsaPrivateKey, rsaPublicKey);
 	if(ret != 0)
 	{
-		CERR << TEXT("Éú³ÉRSAË½Ô¿´íÎó:") << ret << endl;
+		CERR << TEXT("Éú³ÉRSAÃÜÔ¿´íÎó:") << ret << endl;
 		return -8;
 	}
-	COUT << TEXT("Éú³ÉRSAË½Ô¿:") << rsaPrivateKey << endl;
+	COUT << TEXT("Éú³ÉRSAÃÜÔ¿:") << rsaPrivateKey << endl;
 	
-	// todo: export public key
+	// todo: ec key
 
 	// todo: generate license file, charge 100
 	return 0;
