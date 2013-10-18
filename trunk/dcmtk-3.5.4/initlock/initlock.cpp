@@ -120,7 +120,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	// todo: set new passwd
 
 	_TCHAR *rsaPrivateKey = "private.rsa", *rsaPublicKey = "public.rsa";
-	int ret = genrsa(512, rsaPrivateKey, rsaPublicKey);
+	int ret = genrsa(4096, rsaPrivateKey, rsaPublicKey);
 	if(ret != 0)
 	{
 		CERR << TEXT("Éú³ÉRSAÃÜÔ¿´íÎó:") << ret << endl;

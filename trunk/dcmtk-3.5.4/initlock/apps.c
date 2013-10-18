@@ -349,7 +349,19 @@ static EVP_PKEY *load_key(BIO *err, const char *file, int format, int maybe_stdi
 	return(pkey);
 }
 
-static RSA * loadCheckPrivateKey(char *privateKey, BOOLEAN check)
+static RSA *loadPublicKey(char *publicKey)
+{
+	RSA *rsa = NULL;
+	EVP_PKEY *pkey = load_pubkey(bio_err, publicKey, FORMAT_PEM, 0, NULL, NULL, "Public Key");
+	if(pkey)
+	{
+		rsa = EVP_PKEY_get1_RSA(pkey);
+		EVP_PKEY_free(pkey);
+	}
+	return rsa;
+}
+
+static RSA *loadCheckPrivateKey(char *privateKey, BOOLEAN check)
 {
 	RSA *rsaLoadPrivate = NULL;
 	{
@@ -400,7 +412,7 @@ int genrsa(int num, char *privateKey, char *publicKey)
 	int i, ret = 1;
 	BN_GENCB cb;
 	BIGNUM *bn = BN_new();
-	RSA *rsa = RSA_new();
+	RSA *rsa = NULL, *rsaPublic = NULL;
 	BIO *out = NULL;
 
 	apps_startup();
@@ -423,69 +435,78 @@ int genrsa(int num, char *privateKey, char *publicKey)
 	}
 	else
 	{
-		if (BIO_write_filename(out, privateKey) <= 0)
+		rsa = loadCheckPrivateKey(privateKey, TRUE);
+		if(rsa == NULL && BIO_write_filename(out, privateKey) <= 0)
 		{
 			perror(privateKey);
 			goto err;
 		}
 	}
-	if (!app_RAND_load_file(NULL, bio_err, 1) && !RAND_status())
-		BIO_printf(bio_err,"warning, not much extra random data, consider using the -rand option\n");
-	BIO_printf(bio_err,"Generating RSA private key, %d bit long modulus\n",	num);
+	if(rsa == NULL)
+	{	// create new private key
+		if (!app_RAND_load_file(NULL, bio_err, 1) && !RAND_status())
+			BIO_printf(bio_err,"warning, not much extra random data, consider using the -rand option\n");
+		BIO_printf(bio_err,"Generating RSA private key, %d bit long modulus\n",	num);
 
-	BN_set_word(bn, f4);
-	RSA_generate_key_ex(rsa, num, bn, &cb);
-	app_RAND_write_file(NULL, bio_err);
+		BN_set_word(bn, f4);
+		rsa = RSA_new();
+		RSA_generate_key_ex(rsa, num, bn, &cb);
+		app_RAND_write_file(NULL, bio_err);
 
-	for (i = 0; i < rsa->e->top; ++i)
-	{
+		for (i = 0; i < rsa->e->top; ++i)
+		{
 #ifndef SIXTY_FOUR_BIT
-		l <<= BN_BITS4;
-		l <<= BN_BITS4;
+			l <<= BN_BITS4;
+			l <<= BN_BITS4;
 #endif
-		l += rsa->e->d[i];
+			l += rsa->e->d[i];
+		}
+		BIO_printf(bio_err,"e is %ld (0x%lX)\nwriting RSA private key\n",l,l);
+		{
+			PW_CB_DATA cb_data;
+			cb_data.password = passout;
+			cb_data.prompt_info = privateKey;
+			if (!PEM_write_bio_RSAPrivateKey(out, rsa, NULL, NULL, 0, (pem_password_cb *)password_callback, &cb_data))
+				goto err;
+		}
+		BIO_printf(bio_err,"create new RSA private key: %s\n", privateKey);
 	}
-	BIO_printf(bio_err,"e is %ld (0x%lX)\nwriting RSA private key\n",l,l);
-	{
-		PW_CB_DATA cb_data;
-		cb_data.password = passout;
-		cb_data.prompt_info = privateKey;
-		if (!PEM_write_bio_RSAPrivateKey(out, rsa, NULL, NULL, 0, (pem_password_cb *)password_callback, &cb_data))
-			goto err;
-	}
-	BIO_free_all(out); // flush out, complete writing private key
-	out = NULL;
-	BIO_printf(bio_err,"RSA private key OK\n");
+	else
+		BIO_printf(bio_err,"use existing RSA private key: %s\n", privateKey);
 
-	// private key OK, export public key
-	/*
-	rsaLoadPrivate = loadCheckPrivateKey(privateKey, TRUE);
-	if(rsaLoadPrivate == NULL)
+	if(out != NULL)
 	{
-		BIO_printf(bio_err,"loading and checking RSA private key failed\n");
-		goto err;
+		BIO_free_all(out); // flush out, complete writing private key
+		out = NULL;
 	}
-	*/
-	// set output to public key file
-	out = BIO_new(BIO_s_file());
-	if (BIO_write_filename(out, publicKey) <= 0)
+
+	// private key OK, export public key, set output to public key file
+	rsaPublic = loadPublicKey(publicKey);
+	if(rsaPublic == NULL)
 	{
-		perror(publicKey);
-		goto err;
+		out = BIO_new(BIO_s_file());
+		if (BIO_write_filename(out, publicKey) <= 0)
+		{
+			perror(publicKey);
+			goto err;
+		}
+		BIO_printf(bio_err,"writing RSA public key\n");
+		i = PEM_write_bio_RSA_PUBKEY(out, rsa);
+		if (!i)
+		{
+			BIO_printf(bio_err,"unable to write key\n");
+			ERR_print_errors(bio_err);
+			goto err;
+		}
+		BIO_printf(bio_err,"RSA public key OK\n");
 	}
-	BIO_printf(bio_err,"writing RSA public key\n");
-	i = PEM_write_bio_RSA_PUBKEY(out, rsa);
-	if (!i)
-	{
-		BIO_printf(bio_err,"unable to write key\n");
-		ERR_print_errors(bio_err);
-		goto err;
-	}
-	BIO_printf(bio_err,"RSA public key OK\n");
+	else
+		BIO_printf(bio_err,"use existing RSA public key: %s\n", publicKey);
 	ret=0;
 err:
 	if (bn) BN_free(bn);
 	if (rsa) RSA_free(rsa);
+	if (rsaPublic) RSA_free(rsaPublic);
 	if (out) BIO_free_all(out);
 	if(passout) OPENSSL_free(passout);
 	if (ret != 0)
@@ -508,15 +529,9 @@ int rsaSignVerify(char *infile, char *outfile, char *keyfile, int keytype)
 	if(keytype == KEY_PRIVKEY)
 		rsa = loadCheckPrivateKey(keyfile, FALSE);
 	else
+		rsa = loadPublicKey(keyfile);
+	if(!rsa)
 	{
-		EVP_PKEY *pkey = load_pubkey(bio_err, keyfile, FORMAT_PEM, 0, NULL, NULL, "Public Key");
-		if(pkey)
-		{
-			rsa = EVP_PKEY_get1_RSA(pkey);
-			EVP_PKEY_free(pkey);
-		}
-	}
-	if(!rsa) {
 		BIO_printf(bio_err, "Error getting RSA key\n");
 		ERR_print_errors(bio_err);
 		goto sign_err;
