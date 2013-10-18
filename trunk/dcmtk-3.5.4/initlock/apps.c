@@ -5,7 +5,7 @@
 #include <openssl/rand.h>
 
 #include "apps.h"
-#define DEFBITS	512
+#include "constant.h"
 
 static UI_METHOD *ui_method = NULL;
 
@@ -201,6 +201,78 @@ static int MS_CALLBACK genrsa_cb(int p, int n, BN_GENCB *cb)
 	return 1;
 }
 
+static EVP_PKEY *load_pubkey(BIO *err, const char *file, int format, int maybe_stdin,
+	const char *pass, ENGINE *e, const char *key_descrip)
+{
+	BIO *key=NULL;
+	EVP_PKEY *pkey=NULL;
+	PW_CB_DATA cb_data;
+
+	cb_data.password = pass;
+	cb_data.prompt_info = file;
+
+	if (file == NULL && (!maybe_stdin || format == FORMAT_ENGINE))
+	{
+		BIO_printf(err,"no keyfile specified\n");
+		goto end;
+	}
+#ifndef OPENSSL_NO_ENGINE
+	if (format == FORMAT_ENGINE)
+	{
+		if (!e)
+			BIO_printf(bio_err,"no engine specified\n");
+		else
+			pkey = ENGINE_load_public_key(e, file,
+			ui_method, &cb_data);
+		goto end;
+	}
+#endif
+	key=BIO_new(BIO_s_file());
+	if (key == NULL)
+	{
+		ERR_print_errors(err);
+		goto end;
+	}
+	if (file == NULL && maybe_stdin)
+	{
+		setvbuf(stdin, NULL, _IONBF, 0);
+		BIO_set_fp(key,stdin,BIO_NOCLOSE);
+	}
+	else
+		if (BIO_read_filename(key,file) <= 0)
+		{
+			BIO_printf(err, "Error opening %s %s\n",
+				key_descrip, file);
+			ERR_print_errors(err);
+			goto end;
+		}
+		if (format == FORMAT_ASN1)
+		{
+			pkey=d2i_PUBKEY_bio(key, NULL);
+		}
+		else if (format == FORMAT_PEM)
+		{
+			pkey=PEM_read_bio_PUBKEY(key,NULL,
+				(pem_password_cb *)password_callback, &cb_data);
+		}
+#if defined(PACS_USING_FORMAT_NETSCAPE_OR_PKCS12)
+#if !defined(OPENSSL_NO_RC4) && !defined(OPENSSL_NO_RSA)
+		else if (format == FORMAT_NETSCAPE || format == FORMAT_IISSGC)
+			pkey = load_netscape_key(err, key, file, key_descrip, format);
+#endif
+#endif
+		else
+		{
+			BIO_printf(err,"bad input format specified for key file\n");
+			goto end;
+		}
+end:
+		if (key != NULL) BIO_free(key);
+		if (pkey == NULL)
+			BIO_printf(err,"unable to load %s\n", key_descrip);
+		return(pkey);
+}
+
 static EVP_PKEY *load_key(BIO *err, const char *file, int format, int maybe_stdin,
 	const char *pass, ENGINE *e, const char *key_descrip)
 {
@@ -277,7 +349,7 @@ static EVP_PKEY *load_key(BIO *err, const char *file, int format, int maybe_stdi
 	return(pkey);
 }
 
-static RSA * loadCheckPrivateKey(char *privateKey)
+static RSA * loadCheckPrivateKey(char *privateKey, BOOLEAN check)
 {
 	RSA *rsaLoadPrivate = NULL;
 	{
@@ -292,7 +364,7 @@ static RSA * loadCheckPrivateKey(char *privateKey)
 		ERR_print_errors(bio_err);
 		return NULL;
 	}
-	else
+	else if(check)
 	{
 		//check loaded private key
 		int r = RSA_check_key(rsaLoadPrivate);
@@ -387,7 +459,7 @@ int genrsa(int num, char *privateKey, char *publicKey)
 
 	// private key OK, export public key
 	/*
-	rsaLoadPrivate = loadCheckPrivateKey(privateKey);
+	rsaLoadPrivate = loadCheckPrivateKey(privateKey, TRUE);
 	if(rsaLoadPrivate == NULL)
 	{
 		BIO_printf(bio_err,"loading and checking RSA private key failed\n");
@@ -416,6 +488,94 @@ err:
 	if (rsa) RSA_free(rsa);
 	if (out) BIO_free_all(out);
 	if(passout) OPENSSL_free(passout);
+	if (ret != 0)
+		ERR_print_errors(bio_err);
+	apps_shutdown();
+	return ret;
+}
+
+int rsaSignVerify(char *infile, char *outfile, char *keyfile, int keytype)
+{
+	RSA *rsa = NULL;
+	BIO *in = NULL, *out = NULL;
+	unsigned char *rsa_in = NULL, *rsa_out = NULL, rev = 0;
+	int rsa_inlen, rsa_outlen = 0, keysize;
+	int ret = 1;
+
+	apps_startup();
+	app_RAND_load_file(NULL, bio_err, 0);
+
+	if(keytype == KEY_PRIVKEY)
+		rsa = loadCheckPrivateKey(keyfile, FALSE);
+	else
+	{
+		EVP_PKEY *pkey = load_pubkey(bio_err, keyfile, FORMAT_PEM, 0, NULL, NULL, "Public Key");
+		if(pkey)
+		{
+			rsa = EVP_PKEY_get1_RSA(pkey);
+			EVP_PKEY_free(pkey);
+		}
+	}
+	if(!rsa) {
+		BIO_printf(bio_err, "Error getting RSA key\n");
+		ERR_print_errors(bio_err);
+		goto sign_err;
+	}
+
+	if(infile)
+	{
+		if(!(in = BIO_new_file(infile, "rb")))
+		{
+			BIO_printf(bio_err, "Error Reading Input File\n");
+			ERR_print_errors(bio_err);	
+			goto sign_err;
+		}
+	}
+	else
+		in = BIO_new_fp(stdin, BIO_NOCLOSE);
+
+	if(outfile)
+	{
+		if(!(out = BIO_new_file(outfile, "wb")))
+		{
+			BIO_printf(bio_err, "Error Reading Output File\n");
+			ERR_print_errors(bio_err);	
+			goto sign_err;
+		}
+	}
+	else
+		out = BIO_new_fp(stdout, BIO_NOCLOSE);
+
+	keysize = RSA_size(rsa);
+	rsa_in = OPENSSL_malloc(keysize * 2);
+	rsa_out = OPENSSL_malloc(keysize);
+
+	/* Read the input data */
+	rsa_inlen = BIO_read(in, rsa_in, keysize * 2);
+	if(rsa_inlen <= 0)
+	{
+		BIO_printf(bio_err, "Error reading input Data\n");
+		goto sign_err;
+	}
+	
+	if(keytype == KEY_PRIVKEY)
+		rsa_outlen = RSA_private_encrypt(rsa_inlen, rsa_in, rsa_out, rsa, RSA_PKCS1_PADDING);
+	else
+		rsa_outlen  = RSA_public_decrypt(rsa_inlen, rsa_in, rsa_out, rsa, RSA_PKCS1_PADDING);
+	if(rsa_outlen <= 0)
+	{
+		BIO_printf(bio_err, "RSA operation error\n");
+		ERR_print_errors(bio_err);
+		goto sign_err;
+	}
+	BIO_write(out, rsa_out, rsa_outlen);
+	ret = 0;
+sign_err:
+	if (rsa) RSA_free(rsa);
+	if (in) BIO_free_all(in);
+	if (out) BIO_free_all(out);
+	if(rsa_in) OPENSSL_free(rsa_in);
+	if(rsa_out) OPENSSL_free(rsa_out);
 	if (ret != 0)
 		ERR_print_errors(bio_err);
 	apps_shutdown();
