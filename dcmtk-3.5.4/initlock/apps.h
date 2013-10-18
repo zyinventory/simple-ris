@@ -112,8 +112,6 @@
 #ifndef HEADER_APPS_H
 #define HEADER_APPS_H
 
-#include "e_os.h"
-
 #include <openssl/bio.h>
 #include <openssl/x509.h>
 #include <openssl/lhash.h>
@@ -123,6 +121,12 @@
 #include <openssl/engine.h>
 #endif
 #include <openssl/ossl_typ.h>
+
+#ifndef OPENSSL_SYS_NETWARE
+#include <signal.h>
+#endif
+
+#include "e_os.h"
 
 int app_RAND_load_file(const char *file, BIO *bio_e, int dont_warn);
 int app_RAND_write_file(const char *file, BIO *bio_e);
@@ -158,10 +162,6 @@ extern CONF *config;
 extern char *default_config_file;
 extern BIO *bio_err;
 
-#endif
-
-#ifndef OPENSSL_SYS_NETWARE
-#include <signal.h>
 #endif
 
 #ifdef SIGPIPE
