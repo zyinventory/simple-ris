@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "constant.h"
 using namespace std;
 
 class numpunct_no_gouping : public numpunct_byname<char>
@@ -125,8 +126,25 @@ int _tmain(int argc, _TCHAR* argv[])
 		CERR << TEXT("Éú³ÉRSAÃÜÔ¿´íÎó:") << ret << endl;
 		return -8;
 	}
-	COUT << TEXT("Éú³ÉRSAÃÜÔ¿:") << rsaPrivateKey << endl;
+	COUT << TEXT("Éú³ÉRSAÃÜÔ¿:") << rsaPrivateKey << TEXT(",") << rsaPublicKey << endl;
 	
+	_TCHAR *srcfile = "test.txt", *encfile = "test.rsa";
+	ret = rsaSignVerify(srcfile, encfile, rsaPrivateKey, KEY_PRIVKEY);
+	if(ret != 0)
+	{
+		CERR << TEXT("RSA sign ´íÎó:") << ret << TEXT(",") << srcfile << endl;
+		return -9;
+	}
+	COUT << srcfile << TEXT(" => RSA sign => ") << encfile << endl;
+
+	ret = rsaSignVerify(encfile, NULL, rsaPublicKey, KEY_PUBKEY);
+	if(ret != 0)
+	{
+		CERR << TEXT("RSA verify ´íÎó:") << ret << TEXT(",") << encfile << endl;
+		return -10;
+	}
+	COUT << endl << encfile << TEXT(" RSA verify OK") << endl;
+
 	// todo: ec key
 
 	// todo: generate license file, charge 100
