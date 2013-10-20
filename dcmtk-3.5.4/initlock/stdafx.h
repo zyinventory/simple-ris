@@ -28,8 +28,8 @@
 extern "C"
 {
 	char *md5crypt(const char *passwd, const char *magic, const char *salt);
-	int genrsa(int num, char *privateKey, char *publicKey);
-	int rsaSignVerify(char *infile, char *outfile, char *keyfile, int keyType);
+	int genrsa(int num, char *privateKey, char *publicKey, char *pass);
+	int rsaSignVerify(char *infile, char *outfile, char *keyfile, int keyType, char *pass);
 }
 
 #define COUT cout			//wcout

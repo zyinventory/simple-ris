@@ -120,7 +120,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	// todo: set new passwd
 
 	_TCHAR *rsaPrivateKey = "private.rsa", *rsaPublicKey = "public.rsa";
-	int ret = genrsa(4096, rsaPrivateKey, rsaPublicKey);
+	char passwd[] = "zy1234";
+	int ret = genrsa(4096, rsaPrivateKey, rsaPublicKey, passwd);
 	if(ret != 0)
 	{
 		CERR << TEXT("Éú³ÉRSAÃÜÔ¿´íÎó:") << ret << endl;
@@ -129,7 +130,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	COUT << TEXT("Éú³ÉRSAÃÜÔ¿:") << rsaPrivateKey << TEXT(",") << rsaPublicKey << endl;
 	
 	_TCHAR *srcfile = "test.txt", *encfile = "test.rsa";
-	ret = rsaSignVerify(srcfile, encfile, rsaPrivateKey, KEY_PRIVKEY);
+	ret = rsaSignVerify(srcfile, encfile, rsaPrivateKey, KEY_PRIVKEY, passwd);
 	if(ret != 0)
 	{
 		CERR << TEXT("RSA sign ´íÎó:") << ret << TEXT(",") << srcfile << endl;
@@ -137,7 +138,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	COUT << srcfile << TEXT(" => RSA sign => ") << encfile << endl;
 
-	ret = rsaSignVerify(encfile, NULL, rsaPublicKey, KEY_PUBKEY);
+	ret = rsaSignVerify(encfile, NULL, rsaPublicKey, KEY_PUBKEY, passwd);
 	if(ret != 0)
 	{
 		CERR << TEXT("RSA verify ´íÎó:") << ret << TEXT(",") << encfile << endl;
