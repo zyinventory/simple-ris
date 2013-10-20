@@ -50,5 +50,8 @@
     <ClCompile Include="app_rand.c">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="perm_lib.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
