@@ -74,7 +74,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	COUT << TEXT("Ëø±àÂë:") << lockNumber << endl;
 	DWORD serial = 0;
-	int retCode = SetLock(8, &serial, init_passwd, init_passwd);
+	int retCode = SetLock(8, &serial, NULL, init_passwd);
 	if(retCode)
 	{
 		CERR << TEXT("»ñÈ¡ËøÐòÁÐºÅ´íÎó:") << retCode << endl;
