@@ -61,7 +61,7 @@
       <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y $(SolutionDir)..\dcmtk-support\lock\cdll5.dll $(SolutionDir)$(ConfigurationName)</Command>
+      <Command>copy /y "$(SolutionDir)..\dcmtk-support\lock\cdll5.dll" "$(SolutionDir)$(ConfigurationName)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -85,7 +85,7 @@
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y $(SolutionDir)..\dcmtk-support\lock\cdll5.dll $(SolutionDir)$(ConfigurationName)</Command>
+      <Command>copy /y "$(SolutionDir)..\dcmtk-support\lock\cdll5.dll" "$(SolutionDir)$(ConfigurationName)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
