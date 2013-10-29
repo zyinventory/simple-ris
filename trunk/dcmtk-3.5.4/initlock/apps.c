@@ -627,3 +627,116 @@ sign_err:
 	apps_shutdown();
 	return ret;
 }
+
+#define  BUFFER_SIZE 256
+static const char magic[] = "Salted__";
+static const unsigned char pass[] = "zy1234";
+void aes256cbc(char *outf, unsigned char *salt, unsigned char *key, unsigned char *iv)
+{
+	const EVP_CIPHER *cipher=NULL;
+	BIO *out=NULL,*b64=NULL,*benc=NULL,*wbio=NULL;
+	EVP_CIPHER_CTX *ctx = NULL;
+	const EVP_MD *dgst=NULL;
+	int ret = 0;
+	unsigned char buf[BUFFER_SIZE];
+	int i = 0;
+
+	for(i = 0; i < BUFFER_SIZE; ++i) buf[i] = i;
+	apps_startup();
+	if (!load_config(bio_err, NULL))
+		goto aes_end;
+	cipher=EVP_get_cipherbyname("aes-256-cbc");
+	dgst = EVP_md5();
+	out=BIO_new(BIO_s_file());
+	ret = BIO_write_filename(out,outf);
+	wbio = out;
+	if ((b64=BIO_new(BIO_f_base64())) == NULL)
+		goto aes_end;
+	wbio=BIO_push(b64,wbio);
+
+	ret = RAND_pseudo_bytes(salt, PKCS5_SALT_LEN);
+	ret = BIO_write(wbio, magic, sizeof(magic) -1 );
+	ret = BIO_write(wbio, (char *)salt, PKCS5_SALT_LEN);
+	EVP_BytesToKey(cipher, dgst, salt, pass, sizeof(pass) - 1, 1, key, iv);
+
+	if ((benc=BIO_new(BIO_f_cipher())) == NULL)
+		goto aes_end;
+	BIO_get_cipher_ctx(benc, &ctx);
+	if (!EVP_CipherInit_ex(ctx, cipher, NULL, NULL, NULL, 1))
+	{
+		BIO_printf(bio_err, "Error setting cipher %s\n", EVP_CIPHER_name(cipher));
+		ERR_print_errors(bio_err);
+		goto aes_end;
+	}
+	//if (no_padding)
+	//		EVP_CIPHER_CTX_set_padding(ctx, 0);
+	if (!EVP_CipherInit_ex(ctx, NULL, NULL, key, iv, 1))
+	{
+		BIO_printf(bio_err, "Error setting cipher %s\n", EVP_CIPHER_name(cipher));
+		ERR_print_errors(bio_err);
+		goto aes_end;
+	}
+	/*
+	printf("\n-S ");
+	for (i=0; i<(int)sizeof(salt); i++)
+		printf("%02X",salt[i]);
+	if (cipher->key_len > 0)
+	{
+		printf(" -K ");
+		for (i=0; i<cipher->key_len; i++)
+			printf("%02X",key[i]);
+	}
+	if (cipher->iv_len > 0)
+	{
+		printf(" -iv ");
+		for (i=0; i<cipher->iv_len; i++)
+			printf("%02X",iv[i]);
+	}
+	printf("\n");
+	*/
+	wbio=BIO_push(benc, wbio);
+	ret = BIO_write(wbio, buf, BUFFER_SIZE);
+	BIO_flush(wbio);
+	BIO_printf(bio_err,"bytes written:%8ld\n",BIO_number_written(out));
+aes_end:
+	if (out != NULL) BIO_free_all(out);
+	if (benc != NULL) BIO_free(benc);
+	if (b64 != NULL) BIO_free(b64);
+	apps_shutdown();
+}
+
+void base64test()
+{
+	const char *filename = "base64.txt";
+	BIO *mbio,*b64bio,*bio = NULL;
+	unsigned char buf[BUFFER_SIZE];
+	int i = 0;
+	for(i = 0; i < BUFFER_SIZE; ++i)
+		buf[i] = i;
+	
+	mbio = BIO_new(BIO_s_file());
+	if (BIO_write_filename(mbio, (void*)filename) <= 0)
+	{
+		perror(filename);
+		goto err_base64;
+	}
+	b64bio=BIO_new(BIO_f_base64());
+	bio=BIO_push(b64bio,mbio);
+	BIO_write(bio, buf, sizeof(buf));
+	BIO_flush(bio);
+	BIO_free_all(bio);
+	bio = NULL;
+
+	memset(buf, 0, BUFFER_SIZE);
+	mbio = BIO_new(BIO_s_file());
+	if (BIO_read_filename(mbio, (void*)filename) <= 0)
+	{
+		perror(filename);
+		goto err_base64;
+	}
+	b64bio=BIO_new(BIO_f_base64());
+	bio=BIO_push(b64bio,mbio);
+	BIO_read(bio, buf, BUFFER_SIZE);
+err_base64:
+	if(bio) BIO_free_all(bio);
+}
