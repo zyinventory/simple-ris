@@ -630,14 +630,14 @@ sign_err:
 
 #define  BUFFER_SIZE 256
 static const char magic[] = "Salted__";
-static const unsigned char pass[] = "zy1234";
-void aes256cbc(char *outf, unsigned char *salt, unsigned char *key, unsigned char *iv)
+int aes256cbc_enc(char *outf, unsigned char *pass, size_t passLength)
 {
 	const EVP_CIPHER *cipher=NULL;
+	unsigned char salt[PKCS5_SALT_LEN], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH]; // { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46 };
 	BIO *out=NULL,*b64=NULL,*benc=NULL,*wbio=NULL;
 	EVP_CIPHER_CTX *ctx = NULL;
 	const EVP_MD *dgst=NULL;
-	int ret = 0;
+	int ret = 1;
 	unsigned char buf[BUFFER_SIZE];
 	int i = 0;
 
@@ -648,21 +648,25 @@ void aes256cbc(char *outf, unsigned char *salt, unsigned char *key, unsigned cha
 	cipher=EVP_get_cipherbyname("aes-256-cbc");
 	dgst = EVP_md5();
 	out=BIO_new(BIO_s_file());
-	ret = BIO_write_filename(out,outf);
+	if (BIO_write_filename(out,outf) <= 0)
+	{
+		perror(outf);
+		goto aes_end;
+	}
 	wbio = out;
 	if ((b64=BIO_new(BIO_f_base64())) == NULL)
 		goto aes_end;
 	wbio=BIO_push(b64,wbio);
 
-	ret = RAND_pseudo_bytes(salt, PKCS5_SALT_LEN);
-	ret = BIO_write(wbio, magic, sizeof(magic) -1 );
-	ret = BIO_write(wbio, (char *)salt, PKCS5_SALT_LEN);
-	EVP_BytesToKey(cipher, dgst, salt, pass, sizeof(pass) - 1, 1, key, iv);
+	RAND_pseudo_bytes(salt, PKCS5_SALT_LEN);
+	BIO_write(wbio, magic, sizeof(magic) -1 );
+	BIO_write(wbio, (char *)salt, PKCS5_SALT_LEN);
+	EVP_BytesToKey(cipher, dgst, salt, pass, passLength, ENCRYPT, key, iv);
 
 	if ((benc=BIO_new(BIO_f_cipher())) == NULL)
 		goto aes_end;
 	BIO_get_cipher_ctx(benc, &ctx);
-	if (!EVP_CipherInit_ex(ctx, cipher, NULL, NULL, NULL, 1))
+	if (!EVP_CipherInit_ex(ctx, cipher, NULL, NULL, NULL, ENCRYPT))
 	{
 		BIO_printf(bio_err, "Error setting cipher %s\n", EVP_CIPHER_name(cipher));
 		ERR_print_errors(bio_err);
@@ -670,39 +674,106 @@ void aes256cbc(char *outf, unsigned char *salt, unsigned char *key, unsigned cha
 	}
 	//if (no_padding)
 	//		EVP_CIPHER_CTX_set_padding(ctx, 0);
-	if (!EVP_CipherInit_ex(ctx, NULL, NULL, key, iv, 1))
+	if (!EVP_CipherInit_ex(ctx, NULL, NULL, key, iv, ENCRYPT))
 	{
 		BIO_printf(bio_err, "Error setting cipher %s\n", EVP_CIPHER_name(cipher));
 		ERR_print_errors(bio_err);
 		goto aes_end;
 	}
-	/*
-	printf("\n-S ");
-	for (i=0; i<(int)sizeof(salt); i++)
-		printf("%02X",salt[i]);
-	if (cipher->key_len > 0)
-	{
-		printf(" -K ");
-		for (i=0; i<cipher->key_len; i++)
-			printf("%02X",key[i]);
-	}
-	if (cipher->iv_len > 0)
-	{
-		printf(" -iv ");
-		for (i=0; i<cipher->iv_len; i++)
-			printf("%02X",iv[i]);
-	}
-	printf("\n");
-	*/
+
 	wbio=BIO_push(benc, wbio);
 	ret = BIO_write(wbio, buf, BUFFER_SIZE);
 	BIO_flush(wbio);
 	BIO_printf(bio_err,"bytes written:%8ld\n",BIO_number_written(out));
+	ret = 0;
 aes_end:
-	if (out != NULL) BIO_free_all(out);
 	if (benc != NULL) BIO_free(benc);
 	if (b64 != NULL) BIO_free(b64);
+	if (out != NULL) BIO_free_all(out);
 	apps_shutdown();
+	return ret;
+}
+
+int aes256cbc_dec(char *inf, unsigned char *pass, size_t passLength)
+{
+	const EVP_CIPHER *cipher=NULL;
+	unsigned char salt[PKCS5_SALT_LEN], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH]; // { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46 };
+	unsigned char buf[BUFFER_SIZE], mbuf[sizeof(magic) - 1], *linebuffer = NULL, *data = NULL;
+	BIO *in=NULL,*b64=NULL,*benc=NULL,*rbio=NULL, *out=NULL, *wbio=NULL;
+	EVP_CIPHER_CTX *ctx = NULL;
+	const EVP_MD *dgst=NULL;
+	BUF_MEM *memptr = NULL;
+	int ret = 1, i = 0;
+	long dataLength = 0;
+
+	for(i = 0; i < BUFFER_SIZE; ++i) buf[i] = i;
+	apps_startup();
+	if (!load_config(bio_err, NULL))
+		goto aes_dec_end;
+	cipher=EVP_get_cipherbyname("aes-256-cbc");
+	dgst = EVP_md5();
+
+	//out = BIO_new_mem_buf(buf, BUFFER_SIZE);
+	out = BIO_new(BIO_s_mem());
+	wbio = out;
+	in = BIO_new(BIO_s_file());
+	ret = BIO_read_filename(in, inf);
+	rbio = in;
+
+	if ((b64=BIO_new(BIO_f_base64())) == NULL)
+		goto aes_dec_end;
+	rbio = BIO_push(b64, rbio);
+
+	if(BIO_read(rbio,mbuf,sizeof(mbuf)) != sizeof(mbuf)
+		|| BIO_read(rbio, (unsigned char *)salt, sizeof(salt)) != sizeof(salt))
+		goto aes_dec_end;
+	EVP_BytesToKey(cipher, dgst, salt, pass, passLength, DECRYPT, key, iv);
+
+	if ((benc=BIO_new(BIO_f_cipher())) == NULL)
+		goto aes_dec_end;
+	BIO_get_cipher_ctx(benc, &ctx);
+	if (!EVP_CipherInit_ex(ctx, cipher, NULL, NULL, NULL, DECRYPT))
+	{
+		BIO_printf(bio_err, "Error setting cipher %s\n", EVP_CIPHER_name(cipher));
+		ERR_print_errors(bio_err);
+		goto aes_dec_end;
+	}
+	//if (no_padding)
+	//		EVP_CIPHER_CTX_set_padding(ctx, 0);
+	if (!EVP_CipherInit_ex(ctx, NULL, NULL, key, iv, DECRYPT))
+	{
+		BIO_printf(bio_err, "Error setting cipher %s\n", EVP_CIPHER_name(cipher));
+		ERR_print_errors(bio_err);
+		goto aes_dec_end;
+	}
+	wbio = BIO_push(benc, wbio);
+
+	linebuffer = (unsigned char *)OPENSSL_malloc(EVP_ENCODE_LENGTH(BUFFER_SIZE));
+	do
+	{
+		i = BIO_read(rbio, linebuffer, EVP_ENCODE_LENGTH(BUFFER_SIZE));
+		if(i > 0)
+			BIO_write(wbio, linebuffer, i);
+	} while(i > 0);
+
+	dataLength = BIO_get_mem_data(out, &data);
+	for(i = 0; i < dataLength; ++i)
+	{
+		if(i != data[i])
+		{
+			ret = 1;
+			goto aes_dec_end;
+		}
+	}
+	ret = 0;
+aes_dec_end:
+	if(linebuffer != NULL) OPENSSL_free(linebuffer);
+	if (benc != NULL) BIO_free(benc);
+	if (b64 != NULL) BIO_free(b64);
+	if (in != NULL) BIO_free(in);
+	if (out != NULL) BIO_free(out);
+	apps_shutdown();
+	return ret;
 }
 
 void base64test()

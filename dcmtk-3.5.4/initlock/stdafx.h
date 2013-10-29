@@ -32,7 +32,8 @@ extern "C"
 	char *md5crypt(const char *passwd, const char *magic, const char *salt);
 	int genrsa(int num, char *privateKey, char *publicKey, char *pass);
 	int rsaSignVerify(char *infile, char *outfile, char *keyfile, int keyType, char *pass);
-	void aes256cbc(char *outf, unsigned char *salt, unsigned char *key, unsigned char *iv);
+	int aes256cbc_enc(char *outf, unsigned char *pass, size_t pass_length);
+	int aes256cbc_dec(char *inf, unsigned char *pass, size_t pass_length);
 	void base64test();
 }
 

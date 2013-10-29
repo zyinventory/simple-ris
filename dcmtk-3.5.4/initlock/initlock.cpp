@@ -145,18 +145,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -10;
 	}
 	COUT << endl << encfile << TEXT(" RSA verify OK") << endl;
-
-	unsigned char salt[PKCS5_SALT_LEN], keyBuffer[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH] = { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46 };
-	aes256cbc("byte.aes", salt, keyBuffer, iv);
-	ostream &hexOut = COUT << uppercase << hex << setfill('0') << setw(2);
-	COUT << TEXT("-S ");
-	copy(salt, salt + PKCS5_SALT_LEN, ostream_iterator<int>(hexOut));
-	COUT << TEXT(" -K ");
-	copy(keyBuffer, keyBuffer + EVP_MAX_KEY_LENGTH, ostream_iterator<int>(hexOut));
-	COUT << TEXT(" -iv ");
-	copy(iv, iv + EVP_MAX_IV_LENGTH, ostream_iterator<int>(hexOut));
-	COUT << endl;
-	// todo: ec key
+	char pass[] = "zy1234";
+	aes256cbc_enc("byte.aes", reinterpret_cast<unsigned char*>(pass), strlen(pass));
+	aes256cbc_dec("byte.aes", reinterpret_cast<unsigned char*>(pass), strlen(pass));
 
 	// todo: generate license file, charge 100
 	return 0;
