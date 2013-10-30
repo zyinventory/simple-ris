@@ -35,6 +35,7 @@ extern "C"
 	int rsaSignVerify(char *infile, char *outfile, char *keyfile, int keyType, char *pass);
 	int aes256cbc_enc(char *outf, unsigned char *pass, size_t pass_length);
 	int aes256cbc_dec(char *inf, unsigned char *pass, size_t pass_length);
+	int fillSeedSIV(void *siv, size_t sivSize, void *content, size_t contentLength, size_t start);
 	void base64test();
 }
 

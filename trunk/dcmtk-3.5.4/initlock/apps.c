@@ -811,3 +811,29 @@ void base64test()
 err_base64:
 	if(bio) BIO_free_all(bio);
 }
+
+int fillSeedSIV(void *siv, size_t sivSize, void *content, size_t contentLength, size_t start)
+{
+	int read = 0;
+	void *skip = NULL;
+	BIO *b64 = NULL, *bio = BIO_new_mem_buf(content, contentLength);
+
+	if(bio == NULL) goto fill_end;
+	b64 = BIO_new(BIO_f_base64());
+	bio = BIO_push(b64, bio);
+	if(start != 0)
+	{
+		skip = malloc(start);
+		read = BIO_read(bio, skip, start);
+		if(read != start)
+		{
+			read = 0;
+			goto fill_end;
+		}
+	}
+	read = BIO_read(bio, siv, sivSize);
+fill_end:
+	if(skip != NULL) free(skip);
+	if(bio != NULL) BIO_free_all(bio);
+	return read;
+}
