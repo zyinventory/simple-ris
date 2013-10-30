@@ -91,7 +91,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	IFSTREAM keystrm(buffer);
 	if(keystrm.bad())
 	{
-		COUT << buffer << TEXT(" open failed") << endl;
+		CERR << buffer << TEXT(" open failed") << endl;
 		return -6;
 	}
 	DWORD key[4] = {0, 0, 0, 0};
@@ -111,13 +111,21 @@ int _tmain(int argc, _TCHAR* argv[])
 	keystrm.close();
 	if(!keyOK)
 	{
-		COUT << TEXT("key文件格式错误") << endl;
+		CERR << TEXT("key文件格式错误") << endl;
 		return -7;
 	}
-	sprintf_s(buffer, "%04X%04X%04X%04X", key[0], key[1], key[2], key[3]);
-	String hash(md5crypt(buffer, "1", serialString.c_str()));
-	COUT << TEXT("密码:") << hash.substr(hash.length() - 8, 8) << endl;
-	// todo: set new passwd
+
+	if(_mkdir(lockName.c_str()) && errno != EEXIST)
+	{
+		int err = errno;
+		CERR << TEXT("创建目录") << lockName << TEXT("错误:") << err << endl;
+		return err;
+	}
+	_chdir(lockName.c_str());
+
+	ofstream testfile("test.txt");
+	testfile << "this is a test file, 生成RSA密钥测试" << endl;
+	testfile.close();
 
 	_TCHAR *rsaPrivateKey = "private.rsa", *rsaPublicKey = "public.rsa";
 	char passwd[] = "zy1234";
@@ -145,10 +153,14 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -10;
 	}
 	COUT << endl << encfile << TEXT(" RSA verify OK") << endl;
-	char pass[] = "zy1234";
-	aes256cbc_enc("byte.aes", reinterpret_cast<unsigned char*>(pass), strlen(pass));
-	aes256cbc_dec("byte.aes", reinterpret_cast<unsigned char*>(pass), strlen(pass));
 
+	aes256cbc_enc("byte.aes", reinterpret_cast<unsigned char*>(passwd), strlen(passwd));
+	aes256cbc_dec("byte.aes", reinterpret_cast<unsigned char*>(passwd), strlen(passwd));
+
+	sprintf_s(buffer, "%04X%04X%04X%04X", key[0], key[1], key[2], key[3]);
+	String hash(md5crypt(buffer, "1", serialString.c_str()));
+	COUT << TEXT("密码:") << hash.substr(hash.length() - 8, 8) << endl;
+	// todo: set new passwd
 	// todo: generate license file, charge 100
 	return 0;
 }
