@@ -114,7 +114,7 @@
 #undef NON_MAIN
 #include <openssl/bio.h>
 #include <openssl/rand.h>
-
+#include "Shlwapi.h"
 
 static int seeded = 0;
 static int egdsocket = 0;
@@ -192,9 +192,9 @@ long app_RAND_load_files(char *name)
 	}
 
 int app_RAND_write_file(const char *file, BIO *bio_e)
-	{
-	char buffer[200];
-	
+{
+	char filePath[MAX_PATH] = "C:\\usr\\local\\dicom";
+
 	if (egdsocket || !seeded)
 		/* If we did not manage to read the seed file,
 		 * we should not write a low-entropy seed file back --
@@ -203,14 +203,20 @@ int app_RAND_write_file(const char *file, BIO *bio_e)
 		return 0;
 
 	if (file == NULL)
-		file = RAND_file_name(buffer, sizeof buffer);
+	{
+		//file = RAND_file_name(buffer, sizeof buffer);
+		char *pacsBase = getenv("PACS_BASE");
+		if(pacsBase) strcpy_s(filePath, MAX_PATH, pacsBase);
+		PathAppend(filePath, "etc\\rnd.dat");
+		file = filePath;
+	}
 	if (file == NULL || !RAND_write_file(file))
-		{
+	{
 		BIO_printf(bio_e,"unable to write 'random state'\n");
 		return 0;
-		}
-	return 1;
 	}
+	return 1;
+}
 
 void app_RAND_allow_write_file(void)
 	{
