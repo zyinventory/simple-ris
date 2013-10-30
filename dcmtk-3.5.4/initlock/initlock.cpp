@@ -10,6 +10,38 @@ protected:
     virtual String do_grouping() const { return TEXT(""); } // no grouping
 };
 
+static int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv)
+{
+	ifstream keystrm(publicKey);
+	if(keystrm.fail()) return -2;
+	ostringstream contentBase64;
+	bool startTag = false, endTag = false;
+	char buffer[82];
+	while(!endTag)
+	{
+		keystrm.getline(buffer, sizeof(buffer));
+		if(keystrm.fail()) break;
+		if(buffer[0] == '-' && buffer[1] == '-')
+		{
+			if(startTag)
+				endTag = true;
+			else
+				startTag = true;
+		}
+		else if(startTag && !endTag)
+			contentBase64 << buffer << endl;
+	}
+	string base64(contentBase64.str());
+	char *data = new char[base64.size()];
+	base64.copy(data, base64.size());
+	int read = fillSeedSIV(siv, sizeof(SEED_SIV), data, base64.size(), PUBKEY_OFFSET);
+	delete data;
+	if(endTag && read == sizeof(SEED_SIV))
+		return 0;
+	else
+		return -1;
+}
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	WIN32_FIND_DATA ffd;
@@ -154,6 +186,12 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	COUT << endl << encfile << TEXT(" RSA verify OK") << endl;
 
+	SEED_SIV siv;
+	if(loadPublicKeyContent(rsaPublicKey, &siv))
+	{
+		CERR << TEXT("生成RSA密钥格式错误") << endl;
+		return -8;
+	}
 	aes256cbc_enc("byte.aes", reinterpret_cast<unsigned char*>(passwd), strlen(passwd));
 	aes256cbc_dec("byte.aes", reinterpret_cast<unsigned char*>(passwd), strlen(passwd));
 
