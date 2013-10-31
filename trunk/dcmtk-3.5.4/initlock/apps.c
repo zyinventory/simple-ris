@@ -4,6 +4,7 @@
 #include <openssl/ui.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
+#include <openssl/md5.h>
 
 #include "apps.h"
 #include "constant.h"
@@ -836,4 +837,12 @@ fill_end:
 	if(skip != NULL) free(skip);
 	if(bio != NULL) BIO_free_all(bio);
 	return read;
+}
+
+void MD5_digest(void *data, size_t dataLength, unsigned char *md)
+{
+	MD5_CTX ctx;
+	MD5_Init(&ctx);
+    MD5_Update(&ctx,data, dataLength);
+    MD5_Final(md,&ctx);
 }
