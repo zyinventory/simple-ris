@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include <openssl/rand.h>
 #include "constant.h"
 using namespace std;
 
@@ -10,7 +11,7 @@ protected:
     virtual String do_grouping() const { return TEXT(""); } // no grouping
 };
 
-static int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv)
+static int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, DWORD lockNumber)
 {
 	ifstream keystrm(publicKey);
 	if(keystrm.fail()) return -2;
@@ -34,7 +35,15 @@ static int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv)
 	string base64(contentBase64.str());
 	char *data = new char[base64.size()];
 	base64.copy(data, base64.size());
-	int read = fillSeedSIV(siv, sizeof(SEED_SIV), data, base64.size(), PUBKEY_OFFSET);
+
+	ostringstream saltBase64;
+	saltBase64 << hex << setw(8) << setfill('0') << privateShieldPC(lockNumber);
+	String hash(md5crypt(base64.c_str(), "1", saltBase64.str().c_str()));
+	hash.copy(lock_passwd, 8, hash.length() - 8);
+	lock_passwd[8] = '\0';
+	CERR << TEXT("密码:") << lock_passwd << endl;
+
+	int read = fillSeedSIV(siv, sizeof(SEED_SIV), data, base64.size(), PUBKEY_SKIP + (lockNumber % PUBKEY_MOD));
 	delete data;
 	if(endTag && read == sizeof(SEED_SIV))
 		return 0;
@@ -99,12 +108,12 @@ int _tmain(int argc, _TCHAR* argv[])
 		DWORD dwError = GetLastError();
 		if (dwError != ERROR_NO_MORE_FILES) CERR << TEXT("FindNextFile error ") << dwError << endl;
 		FindClose(hFind);
-		CERR << TEXT("Can't find lock number in ") << buffer << endl;
+		CERR << TEXT("加密狗错误: Can't find lock number in ") << buffer << endl;
 		return -4;
 	}
 	FindClose(hFind);
 
-	COUT << TEXT("锁编码:") << lockNumber << endl;
+	CERR << TEXT("锁编码:") << lockNumber << endl;
 	DWORD serial = 0;
 	int retCode = SetLock(8, &serial, NULL, init_passwd);
 	if(retCode)
@@ -115,7 +124,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	ostringstream serialStringStream;
 	serialStringStream << serial;
 	String serialString = serialStringStream.str();
-	COUT << TEXT("锁序列号:") << serialString << endl;
+	CERR << TEXT("锁序列号:") << serialString << endl;
 	
 	StringCchCopy(buffer, MAX_PATH, argv[1]);
 	PathAppend(buffer, lockName.c_str());
@@ -126,7 +135,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		CERR << buffer << TEXT(" open failed") << endl;
 		return -6;
 	}
-	DWORD key[4] = {0, 0, 0, 0};
+
 	bool keyOK = false;
 	REGEX linePattern(TEXT("^key(\\d) *= *(\\d+)$"));
 	while(! keystrm.getline(buffer, MAX_PATH).fail())
@@ -134,7 +143,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		match_results<const _TCHAR*> result;
 		if(regex_match(buffer, result, linePattern))
 		{
-			COUT << TEXT("key") << result[1] << TEXT(" = ") << result[2] << endl;
+			CERR << TEXT("key") << result[1] << TEXT(" = ") << result[2] << endl;
 			int index = (int)result[1].str()[0] - (int)TEXT('1');
 			key[index] = atoi(result[2].str().c_str());
 			if(keyOK = !any_of(key, key + 4, [](int value) { return value == 0; })) break;
@@ -147,6 +156,21 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -7;
 	}
 
+	DWORD dictionary[DICTIONARY_SIZE * 2 + 4]; // (rand_request, key_response) * 2 + md5_digest
+	RAND_pseudo_bytes(reinterpret_cast<unsigned char*>(dictionary), DICTIONARY_SIZE * 4);
+	for(int i = 0; i < DICTIONARY_SIZE; ++i)
+	{
+		DWORD hard = shieldPC(dictionary[i]), soft = privateShieldPC(dictionary[i]);
+		if(hard == soft)
+			dictionary[DICTIONARY_SIZE + i] = hard;
+		else
+		{
+			CERR << TEXT("加密狗错误: Can't find lock number in ") << buffer << endl;
+			return -4;
+		}
+	}
+	MD5_digest(dictionary, DICTIONARY_SIZE * 8, reinterpret_cast<unsigned char*>(&dictionary[DICTIONARY_SIZE * 2]));
+
 	if(_mkdir(lockName.c_str()) && errno != EEXIST)
 	{
 		int err = errno;
@@ -155,28 +179,37 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	_chdir(lockName.c_str());
 
-	ofstream testfile("test.txt");
-	testfile << "this is a test file, 生成RSA密钥测试" << endl;
-	testfile.close();
-
-	_TCHAR *rsaPrivateKey = "private.rsa", *rsaPublicKey = "public.rsa";
-	char passwd[] = "zy1234";
+	char passwd[] = "wlt2911@^$";
+	_TCHAR *rsaPrivateKey = "private.rsa", rsaPublicKey[16];
+	strcpy_s(rsaPublicKey, sizeof(rsaPublicKey), lockName.c_str());
+	strcat_s(rsaPublicKey, sizeof(rsaPublicKey), TEXT(".key"));
 	int ret = genrsa(4096, rsaPrivateKey, rsaPublicKey, passwd);
 	if(ret != 0)
 	{
 		CERR << TEXT("生成RSA密钥错误:") << ret << endl;
 		return -8;
 	}
-	COUT << TEXT("生成RSA密钥:") << rsaPrivateKey << TEXT(",") << rsaPublicKey << endl;
+	CERR << TEXT("生成RSA密钥:") << rsaPrivateKey << TEXT(",") << rsaPublicKey << endl;
 	
 	_TCHAR *srcfile = "test.txt", *encfile = "test.rsa";
+	ofstream testfile(srcfile);
+	testfile << "            ------------- begin test -------------            " << endl;
+	testfile << "如果没有看到乱码，证明RSA密钥测试成功。# this is a test file #" << endl;
+	testfile << "如果没有看到乱码，证明RSA密钥测试成功。# this is a test file #" << endl;
+	testfile << "如果没有看到乱码，证明RSA密钥测试成功。# this is a test file #" << endl;
+	testfile << "如果没有看到乱码，证明RSA密钥测试成功。# this is a test file #" << endl;
+	testfile << "如果没有看到乱码，证明RSA密钥测试成功。# this is a test file #" << endl;
+	testfile << "如果没有看到乱码，证明RSA密钥测试成功。# this is a test file #" << endl;
+	testfile << "            -------------- end test --------------" << endl;
+	testfile.close();
+
 	ret = rsaSignVerify(srcfile, encfile, rsaPrivateKey, KEY_PRIVKEY, passwd);
 	if(ret != 0)
 	{
 		CERR << TEXT("RSA sign 错误:") << ret << TEXT(",") << srcfile << endl;
 		return -9;
 	}
-	COUT << srcfile << TEXT(" => RSA sign => ") << encfile << endl;
+	CERR << srcfile << TEXT(" => RSA sign => ") << encfile << endl;
 
 	ret = rsaSignVerify(encfile, NULL, rsaPublicKey, KEY_PUBKEY, passwd);
 	if(ret != 0)
@@ -184,20 +217,17 @@ int _tmain(int argc, _TCHAR* argv[])
 		CERR << TEXT("RSA verify 错误:") << ret << TEXT(",") << encfile << endl;
 		return -10;
 	}
-	COUT << endl << encfile << TEXT(" RSA verify OK") << endl;
+	CERR << endl << encfile << TEXT(" RSA verify OK") << endl;
 
 	SEED_SIV siv;
-	if(loadPublicKeyContent(rsaPublicKey, &siv))
+	if(loadPublicKeyContent(rsaPublicKey, &siv, lockNumber))
 	{
-		CERR << TEXT("生成RSA密钥格式错误") << endl;
+		CERR << TEXT("生成RSA公钥格式错误") << endl;
 		return -8;
 	}
 	aes256cbc_enc("byte.aes", reinterpret_cast<unsigned char*>(passwd), strlen(passwd));
 	aes256cbc_dec("byte.aes", reinterpret_cast<unsigned char*>(passwd), strlen(passwd));
 
-	sprintf_s(buffer, "%04X%04X%04X%04X", key[0], key[1], key[2], key[3]);
-	String hash(md5crypt(buffer, "1", serialString.c_str()));
-	COUT << TEXT("密码:") << hash.substr(hash.length() - 8, 8) << endl;
 	// todo: set new passwd
 	// todo: generate license file, charge 100
 	return 0;
