@@ -178,46 +178,24 @@ int _tmain(int argc, _TCHAR* argv[])
 		return err;
 	}
 	_chdir(lockName.c_str());
+	
+	char plainFileName[] = "license.plain", licenseFileName[] = "license.aes", licenseRSAEnc[] = "license.key", licenseRSADec[] = "license.dec";
+	ofstream licenseFile(plainFileName, ios_base::binary);
+	size_t dictLength = sizeof(dictionary);
+	licenseFile.write(reinterpret_cast<const char*>(dictionary), dictLength);
+	licenseFile.close();
 
 	char passwd[] = "wlt2911@^$";
 	_TCHAR *rsaPrivateKey = "private.rsa", rsaPublicKey[16];
 	strcpy_s(rsaPublicKey, sizeof(rsaPublicKey), lockName.c_str());
 	strcat_s(rsaPublicKey, sizeof(rsaPublicKey), TEXT(".key"));
-	int ret = genrsa(4096, rsaPrivateKey, rsaPublicKey, passwd);
+	int ret = genrsa(KEY_SIZE, rsaPrivateKey, rsaPublicKey, passwd);
 	if(ret != 0)
 	{
 		CERR << TEXT("生成RSA密钥错误:") << ret << endl;
 		return -8;
 	}
 	CERR << TEXT("生成RSA密钥:") << rsaPrivateKey << TEXT(",") << rsaPublicKey << endl;
-	
-	_TCHAR *srcfile = "test.txt", *encfile = "test.rsa";
-	ofstream testfile(srcfile);
-	testfile << "            ------------- begin test -------------            " << endl;
-	testfile << "如果没有看到乱码，证明RSA密钥测试成功。# this is a test file #" << endl;
-	testfile << "如果没有看到乱码，证明RSA密钥测试成功。# this is a test file #" << endl;
-	testfile << "如果没有看到乱码，证明RSA密钥测试成功。# this is a test file #" << endl;
-	testfile << "如果没有看到乱码，证明RSA密钥测试成功。# this is a test file #" << endl;
-	testfile << "如果没有看到乱码，证明RSA密钥测试成功。# this is a test file #" << endl;
-	testfile << "如果没有看到乱码，证明RSA密钥测试成功。# this is a test file #" << endl;
-	testfile << "            -------------- end test --------------" << endl;
-	testfile.close();
-
-	ret = rsaSignVerify(srcfile, encfile, rsaPrivateKey, KEY_PRIVKEY, passwd);
-	if(ret != 0)
-	{
-		CERR << TEXT("RSA sign 错误:") << ret << TEXT(",") << srcfile << endl;
-		return -9;
-	}
-	CERR << srcfile << TEXT(" => RSA sign => ") << encfile << endl;
-
-	ret = rsaSignVerify(encfile, NULL, rsaPublicKey, KEY_PUBKEY, passwd);
-	if(ret != 0)
-	{
-		CERR << TEXT("RSA verify 错误:") << ret << TEXT(",") << encfile << endl;
-		return -10;
-	}
-	CERR << endl << encfile << TEXT(" RSA verify OK") << endl;
 
 	SEED_SIV siv;
 	if(loadPublicKeyContent(rsaPublicKey, &siv, lockNumber))
@@ -225,8 +203,60 @@ int _tmain(int argc, _TCHAR* argv[])
 		CERR << TEXT("生成RSA公钥格式错误") << endl;
 		return -8;
 	}
-	aes256cbc_enc("byte.aes", reinterpret_cast<unsigned char*>(passwd), strlen(passwd));
-	aes256cbc_dec("byte.aes", reinterpret_cast<unsigned char*>(passwd), strlen(passwd));
+	ostream &formatted = COUT << uppercase << hex << setw(2);
+	for_each(siv.key, siv.key + sizeof(siv.key), [&formatted](unsigned char c) { formatted << (int)c; });
+	COUT << endl;
+	for_each(siv.iv, siv.iv + sizeof(siv.iv), [&formatted](unsigned char c) { formatted << (int)c; });
+	COUT << endl;
+
+	size_t encnum = aes256cbc_enc(dictionary, sizeof(dictionary), licenseFileName, siv.key, siv.iv);
+	ret = rsaSign(licenseFileName, licenseRSAEnc, rsaPrivateKey, passwd);
+	if(ret != 0)
+	{
+		CERR << TEXT("RSA sign 错误:") << ret << TEXT(",") << licenseFileName << endl;
+		return -9;
+	}
+	CERR << licenseFileName << TEXT(" => RSA sign => ") << licenseRSAEnc << endl;
+
+	unsigned char inBuf[KEY_SIZE / 8], midBuf[KEY_SIZE / 8], outBuf[KEY_SIZE / 8];
+	ifstream licenseRSAStream(licenseRSAEnc);
+	licenseRSAStream.read((char*)inBuf, KEY_SIZE / 8);
+	if(licenseRSAStream.fail())
+	{
+		CERR << TEXT("RSA verify 错误, 读取文件错误") << licenseRSAEnc << endl;
+		licenseRSAStream.close();
+		return -10;
+	}
+	licenseRSAStream.close();
+
+	ret = rsaVerify(inBuf, KEY_SIZE / 8, midBuf, rsaPublicKey);
+	if(ret <= 0)
+	{
+		CERR << TEXT("RSA verify 错误:") << licenseRSAEnc << endl;
+		return -11;
+	}
+
+	// skip magic number and salt
+	ret = aes256cbc_dec(midBuf + AES_OFFSET, ret - AES_OFFSET, outBuf, siv.key, siv.iv);
+	if(ret <= 0)
+	{
+		CERR << TEXT("AES decrypt 错误:") << licenseRSAEnc << endl;
+		return -12;
+	}
+	CERR << licenseRSAEnc << TEXT(" => RSA verify => AES decrypt OK") << endl;
+
+	DWORD digestSig[4], *originSig = reinterpret_cast<DWORD*>(&outBuf[DICTIONARY_SIZE * 8]);
+	MD5_digest(outBuf, DICTIONARY_SIZE * 8, reinterpret_cast<unsigned char*>(digestSig));
+	if(digestSig[0] != originSig[0] || digestSig[1] != originSig[1]
+		|| digestSig[2] != originSig[2] || digestSig[3] != originSig[3])
+	{
+		CERR << TEXT("MD5 digest 错误:") << licenseRSAEnc << endl;
+		ofstream unrsaStream(licenseRSADec);
+		unrsaStream.write((char*)outBuf, ret);
+		unrsaStream.close();
+		return -13;
+	}
+	CERR << TEXT("MD5 digest OK") << endl;
 
 	// todo: set new passwd
 	// todo: generate license file, charge 100

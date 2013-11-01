@@ -1,8 +1,10 @@
+#define KEY_SIZE		4096
+#define AES_OFFSET		16
 #define KEY_PRIVKEY		1
 #define KEY_PUBKEY		2
 #define DECRYPT			0
 #define ENCRYPT			1
-#define DICTIONARY_SIZE	60
+#define DICTIONARY_SIZE	56
 
 #if !defined(PKCS5_SALT_LEN)
 #define PKCS5_SALT_LEN	8

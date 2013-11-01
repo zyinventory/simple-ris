@@ -371,7 +371,7 @@ static EVP_PKEY *load_key(BIO *err, const char *file, int format, int maybe_stdi
 	return(pkey);
 }
 
-static RSA *loadPublicKey(char *publicKey)
+static RSA *loadPublicKey(const char *publicKey)
 {
 	RSA *rsa = NULL;
 	EVP_PKEY *pkey = load_pubkey(bio_err, publicKey, FORMAT_PEM, 0, NULL, NULL, "Public Key");
@@ -547,7 +547,7 @@ err:
 	return ret;
 }
 
-int rsaSignVerify(char *infile, char *outfile, char *keyfile, int keytype, char *pass)
+int rsaSign(char *infile, char *outfile, char *keyfile, char *pass)
 {
 	RSA *rsa = NULL;
 	BIO *in = NULL, *out = NULL;
@@ -558,10 +558,8 @@ int rsaSignVerify(char *infile, char *outfile, char *keyfile, int keytype, char 
 	apps_startup();
 	app_RAND_load_file(NULL, bio_err, 0);
 
-	if(keytype == KEY_PRIVKEY)
-		rsa = loadCheckPrivateKey(keyfile, TRUE, pass);
-	else
-		rsa = loadPublicKey(keyfile);
+	rsa = loadCheckPrivateKey(keyfile, TRUE, pass);
+
 	if(!rsa)
 	{
 		BIO_printf(bio_err, "Error getting RSA key\n");
@@ -605,10 +603,8 @@ int rsaSignVerify(char *infile, char *outfile, char *keyfile, int keytype, char 
 		goto sign_err;
 	}
 	
-	if(keytype == KEY_PRIVKEY)
-		rsa_outlen = RSA_private_encrypt(rsa_inlen, rsa_in, rsa_out, rsa, RSA_PKCS1_PADDING);
-	else
-		rsa_outlen  = RSA_public_decrypt(rsa_inlen, rsa_in, rsa_out, rsa, RSA_PKCS1_PADDING);
+	rsa_outlen = RSA_private_encrypt(rsa_inlen, rsa_in, rsa_out, rsa, RSA_PKCS1_PADDING);
+
 	if(rsa_outlen <= 0)
 	{
 		BIO_printf(bio_err, "RSA operation error\n");
@@ -629,40 +625,58 @@ sign_err:
 	return ret;
 }
 
-#define  BUFFER_SIZE 256
+int rsaVerify(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, const char *keyfile)
+{
+	RSA *rsa = NULL;
+	int keysize, ret = 0;
+
+	apps_startup();
+	app_RAND_load_file(NULL, bio_err, 0);
+
+	rsa = loadPublicKey(keyfile);
+	if(!rsa)
+	{
+		BIO_printf(bio_err, "Error getting RSA key\n");
+		ERR_print_errors(bio_err);
+		goto sign_err;
+	}
+	keysize = RSA_size(rsa);
+	ret = RSA_public_decrypt(inLen, inBuf, outBuf, rsa, RSA_PKCS1_PADDING);
+	if(ret <= 0)
+	{
+		BIO_printf(bio_err, "RSA operation error\n");
+		ERR_print_errors(bio_err);
+		goto sign_err;
+	}
+sign_err:
+	if (rsa) RSA_free(rsa);
+	apps_shutdown();
+	return ret;
+}
+
 static const char magic[] = "Salted__";
-int aes256cbc_enc(char *outf, unsigned char *pass, size_t passLength)
+int aes256cbc_enc(void *content, size_t contentLength, char *filename, unsigned char *key, unsigned char* iv)
 {
 	const EVP_CIPHER *cipher=NULL;
-	unsigned char salt[PKCS5_SALT_LEN], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH]; // { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46 };
-	BIO *out=NULL,*b64=NULL,*benc=NULL,*wbio=NULL;
+	unsigned char salt[PKCS5_SALT_LEN], *writtenBuffer = NULL;  //, key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
+	BIO *out = NULL, *benc = NULL, *wbio = NULL;
 	EVP_CIPHER_CTX *ctx = NULL;
 	const EVP_MD *dgst=NULL;
-	int ret = 1;
-	unsigned char buf[BUFFER_SIZE];
-	int i = 0;
+	int i, ret = 0;
 
-	for(i = 0; i < BUFFER_SIZE; ++i) buf[i] = i;
 	apps_startup();
 	if (!load_config(bio_err, NULL))
 		goto aes_end;
 	cipher=EVP_get_cipherbyname("aes-256-cbc");
 	dgst = EVP_md5();
-	out=BIO_new(BIO_s_file());
-	if (BIO_write_filename(out,outf) <= 0)
-	{
-		perror(outf);
-		goto aes_end;
-	}
+	out = BIO_new(BIO_s_file());
+	BIO_write_filename(out, filename);
 	wbio = out;
-	if ((b64=BIO_new(BIO_f_base64())) == NULL)
-		goto aes_end;
-	wbio=BIO_push(b64,wbio);
 
 	RAND_pseudo_bytes(salt, PKCS5_SALT_LEN);
 	BIO_write(wbio, magic, sizeof(magic) -1 );
 	BIO_write(wbio, (char *)salt, PKCS5_SALT_LEN);
-	EVP_BytesToKey(cipher, dgst, salt, pass, passLength, ENCRYPT, key, iv);
+	//EVP_BytesToKey(cipher, dgst, salt, pass, passLength, ENCRYPT, key, iv);
 
 	if ((benc=BIO_new(BIO_f_cipher())) == NULL)
 		goto aes_end;
@@ -681,54 +695,39 @@ int aes256cbc_enc(char *outf, unsigned char *pass, size_t passLength)
 		ERR_print_errors(bio_err);
 		goto aes_end;
 	}
-
-	wbio=BIO_push(benc, wbio);
-	ret = BIO_write(wbio, buf, BUFFER_SIZE);
+	wbio = BIO_push(benc, wbio);
+	ret = BIO_write(wbio, content, contentLength);
+	BIO_printf(bio_err,"bytes written:%8ld\n", ret);
 	BIO_flush(wbio);
-	BIO_printf(bio_err,"bytes written:%8ld\n",BIO_number_written(out));
-	ret = 0;
 aes_end:
 	if (benc != NULL) BIO_free(benc);
-	if (b64 != NULL) BIO_free(b64);
 	if (out != NULL) BIO_free_all(out);
 	apps_shutdown();
 	return ret;
 }
 
-int aes256cbc_dec(char *inf, unsigned char *pass, size_t passLength)
+int aes256cbc_dec(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, unsigned char *key, unsigned char* iv)
 {
 	const EVP_CIPHER *cipher=NULL;
-	unsigned char salt[PKCS5_SALT_LEN], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH]; // { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46 };
-	unsigned char buf[BUFFER_SIZE], mbuf[sizeof(magic) - 1], *linebuffer = NULL, *data = NULL;
-	BIO *in=NULL,*b64=NULL,*benc=NULL,*rbio=NULL, *out=NULL, *wbio=NULL;
+	unsigned char salt[PKCS5_SALT_LEN];  //, key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
+	unsigned char buf[KEY_SIZE / 8], *data = NULL;
+	BIO *benc=NULL, *out=NULL, *wbio=NULL;
 	EVP_CIPHER_CTX *ctx = NULL;
-	const EVP_MD *dgst=NULL;
 	BUF_MEM *memptr = NULL;
 	int ret = 1, i = 0;
 	long dataLength = 0;
 
-	for(i = 0; i < BUFFER_SIZE; ++i) buf[i] = i;
+	for(i = 0; i < sizeof(buf); ++i) buf[i] = i;
 	apps_startup();
 	if (!load_config(bio_err, NULL))
 		goto aes_dec_end;
 	cipher=EVP_get_cipherbyname("aes-256-cbc");
-	dgst = EVP_md5();
 
 	//out = BIO_new_mem_buf(buf, BUFFER_SIZE);
 	out = BIO_new(BIO_s_mem());
 	wbio = out;
-	in = BIO_new(BIO_s_file());
-	ret = BIO_read_filename(in, inf);
-	rbio = in;
 
-	if ((b64=BIO_new(BIO_f_base64())) == NULL)
-		goto aes_dec_end;
-	rbio = BIO_push(b64, rbio);
-
-	if(BIO_read(rbio,mbuf,sizeof(mbuf)) != sizeof(mbuf)
-		|| BIO_read(rbio, (unsigned char *)salt, sizeof(salt)) != sizeof(salt))
-		goto aes_dec_end;
-	EVP_BytesToKey(cipher, dgst, salt, pass, passLength, DECRYPT, key, iv);
+	//EVP_BytesToKey(cipher, dgst, salt, pass, passLength, DECRYPT, key, iv);
 
 	if ((benc=BIO_new(BIO_f_cipher())) == NULL)
 		goto aes_dec_end;
@@ -748,74 +747,25 @@ int aes256cbc_dec(char *inf, unsigned char *pass, size_t passLength)
 		goto aes_dec_end;
 	}
 	wbio = BIO_push(benc, wbio);
-
-	linebuffer = (unsigned char *)OPENSSL_malloc(EVP_ENCODE_LENGTH(BUFFER_SIZE));
-	do
+	BIO_write(wbio, inBuf, inLen);
+	ret = BIO_get_mem_data(out, &data);
+	if(ret <= 0)
 	{
-		i = BIO_read(rbio, linebuffer, EVP_ENCODE_LENGTH(BUFFER_SIZE));
-		if(i > 0)
-			BIO_write(wbio, linebuffer, i);
-	} while(i > 0);
-
-	dataLength = BIO_get_mem_data(out, &data);
-	for(i = 0; i < dataLength; ++i)
-	{
-		if(i != data[i])
-		{
-			ret = 1;
-			goto aes_dec_end;
-		}
+		BIO_printf(bio_err, "Error decrypt cipher %s: %d\n", EVP_CIPHER_name(cipher), ret);
+		ERR_print_errors(bio_err);
+		goto aes_dec_end;
 	}
-	ret = 0;
+	for(i = 0; i < ret; ++i) outBuf[i] = data[i];
 aes_dec_end:
-	if(linebuffer != NULL) OPENSSL_free(linebuffer);
 	if (benc != NULL) BIO_free(benc);
-	if (b64 != NULL) BIO_free(b64);
-	if (in != NULL) BIO_free(in);
 	if (out != NULL) BIO_free(out);
 	apps_shutdown();
 	return ret;
 }
 
-void base64test()
-{
-	const char *filename = "base64.txt";
-	BIO *mbio,*b64bio,*bio = NULL;
-	unsigned char buf[BUFFER_SIZE];
-	int i = 0;
-	for(i = 0; i < BUFFER_SIZE; ++i)
-		buf[i] = i;
-	
-	mbio = BIO_new(BIO_s_file());
-	if (BIO_write_filename(mbio, (void*)filename) <= 0)
-	{
-		perror(filename);
-		goto err_base64;
-	}
-	b64bio=BIO_new(BIO_f_base64());
-	bio=BIO_push(b64bio,mbio);
-	BIO_write(bio, buf, sizeof(buf));
-	BIO_flush(bio);
-	BIO_free_all(bio);
-	bio = NULL;
-
-	memset(buf, 0, BUFFER_SIZE);
-	mbio = BIO_new(BIO_s_file());
-	if (BIO_read_filename(mbio, (void*)filename) <= 0)
-	{
-		perror(filename);
-		goto err_base64;
-	}
-	b64bio=BIO_new(BIO_f_base64());
-	bio=BIO_push(b64bio,mbio);
-	BIO_read(bio, buf, BUFFER_SIZE);
-err_base64:
-	if(bio) BIO_free_all(bio);
-}
-
 int fillSeedSIV(void *siv, size_t sivSize, void *content, size_t contentLength, size_t start)
 {
-	int read = 0;
+	int read = 0, i;
 	void *skip = NULL;
 	BIO *b64 = NULL, *bio = BIO_new_mem_buf(content, contentLength);
 
@@ -833,6 +783,11 @@ int fillSeedSIV(void *siv, size_t sivSize, void *content, size_t contentLength, 
 		}
 	}
 	read = BIO_read(bio, siv, sivSize);
+	for(i = 0; i < read; ++i)
+	{
+		if((((unsigned char*)siv)[i] & 0xf0) == 0)
+			((unsigned char*)siv)[i] |= 0x30;
+	}
 fill_end:
 	if(skip != NULL) free(skip);
 	if(bio != NULL) BIO_free_all(bio);
