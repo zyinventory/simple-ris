@@ -74,7 +74,6 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	WIN32_FIND_DATA ffd;
 	_TCHAR buffer[MAX_PATH];
-	size_t length_of_arg;
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	DWORD lockNumber = 0;
 	String lockName;
@@ -82,11 +81,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	locale locChina(locale("chinese"), new numpunct_no_gouping("chinese"));
 	locale::global(locChina);
 	// If the directory is not specified as a command-line argument, print usage.
-	if(argc != 2)
+	if(argc <= 2)
 	{
-		CERR << TEXT("Usage: ") << argv[0] << TEXT(" <directory name>") << endl;
+		CERR << TEXT("Usage: ") << argv[0] << TEXT(" <directory name> [init_password]") << endl;
 		return -1;
 	}
+
+	size_t length_of_arg;
 	// Check that the input path plus 3 is not longer than MAX_PATH.
   	// Three characters are for the "\*" plus NULL appended below.
 	StringCchLength(argv[1], MAX_PATH, &length_of_arg);
@@ -99,7 +100,12 @@ int _tmain(int argc, _TCHAR* argv[])
 	// string to a buffer, then append '\*' to the directory name.
 	StringCchCopy(buffer, MAX_PATH, argv[1]);
 	PathAppend(buffer, TEXT("*"));
-  
+	
+	if(argc == 3)
+		StringCchCopy(init_passwd, 9, argv[2]);
+	else
+		StringCchCopy(init_passwd, 9, "abcdefgh");
+
 	// Find the first file in the directory.
 	hFind = FindFirstFile(buffer, &ffd);
 	if (INVALID_HANDLE_VALUE == hFind) 
@@ -183,7 +189,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		if(hard == soft)
 		{
 			dictionary[DICTIONARY_SIZE + i] = hard ^dictionary[i];
-			assert(hard == dictionary[DICTIONARY_SIZE + i] ^ dictionary[i]);
+			assert(hard == (dictionary[DICTIONARY_SIZE + i] ^ dictionary[i]));
 		}
 		else
 		{
@@ -276,8 +282,22 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -13;
 	}
 	CERR << TEXT("MD5 digest OK") << endl;
+	
+	DWORD *loadDict = reinterpret_cast<DWORD*>(outBuf);
+	for(int i = 0; i < DICTIONARY_SIZE; ++i)
+	{
+		if(loadDict[DICTIONARY_SIZE + i] != (privateShieldPC(loadDict[i]) ^ loadDict[i]))
+		{
+			CERR << TEXT("错误的授权文件") << endl;
+			return -14;
+		}
+	}
 
-	// todo: set new passwd
-	// todo: generate license file, charge 100
+	DWORD data = 0;
+	for(int i = 0; i < 16; ++i)
+		WriteLock(0, reinterpret_cast<unsigned char*>(&data), init_passwd);
+
+	if(strcmp(init_passwd, lock_passwd))
+		ret = SetLock(7, 0, lock_passwd, init_passwd);
 	return 0;
 }
