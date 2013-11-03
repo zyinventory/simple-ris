@@ -51,6 +51,25 @@ static int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, DWORD lock
 		return -1;
 }
 
+static void printKeyIV(SEED_SIV *sivptr, const char *filename)
+{
+	bool writeToFile = true;
+	ofstream keyiv(filename);
+	ostream *keyivPtr = &keyiv;
+	if(keyiv.fail())
+	{
+		keyivPtr = &COUT;
+		writeToFile = false;
+	}
+	*keyivPtr << TEXT("-K ");
+	ostream &formatted = *keyivPtr << uppercase << hex << setw(2);
+	for_each(sivptr->key, sivptr->key + sizeof(sivptr->key), [&formatted](unsigned char c) { formatted << (int)c; });
+	*keyivPtr << TEXT(" -iv ");
+	for_each(sivptr->iv, sivptr->iv + sizeof(sivptr->iv), [&formatted](unsigned char c) { formatted << (int)c; });
+	*keyivPtr << endl;
+	if(writeToFile) keyiv.close();
+}
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	WIN32_FIND_DATA ffd;
@@ -162,10 +181,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		DWORD hard = shieldPC(dictionary[i]), soft = privateShieldPC(dictionary[i]);
 		if(hard == soft)
-			dictionary[DICTIONARY_SIZE + i] = hard;
+		{
+			dictionary[DICTIONARY_SIZE + i] = hard ^dictionary[i];
+			assert(hard == dictionary[DICTIONARY_SIZE + i] ^ dictionary[i]);
+		}
 		else
 		{
-			CERR << TEXT("¼ÓÃÜ¹·´íÎó: Can't find lock number in ") << buffer << endl;
+			CERR << TEXT("¼ÓÃÜ¹·´íÎó: shieldPC mismatch") << endl;
 			return -4;
 		}
 	}
@@ -179,7 +201,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	_chdir(lockName.c_str());
 	
-	char plainFileName[] = "license.plain", licenseFileName[] = "license.aes", licenseRSAEnc[] = "license.key", licenseRSADec[] = "license.dec";
+	char plainFileName[] = "license.plain", licenseFileName[] = "license.aes", licenseRSAEnc[] = "license.key";
 	ofstream licenseFile(plainFileName, ios_base::binary);
 	size_t dictLength = sizeof(dictionary);
 	licenseFile.write(reinterpret_cast<const char*>(dictionary), dictLength);
@@ -203,11 +225,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		CERR << TEXT("Éú³ÉRSA¹«Ô¿¸ñÊ½´íÎó") << endl;
 		return -8;
 	}
-	ostream &formatted = COUT << uppercase << hex << setw(2);
-	for_each(siv.key, siv.key + sizeof(siv.key), [&formatted](unsigned char c) { formatted << (int)c; });
-	COUT << endl;
-	for_each(siv.iv, siv.iv + sizeof(siv.iv), [&formatted](unsigned char c) { formatted << (int)c; });
-	COUT << endl;
+	printKeyIV(&siv, "key_iv.hex");
 
 	size_t encnum = aes256cbc_enc(dictionary, sizeof(dictionary), licenseFileName, siv.key, siv.iv);
 	ret = rsaSign(licenseFileName, licenseRSAEnc, rsaPrivateKey, passwd);
@@ -251,6 +269,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		|| digestSig[2] != originSig[2] || digestSig[3] != originSig[3])
 	{
 		CERR << TEXT("MD5 digest ´íÎó:") << licenseRSAEnc << endl;
+		char licenseRSADec[] = "license.dec";
 		ofstream unrsaStream(licenseRSADec);
 		unrsaStream.write((char*)outBuf, ret);
 		unrsaStream.close();

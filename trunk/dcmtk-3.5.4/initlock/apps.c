@@ -697,7 +697,7 @@ int aes256cbc_enc(void *content, size_t contentLength, char *filename, unsigned 
 	}
 	wbio = BIO_push(benc, wbio);
 	ret = BIO_write(wbio, content, contentLength);
-	BIO_printf(bio_err,"bytes written:%8ld\n", ret);
+	//BIO_printf(bio_err,"bytes written:%8ld\n", ret);
 	BIO_flush(wbio);
 aes_end:
 	if (benc != NULL) BIO_free(benc);
