@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include <openssl/rand.h>
 #include <liblock.h>
+#include <lock.h>
 #include "constant.h"
 using namespace std;
 
@@ -35,7 +36,6 @@ static void printKeyIV(SEED_SIV *sivptr, const char *filename)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	WIN32_FIND_DATA ffd;
 	_TCHAR buffer[MAX_PATH];
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	DWORD lockNumber = 0;
@@ -128,7 +128,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	RAND_pseudo_bytes(reinterpret_cast<unsigned char*>(dictionary), DICTIONARY_SIZE * 4);
 	for(int i = 0; i < DICTIONARY_SIZE; ++i)
 	{
-		DWORD hard = shieldPC(dictionary[i]), soft = privateShieldPC(dictionary[i]);
+		DWORD hard = Lock32_Function(dictionary[i]), soft = privateShieldPC(dictionary[i]);
 		if(hard == soft)
 		{
 			dictionary[DICTIONARY_SIZE + i] = hard ^dictionary[i];
@@ -151,12 +151,21 @@ int _tmain(int argc, _TCHAR* argv[])
 	_chdir(lockName);
 	
 	char plainFileName[] = "license.plain", licenseFileName[] = "license.aes", licenseRSAEnc[] = "license.key";
+
+	ofstream keyout("key.bin", ios_base::binary);
+	if(keyout.fail())
+	{
+		CERR << TEXT("保存key错误") << endl;
+		return -7;
+	}
+	keyout.write(reinterpret_cast<char*>(key), sizeof(key));
+	keyout.close();
+
 	ofstream licenseFile(plainFileName, ios_base::binary);
 	size_t dictLength = sizeof(dictionary);
 	licenseFile.write(reinterpret_cast<const char*>(dictionary), dictLength);
 	licenseFile.close();
 
-	char passwd[] = "wlt2911@^$";
 	_TCHAR *rsaPrivateKey = "private.rsa", rsaPublicKey[16];
 	strcpy_s(rsaPublicKey, sizeof(rsaPublicKey), lockName);
 	strcat_s(rsaPublicKey, sizeof(rsaPublicKey), TEXT(".key"));
@@ -174,7 +183,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		CERR << TEXT("生成RSA公钥格式错误") << endl;
 		return -8;
 	}
-	printKeyIV(&siv, "key_iv.hex");
+	//printKeyIV(&siv, "key_iv.hex");
 
 	size_t encnum = aes256cbc_enc(dictionary, sizeof(dictionary), licenseFileName, siv.key, siv.iv);
 	ret = rsaSign(licenseFileName, licenseRSAEnc, rsaPrivateKey, passwd);

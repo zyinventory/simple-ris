@@ -1,10 +1,6 @@
-#define KEY_SIZE		4096
-#define AES_OFFSET		16
 #define KEY_PRIVKEY		1
 #define KEY_PUBKEY		2
-#define DECRYPT			0
 #define ENCRYPT			1
-#define DICTIONARY_SIZE	56
 
 #if !defined(PKCS5_SALT_LEN)
 #define PKCS5_SALT_LEN	8
@@ -12,6 +8,7 @@
 #define EVP_MAX_IV_LENGTH	16
 #endif
 
+static char passwd[] = "wlt2911@^$";
 static DWORD key[4] = {0, 0, 0, 0};
 unsigned long privateShieldPC(unsigned long x)
 {

@@ -27,9 +27,24 @@
     <ClCompile Include="passwd.c">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="app_rand.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="liblock.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="apps.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="e_os.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="openssl_type.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="lock.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
