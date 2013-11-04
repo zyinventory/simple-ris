@@ -80,6 +80,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	locale locChina(locale("chinese"), new numpunct_no_gouping("chinese"));
 	locale::global(locChina);
+
+	atoi(buffer);
 	// If the directory is not specified as a command-line argument, print usage.
 	if(argc <= 2)
 	{
@@ -293,10 +295,12 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 	}
 
-	DWORD data = 0;
+	WORD data[4] = { 0, 0, 0, 0 };
 	for(int i = 0; i < 16; ++i)
-		WriteLock(0, reinterpret_cast<unsigned char*>(&data), init_passwd);
-
+	{
+		if(i == 15) data[3] = 0xffff;
+		ret = WriteLock(i, reinterpret_cast<unsigned char*>(&data), init_passwd);
+	}
 	if(strcmp(init_passwd, lock_passwd))
 		ret = SetLock(7, 0, lock_passwd, init_passwd);
 	return 0;

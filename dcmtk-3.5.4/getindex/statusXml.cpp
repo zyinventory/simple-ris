@@ -35,24 +35,20 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 	MSXML2::IXMLDOMElementPtr errorInfos = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "error_infos", "");
 	
 	int licenseCount = -1;
-	char lockData[16];
-	int r = rand();
+	unsigned short lockData[4];
+	char countBuffer[12] = "";
 	memset(lockData, 0, sizeof(lockData));
-	if(shieldPC(r) == Lock32_Function(r))
+	int operateResult = ReadLock(15, reinterpret_cast<unsigned char*>(lockData), lock_passwd);
+	if(operateResult == 0)
 	{
-		int operateResult = ReadLock(0, (unsigned char*)lockData, lock_passwd);
-		if(operateResult == 0)
-		{
-			licenseCount = atoi(lockData);
-			if(licenseCount <= 0 || licenseCount > 9999) licenseCount = -1;
-		}
+		licenseCount = lockData[3];
+		if(licenseCount <= 0 || licenseCount > 0xffff) licenseCount = -1;
 	}
-	if(licenseCount == -1)
-		sprintf_s(lockData, "%d", licenseCount);
+	sprintf_s(countBuffer, "%d", licenseCount);
 
 	MSXML2::IXMLDOMElementPtr counter;
 	counter = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "license_counter", "");
-	counter->appendChild(pXmlDom->createTextNode(lockData));
+	counter->appendChild(pXmlDom->createTextNode(countBuffer));
 	root->appendChild(counter);
 
 	CSimpleIni::TNamesDepend sections;
