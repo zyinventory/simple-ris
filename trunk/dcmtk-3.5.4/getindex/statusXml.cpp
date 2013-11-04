@@ -35,19 +35,16 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 	pXmlDom->appendChild(root);
 	MSXML2::IXMLDOMElementPtr errorInfos = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "error_infos", "");
 	
-	int licenseCount = -1;
+	int licenseCount = 0;
 	char countBuffer[12] = "", lock_passwd[9] = "", filename[64] = "..\\etc\\*.key";
 	DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
 	SEED_SIV siv;
 	if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd))
 	{
-		unsigned short lockData[4];
-		memset(lockData, 0, sizeof(lockData));
-		int operateResult = ReadLock(15, reinterpret_cast<unsigned char*>(lockData), lock_passwd);
-		if(operateResult == 0)
+		if(!invalidLock("..\\etc\\license.key", filename, &siv))
 		{
-			licenseCount = lockData[3];
-			if(licenseCount <= 0 || licenseCount > 0xffff) licenseCount = -1;
+			licenseCount = currentCount(lock_passwd);
+			if(licenseCount < 0 || licenseCount > 0xffff) licenseCount = 0;
 		}
 	}
 	sprintf_s(countBuffer, "%d", licenseCount);

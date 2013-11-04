@@ -4,7 +4,7 @@
 #include <fstream>
 #include <iomanip>
 #include <regex>
-#include <lock.h>
+#include "lock.h"
 #include "liblock.h"
 
 using namespace std;
@@ -48,7 +48,7 @@ extern "C" unsigned int getLockNumber(const char *filter, const char *regxPatter
 	return lockNumber;
 }
 
-void mkpasswd(const char *base64, unsigned int salt, char *lock_passwd)
+extern "C" void mkpasswd(const char *base64, unsigned int salt, char *lock_passwd)
 {
 	ostringstream saltBase64;
 	saltBase64 << hex << setw(8) << setfill('0') << Lock32_Function(salt);
@@ -57,7 +57,7 @@ void mkpasswd(const char *base64, unsigned int salt, char *lock_passwd)
 	lock_passwd[8] = '\0';
 }
 
-int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char *gen_passwd)
+extern "C" int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char *gen_passwd)
 {
 	ifstream keystrm(publicKey);
 	if(keystrm.fail()) return -2;
@@ -90,4 +90,66 @@ int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, unsigned int lock
 		return 0;
 	else
 		return -1;
+}
+
+extern "C" int invalidLock(const char *licenseRSAEnc, const char *rsaPublicKey, SEED_SIV *sivptr)
+{
+	unsigned char inBuf[KEY_SIZE / 8], midBuf[KEY_SIZE / 8], outBuf[KEY_SIZE / 8];
+	ifstream licenseRSAStream(licenseRSAEnc, ios_base::binary);
+	licenseRSAStream.read((char*)inBuf, KEY_SIZE / 8);
+	if(licenseRSAStream.fail())
+	{
+		licenseRSAStream.close();
+		return -10;
+	}
+	licenseRSAStream.close();
+
+	int ret = rsaVerify(inBuf, KEY_SIZE / 8, midBuf, rsaPublicKey);
+	if(ret <= 0) return -11;
+
+	// skip magic number and salt
+	ret = aes256cbc_dec(midBuf + AES_OFFSET, ret - AES_OFFSET, outBuf, sivptr->key, sivptr->iv);
+	if(ret <= 0) return -12;
+
+	DWORD digestSig[4], *originSig = reinterpret_cast<DWORD*>(&outBuf[DICTIONARY_SIZE * 8]);
+	MD5_digest(outBuf, DICTIONARY_SIZE * 8, reinterpret_cast<unsigned char*>(digestSig));
+	if(digestSig[0] != originSig[0] || digestSig[1] != originSig[1]
+		|| digestSig[2] != originSig[2] || digestSig[3] != originSig[3])
+		return -13;
+
+	time_t t = time( NULL );
+	struct tm tmp;
+	localtime_s( &tmp, &t );
+	int i = tmp.tm_yday % DICTIONARY_SIZE;
+	DWORD *dict = reinterpret_cast<DWORD*>(outBuf);
+	if(dict[i] == dict[DICTIONARY_SIZE + i] ^ Lock32_Function(dict[i]))
+		return 0;
+	else
+		return -14;
+}
+
+extern "C" int currentCount(char *passwd)
+{
+	int ret;
+	WORD data[4] = { 0, 0, 0, 0 };
+	ret = ReadLock(15, reinterpret_cast<unsigned char*>(data), passwd);
+	if(ret == 0)
+		return data[3];
+	else
+		return -15;
+}
+
+extern "C" int decreaseCount(char *passwd)
+{
+	int ret;
+	WORD data[4] = { 0, 0, 0, 0 };
+	ret = ReadLock(15, reinterpret_cast<unsigned char*>(data), passwd);
+	if(ret == 0)
+	{
+		if(data[3] > 0) --data[3];
+		WriteLock(15, reinterpret_cast<unsigned char*>(data), passwd);
+		return data[3];
+	}
+	else
+		return -15;
 }

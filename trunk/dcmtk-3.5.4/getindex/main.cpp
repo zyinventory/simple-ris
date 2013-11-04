@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include <direct.h>
-#include "lock.h"
+#include <lock.h>
+#include <liblock.h>
 
 static char pPacsBase[MAX_PATH];
 std::ostringstream buffer;
@@ -159,24 +160,20 @@ int burningStudy(const char *media)
 	char lock_passwd[9] = "";
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
-		int licenseCount = 0;
-		int r = rand();
-		if(shieldPC(r) == Lock32_Function(r))
+		char countBuffer[12] = "", lock_passwd[9] = "", filename[64] = "..\\etc\\*.key";
+		DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
+		SEED_SIV siv;
+		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd))
 		{
-			char lockData[16];
-			memset(lockData, 0, sizeof(lockData));
-			int operateResult = ReadLock(0, (unsigned char*)lockData, lock_passwd);
-			if(operateResult == 0)
+			if(!invalidLock("..\\etc\\license.key", filename, &siv))
 			{
-				licenseCount = atoi(lockData);
-				if(licenseCount > 0 && licenseCount < 9999)
+				int licenseCount = currentCount(lock_passwd);
+				if(licenseCount > 0)
 				{
 					int result = generateStudyJDF("0020000d", studyUID, errstream, media);
 					if(result == 0)
 					{
-						memset(lockData, 0, sizeof(lockData));
-						_itoa_s(--licenseCount, lockData, sizeof(lockData), 10);
-						WriteLock(0, (unsigned char*)lockData, lock_passwd);
+						decreaseCount(lock_passwd);
 						cgiHeaderLocation("getindex.exe?status=html");
 						cgiHeaderContentType("text/html");
 						//char okMessage[] = "¿ªÊ¼¿ÌÂ¼CD/DVD...";
