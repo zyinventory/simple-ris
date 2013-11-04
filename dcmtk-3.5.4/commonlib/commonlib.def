@@ -13,7 +13,8 @@ EXPORTS
 	DeleteEmptyFile
 	generateStudyJDF
 	generateIndex
-	setLockValid
+	getBurnOnce
+	setBurnOnce
 	SvcInit
 	ReportSvcStatus
 	getServiceName

@@ -14,14 +14,19 @@ const char UNIT_SEPARATOR = 0x1F;
 const size_t BUFF_SIZE = 1024;
 const int RMDIR_WAIT_SECONDS = 10;
 static char buffer[BUFF_SIZE];
-static bool validLock = false;
+static bool burnOnce = false;
 string archivePath("archdir");
 string indexBase("indexdir");
 string baseurl, downloadUrl, studyDatePath;
 
-void setLockValid()
+bool getBurnOnce()
 {
-	validLock = true;
+	return burnOnce;
+}
+
+void setBurnOnce()
+{
+	burnOnce = true;
 }
 
 HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::IXMLDOMElementPtr& study)
@@ -539,11 +544,8 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 			}
 
 			// jdf file
-			if(validLock)
-			{
-				validLock = false;
-				generateStudyJDF(tag, (const char*)tagValue, cerr);
-			}
+			if(burnOnce)
+				burnOnce = (0 != generateStudyJDF(tag, (const char*)tagValue, cerr));
 		}
 		else
 		{
