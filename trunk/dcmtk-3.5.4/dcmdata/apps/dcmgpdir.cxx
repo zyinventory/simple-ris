@@ -765,13 +765,13 @@ traversal_restart:
 			if(!invalidLock("..\\etc\\license.key", filename, &siv))
 				validLock = currentCount(lock_passwd) > 0;
 
-		if(validLock) setLockValid();
+		if(validLock) setBurnOnce();
 
 		//COUT << "dicomdir OK, create index from " << opt_csv << endl;
 		char buffer[MAX_PATH];
 		strcpy_s(buffer, MAX_PATH, opt_csv);
 		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
-		if(hr == S_OK)
+		if(!getBurnOnce())
 			decreaseCount(lock_passwd);
 	}
 	//COUT << "create index OK" << endl;
