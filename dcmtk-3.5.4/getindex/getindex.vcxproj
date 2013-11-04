@@ -57,8 +57,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>cdll5.lib;commonlib.lib;liblock.lib;libcgic.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cdll5.lib;commonlib.lib;liblock.lib;libcgic.lib;dcmtkeay_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib;$(SolutionDir)..\dcmtk-support\lock</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>copy /y "$(SolutionDir)..\dcmtk-support\lock\cdll5.dll" "$(SolutionDir)$(ConfigurationName)"</Command>
@@ -80,8 +80,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>cdll5.lib;commonlib.lib;liblock.lib;libcgic.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cdll5.lib;commonlib.lib;liblock.lib;libcgic.lib;dcmtkeay_o.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib;$(SolutionDir)..\dcmtk-support\lock</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
     <PostBuildEvent>

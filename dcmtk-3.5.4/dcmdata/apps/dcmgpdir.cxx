@@ -535,7 +535,7 @@ int main(int argc, char *argv[])
 	int licenseCount = 0;
 	int r = rand();
 	if(shieldPC(r) != Lock32_Function(r)) return -1;
-	char lockData[16];
+	char lockData[16], lock_passwd[9] = "";
 	memset(lockData, 0, sizeof(lockData));
 	int operateResult = ReadLock(0, (unsigned char*)lockData, lock_passwd);
 	if(operateResult == 0)

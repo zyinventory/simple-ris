@@ -4,6 +4,8 @@
 #include "constant.h"
 using namespace std;
 
+static char lock_passwd[9] = "";
+
 class numpunct_no_gouping : public numpunct_byname<char>
 {
 public:
@@ -11,46 +13,6 @@ public:
 protected:
     virtual String do_grouping() const { return TEXT(""); } // no grouping
 };
-
-static int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, DWORD lockNumber)
-{
-	ifstream keystrm(publicKey);
-	if(keystrm.fail()) return -2;
-	ostringstream contentBase64;
-	bool startTag = false, endTag = false;
-	char buffer[82];
-	while(!endTag)
-	{
-		keystrm.getline(buffer, sizeof(buffer));
-		if(keystrm.fail()) break;
-		if(buffer[0] == '-' && buffer[1] == '-')
-		{
-			if(startTag)
-				endTag = true;
-			else
-				startTag = true;
-		}
-		else if(startTag && !endTag)
-			contentBase64 << buffer << endl;
-	}
-	string base64(contentBase64.str());
-	char *data = new char[base64.size()];
-	base64.copy(data, base64.size());
-
-	ostringstream saltBase64;
-	saltBase64 << hex << setw(8) << setfill('0') << privateShieldPC(lockNumber);
-	String hash(md5crypt(base64.c_str(), "1", saltBase64.str().c_str()));
-	hash.copy(lock_passwd, 8, hash.length() - 8);
-	lock_passwd[8] = '\0';
-	CERR << TEXT("ÃÜÂë:") << lock_passwd << endl;
-
-	int read = fillSeedSIV(siv, sizeof(SEED_SIV), data, base64.size(), PUBKEY_SKIP + (lockNumber % PUBKEY_MOD));
-	delete data;
-	if(endTag && read == sizeof(SEED_SIV))
-		return 0;
-	else
-		return -1;
-}
 
 static void printKeyIV(SEED_SIV *sivptr, const char *filename)
 {
@@ -77,7 +39,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	_TCHAR buffer[MAX_PATH];
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	DWORD lockNumber = 0;
-	String lockName;
+	_TCHAR lockName[32];
 
 	locale locChina(locale("chinese"), new numpunct_no_gouping("chinese"));
 	locale::global(locChina);
@@ -109,28 +71,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	else
 		StringCchCopy(init_passwd, 9, "abcdefgh");
 
-	// Find the first file in the directory.
-	hFind = FindFirstFile(buffer, &ffd);
-	if (INVALID_HANDLE_VALUE == hFind) 
-	{
-		CERR << TEXT("FindFirstFile Error in ") << buffer << endl;
-		return -3;
-	} 
-	// List all the files in the directory with some info about them.
-	do
-	{
-		if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-		{
-			REGEX pattern(TEXT("^\\d{8}$"));
-			lockName = ffd.cFileName;
-			if(regex_match(lockName, pattern))
-			{
-				SCANF_S(ffd.cFileName, TEXT("%d"), &lockNumber);
-				break;
-			}
-		}
-	} while (FindNextFile(hFind, &ffd) != 0);
-
+	lockNumber = getLockNumber(buffer, "^(\\d{8})$", TRUE, lockName);
 	if(! lockNumber)
 	{
 		DWORD dwError = GetLastError();
@@ -139,7 +80,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		CERR << TEXT("¼ÓÃÜ¹·´íÎó: Can't find lock number in ") << buffer << endl;
 		return -4;
 	}
-	FindClose(hFind);
 
 	CERR << TEXT("Ëø±àÂë:") << lockNumber << endl;
 	DWORD serial = 0;
@@ -155,7 +95,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	CERR << TEXT("ËøÐòÁÐºÅ:") << serialString << endl;
 	
 	StringCchCopy(buffer, MAX_PATH, argv[1]);
-	PathAppend(buffer, lockName.c_str());
+	PathAppend(buffer, lockName);
 	PathAppend(buffer, TEXT("key.txt"));
 	IFSTREAM keystrm(buffer);
 	if(keystrm.bad())
@@ -202,13 +142,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	MD5_digest(dictionary, DICTIONARY_SIZE * 8, reinterpret_cast<unsigned char*>(&dictionary[DICTIONARY_SIZE * 2]));
 
-	if(_mkdir(lockName.c_str()) && errno != EEXIST)
+	if(_mkdir(lockName) && errno != EEXIST)
 	{
 		int err = errno;
 		CERR << TEXT("´´½¨Ä¿Â¼") << lockName << TEXT("´íÎó:") << err << endl;
 		return err;
 	}
-	_chdir(lockName.c_str());
+	_chdir(lockName);
 	
 	char plainFileName[] = "license.plain", licenseFileName[] = "license.aes", licenseRSAEnc[] = "license.key";
 	ofstream licenseFile(plainFileName, ios_base::binary);
@@ -218,7 +158,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	char passwd[] = "wlt2911@^$";
 	_TCHAR *rsaPrivateKey = "private.rsa", rsaPublicKey[16];
-	strcpy_s(rsaPublicKey, sizeof(rsaPublicKey), lockName.c_str());
+	strcpy_s(rsaPublicKey, sizeof(rsaPublicKey), lockName);
 	strcat_s(rsaPublicKey, sizeof(rsaPublicKey), TEXT(".key"));
 	int ret = genrsa(KEY_SIZE, rsaPrivateKey, rsaPublicKey, passwd);
 	if(ret != 0)
@@ -229,7 +169,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	CERR << TEXT("Éú³ÉRSAÃÜÔ¿:") << rsaPrivateKey << TEXT(",") << rsaPublicKey << endl;
 
 	SEED_SIV siv;
-	if(loadPublicKeyContent(rsaPublicKey, &siv, lockNumber))
+	if(loadPublicKeyContent(rsaPublicKey, &siv, lockNumber, lock_passwd))
 	{
 		CERR << TEXT("Éú³ÉRSA¹«Ô¿¸ñÊ½´íÎó") << endl;
 		return -8;

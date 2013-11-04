@@ -156,6 +156,7 @@ int queryXml(int hostLength)
 int burningStudy(const char *media)
 {
 	ostringstream errstream;
+	char lock_passwd[9] = "";
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
 		int licenseCount = 0;
