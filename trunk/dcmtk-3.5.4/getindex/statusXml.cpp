@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "liblock.h"
 #include "lock.h"
 #import <msxml3.dll>
 using namespace std;
@@ -34,6 +35,9 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 	pXmlDom->appendChild(root);
 	MSXML2::IXMLDOMElementPtr errorInfos = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "error_infos", "");
 	
+	char filename[64];
+	DWORD lockNumber = getLockNumber("..\\etc\\*.key", "^(\\d{8})\\.key$", FALSE, NULL);
+
 	int licenseCount = -1;
 	unsigned short lockData[4];
 	char countBuffer[12] = "";
