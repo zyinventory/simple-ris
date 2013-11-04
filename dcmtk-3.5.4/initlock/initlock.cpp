@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include <openssl/rand.h>
+#include <liblock.h>
 #include "constant.h"
 using namespace std;
 

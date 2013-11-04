@@ -51,14 +51,14 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;OPENSSL_NO_ENGINE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)getindex;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)getindex;$(SolutionDir)liblock;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\lock;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>dcmtkssl_d.lib;dcmtkeay_d.lib;cdll5.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>liblock.lib;dcmtkssl_d.lib;dcmtkeay_d.lib;cdll5.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -69,7 +69,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;OPENSSL_NO_ENGINE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)getindex;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)getindex;$(SolutionDir)liblock;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -77,8 +77,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\lock;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>dcmtkssl_o.lib;dcmtkeay_o.lib;cdll5.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>liblock.lib;dcmtkssl_o.lib;dcmtkeay_o.lib;cdll5.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -101,10 +101,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="initlock.cpp" />
-    <ClCompile Include="passwd.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
+    <ClCompile Include="passwd.c" />
     <ClCompile Include="perm_lib.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>

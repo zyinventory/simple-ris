@@ -37,9 +37,6 @@ extern "C"
 	int rsaVerify(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, const char *keyfile);
 	int aes256cbc_enc(void *content, size_t contentLength, char *filename, unsigned char *key, unsigned char* iv);
 	int aes256cbc_dec(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, unsigned char *key, unsigned char* iv);
-	int fillSeedSIV(void *siv, size_t sivSize, void *content, size_t contentLength, size_t start);
-	void MD5_digest(void *data, size_t dataLength, unsigned char *md);
-	void base64test();
 }
 
 #define COUT cout			//wcout
