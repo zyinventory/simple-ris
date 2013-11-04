@@ -24,6 +24,9 @@
     <ClCompile Include="utl.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="passwd.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="liblock.h">

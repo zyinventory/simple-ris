@@ -31,7 +31,6 @@
 
 extern "C"
 {
-	char *md5crypt(const char *passwd, const char *magic, const char *salt);
 	int genrsa(int num, char *privateKey, char *publicKey, char *pass);
 	int rsaSign(char *infile, char *outfile, char *keyfile, char *pass);
 	int rsaVerify(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, const char *keyfile);
