@@ -78,6 +78,7 @@
 #include <atlbase.h>
 #include <atlcom.h>
 #include <lock.h>
+#include <liblock.h>
 #include "commonlib.h"
 #import <mqoa.dll>
 
@@ -532,21 +533,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	int licenseCount = 0;
-	int r = rand();
-	if(r != Lock32_Function(r)) return -1;
-	char lockData[16], lock_passwd[9] = "";
-	memset(lockData, 0, sizeof(lockData));
-	int operateResult = ReadLock(0, (unsigned char*)lockData, lock_passwd);
-	if(operateResult == 0)
-	{
-		licenseCount = atoi(lockData);
-		if(licenseCount <= 0 || licenseCount > 9999)
-			return -2;
-	}
-	else
-		return operateResult;
-
 	// remove DICOMDIR for avoiding warning message.
 	// algorithm copied from OFList<T>::remove
 	OFIterator<OFString> first = fileNames.begin();
@@ -771,16 +757,22 @@ traversal_restart:
 
 	if(opt_csv && *opt_csv != '\0')
 	{
+		bool validLock = false;
+		char lock_passwd[9] = "", filename[64] = "..\\etc\\*.key";
+		DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
+		SEED_SIV siv;
+		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd))
+			if(!invalidLock("..\\etc\\license.key", filename, &siv))
+				validLock = currentCount(lock_passwd) > 0;
+
+		if(validLock) setLockValid();
+
 		//COUT << "dicomdir OK, create index from " << opt_csv << endl;
 		char buffer[MAX_PATH];
 		strcpy_s(buffer, MAX_PATH, opt_csv);
 		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
 		if(hr == S_OK)
-		{
-			memset(lockData, 0, sizeof(lockData));
-			_itoa_s(--licenseCount, lockData, sizeof(lockData), 10);
-			WriteLock(0, (unsigned char*)lockData, lock_passwd);
-		}
+			decreaseCount(lock_passwd);
 	}
 	//COUT << "create index OK" << endl;
 /*

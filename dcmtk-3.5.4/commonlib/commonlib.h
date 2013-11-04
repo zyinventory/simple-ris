@@ -40,6 +40,7 @@ bool prepareFileDir(const char *path);
 int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator);
 BOOL DeleteEmptyFile(const char *filePath);
 int generateStudyJDF(const char *tag, const char *tagValue, std::ostream &errstrm, const char *media = MEDIA_AUTO);
+void setLockValid();
 long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV = false);
 time_t dcmdate2tm(int dcmdate);
 bool generateStudyXML(const char *line, std::ostream &xmlStream, bool isEncapsulated = false);

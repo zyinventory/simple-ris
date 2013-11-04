@@ -14,9 +14,15 @@ const char UNIT_SEPARATOR = 0x1F;
 const size_t BUFF_SIZE = 1024;
 const int RMDIR_WAIT_SECONDS = 10;
 static char buffer[BUFF_SIZE];
+static bool validLock = false;
 string archivePath("archdir");
 string indexBase("indexdir");
 string baseurl, downloadUrl, studyDatePath;
+
+void setLockValid()
+{
+	validLock = true;
+}
 
 HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::IXMLDOMElementPtr& study)
 {
@@ -533,7 +539,11 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 			}
 
 			// jdf file
-			generateStudyJDF(tag, (const char*)tagValue, cerr);
+			if(validLock)
+			{
+				validLock = false;
+				generateStudyJDF(tag, (const char*)tagValue, cerr);
+			}
 		}
 		else
 		{
