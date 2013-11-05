@@ -44,7 +44,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	locale locChina(locale("chinese"), new numpunct_no_gouping("chinese"));
 	locale::global(locChina);
 
-	atoi(buffer);
 	// If the directory is not specified as a command-line argument, print usage.
 	if(argc <= 2)
 	{
