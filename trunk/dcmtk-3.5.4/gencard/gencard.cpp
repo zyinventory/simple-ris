@@ -65,25 +65,47 @@ int _tmain(int argc, _TCHAR* argv[])
 		swap(cross[1], cross[2]);
 		swap(cross[4], cross[7]);
 		swap(cross[5], cross[6]);
-		// end encrypt
 
 		buy[0] = *reinterpret_cast<DWORD*>(cross);
 		buy[1] = *reinterpret_cast<DWORD*>(&cross[4]);
-		char b24buf[8] = "       ";
+		char b24buf[15] = "              ";
 		for(int i = 0; i < 7; ++i)
 		{
 			b24buf[6 - i] = code[buy[0] % 24];
 			buy[0] /= 24;
 		}
-		cerr << b24buf << '-';
 		for(int i = 0; i < 7; ++i)
 		{
-			b24buf[6 - i] = code[buy[1] % 24];
+			b24buf[13 - i] = code[buy[1] % 24];
 			buy[1] /= 24;
 		}
-		cerr << b24buf << ' ';
+		// end encrypt
 
+		cerr << b24buf << ' ';
+		
 		// begin decrypt
+		buy[0] = 0;
+		buy[1] = 0;
+		bool decodeOK = true;
+		for(int i = 0; i < 14; ++i)
+		{
+			char c = b24buf[i] - 0x32;
+			if(c >= 0 && c < 40 && decode[c] != -1)
+				buy[i/7] = buy[i/7] * 24 + (DWORD)decode[c];
+			else
+			{
+				decodeOK = false;
+				break;
+			}
+		}
+		if(!decodeOK)
+		{
+			cerr << "base24 error" << endl;
+			continue;
+		}
+
+		*reinterpret_cast<DWORD*>(cross) = buy[0];
+		*reinterpret_cast<DWORD*>(&cross[4]) = buy[1];
 		swap(cross[0], cross[3]);
 		swap(cross[1], cross[2]);
 		swap(cross[4], cross[7]);
