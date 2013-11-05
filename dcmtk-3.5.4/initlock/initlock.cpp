@@ -125,13 +125,15 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 
 	DWORD dictionary[DICTIONARY_SIZE * 2 + 4]; // (rand_request, key_response) * 2 + md5_digest
-	RAND_pseudo_bytes(reinterpret_cast<unsigned char*>(dictionary), DICTIONARY_SIZE * 4);
 	for(int i = 0; i < DICTIONARY_SIZE; ++i)
 	{
+		do{
+			RAND_pseudo_bytes(reinterpret_cast<unsigned char*>(&dictionary[i]), sizeof(DWORD));
+		}while(&dictionary[i] != find(dictionary, &dictionary[i], dictionary[i]));
 		DWORD hard = Lock32_Function(dictionary[i]), soft = privateShieldPC(dictionary[i]);
 		if(hard == soft)
 		{
-			dictionary[DICTIONARY_SIZE + i] = hard ^dictionary[i];
+			dictionary[DICTIONARY_SIZE + i] = hard ^ dictionary[i];
 			assert(hard == (dictionary[DICTIONARY_SIZE + i] ^ dictionary[i]));
 		}
 		else
@@ -140,7 +142,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			return -4;
 		}
 	}
-	MD5_digest(dictionary, DICTIONARY_SIZE * 8, reinterpret_cast<unsigned char*>(&dictionary[DICTIONARY_SIZE * 2]));
+	MD5_digest(dictionary, DICTIONARY_SIZE * sizeof(DWORD) * 2, reinterpret_cast<unsigned char*>(&dictionary[DICTIONARY_SIZE * 2]));
 
 	if(_mkdir(lockName) && errno != EEXIST)
 	{
@@ -159,6 +161,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -7;
 	}
 	keyout.write(reinterpret_cast<char*>(key), sizeof(key));
+	keyout.write(reinterpret_cast<char*>(&serial), sizeof(serial));
+	keyout.write(reinterpret_cast<char*>(&lockNumber), sizeof(lockNumber));
 	keyout.close();
 
 	ofstream licenseFile(plainFileName, ios_base::binary);
