@@ -59,13 +59,13 @@ int _tmain(int argc, _TCHAR* argv[])
 		buy[1] |= (realbuy << 16) ^ (security.serial & 0xFFFF0000);
 		buy[0] = privateShieldPC(buy[1]);
 		buy[1] ^= buy[0];
-		for(int i = 0; i < 4; ++i)
-		{
-			cross[2 * i] = buy[0] & 0xFF;
-			buy[0] >>= 8;
-			cross[2 * i + 1] = buy[1] & 0xFF;
-			buy[1] >>= 8;
-		}
+		*reinterpret_cast<DWORD*>(cross) = buy[0];
+		*reinterpret_cast<DWORD*>(&cross[4]) = buy[1];
+		swap(cross[0], cross[3]);
+		swap(cross[1], cross[2]);
+		swap(cross[4], cross[7]);
+		swap(cross[5], cross[6]);
+		// end encrypt
 
 		buy[0] = *reinterpret_cast<DWORD*>(cross);
 		buy[1] = *reinterpret_cast<DWORD*>(&cross[4]);
@@ -81,18 +81,15 @@ int _tmain(int argc, _TCHAR* argv[])
 			b24buf[6 - i] = code[buy[1] % 24];
 			buy[1] /= 24;
 		}
-		cerr << b24buf << endl;
+		cerr << b24buf << ' ';
 
 		// begin decrypt
-		buy[0] = 0;
-		buy[1] = 0;
-		for(int i = 0; i < 4; ++i)
-		{
-			DWORD part = cross[2 * i];
-			buy[0] |= (part << (i * 8));
-			part = cross[2 * i + 1];
-			buy[1] |= (part << (i * 8));
-		}
+		swap(cross[0], cross[3]);
+		swap(cross[1], cross[2]);
+		swap(cross[4], cross[7]);
+		swap(cross[5], cross[6]);
+		buy[0] = *reinterpret_cast<DWORD*>(cross);
+		buy[1] = *reinterpret_cast<DWORD*>(&cross[4]);
 		DWORD origin = buy[0] ^ buy[1];
 		if(buy[0] == privateShieldPC(origin))
 		{
