@@ -128,7 +128,9 @@
     </None>
     <None Include="web\scripts\charhash.js" />
     <None Include="web\scripts\jquery.ui.datepicker-zh-CN.js" />
-    <None Include="web\xslt\charge.xsl" />
+    <None Include="web\xslt\charge.xsl">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="web\xslt\dayrec.xsl">
       <SubType>Designer</SubType>
     </None>

@@ -3,7 +3,7 @@
 struct lock_key_st { unsigned int key[4]; unsigned int serial, lockNumber; };
 typedef struct lock_key_st LOCK_KEY;
 LOCK_KEY security;
-unsigned int privateShieldPC(unsigned int x)
+unsigned long __stdcall privateShieldPC(unsigned long x)
 {
 	unsigned long y,y1,y2,x1,x2,y11,y22;
 	unsigned long outdata1,outdata2;
