@@ -174,7 +174,9 @@ int genrsa(int num, char *privateKey, char *publicKey, char *passout)
 	RSA *rsa = NULL, *rsaPublic = NULL;
 	BIO *out = NULL;
 
+	BIO_printf(bio_err,"app starting...\n");
 	apps_startup();
+	BIO_printf(bio_err,"app start\n");
 	BN_GENCB_set(&cb, genrsa_cb, bio_err);
 	if (bio_err == NULL)
 		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
@@ -204,6 +206,7 @@ int genrsa(int num, char *privateKey, char *publicKey, char *passout)
 		}
 		else
 		{
+			BIO_printf(bio_err,"using existing private key\n");
 			rsa = loadCheckPrivateKey(privateKey, TRUE, passout);
 			if(rsa == NULL && BIO_write_filename(out, privateKey) <= 0)
 			{

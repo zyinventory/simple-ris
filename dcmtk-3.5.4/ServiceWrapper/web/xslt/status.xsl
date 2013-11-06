@@ -174,7 +174,6 @@
         <title>设备状态</title>
       </head>
       <body>
-        <b>可刻录光盘数：<xsl:value-of select="license_counter/text()"/></b>
         <dl>
           <xsl:apply-templates select="ACTIVE_JOB"/>
           <xsl:apply-templates select="COMPLETE_JOB"/>

@@ -122,7 +122,7 @@ extern "C" int invalidLock(const char *licenseRSAEnc, const char *rsaPublicKey, 
 	localtime_s( &tmp, &t );
 	int i = tmp.tm_yday % DICTIONARY_SIZE;
 	DWORD *dict = reinterpret_cast<DWORD*>(outBuf);
-	if(dict[i] == dict[DICTIONARY_SIZE + i] ^ Lock32_Function(dict[i]))
+	if(dict[i] == (dict[DICTIONARY_SIZE + i] ^ Lock32_Function(dict[i])))
 		return 0;
 	else
 		return -14;
