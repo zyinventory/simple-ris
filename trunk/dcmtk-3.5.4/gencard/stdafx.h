@@ -20,6 +20,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <regex>
 #include <direct.h>
 
 class numpunct_no_gouping : public std::numpunct_byname<char>

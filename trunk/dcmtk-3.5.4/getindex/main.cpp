@@ -6,6 +6,7 @@
 static char pPacsBase[MAX_PATH];
 std::ostringstream buffer;
 int statusXml(CSimpleIni &ini, const char *statusFlag);
+int statusCharge(const char *flag);
 
 #define CHINESE_LOCAL "chinese"  // full name: Chinese_People's Republic of China.936, posix: zh_CN.GBK
 static char patientID[65], studyUID[65], host[65], indexPath[MAX_PATH];
@@ -218,6 +219,14 @@ int reportStatus(const char *flag)
 	return result;
 }
 
+int reportCharge(const char *flag)
+{
+	CoInitialize(NULL);
+	int result = statusCharge(flag);
+	CoUninitialize();
+	return result;
+}
+
 int work()
 {
 	//locale::global(locale(CHINESE_LOCAL));
@@ -234,13 +243,15 @@ int work()
 		hostLength = sprintf_s(host, 64, "%s:%s", cgiServerName, cgiServerPort);
 	else
 		hostLength = sprintf_s(host, 64, "%s", cgiServerName);
-	char flag[16];
+	char flag[32];
 	if(cgiFormNotFound != cgiFormString("media", flag, sizeof(flag)) && strlen(flag) > 0)
 		return burningStudy(flag);
 	else if(cgiFormNotFound != cgiFormString("jnlp", flag, sizeof(flag)) && strlen(flag) > 0)
 		return jnlp(hostLength);
 	else if(cgiFormNotFound != cgiFormString("status", flag, sizeof(flag)) && strlen(flag) > 0)
 		return reportStatus(flag);
+	else if(cgiFormNotFound != cgiFormString("charge", flag, sizeof(flag)) && strlen(flag) > 0)
+		return reportCharge(flag);
 	else
 		return queryXml(hostLength);
 }

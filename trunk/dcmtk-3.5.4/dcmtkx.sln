@@ -177,6 +177,11 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "liblock", "liblock\liblock.vcxproj", "{2EDA894D-31F5-4DC1-8CF3-033EA19C3436}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gencard", "gencard\gencard.vcxproj", "{27EA5740-3A51-46E7-8868-50FF7FEFED25}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9509B15B-7469-4DD2-8660-2C9CFA432F1B} = {9509B15B-7469-4DD2-8660-2C9CFA432F1B}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libb24", "libb24\libb24.vcxproj", "{9509B15B-7469-4DD2-8660-2C9CFA432F1B}"
 EndProject
 Global
 	GlobalSection(SubversionScc) = preSolution
@@ -774,6 +779,14 @@ Global
 		{27EA5740-3A51-46E7-8868-50FF7FEFED25}.Release|Win32.Build.0 = Release|Win32
 		{27EA5740-3A51-46E7-8868-50FF7FEFED25}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
 		{27EA5740-3A51-46E7-8868-50FF7FEFED25}.RelWithDebInfo|Win32.Build.0 = Release|Win32
+		{9509B15B-7469-4DD2-8660-2C9CFA432F1B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9509B15B-7469-4DD2-8660-2C9CFA432F1B}.Debug|Win32.Build.0 = Debug|Win32
+		{9509B15B-7469-4DD2-8660-2C9CFA432F1B}.MinSizeRel|Win32.ActiveCfg = Release|Win32
+		{9509B15B-7469-4DD2-8660-2C9CFA432F1B}.MinSizeRel|Win32.Build.0 = Release|Win32
+		{9509B15B-7469-4DD2-8660-2C9CFA432F1B}.Release|Win32.ActiveCfg = Release|Win32
+		{9509B15B-7469-4DD2-8660-2C9CFA432F1B}.Release|Win32.Build.0 = Release|Win32
+		{9509B15B-7469-4DD2-8660-2C9CFA432F1B}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
+		{9509B15B-7469-4DD2-8660-2C9CFA432F1B}.RelWithDebInfo|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

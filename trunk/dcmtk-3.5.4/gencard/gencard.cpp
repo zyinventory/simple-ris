@@ -1,6 +1,39 @@
 #include "stdafx.h"
+#include <libb24.h>
 #include "gencard.h"
 using namespace std;
+
+const size_t TOTAL = 1022;
+
+int getLeakLockNumber(const char *filter, const char *regxPattern)
+{
+	WIN32_FIND_DATA ffd;
+	char mask[TOTAL];
+
+	memset(mask, -1, sizeof(mask));
+	HANDLE hFind = FindFirstFile(filter, &ffd);
+	if (INVALID_HANDLE_VALUE == hFind) return 0;
+
+	regex pattern(TEXT(regxPattern));
+	match_results<string::const_iterator> result;
+	// List all the files in the directory with some info about them.
+	do
+	{
+		string fileName(ffd.cFileName);
+		if(regex_match(fileName, result, pattern))
+		{
+			char buffer[MAX_PATH];
+			result[1].str().copy(buffer, result[1].length(), 0);
+			buffer[result[1].length()] = '\0';
+			unsigned int lockNumber = 0;
+			sscanf_s(buffer, TEXT("%04d"), &lockNumber);
+			if(lockNumber < TOTAL) mask[lockNumber] = 0;
+		}
+	} while (FindNextFile(hFind, &ffd) != 0);
+	FindClose(hFind);
+
+	return find(mask, mask + TOTAL, -1) - mask;
+}
 
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -47,93 +80,75 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	keystrm.close();
 
-	// scan *.txt, fileno = max(fileno) + 1 
-	unsigned int fileno = 0;
+	unsigned int fileno = getLeakLockNumber("*.txt", "^(\\d{4})\\.txt$");
+	unsigned char cross[8];
+	DWORD buy[2], realbuy;
+	realbuy = ((box << 10) + fileno) & 0xFFFF;
+	buy[1] = realbuy ^ (security.serial & 0xFFFF);
+	buy[1] |= (realbuy << 16) ^ (security.serial & 0xFFFF0000);
+	buy[0] = privateShieldPC(buy[1]);
+	buy[1] ^= buy[0];
+	*reinterpret_cast<DWORD*>(cross) = buy[0];
+	*reinterpret_cast<DWORD*>(&cross[4]) = buy[1];
+	swap(cross[0], cross[3]);
+	swap(cross[1], cross[2]);
+	swap(cross[4], cross[7]);
+	swap(cross[5], cross[6]);
 
-	for(fileno = 0; fileno < 100; ++fileno)
+	buy[0] = *reinterpret_cast<DWORD*>(cross);
+	buy[1] = *reinterpret_cast<DWORD*>(&cross[4]);
+	char b24buf[15] = "              ";
+	for(int i = 0; i < 7; ++i)
 	{
-		unsigned char cross[8];
-		DWORD buy[2], realbuy;
-		realbuy = ((box << 10) + fileno) & 0xFFFF;
-		buy[1] = realbuy ^ (security.serial & 0xFFFF);
-		buy[1] |= (realbuy << 16) ^ (security.serial & 0xFFFF0000);
-		buy[0] = privateShieldPC(buy[1]);
-		buy[1] ^= buy[0];
-		*reinterpret_cast<DWORD*>(cross) = buy[0];
-		*reinterpret_cast<DWORD*>(&cross[4]) = buy[1];
-		swap(cross[0], cross[3]);
-		swap(cross[1], cross[2]);
-		swap(cross[4], cross[7]);
-		swap(cross[5], cross[6]);
+		b24buf[6 - i] = base24code[buy[0] % 24];
+		buy[0] /= 24;
+	}
+	for(int i = 0; i < 7; ++i)
+	{
+		b24buf[13 - i] = base24code[buy[1] % 24];
+		buy[1] /= 24;
+	}
+	// end encrypt
 
-		buy[0] = *reinterpret_cast<DWORD*>(cross);
-		buy[1] = *reinterpret_cast<DWORD*>(&cross[4]);
-		char b24buf[15] = "              ";
-		for(int i = 0; i < 7; ++i)
-		{
-			b24buf[6 - i] = code[buy[0] % 24];
-			buy[0] /= 24;
-		}
-		for(int i = 0; i < 7; ++i)
-		{
-			b24buf[13 - i] = code[buy[1] % 24];
-			buy[1] /= 24;
-		}
-		// end encrypt
-
-		cerr << b24buf << ' ';
+	cerr << "流水号:" << fileno << ", " << box << "盒, 充值密码: " << b24buf;
 		
-		// begin decrypt
-		buy[0] = 0;
-		buy[1] = 0;
-		bool decodeOK = true;
-		for(int i = 0; i < 14; ++i)
-		{
-			char c = b24buf[i] - 0x32;
-			if(c >= 0 && c < 40 && decode[c] != -1)
-				buy[i/7] = buy[i/7] * 24 + (DWORD)decode[c];
-			else
-			{
-				decodeOK = false;
-				break;
-			}
-		}
-		if(!decodeOK)
-		{
-			cerr << "base24 error" << endl;
-			continue;
-		}
-
-		*reinterpret_cast<DWORD*>(cross) = buy[0];
-		*reinterpret_cast<DWORD*>(&cross[4]) = buy[1];
-		swap(cross[0], cross[3]);
-		swap(cross[1], cross[2]);
-		swap(cross[4], cross[7]);
-		swap(cross[5], cross[6]);
-		buy[0] = *reinterpret_cast<DWORD*>(cross);
-		buy[1] = *reinterpret_cast<DWORD*>(&cross[4]);
-		DWORD origin = buy[0] ^ buy[1];
-		if(buy[0] == privateShieldPC(origin))
-		{
-			DWORD test1 = (origin & 0xFFFF) ^ (security.serial & 0xFFFF);
-			DWORD test2 = (origin & 0xFFFF0000) ^ (security.serial & 0xFFFF0000);
-			test2 >>= 16;
-			if(test1 == test2)
-			{
-				DWORD box_r = test1 >> 10;
-				DWORD fileno_r = test1 & 0x3FF;
-				if(box == box_r && fileno == fileno_r)
-					cerr << fileno_r << ',' << box_r << endl;
-				else
-					cerr << "decode check error " << fileno << endl;
-			}
-			else
-				cerr << "bit check error " << fileno << endl;
-		}
-		else
-			cerr << "lock check error " << fileno << endl;
+	// begin decrypt
+	int test = decodeCharge(b24buf, security.serial, privateShieldPC);
+	switch(test)
+	{
+	case -1:
+		cerr << " base24 error " << fileno << endl;
+		return test;
+	case -2:
+		cerr << " bit check error " << fileno << endl;
+		return test;
+	case -3:
+		cerr << " lock check error " << fileno << endl;
+		return test;
 	}
 
+	DWORD box_r = ((unsigned int)test) >> 10;
+	DWORD fileno_r = test & 0x3FF;
+	if(box == box_r && fileno == fileno_r)
+	{
+		char filename[64];
+		sprintf_s(filename, "%04d.txt", fileno);
+		ofstream card(filename);
+		if(card.fail())
+		{
+			cerr << " 生成文件错误:" << filename << endl;
+		}
+		else
+		{
+			card << b24buf << endl;
+			card.close();
+			cerr << " 生成OK" << endl;
+		}
+	}
+	else
+	{
+		cerr << " decode check error " << fileno << endl;
+		return -4;
+	}
 	return 0;
 }
-

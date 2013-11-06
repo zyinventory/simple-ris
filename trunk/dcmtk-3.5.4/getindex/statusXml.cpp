@@ -34,25 +34,6 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 	MSXML2::IXMLDOMElementPtr root = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "tdb_status", "");
 	pXmlDom->appendChild(root);
 	MSXML2::IXMLDOMElementPtr errorInfos = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "error_infos", "");
-	
-	int licenseCount = 0;
-	char countBuffer[12] = "", lock_passwd[9] = "", filename[64] = "..\\etc\\*.key";
-	DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
-	SEED_SIV siv;
-	if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd))
-	{
-		if(!invalidLock("..\\etc\\license.key", filename, &siv))
-		{
-			licenseCount = currentCount(lock_passwd);
-			if(licenseCount < 0 || licenseCount > 0xffff) licenseCount = 0;
-		}
-	}
-	sprintf_s(countBuffer, "%d", licenseCount);
-
-	MSXML2::IXMLDOMElementPtr counter;
-	counter = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "license_counter", "");
-	counter->appendChild(pXmlDom->createTextNode(countBuffer));
-	root->appendChild(counter);
 
 	CSimpleIni::TNamesDepend sections;
 	ini.GetAllSections(sections);
@@ -130,6 +111,62 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 		}
 		++sec;
 	}
+	if(hasError) root->appendChild(errorInfos);
+	buffer << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml;
+	outputContent(false);
+	return 0;
+}
+
+int statusCharge(const char *flag)
+{
+	bool hasError = false;
+	MSXML2::IXMLDOMDocumentPtr pXmlDom;
+	HRESULT hr = pXmlDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+	if (FAILED(hr))
+	{
+		buffer << "Failed to CreateInstance on an XML DOM." << endl;
+		outputContent(true);
+		return -1;
+	}
+	pXmlDom->preserveWhiteSpace = VARIANT_FALSE;
+	pXmlDom->async = VARIANT_FALSE;
+
+	MSXML2::IXMLDOMProcessingInstructionPtr pi = pXmlDom->createProcessingInstruction("xml", "version=\"1.0\" encoding=\"gbk\"");
+	if (pi != NULL) pXmlDom->appendChild(pi);
+
+	MSXML2::IXMLDOMProcessingInstructionPtr pXslt = NULL;
+	pXslt = pXmlDom->createProcessingInstruction("xml-stylesheet", "type=\"text/xml\" href=\"../xslt/charge.xsl\"");
+	if (pXslt != NULL) pXmlDom->appendChild(pXslt);
+	
+	MSXML2::IXMLDOMElementPtr root = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "charge_status", "");
+	pXmlDom->appendChild(root);
+	MSXML2::IXMLDOMElementPtr errorInfos = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "error_infos", "");
+
+	int licenseCount = 0;
+	char countBuffer[12] = "", lock_passwd[9] = "", filename[64] = "..\\etc\\*.key";
+	DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
+	SEED_SIV siv;
+	if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd))
+	{
+		if(!invalidLock("..\\etc\\license.key", filename, &siv))
+		{
+			licenseCount = currentCount(lock_passwd);
+			if(licenseCount < 0 || licenseCount > 0xffff) licenseCount = 0;
+		}
+	}
+	
+	sprintf_s(countBuffer, "%d", lockNumber);
+	MSXML2::IXMLDOMElementPtr lockName;
+	lockName = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "lock_number", "");
+	lockName->appendChild(pXmlDom->createTextNode(countBuffer));
+	root->appendChild(lockName);
+
+	sprintf_s(countBuffer, "%d", licenseCount);
+	MSXML2::IXMLDOMElementPtr counter;
+	counter = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "license_counter", "");
+	counter->appendChild(pXmlDom->createTextNode(countBuffer));
+	root->appendChild(counter);
+
 	if(hasError) root->appendChild(errorInfos);
 	buffer << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml;
 	outputContent(false);
