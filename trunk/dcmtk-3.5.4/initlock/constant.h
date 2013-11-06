@@ -12,7 +12,7 @@
 
 static char passwd[] = "wlt2911@^$";
 static DWORD key[4] = {0, 0, 0, 0};
-unsigned long privateShieldPC(unsigned long x)
+unsigned long __stdcall privateShieldPC(unsigned long x)
 {
 	unsigned long y,y1,y2,x1,x2,y11,y22;
 	unsigned long outdata1,outdata2;

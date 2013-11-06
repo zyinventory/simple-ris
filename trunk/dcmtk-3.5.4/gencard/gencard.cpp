@@ -3,12 +3,10 @@
 #include "gencard.h"
 using namespace std;
 
-const size_t TOTAL = 1022;
-
 int getLeakLockNumber(const char *filter, const char *regxPattern)
 {
 	WIN32_FIND_DATA ffd;
-	char mask[TOTAL];
+	char mask[TOTAL_BUY];
 
 	memset(mask, -1, sizeof(mask));
 	HANDLE hFind = FindFirstFile(filter, &ffd);
@@ -27,21 +25,21 @@ int getLeakLockNumber(const char *filter, const char *regxPattern)
 			buffer[result[1].length()] = '\0';
 			unsigned int lockNumber = 0;
 			sscanf_s(buffer, TEXT("%04d"), &lockNumber);
-			if(lockNumber < TOTAL) mask[lockNumber] = 0;
+			if(lockNumber < TOTAL_BUY) mask[lockNumber] = 0;
 		}
 	} while (FindNextFile(hFind, &ffd) != 0);
 	FindClose(hFind);
 
-	return find(mask, mask + TOTAL, -1) - mask;
+	return find(mask, mask + TOTAL_BUY, -1) - mask;
 }
 
 int _tmain(int argc, _TCHAR* argv[])
 {
 	locale locChina(locale("chinese"), new numpunct_no_gouping("chinese"));
 	locale::global(locChina);
-	if(argc != 2 && argc != 3)
+	if(argc < 2 || argc > 4)
 	{
-		cerr << "用法: " << argv[0] << " <加密狗号> [购买盒数=2]" << endl;
+		cerr << "用法: " << argv[0] << " <加密狗号> [购买盒数=2] [特定序号]" << endl;
 		return -1;
 	}
 
@@ -53,15 +51,15 @@ int _tmain(int argc, _TCHAR* argv[])
 			cerr << "未知错误" << endl;
 		return -2;
 	}
-	unsigned int box = argc == 3 ? atoi(argv[2]) : 2;
+	unsigned int box = argc >= 3 ? atoi(argv[2]) : 2;
 	if(box == 0)
 	{
 		cerr << "购买盒数错误" << endl;
 		return -2;
 	}
-	if(box > 20)
+	if(box > MAX_BOX)
 	{
-		cerr << "一次最多购买20盒" << endl;
+		cerr << "一次最多购买" << MAX_BOX << "盒" << endl;
 		return -2;
 	}
 
@@ -80,7 +78,15 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	keystrm.close();
 
-	unsigned int fileno = getLeakLockNumber("*.txt", "^(\\d{4})\\.txt$");
+	unsigned int fileno = 0;
+	if(argc >= 4)
+	{
+		fileno = atoi(argv[3]);
+		if(errno == EINVAL && fileno == 0)
+			fileno = getLeakLockNumber("*.txt", "^(\\d{4})\\.txt$");
+	}
+	else
+		fileno = getLeakLockNumber("*.txt", "^(\\d{4})\\.txt$");
 	unsigned char cross[8];
 	DWORD buy[2], realbuy;
 	realbuy = ((box << 10) + fileno) & 0xFFFF;
@@ -133,7 +139,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		char filename[64];
 		sprintf_s(filename, "%04d.txt", fileno);
-		ofstream card(filename);
+		ofstream card(filename, ios_base::app);
 		if(card.fail())
 		{
 			cerr << " 生成文件错误:" << filename << endl;

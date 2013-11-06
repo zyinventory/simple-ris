@@ -1,6 +1,7 @@
 #include "stdafx.h"
-#include "liblock.h"
-#include "lock.h"
+#include <lock.h>
+#include <liblock.h>
+#include <libb24.h>
 #import <msxml3.dll>
 using namespace std;
 
@@ -119,7 +120,7 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 
 int statusCharge(const char *flag)
 {
-	bool hasError = false;
+	string errorMessage;
 	MSXML2::IXMLDOMDocumentPtr pXmlDom;
 	HRESULT hr = pXmlDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 	if (FAILED(hr))
@@ -142,7 +143,8 @@ int statusCharge(const char *flag)
 	pXmlDom->appendChild(root);
 	MSXML2::IXMLDOMElementPtr errorInfos = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "error_infos", "");
 
-	int licenseCount = 0;
+	int licenseCount = 0, oldCount = -1;
+	WORD increase = 0;
 	char countBuffer[12] = "", lock_passwd[9] = "", filename[64] = "..\\etc\\*.key";
 	DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
 	SEED_SIV siv;
@@ -154,7 +156,113 @@ int statusCharge(const char *flag)
 			if(licenseCount < 0 || licenseCount > 0xffff) licenseCount = 0;
 		}
 	}
-	
+
+	MSXML2::IXMLDOMElementPtr key;
+	key = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "key", "");
+	// charge?
+	char chargekey[24] = "";
+	if(flag && strlen(flag) && !strcmp("charge", flag)
+		&& cgiFormNotFound != cgiFormString("password", chargekey, sizeof(chargekey)) && strlen(chargekey) > 0)
+	{
+		DWORD serial = 0;
+		Sleep(4000);
+		int retCode = SetLock(8, &serial, NULL, lock_passwd);
+		if(retCode)
+		{
+			buffer << "»ñÈ¡¼ÓÃÜËøÐòºÅ´íÎó:" << retCode << endl;
+			outputContent(true);
+			return -2;
+		}
+
+		retCode = decodeCharge(chargekey, serial, Lock32_Function);
+		switch(retCode)
+		{
+		case -1:
+			buffer << "´íÎó1:" << chargekey << endl;
+			outputContent(true);
+			return -3;
+		case -2:
+			buffer << "´íÎó2:" << chargekey << endl;
+			outputContent(true);
+			return -4;
+		case -3:
+			buffer << "´íÎó3:" << chargekey << endl;
+			outputContent(true);
+			return -5;
+		}
+		DWORD box = ((unsigned int)retCode) >> 10;
+		DWORD fileno = retCode & 0x3FF;  // TOTAL_BUY + 32bits, 32bits is 16bits counter + 16bits reserve
+		if(box > MAX_BOX || fileno > TOTAL_BUY)
+		{
+			buffer << "ÊýÁ¿´íÎó:" << chargekey << endl;
+			outputContent(true);
+			return -6;
+		}
+
+		char timeBuffer[16];
+		generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
+		ofstream chargeLog("pacs_log\\charge.log", ios_base::app, _SH_DENYRW);
+		if(!chargeLog.fail())
+		{
+			chargeLog << chargekey << '\t' << timeBuffer << '\t';
+			int sectionNumber = fileno / 64, offset = (fileno % 64) / 8;
+			unsigned char bytemask = 0x80, section[8];
+			bytemask >>= (fileno % 8);
+			retCode = ReadLock(sectionNumber, section, lock_passwd);
+			if(retCode == 0)
+			{
+				if((section[offset] & bytemask) == 0)
+				{
+					section[offset] |= bytemask;
+					retCode = WriteLock(sectionNumber, section, lock_passwd);
+					if(retCode == 0)
+					{
+						retCode = ReadLock(15, section, lock_passwd);
+						if(retCode == 0)
+						{
+							increase = box * 50;
+							int avoidOverflow = *(reinterpret_cast<WORD*>(section) + 3);
+							avoidOverflow += increase;
+							if(avoidOverflow >= 0 && avoidOverflow <= 0xFFFF)
+							{
+								*(reinterpret_cast<WORD*>(section) + 3) += increase;
+								retCode = WriteLock(15, section, lock_passwd);
+								if(retCode == 0)
+								{
+									chargeLog << "OK:" << increase << endl;
+									oldCount = licenseCount;
+									licenseCount = *(reinterpret_cast<WORD*>(section) + 3);
+								}
+								else
+									errorMessage = "ÊýÁ¿Ð´Èë´íÎó";
+							}
+							else
+								errorMessage = "³äÖµÊýÁ¿²»ÄÜ³¬¹ý65535";
+						}
+						else
+							errorMessage = "ÊýÁ¿¶ÁÈ¡´íÎó";
+					}
+					else
+						errorMessage = "´æ´¢Ð´Èë´íÎó";
+				}
+				else
+					errorMessage = "´ËÃÜÂëÒÑ³ä¹ý";
+			}
+			else
+				errorMessage = "´æ´¢¶ÁÈ¡´íÎó";
+			if(errorMessage.length() > 0) chargeLog << "error:" << errorMessage << endl;
+			chargeLog.close();
+		}
+		else
+		{
+			buffer << "·þÎñÆ÷Ã¦£¬ÇëÖØÊÔ" << endl;
+			outputContent(true);
+			return -9;
+		}
+		key->appendChild(pXmlDom->createTextNode(chargekey));
+		root->appendChild(key);
+	}
+
 	sprintf_s(countBuffer, "%d", lockNumber);
 	MSXML2::IXMLDOMElementPtr lockName;
 	lockName = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "lock_number", "");
@@ -167,7 +275,29 @@ int statusCharge(const char *flag)
 	counter->appendChild(pXmlDom->createTextNode(countBuffer));
 	root->appendChild(counter);
 
-	if(hasError) root->appendChild(errorInfos);
+	if(increase > 0)
+	{
+		sprintf_s(countBuffer, "%d", increase);
+		MSXML2::IXMLDOMElementPtr increaseptr;
+		increaseptr = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "increase", "");
+		increaseptr->appendChild(pXmlDom->createTextNode(countBuffer));
+		root->appendChild(increaseptr);
+	}
+
+	if(oldCount != -1)
+	{
+		sprintf_s(countBuffer, "%d", oldCount);
+		MSXML2::IXMLDOMElementPtr oldcounter;
+		oldcounter = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "old_counter", "");
+		oldcounter->appendChild(pXmlDom->createTextNode(countBuffer));
+		root->appendChild(oldcounter);
+	}
+
+	if(errorMessage.length() > 0)
+	{
+		errorInfos->appendChild(pXmlDom->createTextNode(errorMessage.c_str()));
+		root->appendChild(errorInfos);
+	}
 	buffer << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml;
 	outputContent(false);
 	return 0;
