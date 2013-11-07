@@ -86,14 +86,14 @@
 				<td class="callingAE"><xsl:value-of select="@CallingAE" /></td>
 				<td class="studyUID">
 					<xsl:attribute name="title"><xsl:value-of select="./text()" /></xsl:attribute>
-          <!-- a -->
-            <!-- xsl:attribute name="href">cgi-bin/getindex.exe?jnlp=1&amp;studyUID=<xsl:value-of select="./text()" /></xsl:attribute -->
+          <a>
+            <xsl:attribute name="href">cgi-bin/getindex.exe?jnlp=1&amp;studyUID=<xsl:value-of select="./text()" /></xsl:attribute>
 						<xsl:call-template name="replaceFunc">
 							<xsl:with-param name="text" select="text()"/>
 							<xsl:with-param name="replace" select="'.'"/>
 							<xsl:with-param name="by" select="'.&#x200B;'"/>
 						</xsl:call-template>
-          <!-- /a -->
+          </a>
         </td>
         <td>
           <form target="ppstatus" method="POST" action="cgi-bin/getindex.exe">
