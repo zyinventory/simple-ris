@@ -29,6 +29,7 @@ static const char jnlp1[] =                               "/weasis-1.2.x\" href=
     <menu submenu=\"Weasis\"/>\
   </shortcut>\
 </information>\
+<offline-allowed/>\
 <security>\
   <all-permissions/>\
 </security>\
