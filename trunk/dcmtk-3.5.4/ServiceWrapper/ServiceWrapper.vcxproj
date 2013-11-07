@@ -138,7 +138,9 @@
       <SubType>Designer</SubType>
     </None>
     <None Include="web\xslt\mktext.xsl" />
-    <None Include="web\xslt\receive.xsl" />
+    <None Include="web\xslt\receive.xsl">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="web\xslt\status.xsl">
       <SubType>Designer</SubType>
     </None>
