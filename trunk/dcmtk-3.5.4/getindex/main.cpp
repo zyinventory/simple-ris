@@ -12,51 +12,48 @@ int statusCharge(const char *flag);
 static char patientID[65], studyUID[65], host[65], indexPath[MAX_PATH];
 static const char jnlp0[] = 
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
-<jnlp spec=\"1.6+\" version=\"1.0.7\" codebase=\"http://";
-static const char jnlp1[] =                               "/weasis-1.2.x\" href=\"\">\
-<information>\
-  <title>Weasis</title>\
-  <vendor>H&#244;pitaux Universitaires de Gen&#232;ve (HUG)</vendor>\
-  <homepage href=\"docs/help.html\"/>\
-  <description>DICOM images viewer</description>\
-  <description kind=\"short\">An application to visualize and analyze DICOM images.</description>\
-  <description kind=\"one-line\">DICOM images viewer</description>\
-  <description kind=\"tooltip\">Weasis</description>\
-  <icon href=\"images/logo-button.png\" kind=\"default\" />\
-  <icon href=\"images/about.png\" kind=\"splash\" />\
-  <shortcut online=\"false\">\
-    <desktop/>\
-    <menu submenu=\"Weasis\"/>\
-  </shortcut>\
-</information>\
-<offline-allowed/>\
-<security>\
-  <all-permissions/>\
-</security>\
-<resources>\
-  <j2se version=\"1.6.0_10+\" href=\"http://java.sun.com/products/autodl/j2se\" initial-heap-size=\"128m\" max-heap-size=\"1024m\" />\
-  <j2se version=\"1.6.0_10+\" initial-heap-size=\"128m\" max-heap-size=\"1024m\" />\
-  <jar href=\"weasis-launcher.jar\" main=\"true\" />\
-  <jar href=\"felix.jar\" />\
-  <extension href=\"substance.jnlp\"/>\
-  <property name=\"jnlp.packEnabled\" value=\"true\" />\
-  <property name=\"felix.config.properties\" value=\"http://";
-static const char jnlp2[] =                                   "/weasis-1.2.x/conf/config.properties\" />\
-  <property name=\"weasis.codebase.url\" value=\"http://";
-static const char jnlp3[] =                               "/weasis-1.2.x\" />\
-  <property name=\"gosh.args\" value=\"-sc telnetd -p 17179 start\" />\
-  <property name=\"apple.laf.useScreenMenuBar\" value=\"true\" />\
-  <property name=\"weasis.i18n\" value=\"http://";
-static const char jnlp4[] =                       "/weasis-i18n\" />\
-</resources>\
-<application-desc main-class=\"org.weasis.launcher.WebstartLauncher\">\
-  <argument>$dicom:close -a</argument>";
-static const char jnlp5[] =
- "<argument>$dicom:get -w http://";
-static const char jnlp6[] =        "/pacs/cgi-bin/getindex.exe?";
-static const char jnlp7[] =                                      "</argument>";
-static const char jnlp8[] = "\
-</application-desc>\
+<jnlp spec=\"1.6+\" codebase=\"http://";
+static const char jnlp1[] =           "/weasis-1.2.x\">\
+	<information>\
+		<title>Weasis</title>\
+		<vendor>Weasis Team</vendor>\
+		<description>DICOM images viewer</description>\
+		<description kind=\"short\">An application to visualize and analyze DICOM images.</description>\
+		<description kind=\"one-line\">DICOM images viewer</description>\
+		<description kind=\"tooltip\">Weasis</description>\
+		<icon href=\"images/logo-button.png\" kind=\"default\" />\
+		<icon href=\"images/about.png\" kind=\"splash\" />\
+		<shortcut online=\"false\">\
+			<desktop />\
+			<menu submenu=\"Weasis\" />\
+		</shortcut>\
+	</information>\
+	<security><all-permissions /></security>\
+	<resources>\
+		<j2se version=\"1.6.0_10+\" href=\"http://java.sun.com/products/autodl/j2se\" initial-heap-size=\"128m\" max-heap-size=\"1024m\" />\
+		<j2se version=\"1.6.0_10+\" initial-heap-size=\"128m\" max-heap-size=\"1024m\" />\
+		<property name=\"jnlp.packEnabled\" value=\"true\" />\
+		<jar href=\"weasis-launcher.jar\" main=\"true\" />\
+		<jar href=\"felix.jar\" />\
+		<extension href=\"substance.jnlp\" />\
+	</resources>\
+	<application-desc main-class=\"org.weasis.launcher.WebstartLauncher\">\
+		<argument>-VMPfelix.config.properties=\"http://";
+static const char jnlp2[] =								"/weasis-1.2.x/conf/config.properties\"</argument>\
+		<argument>-VMPfelix.extended.config.properties=\"http://";
+static const char jnlp3[] =										"/weasis-1.2.x/conf/ext-config.properties\"</argument>\
+		<argument>-VMPweasis.codebase.url=\"http://";
+static const char jnlp4[] =							"/weasis-1.2.x\"</argument>\
+		<argument>-VMPgosh.args=\"-sc telnetd -p 17179 start\"</argument>\
+		<argument>-VMPapple.laf.useScreenMenuBar=\"true\"</argument>\
+		<argument>-VMPweasis.i18n=\"http://";
+static const char jnlp5[] =					"/weasis-i18n\"</argument>"\
+	   "<argument>";
+static const char jnlp6[] ="$dicom:close -a</argument>\
+		<argument>$dicom:get -w http://";
+static const char jnlp7[] =				"/pacs/cgi-bin/getindex.exe?";
+static const char jnlp8[] =											"</argument>\
+	</application-desc>\
 </jnlp>";
 using namespace std;
 
@@ -78,8 +75,8 @@ int jnlp(int hostLength)
 	else if(cgiFormNotFound != cgiFormString("patientID", patientID, 65) && strlen(patientID) > 0)
 		indexPathLength = sprintf_s(indexPath, MAX_PATH, "patientID=%s", patientID);
 
-	int contentLength = sizeof(jnlp0) - 1 + sizeof(jnlp1) - 1 + sizeof(jnlp2) - 1 + sizeof(jnlp3) - 1 + sizeof(jnlp4) - 1 + hostLength * 4
-		+ (indexPathLength > 0 ? sizeof(jnlp5) - 1 + sizeof(jnlp6) - 1 + sizeof(jnlp7) - 1 + hostLength + indexPathLength : 0)
+	int contentLength = sizeof(jnlp0) - 1 + sizeof(jnlp1) - 1 + sizeof(jnlp2) - 1 + sizeof(jnlp3) - 1 + sizeof(jnlp4) - 1 + sizeof(jnlp5) - 1 + hostLength * 5
+		+ (indexPathLength > 0 ? sizeof(jnlp6) - 1 + sizeof(jnlp7) - 1 + hostLength + indexPathLength : 0)
 		+ sizeof(jnlp8) - 1;
 	fprintf(cgiOut, "Content-type: application/x-java-jnlp-file; charset=UTF-8\r\nContent-Length: %d\r\n\r\n", contentLength);
 	fprintf(cgiOut, jnlp0);
@@ -91,15 +88,17 @@ int jnlp(int hostLength)
 	fprintf(cgiOut, jnlp3);
 	fprintf(cgiOut, host);
 	fprintf(cgiOut, jnlp4);
+	fprintf(cgiOut, host);
+	fprintf(cgiOut, jnlp5);
 	if(indexPathLength > 0)
 	{
-		fprintf(cgiOut, jnlp5);
-		fprintf(cgiOut, host);
 		fprintf(cgiOut, jnlp6);
-		fprintf(cgiOut, indexPath);
+		fprintf(cgiOut, host);
 		fprintf(cgiOut, jnlp7);
+		fprintf(cgiOut, indexPath);
 	}
 	fprintf(cgiOut, jnlp8);
+
 	return 0;
 }
 
