@@ -656,6 +656,7 @@ int checkDiskFreeSpaceInGB(const char * path)
 int pollQueue(const _TCHAR *queueName)
 {
 	HRESULT hr;
+	int execCount = 10;
 	try
 	{
 		IMSMQQueuePtr pQueue = OpenOrCreateQueue(queueName, MQ_RECEIVE_ACCESS);
@@ -679,7 +680,13 @@ int pollQueue(const _TCHAR *queueName)
 				for(size_t i = 0; i < procnum; ++i) closeLogFile(i);
 
 				int freeGB = checkDiskFreeSpaceInGB("archdir\\");
-				if(freeGB >= 0 && freeGB < 20) clearPacsArchDisk("archdir\\");
+				//if(freeGB >= 0 && freeGB < 20)
+				if(execCount > 0)
+				{
+					cerr << "------------ " << execCount << " ------------" << endl;
+					autoCleanPacsDiskByStudyDate("indexdir\\00080020");
+					--execCount;
+				}
 			}
 			else // close one process
 			{
