@@ -104,55 +104,74 @@ int jnlp(int hostLength)
 
 int queryXml(int hostLength)
 {
-		ifstream xmlFile;
-		if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
-		{
-			int hashStudy = hashCode(studyUID);
-			sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%02X\\%02X\\%02X\\%02X\\%s.xml",
-				hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
-			xmlFile.open(indexPath, ios_base::in);
-		}
-		else if(cgiFormNotFound != cgiFormString("patientID", patientID, 65) && strlen(patientID) > 0)
-		{
-			int hashPatient = hashCode(patientID);
-			sprintf_s(indexPath, MAX_PATH, "indexdir\\00100020\\%02X\\%02X\\%02X\\%02X\\%s.xml",
-				hashPatient >> 24 & 0xff, hashPatient >> 16 & 0xff, hashPatient >> 8 & 0xff, hashPatient & 0xff, patientID);
-			xmlFile.open(indexPath, ios_base::in);
-		}
-		else
-		{
-			if(cgiQueryString) buffer << "无效请求:" << cgiQueryString << endl;
-			if(pPacsBase) buffer << "PACS_BASE:" << pPacsBase << endl;;
-			outputContent(true);
-			return 0;
-		}
+	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
+	{
+		int hashStudy = hashCode(studyUID);
+		sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%02X\\%02X\\%02X\\%02X\\%s.xml",
+			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
+	}
+	else if(cgiFormNotFound != cgiFormString("patientID", patientID, 65) && strlen(patientID) > 0)
+	{
+		int hashPatient = hashCode(patientID);
+		sprintf_s(indexPath, MAX_PATH, "indexdir\\00100020\\%02X\\%02X\\%02X\\%02X\\%s.xml",
+			hashPatient >> 24 & 0xff, hashPatient >> 16 & 0xff, hashPatient >> 8 & 0xff, hashPatient & 0xff, patientID);
+	}
+	else
+	{
+		if(cgiQueryString) buffer << "无效请求:" << cgiQueryString << endl;
+		if(pPacsBase) buffer << "PACS_BASE:" << pPacsBase << endl;;
+		outputContent(true);
+		return 0;
+	}
 
-		if(xmlFile.is_open() && xmlFile.good())
+	char *filebuffer = NULL, pattern[] = "localhost";
+	size_t bufferSize = 0;
+	HANDLE hFile = CreateFile(indexPath, GENERIC_READ | FILE_WRITE_ATTRIBUTES, 
+		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(hFile != INVALID_HANDLE_VALUE)
+	{
+		BY_HANDLE_FILE_INFORMATION fsi;
+		if(GetFileInformationByHandle(hFile, &fsi))
 		{
-			char *buffer, pattern[] = "localhost";
-			streamoff filelen = xmlFile.seekg(0, ios_base::end).tellg();
-			xmlFile.seekg(0);
-			int bufferSize = (int)filelen + 1;
-			buffer = new char[bufferSize];
-			streamsize count = xmlFile.read(buffer, filelen).gcount();
-			xmlFile.close();
-
-			buffer[count] = '\0';
-			char *p = strstr(buffer, pattern);
-			*p = '\0';  // buffer end with: <wado_query wadoURL="http://
-			p += sizeof(pattern) - 1;  // p start with: /pacs/" requireOnlySOPInstanceUID="false" ...
-
-			size_t contentLen = strlen(buffer) + hostLength + strlen(p);
-			fprintf(cgiOut, "Content-type: text/xml; charset=GBK\r\nContent-Length: %d\r\n\r\n", contentLen);
-
-			fprintf(cgiOut, buffer);
-			fprintf(cgiOut, host);
-			fprintf(cgiOut, p);
-			delete buffer;
-			return 0;
+			DWORD toRead = 0, bufferSize = fsi.nFileSizeLow;
+			filebuffer = new char[bufferSize + 1];
+			ReadFile(hFile, filebuffer, bufferSize, &toRead, NULL);
+			if(bufferSize == toRead)
+				filebuffer[bufferSize] = '\0';
+			else
+				filebuffer[0] = '\0';
+			
+			FILE_BASIC_INFO fbi;
+			if(GetFileInformationByHandleEx(hFile, FileBasicInfo, &fbi, sizeof(FILE_BASIC_INFO)))
+			{
+				GetSystemTimeAsFileTime((FILETIME*)&fbi.LastAccessTime);
+				SetFileInformationByHandle(hFile, FileBasicInfo, &fbi, sizeof(FILE_BASIC_INFO));
+			}
 		}
-		else
-			return -1;
+		CloseHandle(hFile);
+	}
+
+	if(filebuffer && strlen(filebuffer))
+	{
+		char *p = strstr(filebuffer, pattern);
+		*p = '\0';  // buffer end with: <wado_query wadoURL="http://
+		p += sizeof(pattern) - 1;  // p start with: /pacs/" requireOnlySOPInstanceUID="false" ...
+
+		size_t contentLen = strlen(filebuffer) + hostLength + strlen(p);
+		fprintf(cgiOut, "Content-type: text/xml; charset=GBK\r\nContent-Length: %d\r\n\r\n", contentLen);
+
+		fprintf(cgiOut, filebuffer);
+		fprintf(cgiOut, host);
+		fprintf(cgiOut, p);
+		delete filebuffer;
+		return 0;
+	}
+	else
+	{
+		buffer << "文件没找到" << endl;
+		outputContent(true);
+		return -1;
+	}
 }
 
 int burningStudy(const char *media)

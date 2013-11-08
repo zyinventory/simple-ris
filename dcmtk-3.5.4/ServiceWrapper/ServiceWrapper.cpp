@@ -15,7 +15,10 @@ static bool startXCS = false, xcsFound = false;
 static HANDLE logFile = INVALID_HANDLE_VALUE;
 
 const char *dirmakerCommand;
-int commandDispatcher(const char *queueName, int processorNumber);
+
+void clearPacsArchDisk(const char*)
+{
+}
 
 void mkcmd(ostringstream *cmdStream, const char *s)
 {

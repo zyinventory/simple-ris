@@ -87,6 +87,7 @@
 				<td class="studyUID">
 					<xsl:attribute name="title"><xsl:value-of select="./text()" /></xsl:attribute>
           <a>
+            <xsl:attribute name="target">pacsviewer</xsl:attribute>
             <xsl:attribute name="href">cgi-bin/getindex.exe?jnlp=1&amp;studyUID=<xsl:value-of select="./text()" /></xsl:attribute>
 						<xsl:call-template name="replaceFunc">
 							<xsl:with-param name="text" select="text()"/>

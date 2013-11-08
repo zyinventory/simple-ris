@@ -5,8 +5,6 @@
 using namespace std;
 using namespace MSMQ;
 
-HRESULT QLetEveryoneFullControl(LPCWSTR wszFormatNameBuffer);
-
 IMSMQQueuePtr createQueueAndOpen(IMSMQQueueInfoPtr &pInfo, MQACCESS access) throw(...)
 {
 	_variant_t vtrue(true);

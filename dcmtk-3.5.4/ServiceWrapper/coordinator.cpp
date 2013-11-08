@@ -10,16 +10,7 @@ using namespace MSMQ;
 #include "commonlib.h"
 
 extern const char *dirmakerCommand;
-
 IMSMQQueuePtr OpenOrCreateQueue(const char *queueName, MQACCESS access = MQ_SEND_ACCESS) throw(...);
-bool RedirectMessageLabelEqualWith(const char *equalWith, const char *queueName);
-bool SendCommonMessageToQueue(const char *label, const char *body, const long priority, const char *queueName);
-
-typedef struct _WorkerProcess {
-	string *instancePath, *csvPath, *studyUid; // command level
-    HANDLE hProcess, hThread, mutexIdle, mutexRec, hChildStdInWrite; // process level
-	HANDLE hLogFile; string *logFilePath; // slot level
-} WorkerProcess, *PWorkerProcess, *LPWorkerProcess;
 
 static SECURITY_ATTRIBUTES logSA;
 static size_t procnum;
@@ -649,6 +640,19 @@ void processMessage(IMSMQMessagePtr pMsg)
 	}
 }
 
+int checkDiskFreeSpaceInGB(const char * path)
+{
+	DWORD dwSectPerClust, dwBytesPerSect, dwFreeClusters, dwTotalClusters;
+	int freeGB = -1;
+	if(GetDiskFreeSpace(path, &dwSectPerClust, &dwBytesPerSect, &dwFreeClusters, &dwTotalClusters))
+	{
+		long long freespace = dwFreeClusters;
+		freespace *= dwSectPerClust * dwBytesPerSect;
+		freeGB = freespace / (1024 * 1024 * 1024);
+	}
+	return freeGB;
+}
+
 int pollQueue(const _TCHAR *queueName)
 {
 	HRESULT hr;
@@ -673,6 +677,9 @@ int pollQueue(const _TCHAR *queueName)
 			else if(index == procnum) // no process, close all log file
 			{
 				for(size_t i = 0; i < procnum; ++i) closeLogFile(i);
+
+				int freeGB = checkDiskFreeSpaceInGB("archdir\\");
+				if(freeGB >= 0 && freeGB < 20) clearPacsArchDisk("archdir\\");
 			}
 			else // close one process
 			{
