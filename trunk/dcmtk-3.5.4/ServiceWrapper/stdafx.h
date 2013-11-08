@@ -29,3 +29,15 @@
 #include <functional>
 
 #define MAX_CORE 16
+
+typedef struct _WorkerProcess {
+	std::string *instancePath, *csvPath, *studyUid; // command level
+    HANDLE hProcess, hThread, mutexIdle, mutexRec, hChildStdInWrite; // process level
+	HANDLE hLogFile; std::string *logFilePath; // slot level
+} WorkerProcess, *PWorkerProcess, *LPWorkerProcess;
+
+bool RedirectMessageLabelEqualWith(const char *equalWith, const char *queueName);
+bool SendCommonMessageToQueue(const char *label, const char *body, const long priority, const char *queueName);
+HRESULT QLetEveryoneFullControl(LPCWSTR wszFormatNameBuffer);
+int commandDispatcher(const char *queueName, int processorNumber);
+void clearPacsArchDisk(const char*);
