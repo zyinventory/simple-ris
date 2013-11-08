@@ -16,8 +16,85 @@ static HANDLE logFile = INVALID_HANDLE_VALUE;
 
 const char *dirmakerCommand;
 
-void clearPacsArchDisk(const char*)
+string findFirstUnarchived(const char* filepath)
 {
+	WIN32_FIND_DATA wfd;
+	list<WIN32_FIND_DATA> unarchivedList;
+	char fileFilter[MAX_PATH];
+	strcpy_s(fileFilter, filepath);
+	PathAppend(fileFilter, "*.*");
+	HANDLE hDiskSearch = FindFirstFile(fileFilter, &wfd);
+	if (hDiskSearch == INVALID_HANDLE_VALUE)  // 如果没有找到或查找失败
+	{
+		DWORD winerr = GetLastError();
+		if(ERROR_FILE_NOT_FOUND == winerr)
+			cerr << fileFilter << " not found" << endl;
+		return string();
+	}
+	do
+	{
+		if (strcmp(wfd.cFileName, ".") == 0 || strcmp(wfd.cFileName, "..") == 0) 
+			continue; // skip . ..
+		if(0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE))
+			unarchivedList.push_back(wfd);
+	} while (FindNextFile(hDiskSearch, &wfd));
+	FindClose(hDiskSearch); // 关闭查找句柄
+	if(unarchivedList.empty())
+	{
+		cerr << fileFilter << " is all archived" << endl;
+		return string();
+	}
+	unarchivedList.sort([](WIN32_FIND_DATA wfd1, WIN32_FIND_DATA wfd2)
+		{ return strcmp(wfd1.cFileName, wfd2.cFileName) > 0; });
+
+	do{
+		WIN32_FIND_DATA &backItem = unarchivedList.back();
+		if(backItem.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			fileFilter[strlen(filepath)] = '\0';
+			PathAppend(fileFilter, backItem.cFileName);
+			string result = findFirstUnarchived(fileFilter);
+			if(result.empty())
+			{
+				if(SetFileAttributes(fileFilter, backItem.dwFileAttributes | FILE_ATTRIBUTE_ARCHIVE))
+					cerr << fileFilter << " all children is archived, set this to archived, continue" << endl;
+				else
+					cerr << fileFilter << " set to archived failed:" << GetLastError() << endl;
+			}
+			else
+			{
+				cerr << filepath << " find child is not archived: " << result << endl;
+				return result;
+			}
+		}
+		else
+		{
+			fileFilter[strlen(filepath)] = '\0';
+			PathAppend(fileFilter, backItem.cFileName);
+			cerr << fileFilter << " is not archived, return" << endl;
+			return string(fileFilter);
+		}
+		unarchivedList.pop_back();
+	}while(!unarchivedList.empty());
+	cerr << filepath << " all children is archived, return empty to upper" << endl;
+	return string();
+}
+
+void autoCleanPacsDiskByStudyDate(const char* filepath)
+{
+	string unarchived(findFirstUnarchived(filepath));
+	if(unarchived.empty())
+	{
+		cerr << filepath << " is all archived, no delete" << endl;
+		return;
+	}
+	cerr << "day to delete: " << unarchived << endl;
+
+	// search xml, delete study
+
+	DWORD dwFileAttributes = GetFileAttributes(unarchived.c_str());
+	if(dwFileAttributes == INVALID_FILE_ATTRIBUTES || !SetFileAttributes(unarchived.c_str(), dwFileAttributes | FILE_ATTRIBUTE_ARCHIVE))
+		cerr << unarchived << " set to archived failed:" << GetLastError() << endl;
 }
 
 void mkcmd(ostringstream *cmdStream, const char *s)
