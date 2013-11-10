@@ -16,15 +16,15 @@ static HANDLE logFile = INVALID_HANDLE_VALUE;
 
 const char *dirmakerCommand;
 
-int checkDiskFreeSpaceInMB(const char * path)
+static size_t checkDiskFreeSpaceInMB(const char * path)
 {
 	DWORD dwSectPerClust, dwBytesPerSect, dwFreeClusters, dwTotalClusters;
-	int freeGB = -1;
+	size_t freeGB = 0;
 	if(GetDiskFreeSpace(path, &dwSectPerClust, &dwBytesPerSect, &dwFreeClusters, &dwTotalClusters))
 	{
 		long long freespace = dwFreeClusters;
 		freespace *= dwSectPerClust * dwBytesPerSect;
-		freeGB = freespace / (1024 * 1024);
+		freeGB = static_cast<size_t>(freespace / (1024 * 1024));
 	}
 	return freeGB;
 }
@@ -33,7 +33,7 @@ int checkDiskFreeSpaceInMB(const char * path)
 #define ALL_ARCHIVED		1
 #define FREE_ENOUGH			2
 
-int findAndDeleteUnarchived(const char* filepath, size_t lower)
+static int findAndDeleteUnarchived(const char* filepath, size_t lower)
 {
 	WIN32_FIND_DATA wfd;
 	list<WIN32_FIND_DATA> unarchivedList;
@@ -104,7 +104,7 @@ int findAndDeleteUnarchived(const char* filepath, size_t lower)
 					result = NOT_ALL_ARCHIVED;
 				}
 			}
-			int freeMB = checkDiskFreeSpaceInMB("archdir\\");
+			size_t freeMB = checkDiskFreeSpaceInMB("archdir\\");
 			if(freeMB > lower) return FREE_ENOUGH;
 		}
 		unarchivedList.pop_back();
@@ -114,7 +114,7 @@ int findAndDeleteUnarchived(const char* filepath, size_t lower)
 
 void autoCleanPacsDiskByStudyDate()
 {
-	int freeMB = checkDiskFreeSpaceInMB("archdir\\");
+	size_t freeMB = checkDiskFreeSpaceInMB("archdir\\");
 	size_t lower = 20 * 1024; //freeMB + 10;
 	if(freeMB > lower) return;
 	findAndDeleteUnarchived("indexdir\\00080020", lower);
