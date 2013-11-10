@@ -250,8 +250,28 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	WORD data[4] = { 0, 0, 0, 0 };
 	for(int i = 0; i < 16; ++i)
+	{
 		ret = WriteLock(i, reinterpret_cast<unsigned char*>(&data), init_passwd);
+		if(ret)
+		{
+			CERR << TEXT("¼ÓÃÜ¹·Ð´Èë´íÎó") << endl;
+			return -15;
+		}
+	}
 	if(strcmp(init_passwd, lock_passwd))
+	{
 		ret = SetLock(7, 0, lock_passwd, init_passwd);
+		if(ret)
+		{
+			CERR << TEXT("¼ÓÃÜ¹·ÐÞ¸ÄÃÜÂë´íÎó") << endl;
+			return -16;
+		}
+		else
+		{
+			ofstream passwdstrm("passwd.txt", ios_base::out | ios_base::trunc);
+			passwdstrm << lock_passwd << endl;
+			passwdstrm.close();
+		}
+	}
 	return 0;
 }

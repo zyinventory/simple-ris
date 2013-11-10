@@ -230,6 +230,15 @@ HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDocumentPt
 					}
 					else
 					{
+						FILE_BASIC_INFO fbi;
+						if(GetFileInformationByHandleEx(fh, FileBasicInfo, &fbi, sizeof(FILE_BASIC_INFO)))
+						{
+							if(fbi.FileAttributes & FILE_ATTRIBUTE_ARCHIVE)
+							{
+								fbi.FileAttributes &= ~FILE_ATTRIBUTE_ARCHIVE;
+								SetFileInformationByHandle (fh, FileBasicInfo, &fbi, sizeof(FILE_BASIC_INFO));
+							}
+						}
 						break;
 					}
 				}

@@ -105,6 +105,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="coordinator.cpp" />
+    <ClCompile Include="deleteStudy.cpp" />
     <ClCompile Include="msmq.cpp" />
     <ClCompile Include="msmq_security.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
