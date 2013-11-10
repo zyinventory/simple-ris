@@ -640,23 +640,9 @@ void processMessage(IMSMQMessagePtr pMsg)
 	}
 }
 
-int checkDiskFreeSpaceInGB(const char * path)
-{
-	DWORD dwSectPerClust, dwBytesPerSect, dwFreeClusters, dwTotalClusters;
-	int freeGB = -1;
-	if(GetDiskFreeSpace(path, &dwSectPerClust, &dwBytesPerSect, &dwFreeClusters, &dwTotalClusters))
-	{
-		long long freespace = dwFreeClusters;
-		freespace *= dwSectPerClust * dwBytesPerSect;
-		freeGB = freespace / (1024 * 1024 * 1024);
-	}
-	return freeGB;
-}
-
 int pollQueue(const _TCHAR *queueName)
 {
 	HRESULT hr;
-	int execCount = 10;
 	try
 	{
 		IMSMQQueuePtr pQueue = OpenOrCreateQueue(queueName, MQ_RECEIVE_ACCESS);
@@ -678,15 +664,7 @@ int pollQueue(const _TCHAR *queueName)
 			else if(index == procnum) // no process, close all log file
 			{
 				for(size_t i = 0; i < procnum; ++i) closeLogFile(i);
-
-				int freeGB = checkDiskFreeSpaceInGB("archdir\\");
-				//if(freeGB >= 0 && freeGB < 20)
-				if(execCount > 0)
-				{
-					cerr << "------------ " << execCount << " ------------" << endl;
-					autoCleanPacsDiskByStudyDate("indexdir\\00080020");
-					--execCount;
-				}
+				autoCleanPacsDiskByStudyDate();
 			}
 			else // close one process
 			{

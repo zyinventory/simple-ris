@@ -40,4 +40,5 @@ bool RedirectMessageLabelEqualWith(const char *equalWith, const char *queueName)
 bool SendCommonMessageToQueue(const char *label, const char *body, const long priority, const char *queueName);
 HRESULT QLetEveryoneFullControl(LPCWSTR wszFormatNameBuffer);
 int commandDispatcher(const char *queueName, int processorNumber);
-void autoCleanPacsDiskByStudyDate(const char*);
+void autoCleanPacsDiskByStudyDate();
+bool deleteDayStudy(const char *dayxml);
