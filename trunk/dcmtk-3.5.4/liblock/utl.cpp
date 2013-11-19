@@ -51,7 +51,9 @@ extern "C" unsigned int getLockNumber(const char *filter, const char *regxPatter
 extern "C" void mkpasswd(const char *base64, unsigned int salt, char *lock_passwd)
 {
 	ostringstream saltBase64;
-	saltBase64 << hex << setw(8) << setfill('0') << Lock32_Function(salt);
+	long salt_tr = 0;
+	Lock32_Function(salt, &salt_tr, 0);
+	saltBase64 << hex << setw(8) << setfill('0') << salt_tr;
 	string hash(md5crypt(base64, "1", saltBase64.str().c_str()));
 	hash.copy(lock_passwd, 8, hash.length() - 8);
 	lock_passwd[8] = '\0';
@@ -122,7 +124,9 @@ extern "C" int invalidLock(const char *licenseRSAEnc, const char *rsaPublicKey, 
 	localtime_s( &tmp, &t );
 	int i = tmp.tm_yday % DICTIONARY_SIZE;
 	DWORD *dict = reinterpret_cast<DWORD*>(outBuf);
-	if(dict[i] == (dict[DICTIONARY_SIZE + i] ^ Lock32_Function(dict[i])))
+	long dict_tr = 0;
+	Lock32_Function(dict[i], &dict_tr, 0);
+	if(dict[i] == (dict[DICTIONARY_SIZE + i] ^ dict_tr))
 		return 0;
 	else
 		return -14;
@@ -131,10 +135,9 @@ extern "C" int invalidLock(const char *licenseRSAEnc, const char *rsaPublicKey, 
 extern "C" int currentCount(char *passwd)
 {
 	int ret;
-	WORD data[4] = { 0, 0, 0, 0 };
-	ret = ReadLock(15, reinterpret_cast<unsigned char*>(data), passwd);
-	if(ret == 0)
-		return data[3];
+	DWORD data;
+	if(ReadLock(0, &data, passwd, 0, 0))
+		return data;
 	else
 		return -15;
 }
@@ -142,13 +145,12 @@ extern "C" int currentCount(char *passwd)
 extern "C" int decreaseCount(char *passwd)
 {
 	int ret;
-	WORD data[4] = { 0, 0, 0, 0 };
-	ret = ReadLock(15, reinterpret_cast<unsigned char*>(data), passwd);
-	if(ret == 0)
+	DWORD data;
+	if(ReadLock(0, &data, passwd, 0, 0))
 	{
-		if(data[3] > 0) --data[3];
-		WriteLock(15, reinterpret_cast<unsigned char*>(data), passwd);
-		return data[3];
+		if(data > 0) --data;
+		WriteLock(0, &data, passwd, 0, 0);
+		return data;
 	}
 	else
 		return -15;

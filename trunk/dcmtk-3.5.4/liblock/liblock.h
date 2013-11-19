@@ -15,6 +15,7 @@ struct seed_siv_st { unsigned char key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH
 typedef struct seed_siv_st SEED_SIV;
 #define PUBKEY_SKIP	48  /* skip first 48 byte */
 #define PUBKEY_MOD	448 /* public key is 550 bytes, 550 - PUBKEY_SKIP - sizeof(SEED_SIV) */
+static char init_passwd[] = "abcdefgh";
 
 #ifdef __cplusplus
 extern "C"

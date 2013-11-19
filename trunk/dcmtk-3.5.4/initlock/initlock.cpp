@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include <openssl/rand.h>
+#include <shieldpc.h>
 #include <liblock.h>
 #include <lock.h>
 #include "constant.h"
@@ -14,6 +15,11 @@ public:
 protected:
     virtual String do_grouping() const { return TEXT(""); } // no grouping
 };
+
+void exitHook()
+{
+	TerminateLock(0);
+}
 
 static void printKeyIV(SEED_SIV *sivptr, const char *filename)
 {
@@ -39,7 +45,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	_TCHAR buffer[MAX_PATH];
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	DWORD lockNumber = 0;
-	_TCHAR lockName[32];
 
 	locale locChina(locale("chinese"), new numpunct_no_gouping("chinese"));
 	locale::global(locChina);
@@ -47,56 +52,12 @@ int _tmain(int argc, _TCHAR* argv[])
 	// If the directory is not specified as a command-line argument, print usage.
 	if(argc < 2)
 	{
-		CERR << TEXT("Usage: ") << argv[0] << TEXT(" <directory name> [init_password]") << endl;
+		CERR << TEXT("Usage: ") << argv[0] << TEXT(" <key.txt path> [init_password]") << endl;
 		return -1;
 	}
 
-	size_t length_of_arg;
-	// Check that the input path plus 3 is not longer than MAX_PATH.
-  	// Three characters are for the "\*" plus NULL appended below.
-	StringCchLength(argv[1], MAX_PATH, &length_of_arg);
-	if (length_of_arg > (MAX_PATH - 18))  // 18 = strlen("\\12345678\\key.txt") + 1
-	{
-		CERR << TEXT("Directory path is too long.") << endl;
-		return -2;
-	}
-	// Prepare string for use with FindFile functions.  First, copy the
-	// string to a buffer, then append '\*' to the directory name.
-	StringCchCopy(buffer, MAX_PATH, argv[1]);
-	PathAppend(buffer, TEXT("*"));
-	
-	if(argc == 3)
-		StringCchCopy(init_passwd, 9, argv[2]);
-	else
-		StringCchCopy(init_passwd, 9, "abcdefgh");
-
-	lockNumber = getLockNumber(buffer, "^(\\d{8})$", TRUE, lockName);
-	if(! lockNumber)
-	{
-		DWORD dwError = GetLastError();
-		if (dwError != ERROR_NO_MORE_FILES) CERR << TEXT("FindNextFile error ") << dwError << endl;
-		FindClose(hFind);
-		CERR << TEXT("¼ÓÃÜ¹·´íÎó: Can't find lock number in ") << buffer << endl;
-		return -4;
-	}
-
-	CERR << TEXT("Ëø±àÂë:") << lockNumber << endl;
-	DWORD serial = 0;
-	int retCode = SetLock(8, &serial, NULL, init_passwd);
-	if(retCode)
-	{
-		CERR << TEXT("»ñÈ¡ËøÐòÁÐºÅ´íÎó:") << retCode << endl;
-		return -5;
-	}
-	ostringstream serialStringStream;
-	serialStringStream << serial;
-	String serialString = serialStringStream.str();
-	CERR << TEXT("ËøÐòÁÐºÅ:") << serialString << endl;
-	
-	StringCchCopy(buffer, MAX_PATH, argv[1]);
-	PathAppend(buffer, lockName);
-	PathAppend(buffer, TEXT("key.txt"));
-	IFSTREAM keystrm(buffer);
+	// read key.txt
+	IFSTREAM keystrm(argv[1]);
 	if(keystrm.bad())
 	{
 		CERR << buffer << TEXT(" open failed") << endl;
@@ -123,13 +84,33 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -7;
 	}
 
-	DWORD dictionary[DICTIONARY_SIZE * 2 + 4]; // (rand_request, key_response) * 2 + md5_digest
+	//open dog, get lock number
+	if(!InitiateLock(0))
+	{
+		CERR << TEXT("´ò¿ª¼ÓÃÜ¹·´íÎó") << endl;
+		return -2;
+	}
+	atexit(exitHook);
+
+	if(!SetLock(8, &lockNumber, 0, init_passwd, init_passwd, 0, 0))
+	{
+		CERR << TEXT("»ñÈ¡¼ÓÃÜ¹·ÐòÁÐºÅ´íÎó:") << hex << LYFGetLastErr() << endl;
+		return -5;
+	}
+	ostringstream serialStringStream;
+	serialStringStream << lockNumber;
+	String lockString = serialStringStream.str();
+	CERR << TEXT("¼ÓÃÜ¹·ÐòÁÐºÅ:") << lockString << endl;
+
+
+	long dictionary[DICTIONARY_SIZE * 2 + 4]; // (rand_request, key_response) * 2 + md5_digest
 	for(int i = 0; i < DICTIONARY_SIZE; ++i)
 	{
 		do{
 			RAND_pseudo_bytes(reinterpret_cast<unsigned char*>(&dictionary[i]), sizeof(DWORD));
 		}while(&dictionary[i] != find(dictionary, &dictionary[i], dictionary[i]));
-		DWORD hard = Lock32_Function(dictionary[i]), soft = privateShieldPC(dictionary[i]);
+		long hard = 0, soft = ShieldPC(dictionary[i]);
+		Lock32_Function(dictionary[i], &hard, 0);
 		if(hard == soft)
 		{
 			dictionary[DICTIONARY_SIZE + i] = hard ^ dictionary[i];
@@ -143,13 +124,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	MD5_digest(dictionary, DICTIONARY_SIZE * sizeof(DWORD) * 2, reinterpret_cast<unsigned char*>(&dictionary[DICTIONARY_SIZE * 2]));
 
-	if(_mkdir(lockName) && errno != EEXIST)
+	if(_mkdir(lockString.c_str()) && errno != EEXIST)
 	{
 		int err = errno;
-		CERR << TEXT("´´½¨Ä¿Â¼") << lockName << TEXT("´íÎó:") << err << endl;
+		CERR << TEXT("´´½¨Ä¿Â¼") << lockString << TEXT("´íÎó:") << err << endl;
 		return err;
 	}
-	_chdir(lockName);
+	_chdir(lockString.c_str());
 	
 	char plainFileName[] = "license.plain", licenseFileName[] = "license.aes", licenseRSAEnc[] = "license.key";
 
@@ -160,7 +141,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -7;
 	}
 	keyout.write(reinterpret_cast<char*>(key), sizeof(key));
-	keyout.write(reinterpret_cast<char*>(&serial), sizeof(serial));
 	keyout.write(reinterpret_cast<char*>(&lockNumber), sizeof(lockNumber));
 	keyout.close();
 
@@ -170,7 +150,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	licenseFile.close();
 
 	_TCHAR *rsaPrivateKey = "private.rsa", rsaPublicKey[16];
-	strcpy_s(rsaPublicKey, sizeof(rsaPublicKey), lockName);
+	strcpy_s(rsaPublicKey, sizeof(rsaPublicKey), lockString.c_str());
 	strcat_s(rsaPublicKey, sizeof(rsaPublicKey), TEXT(".key"));
 	int ret = genrsa(KEY_SIZE, rsaPrivateKey, rsaPublicKey, passwd);
 	if(ret != 0)
@@ -241,37 +221,53 @@ int _tmain(int argc, _TCHAR* argv[])
 	DWORD *loadDict = reinterpret_cast<DWORD*>(outBuf);
 	for(int i = 0; i < DICTIONARY_SIZE; ++i)
 	{
-		if(loadDict[DICTIONARY_SIZE + i] != (privateShieldPC(loadDict[i]) ^ loadDict[i]))
+		if(loadDict[DICTIONARY_SIZE + i] != (ShieldPC(loadDict[i]) ^ loadDict[i]))
 		{
 			CERR << TEXT("´íÎóµÄÊÚÈ¨ÎÄ¼þ") << endl;
 			return -14;
 		}
 	}
 
-	WORD data[4] = { 0, 0, 0, 0 };
-	for(int i = 0; i < 16; ++i)
+	DWORD data = 0;
+	CERR << TEXT("³õÊ¼»¯¼ÓÃÜ¹·ÄÚ´æ") << endl;
+	CERR << TEXT('|');
+	for(int i = 0; i < 78; ++i) CERR << TEXT('-');
+	CERR << TEXT('|');
+	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	CONSOLE_SCREEN_BUFFER_INFO info;
+	GetConsoleScreenBufferInfo(hOut, &info);
+	--info.dwCursorPosition.Y;
+	SetConsoleCursorPosition(hOut, info.dwCursorPosition);
+	for(int i = 1; i < 1280; ++i)
 	{
-		ret = WriteLock(i, reinterpret_cast<unsigned char*>(&data), init_passwd);
-		if(ret)
+		if(WriteLock(i, &data, init_passwd, 0, 0))
 		{
-			CERR << TEXT("¼ÓÃÜ¹·Ð´Èë´íÎó") << endl;
-			return -15;
-		}
-	}
-	if(strcmp(init_passwd, lock_passwd))
-	{
-		ret = SetLock(7, 0, lock_passwd, init_passwd);
-		if(ret)
-		{
-			CERR << TEXT("¼ÓÃÜ¹·ÐÞ¸ÄÃÜÂë´íÎó") << endl;
-			return -16;
+			if(i % 16 == 0) CERR << TEXT('O');
 		}
 		else
 		{
+			CERR << TEXT("¼ÓÃÜ¹·Ð´Èë´íÎó") << hex << LYFGetLastErr() << endl;
+			return -15;
+		}
+	}
+	CERR << endl;
+
+	if(strcmp(init_passwd, lock_passwd))
+	{
+		DWORD tmp = 0;
+		if(SetLock(7, &tmp, tmp, lock_passwd, init_passwd, 0, 0))
+		{
+			CERR << TEXT("ÐÂÃÜÂë:") << lock_passwd << endl;
 			ofstream passwdstrm("passwd.txt", ios_base::out | ios_base::trunc);
 			passwdstrm << lock_passwd << endl;
 			passwdstrm.close();
 		}
+		else
+		{
+			CERR << TEXT("¼ÓÃÜ¹·ÐÞ¸ÄÃÜÂë´íÎó") << hex << LYFGetLastErr() << endl;
+			return -16;
+		}
 	}
+
 	return 0;
 }

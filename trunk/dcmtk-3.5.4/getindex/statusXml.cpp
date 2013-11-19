@@ -118,6 +118,13 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 	return 0;
 }
 
+static long __stdcall Lock32_Function_Wrapper(long randnum)
+{
+	long tr = 0;
+	Lock32_Function(randnum, &tr, 0);
+	return tr;
+}
+
 int statusCharge(const char *flag)
 {
 	string errorMessage;
@@ -166,7 +173,7 @@ int statusCharge(const char *flag)
 	{
 		DWORD serial = 0;
 		Sleep(4000);
-		int retCode = SetLock(8, &serial, NULL, lock_passwd);
+		int retCode = SetLock(8, &serial, 0, NULL, lock_passwd, 0, 0);
 		if(retCode)
 		{
 			buffer << "»ñÈ¡¼ÓÃÜËøÐòºÅ´íÎó:" << retCode << endl;
@@ -174,7 +181,7 @@ int statusCharge(const char *flag)
 			return -2;
 		}
 
-		retCode = decodeCharge(chargekey, serial, Lock32_Function);
+		retCode = decodeCharge(chargekey, serial, Lock32_Function_Wrapper);
 		switch(retCode)
 		{
 		case -1:
@@ -208,16 +215,16 @@ int statusCharge(const char *flag)
 			int sectionNumber = fileno / 64, offset = (fileno % 64) / 8;
 			unsigned char bytemask = 0x80, section[8];
 			bytemask >>= (fileno % 8);
-			retCode = ReadLock(sectionNumber, section, lock_passwd);
+			retCode = ReadLock(sectionNumber, section, lock_passwd, 0, 0);
 			if(retCode == 0)
 			{
 				if((section[offset] & bytemask) == 0)
 				{
 					section[offset] |= bytemask;
-					retCode = WriteLock(sectionNumber, section, lock_passwd);
+					retCode = WriteLock(sectionNumber, section, lock_passwd, 0, 0);
 					if(retCode == 0)
 					{
-						retCode = ReadLock(15, section, lock_passwd);
+						retCode = ReadLock(15, section, lock_passwd, 0, 0);
 						if(retCode == 0)
 						{
 							increase = box * 50;
@@ -226,7 +233,7 @@ int statusCharge(const char *flag)
 							if(avoidOverflow >= 0 && avoidOverflow <= 0xFFFF)
 							{
 								*(reinterpret_cast<WORD*>(section) + 3) += increase;
-								retCode = WriteLock(15, section, lock_passwd);
+								retCode = WriteLock(15, section, lock_passwd, 0, 0);
 								if(retCode == 0)
 								{
 									chargeLog << "OK:" << increase << endl;
