@@ -121,10 +121,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>..\..\dcmimage\libsrc\$(Configuration)\dcmimage.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\libsrc\$(Configuration)\dcmdata.lib;commonlib.lib;liblock.lib;libeay32MTd.lib;cdll5.lib;zlib_d.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\..\dcmimage\libsrc\$(Configuration)\dcmimage.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\libsrc\$(Configuration)\dcmdata.lib;commonlib.lib;liblock.lib;libeay32MTd.lib;cdll8.lib;zlib_d.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>$(OutDir);..;..\..\ofstd;$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\libxml2-2.6.26\lib;..\..\ofstd\libsrc\$(ConfigurationName);..\libsrc\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir);..;..\..\ofstd;$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\libxml2-2.6.26\lib;..\..\ofstd\libsrc\$(ConfigurationName);..\libsrc\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock\lib_x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>Debug/dcmgpdir.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
@@ -168,10 +168,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>..\..\dcmimage\libsrc\$(Configuration)\dcmimage.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\libsrc\$(Configuration)\dcmdata.lib;commonlib.lib;liblock.lib;cdll5.lib;libeay32MT.lib;zlib_o.lib;netapi32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\..\dcmimage\libsrc\$(Configuration)\dcmimage.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\libsrc\$(Configuration)\dcmdata.lib;commonlib.lib;liblock.lib;cdll8.lib;libeay32MT.lib;zlib_o.lib;netapi32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>$(OutDir);..;..\..\ofstd;$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\libxml2-2.6.26\lib;..\..\ofstd\libsrc\$(ConfigurationName);..\libsrc\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir);..;..\..\ofstd;$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\libxml2-2.6.26\lib;..\..\ofstd\libsrc\$(ConfigurationName);..\libsrc\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock\lib_x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>Release/dcmgpdir.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>Release\dcmgpdir.lib</ImportLibrary>
@@ -217,7 +217,7 @@
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\MinSizeRel\ofstd.lib;..\libsrc\MinSizeRel\dcmdata.lib;zlib_o.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>$(OutDir);..;..\..\ofstd;$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\libxml2-2.6.26\lib;..\..\ofstd\libsrc\$(ConfigurationName);..\libsrc\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir);..;..\..\ofstd;$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\libxml2-2.6.26\lib;..\..\ofstd\libsrc\$(ConfigurationName);..\libsrc\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock\lib_x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>MinSizeRel/dcmgpdir.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>MinSizeRel\dcmgpdir.lib</ImportLibrary>
@@ -264,7 +264,7 @@
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\RelWithDebInfo\ofstd.lib;..\libsrc\RelWithDebInfo\dcmdata.lib;zlib_o.lib</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>$(OutDir);..;..\..\ofstd;$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\libxml2-2.6.26\lib;..\..\ofstd\libsrc\$(ConfigurationName);..\libsrc\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir);..;..\..\ofstd;$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\libxml2-2.6.26\lib;..\..\ofstd\libsrc\$(ConfigurationName);..\libsrc\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock\lib_x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>RelWithDebInfo/dcmgpdir.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>

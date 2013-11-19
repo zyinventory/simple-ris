@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include <libb24.h>
+#include <shieldpc.h>
 #include "gencard.h"
 using namespace std;
 
@@ -92,7 +93,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	realbuy = ((box << 10) + fileno) & 0xFFFF;
 	buy[1] = realbuy ^ (security.serial & 0xFFFF);
 	buy[1] |= (realbuy << 16) ^ (security.serial & 0xFFFF0000);
-	buy[0] = privateShieldPC(buy[1]);
+	buy[0] = ShieldPC(buy[1]);
 	buy[1] ^= buy[0];
 	*reinterpret_cast<DWORD*>(cross) = buy[0];
 	*reinterpret_cast<DWORD*>(&cross[4]) = buy[1];
@@ -119,7 +120,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	cerr << "Á÷Ë®ºÅ:" << fileno << ", " << box << "ºÐ, ³äÖµÃÜÂë: " << b24buf;
 		
 	// begin decrypt
-	int test = decodeCharge(b24buf, security.serial, privateShieldPC);
+	int test = decodeCharge(b24buf, security.serial, ShieldPC);
 	switch(test)
 	{
 	case -1:
