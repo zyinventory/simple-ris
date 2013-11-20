@@ -12,3 +12,5 @@ extern "C" int decodeCharge(const char *b24buf, unsigned int serial, LOCK_FUNC_P
 
 #define TOTAL_BUY 992
 #define MAX_BOX 20
+#define CHARGE_BASE 1
+#define COUNTER_SECTION 31

@@ -240,9 +240,17 @@ int reportStatus(const char *flag)
 
 int reportCharge(const char *flag)
 {
+	if(!InitiateLock(0))
+	{
+		char errorMessage[] = "√ª”–º”√‹À¯";
+		fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(errorMessage) - 1);
+		fprintf(cgiOut, errorMessage);
+		return -1;
+	}
 	CoInitialize(NULL);
 	int result = statusCharge(flag);
 	CoUninitialize();
+	TerminateLock(0);
 	return result;
 }
 

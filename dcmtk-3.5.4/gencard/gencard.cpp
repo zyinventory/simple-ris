@@ -78,6 +78,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -3;
 	}
 	keystrm.close();
+	for(int i = 0; i < 4; ++i) key[i] = security.key[i];
 
 	unsigned int fileno = 0;
 	if(argc >= 4)
@@ -88,13 +89,20 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	else
 		fileno = getLeakLockNumber("*.txt", "^(\\d{4})\\.txt$");
+
+	long salt = ShieldPC(security.lockNumber);
+	for(int i = 0; i < (fileno % 13); ++i)
+		salt = ShieldPC(salt);
+
+	char b24buf[15] = "              ";
 	unsigned char cross[8];
 	DWORD buy[2], realbuy;
 	realbuy = ((box << 10) + fileno) & 0xFFFF;
-	buy[1] = realbuy ^ (security.serial & 0xFFFF);
-	buy[1] |= (realbuy << 16) ^ (security.serial & 0xFFFF0000);
+	buy[1] = realbuy ^ (salt & 0xFFFF);
+	buy[1] |= (realbuy << 16) ^ (salt & 0xFFFF0000);
 	buy[0] = ShieldPC(buy[1]);
 	buy[1] ^= buy[0];
+
 	*reinterpret_cast<DWORD*>(cross) = buy[0];
 	*reinterpret_cast<DWORD*>(&cross[4]) = buy[1];
 	swap(cross[0], cross[3]);
@@ -104,7 +112,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	buy[0] = *reinterpret_cast<DWORD*>(cross);
 	buy[1] = *reinterpret_cast<DWORD*>(&cross[4]);
-	char b24buf[15] = "              ";
+
 	for(int i = 0; i < 7; ++i)
 	{
 		b24buf[6 - i] = base24code[buy[0] % 24];
@@ -120,7 +128,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	cerr << "流水号:" << fileno << ", " << box << "盒, 充值密码: " << b24buf;
 		
 	// begin decrypt
-	int test = decodeCharge(b24buf, security.serial, ShieldPC);
+	int test = decodeCharge(b24buf, salt, ShieldPC);
 	switch(test)
 	{
 	case -1:
@@ -133,7 +141,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		cerr << " lock check error " << fileno << endl;
 		return test;
 	}
-
+	
 	DWORD box_r = ((unsigned int)test) >> 10;
 	DWORD fileno_r = test & 0x3FF;
 	if(box == box_r && fileno == fileno_r)
@@ -151,6 +159,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			card.close();
 			cerr << " 生成OK" << endl;
 		}
+		cerr << " 生成OK" << endl;
 	}
 	else
 	{

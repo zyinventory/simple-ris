@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iomanip>
 #include <regex>
+#include <libb24.h>
 #include "lock.h"
 #include "liblock.h"
 
@@ -84,8 +85,8 @@ extern "C" int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, unsign
 	char *data = new char[base64.size() + 1];
 	base64.copy(data, base64.size());
 	data[base64.size()] = '\0';
-	mkpasswd(data, lockNumber, gen_lock_passwd);
-	mkpasswd(data + 8, lockNumber, gen_rw_passwd);
+	if(gen_lock_passwd) mkpasswd(data, lockNumber, gen_lock_passwd);
+	if(gen_rw_passwd) mkpasswd(data + 8, lockNumber, gen_rw_passwd);
 
 	int read = fillSeedSIV(siv, sizeof(SEED_SIV), data, base64.size(), PUBKEY_SKIP + (lockNumber % PUBKEY_MOD));
 	delete data;
@@ -137,7 +138,7 @@ extern "C" int currentCount(char *passwd)
 {
 	int ret;
 	DWORD data;
-	if(ReadLock(0, &data, passwd, 0, 0))
+	if(ReadLock(COUNTER_SECTION, &data, passwd, 0, 0))
 		return data;
 	else
 		return -15;
