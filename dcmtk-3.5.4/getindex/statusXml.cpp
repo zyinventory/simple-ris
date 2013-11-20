@@ -152,10 +152,10 @@ int statusCharge(const char *flag)
 
 	int licenseCount = 0, oldCount = -1;
 	WORD increase = 0;
-	char countBuffer[12] = "", lock_passwd[9] = "", filename[64] = "..\\etc\\*.key";
+	char countBuffer[12] = "", lock_passwd[9] = "", filename[64] = "..\\etc\\*.key", rw_passwd[9] = "";
 	DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
 	SEED_SIV siv;
-	if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd))
+	if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd, rw_passwd))
 	{
 		if(!invalidLock("..\\etc\\license.key", filename, &siv))
 		{

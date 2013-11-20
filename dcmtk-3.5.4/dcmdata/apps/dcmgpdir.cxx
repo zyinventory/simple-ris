@@ -758,10 +758,10 @@ traversal_restart:
 	if(opt_csv && *opt_csv != '\0')
 	{
 		bool validLock = false;
-		char lock_passwd[9] = "", filename[64] = "..\\etc\\*.key";
+		char lock_passwd[9] = "", filename[64] = "..\\etc\\*.key", rw_passwd[9] = "";
 		DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
 		SEED_SIV siv;
-		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd))
+		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd, rw_passwd))
 			if(!invalidLock("..\\etc\\license.key", filename, &siv))
 				validLock = currentCount(lock_passwd) > 0;
 

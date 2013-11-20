@@ -177,13 +177,13 @@ int queryXml(int hostLength)
 int burningStudy(const char *media)
 {
 	ostringstream errstream;
-	char lock_passwd[9] = "";
+	char lock_passwd[9] = "", rw_passwd[9] = "";
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
 		char countBuffer[12] = "", lock_passwd[9] = "", filename[64] = "..\\etc\\*.key";
 		DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
 		SEED_SIV siv;
-		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd))
+		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd, rw_passwd))
 		{
 			if(!invalidLock("..\\etc\\license.key", filename, &siv))
 			{
