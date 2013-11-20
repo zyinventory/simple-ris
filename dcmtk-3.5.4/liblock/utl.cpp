@@ -148,10 +148,10 @@ extern "C" int decreaseCount(char *passwd)
 {
 	int ret;
 	DWORD data;
-	if(ReadLock(0, &data, passwd, 0, 0))
+	if(ReadLock(COUNTER_SECTION, &data, passwd, 0, 0))
 	{
 		if(data > 0) --data;
-		WriteLock(0, &data, passwd, 0, 0);
+		WriteLock(COUNTER_SECTION, &data, passwd, 0, 0);
 		return data;
 	}
 	else
