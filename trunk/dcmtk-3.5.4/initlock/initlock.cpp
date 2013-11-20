@@ -6,7 +6,7 @@
 #include "constant.h"
 using namespace std;
 
-static char lock_passwd[9] = "";
+static char lock_passwd[9] = "", rw_passwd[9] = "";
 
 class numpunct_no_gouping : public numpunct_byname<char>
 {
@@ -84,6 +84,10 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -7;
 	}
 
+	// init_passwd
+	if(argc >= 3) StringCchCopy(init_lock_passwd, 9, argv[2]);
+	if(argc >= 4) StringCchCopy(init_rw_passwd, 9, argv[3]);
+
 	//open dog, get lock number
 	if(!InitiateLock(0))
 	{
@@ -92,7 +96,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	atexit(exitHook);
 
-	if(!SetLock(8, &lockNumber, 0, init_passwd, init_passwd, 0, 0))
+	if(!SetLock(8, &lockNumber, 0, init_lock_passwd, init_lock_passwd, 0, 0))
 	{
 		CERR << TEXT("»ñÈ¡¼ÓÃÜ¹·ÐòÁÐºÅ´íÎó:") << hex << LYFGetLastErr() << endl;
 		return -5;
@@ -161,7 +165,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	CERR << TEXT("Éú³ÉRSAÃÜÔ¿:") << rsaPrivateKey << TEXT(",") << rsaPublicKey << endl;
 
 	SEED_SIV siv;
-	if(loadPublicKeyContent(rsaPublicKey, &siv, lockNumber, lock_passwd))
+	if(loadPublicKeyContent(rsaPublicKey, &siv, lockNumber, lock_passwd, rw_passwd))
 	{
 		CERR << TEXT("Éú³ÉRSA¹«Ô¿¸ñÊ½´íÎó") << endl;
 		return -8;
@@ -228,7 +232,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 	}
 
-	DWORD data = 0;
 	CERR << TEXT("³õÊ¼»¯¼ÓÃÜ¹·ÄÚ´æ") << endl;
 	CERR << TEXT('|');
 	for(int i = 0; i < 78; ++i) CERR << TEXT('-');
@@ -240,7 +243,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	SetConsoleCursorPosition(hOut, info.dwCursorPosition);
 	for(int i = 1; i < 1280; ++i)
 	{
-		if(WriteLock(i, &data, init_passwd, 0, 0))
+		DWORD data = 0;
+		if(WriteLock(i, &data, init_lock_passwd, 0, 0))
 		{
 			if(i % 16 == 0) CERR << TEXT('O');
 		}
@@ -252,22 +256,42 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	CERR << endl;
 
-	if(strcmp(init_passwd, lock_passwd))
+	bool lockPwdOK = true, rwPwdOK = true;
+	ofstream passwdstrm("passwd.txt", ios_base::out | ios_base::trunc);
+	//¹ÜÀíÃÜÂë
+	if(strcmp(init_lock_passwd, lock_passwd))
 	{
 		DWORD tmp = 0;
-		if(SetLock(7, &tmp, tmp, lock_passwd, init_passwd, 0, 0))
-		{
-			CERR << TEXT("ÐÂÃÜÂë:") << lock_passwd << endl;
-			ofstream passwdstrm("passwd.txt", ios_base::out | ios_base::trunc);
-			passwdstrm << lock_passwd << endl;
-			passwdstrm.close();
-		}
-		else
-		{
-			CERR << TEXT("¼ÓÃÜ¹·ÐÞ¸ÄÃÜÂë´íÎó") << hex << LYFGetLastErr() << endl;
-			return -16;
-		}
+		lockPwdOK = SetLock(7, &tmp, tmp, lock_passwd, init_lock_passwd, 0, 0);
 	}
-
+	if(lockPwdOK)
+	{
+		CERR << TEXT("¹ÜÀíÃÜÂë:") << lock_passwd << endl;
+		passwdstrm << TEXT("¹ÜÀíÃÜÂë:") << lock_passwd << endl;
+	}
+	else
+	{
+		CERR << TEXT("¼ÓÃÜ¹·ÐÞ¸Ä¹ÜÀíÃÜÂë´íÎó") << hex << LYFGetLastErr() << endl;
+		passwdstrm << TEXT("¼ÓÃÜ¹·ÐÞ¸Ä¹ÜÀíÃÜÂë´íÎó") << hex << LYFGetLastErr() << TEXT(",Ô­¹ÜÀíÃÜÂë²»±ä:") << init_lock_passwd << endl;
+		return -16;
+	}
+	//¶ÁÐ´ÃÜÂë
+	if(strcmp(init_rw_passwd, rw_passwd))
+	{
+		DWORD tmp = 0;
+		rwPwdOK = SetLock(7, &tmp, tmp, rw_passwd, init_rw_passwd, 0, 0);
+	}
+	if(rwPwdOK)
+	{
+		CERR << TEXT("¶ÁÐ´ÃÜÂë:") << rw_passwd << endl;
+		passwdstrm << TEXT("¶ÁÐ´ÃÜÂë:") << rw_passwd << endl;
+	}
+	else
+	{
+		CERR << TEXT("¼ÓÃÜ¹·ÐÞ¸Ä¶ÁÐ´ÃÜÂë´íÎó") << hex << LYFGetLastErr() << endl;
+		passwdstrm << TEXT("¼ÓÃÜ¹·ÐÞ¸Ä¶ÁÐ´ÃÜÂë´íÎó") << hex << LYFGetLastErr() << TEXT(",Ô­¶ÁÐ´ÃÜÂë²»±ä:") << init_rw_passwd << endl;
+		return -16;
+	}
+	passwdstrm.close();
 	return 0;
 }
