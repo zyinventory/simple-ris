@@ -152,16 +152,33 @@ int statusCharge(const char *flag)
 
 	int licenseCount = 0, oldCount = -1;
 	WORD increase = 0;
-	char countBuffer[12] = "", lock_passwd[9] = "", filename[64] = "..\\etc\\*.key", rw_passwd[9] = "";
-	DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
+	char countBuffer[12] = "", lock_passwd[9] = "", filename[64] = "..\\etc\\*.key";//, rw_passwd[9] = "";
+	DWORD lockNumber = getLockNumber(filename, "^(\\d{8,12})\\.key$", FALSE, filename + 7);
 	SEED_SIV siv;
-	if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd, rw_passwd))
+	if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd, NULL))
 	{
 		if(!invalidLock("..\\etc\\license.key", filename, &siv))
 		{
 			licenseCount = currentCount(lock_passwd);
-			if(licenseCount < 0 || licenseCount > 0xffff) licenseCount = 0;
+			if(licenseCount < 0 || licenseCount > 0xffff)
+			{
+				buffer << "授权错误" << endl;
+				outputContent(true);
+				return -1;
+			}
 		}
+		else
+		{
+			buffer << "授权错误" << endl;
+			outputContent(true);
+			return -1;
+		}
+	}
+	else
+	{
+		buffer << "授权错误" << endl;
+		outputContent(true);
+		return -1;
 	}
 
 	MSXML2::IXMLDOMElementPtr key;
@@ -171,17 +188,41 @@ int statusCharge(const char *flag)
 	if(flag && strlen(flag) && !strcmp("charge", flag)
 		&& cgiFormNotFound != cgiFormString("password", chargekey, sizeof(chargekey)) && strlen(chargekey) > 0)
 	{
-		DWORD serial = 0;
-		Sleep(4000);
-		int retCode = SetLock(8, &serial, 0, NULL, lock_passwd, 0, 0);
-		if(retCode)
+		char seqStr[16] = "";
+		int seq = -1;
+		if(cgiFormNotFound != cgiFormString("seq", seqStr, sizeof(seqStr)) && strlen(seqStr) > 0)
 		{
-			buffer << "获取加密锁序号错误:" << retCode << endl;
+			errno = 0;
+			seq = atoi(seqStr);
+		}
+		if(seq == -1 || (seq == 0 && errno == EINVAL))
+		{
+			buffer << "序列号错误" << endl;
+			outputContent(true);
+			return -1;
+		}
+
+		//Sleep(4000);
+		DWORD serial = 0;
+		if(!SetLock(8, &serial, 0, "", "", 0, 0))
+		{
+			buffer << "获取加密锁序号错误:" << hex << LYFGetLastErr() << endl;
+			outputContent(true);
+			return -2;
+		}
+		long salt = serial;
+		BOOL lockResult = TRUE;
+		lockResult = lockResult && Lock32_Function(salt, &salt, 0);
+		for(int i = 0; i < (seq % 13); ++i)
+			lockResult = lockResult && Lock32_Function(salt, &salt, 0);
+		if(!lockResult)
+		{
+			buffer << "加密锁校验错误" << endl;
 			outputContent(true);
 			return -2;
 		}
 
-		retCode = decodeCharge(chargekey, serial, Lock32_Function_Wrapper);
+		int retCode = decodeCharge(chargekey, salt, Lock32_Function_Wrapper);
 		switch(retCode)
 		{
 		case -1:
@@ -199,9 +240,9 @@ int statusCharge(const char *flag)
 		}
 		DWORD box = ((unsigned int)retCode) >> 10;
 		DWORD fileno = retCode & 0x3FF;  // TOTAL_BUY + 32bits, 32bits is 16bits counter + 16bits reserve
-		if(box > MAX_BOX || fileno > TOTAL_BUY)
+		if(box > MAX_BOX || fileno != seq)
 		{
-			buffer << "数量错误:" << chargekey << endl;
+			buffer << "数量或序列号错误:" << chargekey << endl;
 			outputContent(true);
 			return -6;
 		}
@@ -212,42 +253,28 @@ int statusCharge(const char *flag)
 		if(!chargeLog.fail())
 		{
 			chargeLog << chargekey << '\t' << timeBuffer << '\t';
-			int sectionNumber = fileno / 64, offset = (fileno % 64) / 8;
-			unsigned char bytemask = 0x80, section[8];
+			int sectionNumber = fileno / 32 + CHARGE_BASE, offset = (fileno % 32) / 8;
+			unsigned char bytemask = 0x80, section[4];
 			bytemask >>= (fileno % 8);
-			retCode = ReadLock(sectionNumber, section, lock_passwd, 0, 0);
-			if(retCode == 0)
+			if(ReadLock(sectionNumber, section, lock_passwd, 0, 0))
 			{
 				if((section[offset] & bytemask) == 0)
 				{
 					section[offset] |= bytemask;
-					retCode = WriteLock(sectionNumber, section, lock_passwd, 0, 0);
-					if(retCode == 0)
+					if(WriteLock(sectionNumber, section, lock_passwd, 0, 0))
 					{
-						retCode = ReadLock(15, section, lock_passwd, 0, 0);
-						if(retCode == 0)
+						increase = box * 50;
+						oldCount = licenseCount;
+						licenseCount += increase;
+						if(licenseCount >= 0 && licenseCount <= 0xFFFF)
 						{
-							increase = box * 50;
-							int avoidOverflow = *(reinterpret_cast<WORD*>(section) + 3);
-							avoidOverflow += increase;
-							if(avoidOverflow >= 0 && avoidOverflow <= 0xFFFF)
-							{
-								*(reinterpret_cast<WORD*>(section) + 3) += increase;
-								retCode = WriteLock(15, section, lock_passwd, 0, 0);
-								if(retCode == 0)
-								{
-									chargeLog << "OK:" << increase << endl;
-									oldCount = licenseCount;
-									licenseCount = *(reinterpret_cast<WORD*>(section) + 3);
-								}
-								else
-									errorMessage = "数量写入错误";
-							}
+							if(WriteLock(COUNTER_SECTION, &licenseCount, lock_passwd, 0, 0))
+								chargeLog << "OK:" << increase << endl;
 							else
-								errorMessage = "充值数量不能超过65535";
+								errorMessage = "数量写入错误";
 						}
 						else
-							errorMessage = "数量读取错误";
+							errorMessage = "充值数量不能超过65535";
 					}
 					else
 						errorMessage = "存储写入错误";
@@ -262,7 +289,7 @@ int statusCharge(const char *flag)
 		}
 		else
 		{
-			buffer << "服务器忙，请重试" << endl;
+			buffer << "充值日志写入错误，请重试" << endl;
 			outputContent(true);
 			return -9;
 		}

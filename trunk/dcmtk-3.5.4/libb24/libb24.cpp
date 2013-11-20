@@ -32,8 +32,8 @@ extern "C" int decodeCharge(const char *b24buf, unsigned int serial, LOCK_FUNC_P
 	unsigned int origin = buy[0] ^ buy[1];
 	if(buy[0] == lockfunc(origin))
 	{
-		int test1 = (origin & 0xFFFF) ^ (serial & 0xFFFF);
-		int test2 = (origin & 0xFFFF0000) ^ (serial & 0xFFFF0000);
+		unsigned int test1 = (origin & 0xFFFF) ^ (serial & 0xFFFF);
+		unsigned int test2 = (origin & 0xFFFF0000) ^ (serial & 0xFFFF0000);
 		test2 >>= 16;
 		if(test1 == test2)
 			return test1;
