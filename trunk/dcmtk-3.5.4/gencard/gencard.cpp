@@ -97,9 +97,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	char b24buf[15] = "              ";
 	unsigned char cross[8];
 	DWORD buy[2], realbuy;
-	realbuy = ((box << 10) + fileno) & 0xFFFF;
-	buy[1] = realbuy ^ (salt & 0xFFFF);
-	buy[1] |= (realbuy << 16) ^ (salt & 0xFFFF0000);
+	realbuy = (((fileno + 1) * box) << 16) & 0xFF0000;
+	realbuy |= (box << 24) + fileno;
+	buy[1] = realbuy ^ salt;
 	buy[0] = ShieldPC(buy[1]);
 	buy[1] ^= buy[0];
 
@@ -128,7 +128,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	cerr << "流水号:" << fileno << ", " << box << "盒, 充值密码: " << b24buf;
 		
 	// begin decrypt
-	int test = decodeCharge(b24buf, salt, ShieldPC);
+	unsigned int test = decodeCharge(b24buf, salt, ShieldPC);
 	switch(test)
 	{
 	case -1:
@@ -142,8 +142,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		return test;
 	}
 	
-	DWORD box_r = ((unsigned int)test) >> 10;
-	DWORD fileno_r = test & 0x3FF;
+	DWORD box_r = test >> 24;
+	DWORD fileno_r = test & 0xFFFF;
 	if(box == box_r && fileno == fileno_r)
 	{
 		char filename[64];
@@ -159,7 +159,6 @@ int _tmain(int argc, _TCHAR* argv[])
 			card.close();
 			cerr << " 生成OK" << endl;
 		}
-		cerr << " 生成OK" << endl;
 	}
 	else
 	{

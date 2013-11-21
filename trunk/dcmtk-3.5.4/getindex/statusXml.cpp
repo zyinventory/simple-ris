@@ -152,34 +152,9 @@ int statusCharge(const char *flag)
 
 	int licenseCount = 0, oldCount = -1;
 	WORD increase = 0;
-	char countBuffer[12] = "", lock_passwd[9] = "", filename[64] = "..\\etc\\*.key";//, rw_passwd[9] = "";
+	char countBuffer[12] = "", passwd[9] = "", filename[64] = "..\\etc\\*.key";
 	DWORD lockNumber = getLockNumber(filename, "^(\\d{8,12})\\.key$", FALSE, filename + 7);
 	SEED_SIV siv;
-	if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd, NULL))
-	{
-		if(!invalidLock("..\\etc\\license.key", filename, &siv))
-		{
-			licenseCount = currentCount(lock_passwd);
-			if(licenseCount < 0 || licenseCount > 0xffff)
-			{
-				buffer << "ÊÚÈ¨´íÎó" << endl;
-				outputContent(true);
-				return -1;
-			}
-		}
-		else
-		{
-			buffer << "ÊÚÈ¨´íÎó" << endl;
-			outputContent(true);
-			return -1;
-		}
-	}
-	else
-	{
-		buffer << "ÊÚÈ¨´íÎó" << endl;
-		outputContent(true);
-		return -1;
-	}
 
 	MSXML2::IXMLDOMElementPtr key;
 	key = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "key", "");
@@ -202,9 +177,9 @@ int statusCharge(const char *flag)
 			return -1;
 		}
 
-		//Sleep(4000);
+		Sleep(4000);
 		DWORD serial = 0;
-		if(!SetLock(8, &serial, 0, "", "", 0, 0))
+		if(!SetLock(8, &serial, 0, "fqE8km*O", "Tw2d@uJp", 0, 0))
 		{
 			buffer << "»ñÈ¡¼ÓÃÜËøÐòºÅ´íÎó:" << hex << LYFGetLastErr() << endl;
 			outputContent(true);
@@ -238,13 +213,39 @@ int statusCharge(const char *flag)
 			outputContent(true);
 			return -5;
 		}
-		DWORD box = ((unsigned int)retCode) >> 10;
-		DWORD fileno = retCode & 0x3FF;  // TOTAL_BUY + 32bits, 32bits is 16bits counter + 16bits reserve
+		DWORD box = ((unsigned int)retCode) >> 24;
+		DWORD fileno = retCode & 0xFFFF;
 		if(box > MAX_BOX || fileno != seq)
 		{
 			buffer << "ÊýÁ¿»òÐòÁÐºÅ´íÎó:" << chargekey << endl;
 			outputContent(true);
 			return -6;
+		}
+
+		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, passwd, NULL))
+		{
+			if(!invalidLock("..\\etc\\license.key", filename, &siv))
+			{
+				licenseCount = currentCount(passwd);
+				if(licenseCount < 0 || licenseCount > 0xffff)
+				{
+					buffer << "ÊÚÈ¨´íÎó" << endl;
+					outputContent(true);
+					return -1;
+				}
+			}
+			else
+			{
+				buffer << "ÊÚÈ¨´íÎó" << endl;
+				outputContent(true);
+				return -1;
+			}
+		}
+		else
+		{
+			buffer << "ÊÚÈ¨´íÎó" << endl;
+			outputContent(true);
+			return -1;
 		}
 
 		char timeBuffer[16];
@@ -256,28 +257,29 @@ int statusCharge(const char *flag)
 			int sectionNumber = fileno / 32 + CHARGE_BASE, offset = (fileno % 32) / 8;
 			unsigned char bytemask = 0x80, section[4];
 			bytemask >>= (fileno % 8);
-			if(ReadLock(sectionNumber, section, lock_passwd, 0, 0))
+			if(ReadLock(sectionNumber, section, passwd, 0, 0))
 			{
 				if((section[offset] & bytemask) == 0)
 				{
 					section[offset] |= bytemask;
-					if(WriteLock(sectionNumber, section, lock_passwd, 0, 0))
+
+					increase = box * 50;
+					oldCount = licenseCount;
+					if(licenseCount >= 0 && (licenseCount + increase) <= 0xFFFF)
 					{
-						increase = box * 50;
-						oldCount = licenseCount;
-						licenseCount += increase;
-						if(licenseCount >= 0 && licenseCount <= 0xFFFF)
+						licenseCount = increaseCount(passwd, increase);
+						if(licenseCount >= 0)
 						{
-							if(WriteLock(COUNTER_SECTION, &licenseCount, lock_passwd, 0, 0))
+							if(WriteLock(sectionNumber, section, passwd, 0, 0))
 								chargeLog << "OK:" << increase << endl;
 							else
-								errorMessage = "ÊýÁ¿Ð´Èë´íÎó";
+								errorMessage = "´æ´¢Ð´Èë´íÎó";
 						}
 						else
-							errorMessage = "³äÖµÊýÁ¿²»ÄÜ³¬¹ý65535";
+							errorMessage = "ÊýÁ¿Ð´Èë´íÎó";
 					}
 					else
-						errorMessage = "´æ´¢Ð´Èë´íÎó";
+						errorMessage = "³äÖµÊýÁ¿²»ÄÜ³¬¹ý65535";
 				}
 				else
 					errorMessage = "´ËÃÜÂëÒÑ³ä¹ý";
@@ -295,6 +297,34 @@ int statusCharge(const char *flag)
 		}
 		key->appendChild(pXmlDom->createTextNode(chargekey));
 		root->appendChild(key);
+	}
+	else  // query counter
+	{
+		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, NULL, passwd))
+		{
+			if(!invalidLock("..\\etc\\license.key", filename, &siv))
+			{
+				licenseCount = currentCount(passwd);
+				if(licenseCount < 0 || licenseCount > 0xFFFF)
+				{
+					buffer << "ÊÚÈ¨´íÎó" << endl;
+					outputContent(true);
+					return -1;
+				}
+			}
+			else
+			{
+				buffer << "ÊÚÈ¨´íÎó" << endl;
+				outputContent(true);
+				return -1;
+			}
+		}
+		else
+		{
+			buffer << "ÊÚÈ¨´íÎó" << endl;
+			outputContent(true);
+			return -1;
+		}
 	}
 
 	sprintf_s(countBuffer, "%d", lockNumber);

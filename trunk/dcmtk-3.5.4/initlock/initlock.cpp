@@ -96,6 +96,14 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	atexit(exitHook);
 
+	unsigned long counter = 0;
+	//if(Counter(init_rw_passwd, 0, 0, 0, &counter))
+	if(SetLock(0, &counter, 0, "", init_rw_passwd, 0, 0))
+		cerr << "counter " << counter << endl;
+	else
+		cerr << "counter error:" << hex << LYFGetLastErr() << endl;
+	return 0;
+
 	if(!SetLock(8, &lockNumber, 0, init_lock_passwd, init_lock_passwd, 0, 0))
 	{
 		CERR << TEXT("获取加密狗序列号错误:") << hex << LYFGetLastErr() << endl;
@@ -105,7 +113,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	serialStringStream << lockNumber;
 	String lockString = serialStringStream.str();
 	CERR << TEXT("加密狗序列号:") << lockString << endl;
-
 
 	long dictionary[DICTIONARY_SIZE * 2 + 4]; // (rand_request, key_response) * 2 + md5_digest
 	for(int i = 0; i < DICTIONARY_SIZE; ++i)
@@ -293,5 +300,15 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -16;
 	}
 	passwdstrm.close();
+
+	unsigned long count = 10;
+	if(SetLock(1, &count, 0, lock_passwd, lock_passwd, 0, 0))
+		CERR << TEXT("次数限制成功") << endl;
+	else
+	{
+		CERR << TEXT("次数限制失败:") << hex << LYFGetLastErr() << endl;
+		return -17;
+	}
+	CERR << TEXT("### 加密狗初始化完全成功 ###") << endl;
 	return 0;
 }

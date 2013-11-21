@@ -32,6 +32,7 @@ extern "C"
 	int invalidLock(const char *licenseRSAEnc, const char *rsaPublicKey, SEED_SIV *sivptr);
 	int currentCount(char *passwd);
 	int decreaseCount(char *passwd);
+	int increaseCount(char *passwd, int charge);
 #ifdef __cplusplus
 }
 #endif

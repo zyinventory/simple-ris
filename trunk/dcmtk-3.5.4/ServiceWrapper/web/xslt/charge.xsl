@@ -52,7 +52,7 @@
           ul li{ list-style-type:disc; }
         </style>
         <title>
-          可刻录光盘数量:<xsl:value-of select="license_counter"/>
+          <xsl:value-of select="license_counter"/>
         </title>
       </head>
       <body>
@@ -61,7 +61,7 @@
         </h1>
         <p>系统编号:<xsl:value-of select="lock_number"/></p>
         <form  method="POST" action="getindex.exe">
-          <label for="charge">序列号:</label><input id="seq" type="text" name="seq" maxlength="20"></input>
+          <label for="charge">序列号:</label><input id="seq" type="text" name="seq" size="5" maxlength="20"></input>，
           <label for="charge">密码:</label><input id="password" type="text" name="password" maxlength="20"></input>
           <input id="charge" type="hidden" name="charge" value="charge"></input>
           <input type="submit" value="充值" onclick="startBar()"/>

@@ -136,24 +136,38 @@ extern "C" int invalidLock(const char *licenseRSAEnc, const char *rsaPublicKey, 
 
 extern "C" int currentCount(char *passwd)
 {
-	int ret;
-	DWORD data;
-	if(ReadLock(COUNTER_SECTION, &data, passwd, 0, 0))
-		return data;
+	long licenseCount;
+	if(SetLock(0, reinterpret_cast<unsigned long*>(&licenseCount), 0, "s.Wa2pUc", passwd, 0, 0))
+	{
+		if(licenseCount > 0 && licenseCount < DUMMY_ZERO)
+			licenseCount = 0;
+		else
+			licenseCount -= DUMMY_ZERO;
+		return licenseCount;
+	}
 	else
 		return -15;
 }
 
 extern "C" int decreaseCount(char *passwd)
 {
-	int ret;
-	DWORD data;
-	if(ReadLock(COUNTER_SECTION, &data, passwd, 0, 0))
+	if(currentCount(passwd) > 0)
 	{
-		if(data > 0) --data;
-		WriteLock(COUNTER_SECTION, &data, passwd, 0, 0);
-		return data;
+		long licenseCount = 0;
+		if(Counter(passwd, 0, 0, 0, reinterpret_cast<unsigned long*>(&licenseCount)))
+			return licenseCount - DUMMY_ZERO;
 	}
-	else
-		return -15;
+	return -15;
+}
+
+extern "C" int increaseCount(char *passwd, int charge)
+{
+	unsigned long licenseCount = currentCount(passwd);
+	if(licenseCount >= 0 && charge >= 0)
+	{
+		licenseCount += charge + DUMMY_ZERO;
+		if(SetLock(1, &licenseCount, 0, "bOl=y8Nm", passwd, 0, 0))
+			return licenseCount - DUMMY_ZERO;
+	}
+	return -15;
 }

@@ -32,11 +32,12 @@ extern "C" int decodeCharge(const char *b24buf, unsigned int serial, LOCK_FUNC_P
 	unsigned int origin = buy[0] ^ buy[1];
 	if(buy[0] == lockfunc(origin))
 	{
-		unsigned int test1 = (origin & 0xFFFF) ^ (serial & 0xFFFF);
-		unsigned int test2 = (origin & 0xFFFF0000) ^ (serial & 0xFFFF0000);
-		test2 >>= 16;
-		if(test1 == test2)
-			return test1;
+		origin ^= serial;
+		unsigned int box = origin >> 24;
+		unsigned int fileno = origin & 0xFFFF;
+
+		if(((box * (fileno + 1)) & 0xFF) == ((origin >> 16) & 0xFF))
+			return origin & 0xFF00FFFF;
 		else
 			return -2; // " bit check error "
 	}

@@ -177,23 +177,23 @@ int queryXml(int hostLength)
 int burningStudy(const char *media)
 {
 	ostringstream errstream;
-	char lock_passwd[9] = "", rw_passwd[9] = "";
+	char rw_passwd[9] = "";
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
-		char countBuffer[12] = "", lock_passwd[9] = "", filename[64] = "..\\etc\\*.key";
+		char countBuffer[12] = "", filename[64] = "..\\etc\\*.key";
 		DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
 		SEED_SIV siv;
-		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd, rw_passwd))
+		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, NULL, rw_passwd))
 		{
 			if(!invalidLock("..\\etc\\license.key", filename, &siv))
 			{
-				int licenseCount = currentCount(lock_passwd);
+				int licenseCount = currentCount(rw_passwd);
 				if(licenseCount > 0)
 				{
 					int result = generateStudyJDF("0020000d", studyUID, errstream, media);
 					if(result == 0)
 					{
-						decreaseCount(lock_passwd);
+						decreaseCount(rw_passwd);
 						cgiHeaderLocation("getindex.exe?status=html");
 						cgiHeaderContentType("text/html");
 						//char okMessage[] = "¿ªÊ¼¿ÌÂ¼CD/DVD...";

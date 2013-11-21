@@ -758,12 +758,12 @@ traversal_restart:
 	if(opt_csv && *opt_csv != '\0')
 	{
 		bool validLock = false;
-		char lock_passwd[9] = "", filename[64] = "..\\etc\\*.key", rw_passwd[9] = "";
+		char filename[64] = "..\\etc\\*.key", rw_passwd[9] = "";
 		DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
 		SEED_SIV siv;
-		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, lock_passwd, rw_passwd))
+		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, NULL, rw_passwd))
 			if(!invalidLock("..\\etc\\license.key", filename, &siv))
-				validLock = currentCount(lock_passwd) > 0;
+				validLock = currentCount(rw_passwd) > 0;
 
 		if(validLock) setBurnOnce();
 
@@ -772,7 +772,7 @@ traversal_restart:
 		strcpy_s(buffer, MAX_PATH, opt_csv);
 		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
 		if(!getBurnOnce())
-			decreaseCount(lock_passwd);
+			decreaseCount(rw_passwd);
 	}
 	//COUT << "create index OK" << endl;
 /*
