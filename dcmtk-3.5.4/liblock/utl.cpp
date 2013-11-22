@@ -163,9 +163,10 @@ extern "C" int decreaseCount(char *passwd)
 extern "C" int increaseCount(char *passwd, int charge)
 {
 	unsigned long licenseCount = currentCount(passwd);
-	if(licenseCount >= 0 && charge >= 0)
+	if(licenseCount >= 0)
 	{
 		licenseCount += charge + DUMMY_ZERO;
+		if(licenseCount < DUMMY_ZERO) licenseCount = DUMMY_ZERO;
 		if(SetLock(1, &licenseCount, 0, "bOl=y8Nm", passwd, 0, 0))
 			return licenseCount - DUMMY_ZERO;
 	}
