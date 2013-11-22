@@ -272,8 +272,11 @@ int statusCharge(const char *flag)
 						{
 							if(WriteLock(sectionNumber, section, passwd, 0, 0))
 								chargeLog << "OK:" << increase << endl;
-							else
+							else  // rollback
+							{
+								licenseCount = increaseCount(passwd, -increase);
 								errorMessage = "´æ´¢Ð´Èë´íÎó";
+							}
 						}
 						else
 							errorMessage = "ÊýÁ¿Ð´Èë´íÎó";
