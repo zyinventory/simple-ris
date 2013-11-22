@@ -29,6 +29,27 @@ void setBurnOnce()
 	burnOnce = true;
 }
 
+static string parsePatientName(string &patient)
+{
+	char outbuf[64];
+	patient._Copy_s(outbuf, sizeof(outbuf), patient.length());
+	outbuf[patient.length()] = '\0';
+
+	string test(outbuf);
+	regex repToSpace("[=^]+");
+	*regex_replace(outbuf, test.begin(), test.end(), repToSpace, string(" ")) = '\0';
+	test = outbuf;
+
+	regex ltrim("^ +");
+	*regex_replace(outbuf, test.begin(), test.end(), ltrim, string("")) = '\0';
+	test = outbuf;
+
+	regex rtrim(" +$");
+	*regex_replace(outbuf, test.begin(), test.end(), rtrim, string("")) = '\0';
+	test = outbuf;
+	return test;
+}
+
 HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::IXMLDOMElementPtr& study)
 {
 	istringstream patientStrm(line);
@@ -38,7 +59,7 @@ HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXM
 	if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
 
 	patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);
-	string patientsName(buffer);
+	string patientsName = parsePatientName(string(buffer));
 	if(! patientStrm.good()) { cerr << "Failed to resolve input data: " << line << endl; return E_FAIL; }
 
 	patientStrm.getline(buffer, BUFF_SIZE, UNIT_SEPARATOR);

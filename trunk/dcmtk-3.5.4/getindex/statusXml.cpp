@@ -215,7 +215,7 @@ int statusCharge(const char *flag)
 		}
 		DWORD box = ((unsigned int)retCode) >> 24;
 		DWORD fileno = retCode & 0xFFFF;
-		if(box > MAX_BOX || fileno != seq)
+		if(box > MAX_BOX || fileno != seq || fileno >= TOTAL_BUY)
 		{
 			buffer << "ÊýÁ¿»òÐòÁÐºÅ´íÎó:" << chargekey << endl;
 			outputContent(true);
@@ -286,7 +286,7 @@ int statusCharge(const char *flag)
 			}
 			else
 				errorMessage = "´æ´¢¶ÁÈ¡´íÎó";
-			if(errorMessage.length() > 0) chargeLog << "error:" << errorMessage << endl;
+			if(errorMessage.length() > 0) chargeLog << "error:" << errorMessage << ',' << hex << LYFGetLastErr() << endl;
 			chargeLog.close();
 		}
 		else
