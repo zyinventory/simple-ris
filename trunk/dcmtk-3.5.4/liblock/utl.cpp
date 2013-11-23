@@ -10,16 +10,17 @@
 
 using namespace std;
 
-extern "C" unsigned int getLockNumber(const char *filter, const char *regxPattern, int isDirectory, char *filenamebuf)
+const char regxPattern[] = "^(\\d{8,12})\\.key$";
+extern "C" int getLockNumber(const char *filter, int isDirectory, char *filenamebuf)
 {
 	WIN32_FIND_DATA ffd;
-	unsigned int lockNumber = 0;
+	unsigned int lockNumber = -1;
 
 	HANDLE hFind = FindFirstFile(filter, &ffd);
 	if (INVALID_HANDLE_VALUE == hFind) 
 	{
 		cerr << TEXT("FindFirstFile Error in ") << filter << endl;
-		return -3;
+		return -1;
 	}
 	
 	regex pattern(TEXT(regxPattern));

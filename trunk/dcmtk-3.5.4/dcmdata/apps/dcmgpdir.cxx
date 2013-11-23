@@ -107,6 +107,11 @@ OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 // ********************************************
 using namespace MSMQ;
 
+void exitHook()
+{
+	TerminateLock(0);
+}
+
 int main(int argc, char *argv[])
 {
 	int opt_debug = 0;
@@ -759,13 +764,24 @@ traversal_restart:
 	{
 		bool validLock = false;
 		char filename[64] = "..\\etc\\*.key", rw_passwd[9] = "";
-		DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
+		int lockNumber = -1;
 		SEED_SIV siv;
-		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, NULL, rw_passwd))
+		if(InitiateLock(0))
+		{
+			atexit(exitHook);
+			lockNumber = getLockNumber(filename, FALSE, filename + 7);
+		}
+		else
+			CERR << "init lock failed:" << hex << LYFGetLastErr() << endl;
+
+		if(lockNumber != -1 && 0 == loadPublicKeyContent(filename, &siv, lockNumber, NULL, rw_passwd))
 			if(!invalidLock("..\\etc\\license.key", filename, &siv))
 				validLock = currentCount(rw_passwd) > 0;
 
-		if(validLock) setBurnOnce();
+		if(validLock)
+			setBurnOnce();
+		else
+			CERR << "invalid lock: " << lockNumber << endl;
 
 		//COUT << "dicomdir OK, create index from " << opt_csv << endl;
 		char buffer[MAX_PATH];
@@ -774,7 +790,6 @@ traversal_restart:
 		if(!getBurnOnce())
 			decreaseCount(rw_passwd);
 	}
-	//COUT << "create index OK" << endl;
 /*
 	PROCESS_INFORMATION procinfo;
 	STARTUPINFO sinfo;

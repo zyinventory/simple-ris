@@ -153,7 +153,7 @@ int statusCharge(const char *flag)
 	int licenseCount = 0, oldCount = -1;
 	WORD increase = 0;
 	char countBuffer[12] = "", passwd[9] = "", filename[64] = "..\\etc\\*.key";
-	DWORD lockNumber = getLockNumber(filename, "^(\\d{8,12})\\.key$", FALSE, filename + 7);
+	int lockNumber = getLockNumber(filename, FALSE, filename + 7);
 	SEED_SIV siv;
 
 	MSXML2::IXMLDOMElementPtr key;
@@ -222,7 +222,7 @@ int statusCharge(const char *flag)
 			return -6;
 		}
 
-		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, passwd, NULL))
+		if(lockNumber != -1 && 0 == loadPublicKeyContent(filename, &siv, lockNumber, passwd, NULL))
 		{
 			if(!invalidLock("..\\etc\\license.key", filename, &siv))
 			{

@@ -89,3 +89,38 @@ bool SendCommonMessageToQueue(const char *label, const char *body, const long pr
 	}
 
 }
+
+void resetStatus(const char *queueName)
+{
+	HRESULT hr;
+	try
+	{
+		IMSMQQueuePtr pQueue = OpenOrCreateQueue(queueName, MQ_RECEIVE_ACCESS);
+		_variant_t waitStart(1 * 100); // 0.1 seconds
+		_variant_t waitNext(1 * 100); // 0.1 seconds
+		IMSMQMessagePtr pMsg = pQueue->Receive(NULL, NULL, NULL, &waitStart);
+		while(pMsg)
+		{
+			pMsg = pQueue->Receive(NULL, NULL, NULL, &waitNext);
+		}
+		hr = pQueue->Close();
+		if(FAILED(hr)) throw _com_error(hr, NULL);
+		return;
+	}
+	catch(_com_error &comErr)
+	{
+		cerr << TEXT("resetStatus COM error: ") << comErr.ErrorMessage() << endl;
+		return;
+	}
+	catch(const char *message)
+	{
+		cerr << TEXT("resetStatus error: ") << message << endl;
+		return;
+	}
+	catch(...)
+	{
+		_com_error ce(AtlHresultFromLastError());
+		cerr << TEXT("resetStatus unknown error: ") << ce.ErrorMessage() << endl;
+		return;
+	}
+}

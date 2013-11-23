@@ -24,7 +24,7 @@ extern "C"
 	int fillSeedSIV(void *siv, size_t sivSize, void *content, size_t contentLength, size_t start);
 	void MD5_digest(void *data, size_t dataLength, unsigned char *md);
 	char *md5crypt(const char *passwd, const char *magic, const char *salt);
-	unsigned int getLockNumber(const char *filter, const char *regxPattern, int isDirectory, char *lockname);
+	int getLockNumber(const char *filter, int isDirectory, char *lockname);
 	void mkpasswd(const char *base64, unsigned int salt, char *lock_passwd);
 	int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char *gen_lock_passwd, char *gen_rw_passwd);
 	int rsaVerify(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, const char *keyfile);

@@ -80,30 +80,10 @@ void closeProcHandle(WorkerProcess &wp)
 	}
 }
 
-void closeProcHandle(int i)
-{
-	cout << "close process " << i << endl;
-	closeProcHandle(workers[i]);
-}
-
-bool predicatorStudyUidEqual(WorkerProcess wp, const char *studyUid)
-{
-	return wp.hProcess && wp.studyUid && 0 == wp.studyUid->compare(studyUid);
-}
-
-bool predicatorProcessHandleEqual(WorkerProcess wp, const HANDLE handle)
-{
-	return wp.hProcess == handle;
-}
-
-bool predicatorHasCsvPath(WorkerProcess wp)
-{
-	return wp.csvPath != NULL;
-}
-
 list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 {
-	list<WorkerProcess>::iterator iter = find_if(dirmakers.begin(), dirmakers.end(), bind2nd(ptr_fun(predicatorStudyUidEqual), studyUid.c_str()));
+	list<WorkerProcess>::iterator iter = find_if(dirmakers.begin(), dirmakers.end(), 
+		[&studyUid](WorkerProcess wp){return wp.hProcess && wp.studyUid && 0 == wp.studyUid->compare(studyUid);});
 	if(iter != dirmakers.end()) return iter;
 
 	WorkerProcess wp;
@@ -206,11 +186,49 @@ void closeLogFile(WorkerProcess &wp)
 	}
 }
 
-void closeLogFile(int i)
+static void detectDcmmkdirProcessExit()
 {
-	closeLogFile(workers[i]);
+	size_t working = 0;
+	DWORD  wait;
+
+	if(dirmakers.size() == 0) return;
+	HANDLE *workingHandles = new HANDLE[dirmakers.size()];
+
+	list<WorkerProcess>::iterator iter = dirmakers.begin();
+	working = 0;
+	while(iter != dirmakers.end())
+	{
+		workingHandles[working] = (*iter).hProcess;
+		++iter;
+		++working;
+	}
+	if(working > 0)
+	{
+		wait = WaitForMultipleObjects(working, workingHandles, FALSE, 0);
+		if(wait >= WAIT_OBJECT_0 && wait < WAIT_OBJECT_0 + working)
+		{
+			wait -= WAIT_OBJECT_0;
+			iter = find_if(dirmakers.begin(), dirmakers.end(), [workingHandles,wait](WorkerProcess wp){return wp.hProcess == workingHandles[wait];});
+			if(iter != dirmakers.end())
+			{
+				DeleteQueue((*iter).studyUid->c_str());
+				closeProcHandle(*iter);
+				closeLogFile(*iter);
+				dirmakers.erase(iter);
+			}
+			else
+				cerr << "findIdleOrCompelete: dir maker " << wait << " not found" << endl;
+		}
+	}
+	if(workingHandles) delete workingHandles;
 }
 
+/*
+return:
+	WAIT_FAILED : error
+	procnum		: all idle
+	other		: index of idle process
+ */
 DWORD findIdleOrCompelete()
 {
 	size_t working = 0, idle = procnum;
@@ -225,7 +243,7 @@ DWORD findIdleOrCompelete()
 			++working;
 		}
 		else
-			idle = idle == procnum ? i : idle;
+			idle = idle == procnum ? i : idle; // find first idle workers[]'s index
 	}
 
 	if(working >= procnum)  // all process is working
@@ -234,7 +252,7 @@ DWORD findIdleOrCompelete()
 		if(wait >= WAIT_ABANDONED_0 && wait < WAIT_ABANDONED_0 + procnum)
 		{
 			result = wait - WAIT_ABANDONED_0;
-			closeProcHandle(result);
+			closeProcHandle(workers[result]);
 		}
 		else if(wait >= WAIT_OBJECT_0 && wait < WAIT_OBJECT_0 + procnum)
 			result = wait - WAIT_OBJECT_0;
@@ -254,7 +272,7 @@ DWORD findIdleOrCompelete()
 			{
 				if(workers[result].mutexIdle == workingHandles[index])
 				{
-					closeProcHandle(result);
+					closeProcHandle(workers[result]);
 					break;
 				}
 			}
@@ -278,33 +296,7 @@ DWORD findIdleOrCompelete()
 		result = procnum;
 	}
 
-	// detect dicomdir maker process exit
-	list<WorkerProcess>::iterator iter = dirmakers.begin();
-	working = 0;
-	while(iter != dirmakers.end())
-	{
-		workingHandles[working] = (*iter).hProcess;
-		++iter;
-		++working;
-	}
-	if(working > 0)
-	{
-		wait = WaitForMultipleObjects(working, workingHandles, FALSE, 0);
-		if(wait >= WAIT_OBJECT_0 && wait < WAIT_OBJECT_0 + working)
-		{
-			wait -= WAIT_OBJECT_0;
-			iter = find_if(dirmakers.begin(), dirmakers.end(), bind2nd(ptr_fun(predicatorProcessHandleEqual), workingHandles[wait]));
-			if(iter != dirmakers.end())
-			{
-				DeleteQueue((*iter).studyUid->c_str());
-				closeProcHandle(*iter);
-				closeLogFile(*iter);
-				dirmakers.erase(iter);
-			}
-			else
-				cerr << "findIdleOrCompelete: dir maker " << wait << " not found" << endl;
-		}
-	}
+	detectDcmmkdirProcessExit();
 
 	//if compress command is accomplished, clear command level variant in WorkerProcess.
 	if(result >= 0 && result < procnum && workers[result].studyUid)
@@ -428,7 +420,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 				if(WAIT_OBJECT_0 != WaitForSingleObject(workers[index].mutexIdle, INFINITE))
 				{
 					cerr << "wait idle " << index << " failed" << endl;
-					closeProcHandle(index);
+					closeProcHandle(workers[index]);
 				}
 			}
 		}
@@ -467,13 +459,13 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 			{
 				displayErrorToCerr("wait confirm");
 				cerr << "get mutex failed, close process: " << commandLine << endl;
-				closeProcHandle(index);
+				closeProcHandle(workers[index]);
 			}
 		}
 		else
 		{
 			cerr << "get mutex failed, close process: " << commandLine << endl;
-			closeProcHandle(index);
+			closeProcHandle(workers[index]);
 		}
 	}
 	else
@@ -486,7 +478,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 void checkStudyAccomplished()
 {
 	list<WorkerProcess>::iterator iter = dirmakers.begin();
-	while((iter = find_if(iter, dirmakers.end(), ptr_fun(predicatorHasCsvPath))) != dirmakers.end())
+	while((iter = find_if(iter, dirmakers.end(), [](WorkerProcess wp){ return wp.csvPath != NULL; })) != dirmakers.end())
 	{
 		size_t i;
 		for(i = 0; i < procnum; ++i)
@@ -663,12 +655,12 @@ int pollQueue(const _TCHAR *queueName)
 				throw "findIdle error";
 			else if(index == procnum) // no process, close all log file
 			{
-				for(size_t i = 0; i < procnum; ++i) closeLogFile(i);
+				for(size_t i = 0; i < procnum; ++i) closeLogFile(workers[i]);
 				autoCleanPacsDiskByStudyDate();
 			}
 			else // close one process
 			{
-				closeProcHandle(index);
+				closeProcHandle(workers[index]);
 				//closeLogFile(index);
 			}
 		}
@@ -723,16 +715,14 @@ int commandDispatcher(const char *queueName, int processorNumber)
 	workers = new WorkerProcess[procnum];
 	memset(workers, 0, sizeof(WorkerProcess) * procnum);
 
-	CoInitialize(NULL);
 	int ret = pollQueue(queueName);
-	CoUninitialize();
 
 	waitAll();
 	cout << "all process signaled" << endl;
 	for(size_t i = 0; i < procnum; ++i)
 	{
-		closeProcHandle(i);
-		closeLogFile(i);
+		closeProcHandle(workers[i]);
+		closeLogFile(workers[i]);
 	}
 	delete workers;
 	return ret;
