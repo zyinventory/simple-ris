@@ -102,7 +102,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		cerr << "counter " << counter << endl;
 	else
 		cerr << "counter error:" << hex << LYFGetLastErr() << endl;
-	return 0;
 
 	if(!SetLock(8, &lockNumber, 0, init_lock_passwd, init_lock_passwd, 0, 0))
 	{

@@ -142,6 +142,8 @@ void mkcmd(ostringstream *cmdStream, const char *s)
 
 int realMain(int argc, char **argv)
 {
+	resetStatus(QUEUE_NAME);
+
 	// Perform work until service stops.
 	ostringstream cmdStream;
 	for_each(argv + 2, argv + argc, bind1st(ptr_fun(mkcmd), &cmdStream)); // skip program and ServiceName
@@ -197,9 +199,9 @@ void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
 	SvcInit(100);
 	// Report running status when initialization is complete.
 	ReportSvcStatus( SERVICE_RUNNING, NO_ERROR, 0 );
-
+	CoInitialize(NULL);
 	realMain(argcSV, argvSV);
-
+	CoUninitialize();
 	ReportSvcStatus( SERVICE_STOPPED, NO_ERROR, 0 );
 }
 
@@ -260,7 +262,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	else if( ERROR_FAILED_SERVICE_CONTROLLER_CONNECT == GetLastError() )
 	{
 		// console mode
+		CoInitialize(NULL);
 		ret = realMain(argcSV, argvSV);
+		CoUninitialize();
 	}
 	else
 	{

@@ -174,6 +174,11 @@ int queryXml(int hostLength)
 	}
 }
 
+static void exitHook()
+{
+	TerminateLock(0);
+}
+
 int burningStudy(const char *media)
 {
 	ostringstream errstream;
@@ -181,9 +186,17 @@ int burningStudy(const char *media)
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
 		char countBuffer[12] = "", filename[64] = "..\\etc\\*.key";
-		DWORD lockNumber = getLockNumber(filename, "^(\\d{8})\\.key$", FALSE, filename + 7);
+		int lockNumber = -1;
 		SEED_SIV siv;
-		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, NULL, rw_passwd))
+		if(InitiateLock(0))
+		{
+			atexit(exitHook);
+			lockNumber = getLockNumber(filename, FALSE, filename + 7);
+		}
+		else
+			errstream << "init lock failed:" << hex << LYFGetLastErr() << endl;
+
+		if(lockNumber != -1 && 0 == loadPublicKeyContent(filename, &siv, lockNumber, NULL, rw_passwd))
 		{
 			if(!invalidLock("..\\etc\\license.key", filename, &siv))
 			{

@@ -64,6 +64,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;OPENSSL_NO_ENGINE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)libb24;$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

@@ -42,3 +42,4 @@ HRESULT QLetEveryoneFullControl(LPCWSTR wszFormatNameBuffer);
 int commandDispatcher(const char *queueName, int processorNumber);
 void autoCleanPacsDiskByStudyDate();
 bool deleteDayStudy(const char *dayxml);
+void resetStatus(const char *queueName);
