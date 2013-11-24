@@ -554,9 +554,10 @@ void processMessage(IMSMQMessagePtr pMsg)
 						}
 						else
 						{
+							detectDcmmkdirProcessExit();
 							string label("compressed ");
 							label.append(dest);
-							SendCommonMessageToQueue(label.c_str(), dest, MQ_PRIORITY_DCMMKDIR, studyUid.c_str());
+							SendCommonMessageToQueue(label.c_str(), dest, MQ_PRIORITY_COMPRESSED, studyUid.c_str());
 							runDcmmkdir(studyUid);
 						}
 					}
@@ -573,7 +574,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 					{
 						if(index == procnum) index = 0;
 						runArchiveInstance(cmd, index, studyUid);
-						checkStudyAccomplished();
+						checkStudyAccomplished();  // suppose instance's transfer grouped by study
 					}
 					else
 					{
