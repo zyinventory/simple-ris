@@ -290,6 +290,26 @@ HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDocumentPt
 	return S_OK;
 }
 
+static HANDLE createFileMutex(string &indexFilePath)
+{
+	string mutexName("Global\\");
+	string fileForMutexName(indexFilePath);
+	string::size_type p;
+	while((p = fileForMutexName.find('\\')) != string::npos) fileForMutexName.replace(p, 1, 1, ':');
+	mutexName.append(fileForMutexName);
+
+	HANDLE fileMutex = CreateMutex(NULL, FALSE, mutexName.c_str());
+	if(fileMutex == NULL && ERROR_ACCESS_DENIED == GetLastError())
+		fileMutex = OpenMutex(SYNCHRONIZE, FALSE, mutexName.c_str());
+	DWORD result = WaitForSingleObject(fileMutex, INFINITE);
+	if(result == WAIT_TIMEOUT || result == WAIT_FAILED)
+	{
+		CloseHandle(fileMutex);
+		fileMutex = NULL;
+	}
+	return fileMutex;
+}
+
 HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile, string &indexFilePath, bool uniqueStudy)
 {
 	HRESULT hr;
@@ -297,7 +317,7 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 	hr = pXsl.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 	if (FAILED(hr))
 	{
-		cerr << "Failed to CreateInstance on an XSL DOM.\n";
+		cerr << "Failed to CreateInstance on an XSL DOM." << endl;
 		return hr;
 	}
 	pXsl->preserveWhiteSpace = VARIANT_FALSE;
@@ -310,7 +330,7 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 	}
 
 	string errorMessage;
-	HANDLE fh = INVALID_HANDLE_VALUE;
+	HANDLE fh = INVALID_HANDLE_VALUE, fileMutex = NULL;
 	try
 	{
 		unsigned long written = 0;
@@ -321,6 +341,8 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 		dayDomPtr->loadXML(xmlText);
 		dayDomPtr->firstChild->attributes->getNamedItem("encoding")->text = "GBK";
 		MSXML2::IXMLDOMNodePtr day = dayDomPtr->lastChild;
+
+		fileMutex = createFileMutex(indexFilePath);
 
 		MSXML2::IXMLDOMDocumentPtr oldIndex;
 		hr = createOrOpenFile(indexFilePath, fh, oldIndex);
@@ -362,15 +384,18 @@ HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile,
 	}
 	catch(_com_error &ex) 
 	{
-		cerr << "Failed to transform XML+XSLT: " << ex.ErrorMessage() << '\n';
+		if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
+		cerr << "Failed to transform XML+XSLT: " << ex.ErrorMessage() << endl;
 		return ex.Error();
 	}
 	catch(char * message)
 	{
+		if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
 		if(fh != INVALID_HANDLE_VALUE) ::CloseHandle(fh);
-		cerr << message << indexFilePath << '\n';
+		cerr << message << indexFilePath << endl;
 		return E_FAIL;
 	}
+	if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
 	return S_OK;
 }
 
@@ -518,12 +543,13 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 	indexPath.append(".xml");
 	string fieldsPath = buffer;
 	fieldsPath.append(".txt");
-	HANDLE fh = INVALID_HANDLE_VALUE;
+	HANDLE fh = INVALID_HANDLE_VALUE, fileMutex = NULL;
 	try
 	{
 		unsigned long written = 0;
 		const char *header = "<?xml version=\"1.0\" encoding=\"gbk\"?>\n";
 		MSXML2::IXMLDOMDocumentPtr oldIndex;
+		fileMutex = createFileMutex(indexPath);
 		hr = createOrOpenFile(indexPath, fh, oldIndex);
 		if(SUCCEEDED(hr))
 		{
@@ -585,15 +611,18 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 	}
 	catch(_com_error &ex) 
 	{
+		if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
 		cerr << "Failed to transform XML+XSLT: " << ex.ErrorMessage() << '\n';
 		return ex.Error();
 	}
 	catch(char * message)
 	{
+		if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
 		if(fh != INVALID_HANDLE_VALUE) ::CloseHandle(fh);
 		cerr << message << indexPath << '\n';
 		return E_FAIL;
 	}
+	if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
 	return hr;
 }
 

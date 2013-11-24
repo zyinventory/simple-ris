@@ -142,6 +142,7 @@ void mkcmd(ostringstream *cmdStream, const char *s)
 
 int realMain(int argc, char **argv)
 {
+	deleteTree("storedir");
 	resetStatus(QUEUE_NAME);
 
 	// Perform work until service stops.

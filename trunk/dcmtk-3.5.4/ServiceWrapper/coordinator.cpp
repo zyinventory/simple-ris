@@ -584,6 +584,8 @@ void processMessage(IMSMQMessagePtr pMsg)
 			}
 			else  //pMsg->Label == _bstr_t(ARCHIVE_STUDY)
 			{
+				detectDcmmkdirProcessExit();
+
 				string::size_type begin = cmd.find("-ic "), end;
 				string csvPath;
 				if(begin == string::npos)
