@@ -15,8 +15,9 @@
 #define MEDIA_DVD_DL "DVD-DL"
 #define MEDIA_BD "BD"
 #define MEDIA_BD_DL "BD-DL"
-#define MQ_PRIORITY_ARCHIVING	7
-#define MQ_PRIORITY_COMPRESSED	4
+#define MQ_PRIORITY_PROTOCOL	7
+#define MQ_PRIORITY_ARCHIVING	6
+#define MQ_PRIORITY_COMPRESSED	3
 #define MQ_PRIORITY_DCMMKDIR	0
 #ifdef _WIN32
 #define DATE_FORMAT_YEAR_TO_SECOND "%Y-%m-%d %H:%M:%S"
@@ -46,6 +47,7 @@ long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPa
 time_t dcmdate2tm(int dcmdate);
 bool generateStudyXML(const char *line, std::ostream &xmlStream, bool isEncapsulated = false);
 bool SendArchiveMessageToQueue(const char *label, const char *body, const char *cmd);
+bool SendCommonMessageToQueue(const char *label, const char *body, const long priority, const char *queueName);
 bool DeleteQueue(const char *queueName);
 errno_t setEnvParentPID();
 int generateTime(const char *format, char *timeBuffer, size_t bufferSize);
