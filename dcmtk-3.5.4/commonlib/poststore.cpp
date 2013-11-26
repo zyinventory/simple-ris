@@ -252,7 +252,7 @@ HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDocumentPt
 					}
 					else
 					{
-						cerr << "open file " << indexFilePath << endl;
+						//cerr << "open file " << indexFilePath << endl;
 						FILE_BASIC_INFO fbi;
 						if(GetFileInformationByHandleEx(fh, FileBasicInfo, &fbi, sizeof(FILE_BASIC_INFO)))
 						{
@@ -276,8 +276,8 @@ HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDocumentPt
 				throw "Failed to create file ";
 			}
 		}
-		else
-			cerr << "create file " << indexFilePath << endl;
+		//else
+			//cerr << "create file " << indexFilePath << endl;
 	}
 	catch(_com_error &ex) 
 	{
@@ -534,6 +534,48 @@ int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, co
 	return -1;
 }
 
+HRESULT mergeStudy(MSXML2::IXMLDOMNodePtr src, MSXML2::IXMLDOMNodePtr dest)
+{
+	_bstr_t seriesAttr("SeriesInstanceUID"), instanceAttr("SOPInstanceUID");
+	MSXML2::IXMLDOMNodeListPtr childrenSeries = src->childNodes;
+	while(MSXML2::IXMLDOMNodePtr seriesNodePtr = childrenSeries->nextNode())
+	{
+		MSXML2::DOMNodeType nodeType;
+		seriesNodePtr->get_nodeType(&nodeType);
+		if(nodeType != DOMNodeType::NODE_ELEMENT) continue;
+		MSXML2::IXMLDOMElementPtr seriesPtr(seriesNodePtr);
+		_variant_t seriesUidVariant = seriesPtr->getAttribute(seriesAttr);
+		bstr_t seriesUid = (bstr_t)seriesUidVariant;
+		if(seriesUid.length() == 0) continue;
+		_bstr_t querySeries("./Series[@SeriesInstanceUID='");
+		querySeries += seriesUid;
+		querySeries += "']";
+		MSXML2::IXMLDOMNodePtr destSeriesNodePtr = dest->selectSingleNode(querySeries);
+		if(destSeriesNodePtr == NULL)
+			dest->appendChild(seriesNodePtr->cloneNode(VARIANT_TRUE));
+		else
+		{
+			MSXML2::IXMLDOMNodeListPtr childrenInstances = seriesNodePtr->childNodes;
+			while(MSXML2::IXMLDOMNodePtr instanceNodePtr = childrenInstances->nextNode())
+			{
+				instanceNodePtr->get_nodeType(&nodeType);
+				if(nodeType != DOMNodeType::NODE_ELEMENT) continue;
+				MSXML2::IXMLDOMElementPtr instancePtr(instanceNodePtr);
+				_variant_t instanceUidVariant = instancePtr->getAttribute(instanceAttr);
+				bstr_t instanceUid = (bstr_t)instanceUidVariant;
+				if(instanceUid.length() == 0) continue;
+				_bstr_t queryInstance("./Instance[@SOPInstanceUID='");
+				queryInstance += instanceUid;
+				queryInstance += "']";
+				MSXML2::IXMLDOMNodePtr destInstanceNodePtr = destSeriesNodePtr->selectSingleNode(queryInstance);
+				if(destInstanceNodePtr == NULL)
+					destSeriesNodePtr->appendChild(instanceNodePtr->cloneNode(VARIANT_TRUE));
+			}
+		}
+	}
+	return S_OK;
+}
+
 HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag, const char *queryValue)
 {
 	HRESULT hr;
@@ -563,9 +605,11 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 				_bstr_t studyUid = newStudy->selectSingleNode("./@StudyInstanceUID")->Gettext();
 				sprintf_s(buffer, BUFF_SIZE, "/wado_query/Patient/Study[@StudyInstanceUID='%s']", (const char*)studyUid);
 				MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(buffer);
-				//todo: merge existStudy to newStudy
-
-				if(existStudy) oldIndex->lastChild->lastChild->removeChild(existStudy); // /wado_query/Patient ->removeChild(existStudy)
+				if(existStudy)
+				{
+					mergeStudy(existStudy, newStudy);
+					oldIndex->lastChild->lastChild->removeChild(existStudy); // /wado_query/Patient ->removeChild(existStudy)
+				}
 				oldIndex->lastChild->lastChild->appendChild(newStudy->cloneNode(VARIANT_TRUE)); // /wado_query/Patient ->appendChild(newStudy)
 				::SetEndOfFile(fh);
 				if( ! ( WriteFile(fh, header, strlen(header), &written, NULL) && 

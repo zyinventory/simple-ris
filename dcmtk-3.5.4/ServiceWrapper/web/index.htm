@@ -109,8 +109,7 @@
 		function displayContent(textValue, pickerWrapper)
 		{
 			var result = $.get('indexdir/' + mode + '/' + textValue + '.xml', {}, transform, 'xml');
-			if(result.status < 200 || result.status >= 300)
-			{
+			if(result.status != 200){
 				$('#containerBody').html("没有检查");
 				if(getQueryString('debug') == '1') alertMessage(textValue  + ' 没有检查, ' + result.statusText);
 			}
@@ -120,14 +119,14 @@
 		    var result = $.get('indexdir/' + mode + '/' + textValue + '.xml', {}, function (xmlDoc) {
 		        transform(xslt(xmlDoc, xslDoc2, true));
 		    }, 'xml');
-		    if (result.status < 200 || result.status >= 300) {
+		    if (result.status != 200) {
 		        $('#containerBody').html("没有检查");
 		        if (getQueryString('debug') == '1') alertMessage(textValue + ' 没有检查, ' + result.statusText);
 		    }
 		}
 
 		jQuery(document).ready(function () {
-		    $.ajaxSetup({ async: false });
+		    $.ajaxSetup({ async:false, cache:false });
 		    var result = $.get('xslt/dayrec.xsl', {}, function (body, txt, ref) { xslDoc = body; }, 'xml');
 		    if (result.status != 200) {
 		        alertMessage('Load XSLT dayrec failed: ' + result.statusText);

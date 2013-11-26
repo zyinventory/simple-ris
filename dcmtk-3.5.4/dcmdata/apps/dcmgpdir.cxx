@@ -614,7 +614,7 @@ int main(int argc, char *argv[])
 					}
 
 					IMSMQMessagePtr pMsg;
-					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 20L * 1000L }, 
+					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 5L * 1000L }, 
 						vtFalse = { (WORD)VT_BOOL, (WORD)0, (WORD)0, (WORD)0, VARIANT_FALSE };
 traversal_restart:
 					try
@@ -624,7 +624,7 @@ traversal_restart:
 							label = pMsg->Label;
 							if(label.find("compressed") == 0)
 							{
-								CERR << label << endl;
+								//CERR << label << endl;
 								pMsg = pQueue->ReceiveCurrent();
 								string strbody(_bstr_t(pMsg->Body.bstrVal));
 								string::size_type archpos = strbody.find(opt_directory);
@@ -652,27 +652,25 @@ traversal_restart:
 							}
 							else if(label.find("dcmmkdir") == 0)
 							{
-								CERR << label << endl;
 								pMsg = pQueue->ReceiveCurrent();
 								string strbody(_bstr_t(pMsg->Body.bstrVal));
 								fileNameList.push_back(strbody);
-								CERR << "dcmmkdir message, csv = " << strbody << endl;
+								//CERR << "dcmmkdir message, csv = " << strbody << endl;
 								pQueue->Reset();
-								Sleep(3000);
 							}
 							else
 							{
 								CERR << "make dicomdir: unknown message: " << label << endl;
 							}
 						}
-						if(!pMsg) CERR << "no more message in queue " << opt_queueName << endl;
+						//if(!pMsg) CERR << "no more message in queue " << opt_queueName << endl;
 					}
 					catch(_com_error &comErr)
 					{
 						if(comErr.Error() == MQ_ERROR_MESSAGE_ALREADY_RECEIVED)
 						{
 							pQueue->Reset();
-							COUT << "make dicomdir: concurrence of receiving message, restart" << endl;
+							CERR << "make dicomdir: concurrence of receiving message, restart" << endl;
 							goto traversal_restart;
 						}
 					}
@@ -709,6 +707,7 @@ traversal_restart:
 						++goodFiles;
 					++iter;
 				}
+				fileNameList.push_back(opt_csv);
 			}
 			/* evaluate result of file checking/adding procedure */
 			if (goodFiles == 0)
@@ -754,25 +753,26 @@ traversal_restart:
 			CERR << "init lock failed:" << hex << LYFGetLastErr() << endl;
 
 		if(lockNumber != -1 && 0 == loadPublicKeyContent(filename, &siv, lockNumber, NULL, rw_passwd))
-			if(!invalidLock("..\\etc\\license.key", filename, &siv))
-				validLock = currentCount(rw_passwd) > 0;
-
-		for(int i = 0; i < listSize; ++i)
+		{
+			for(int i = 0; i < 3 && !validLock; ++i)
+			{
+				int validResult = invalidLock("..\\etc\\license.key", filename, &siv);
+				if(validResult == 0)
+					validLock = currentCount(rw_passwd) > 0;
+				else
+					CERR << "invalid lock: " << lockNumber << ", validate license failed " << validResult << endl;
+			}
+		}
+		if(!validLock) CERR << "invalid lock: " << lockNumber << ", validate license failed" << endl;
+		for(size_t i = 0; i < listSize; ++i)
 		{
 			char buffer[MAX_PATH];
 			strcpy_s(buffer, MAX_PATH, fileNameList.front().c_str());
 			fileNameList.pop_front();
-			CERR << "dicomdir OK, create index from " << buffer << endl;
-			if(i == listSize - 1)
-			{
-				if(validLock)
-					setBurnOnce();
-				else
-					CERR << "invalid lock: " << lockNumber << endl;
-			}
+			//CERR << "dicomdir OK, create index from " << buffer << endl;
+			if(i == listSize - 1 && validLock) setBurnOnce();
 			long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
-			if(!getBurnOnce())
-				decreaseCount(rw_passwd);
+			if(!getBurnOnce()) decreaseCount(rw_passwd);
 		}
 	}
 /*
