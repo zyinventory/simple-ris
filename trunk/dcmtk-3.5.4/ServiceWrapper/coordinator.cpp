@@ -21,15 +21,15 @@ void closeProcHandle(WorkerProcess &wp)
 {
 	if(wp.csvPath)
 	{
-		cout << "close process csv = " << *wp.csvPath << endl;
+		//cout << "close process csv = " << *wp.csvPath << endl;
 		delete wp.csvPath;
 		wp.csvPath = NULL;
 	}
-
+	/*
 	bool hasStudyUid = false;
 	if(wp.studyUid)
 	{
-		cout << "close process study = " << *wp.studyUid;
+		//cout << "close process study = " << *wp.studyUid;
 		hasStudyUid = true;
 	}
 	if(wp.instancePath)
@@ -41,7 +41,7 @@ void closeProcHandle(WorkerProcess &wp)
 	}
 	if(wp.csvPath || wp.studyUid || wp.instancePath)
 		cout << endl;
-
+	*/
 	if(wp.hChildStdInWrite)
 	{
 		CloseHandle(wp.hChildStdInWrite);
@@ -142,7 +142,7 @@ list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 
 	if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
 	{
-		cout << "create process: " << commandLine << endl;
+		//cout << "create process: " << commandLine << endl;
 		wp.hProcess = procinfo.hProcess;
 		wp.hThread = procinfo.hThread;
 		wp.studyUid = new string(studyUid);

@@ -116,7 +116,7 @@ extern "C" int invalidLock(const char *licenseRSAEnc, const char *rsaPublicKey, 
 	ret = aes256cbc_dec(midBuf + AES_OFFSET, ret - AES_OFFSET, outBuf, sivptr->key, sivptr->iv);
 	if(ret <= 0) return -12;
 
-	DWORD digestSig[4], *originSig = reinterpret_cast<DWORD*>(&outBuf[DICTIONARY_SIZE * 8]);
+	long digestSig[4], *originSig = reinterpret_cast<long*>(&outBuf[DICTIONARY_SIZE * 8]);
 	MD5_digest(outBuf, DICTIONARY_SIZE * 8, reinterpret_cast<unsigned char*>(digestSig));
 	if(digestSig[0] != originSig[0] || digestSig[1] != originSig[1]
 		|| digestSig[2] != originSig[2] || digestSig[3] != originSig[3])
@@ -126,7 +126,7 @@ extern "C" int invalidLock(const char *licenseRSAEnc, const char *rsaPublicKey, 
 	struct tm tmp;
 	localtime_s( &tmp, &t );
 	int i = tmp.tm_yday % DICTIONARY_SIZE;
-	DWORD *dict = reinterpret_cast<DWORD*>(outBuf);
+	long *dict = reinterpret_cast<long*>(outBuf);
 	long dict_tr = 0;
 	Lock32_Function(dict[i], &dict_tr, 0);
 	if(dict[i] == (dict[DICTIONARY_SIZE + i] ^ dict_tr))
