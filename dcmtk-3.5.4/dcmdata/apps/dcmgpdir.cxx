@@ -568,8 +568,7 @@ int main(int argc, char *argv[])
 	else
 		result = ddir.createNewDicomDir(opt_profile, opt_output, opt_fileset);
 
-	char fileNameBuffer[MAX_PATH];
-	fileNameBuffer[0] = '\0';
+	OFList<string> fileNameList;
 	if (result.good())
 	{
 		/* set fileset descriptor and character set */
@@ -614,22 +613,19 @@ int main(int argc, char *argv[])
 						}
 					}
 
-					bool remainMessage = false, cursorMoved = true;
 					IMSMQMessagePtr pMsg;
 					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 20L * 1000L }, 
 						vtFalse = { (WORD)VT_BOOL, (WORD)0, (WORD)0, (WORD)0, VARIANT_FALSE };
 traversal_restart:
 					try
 					{
-						while(pMsg = cursorMoved ? pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout) : pQueue->PeekNext(&vtMissing, &vtFalse, &timeout))
+						while(pMsg = pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout))
 						{
 							label = pMsg->Label;
 							if(label.find("compressed") == 0)
 							{
-								//COUT << label << endl;
+								CERR << label << endl;
 								pMsg = pQueue->ReceiveCurrent();
-								cursorMoved = true;
-								remainMessage = true;
 								string strbody(_bstr_t(pMsg->Body.bstrVal));
 								string::size_type archpos = strbody.find(opt_directory);
 								if(archpos != string::npos)
@@ -638,13 +634,11 @@ traversal_restart:
 									if(strbody[archpos + dirlen] == '\\') ++dirlen;
 									strbody.erase(archpos, dirlen);
 								}
-								copy(strbody.begin(), strbody.end(), stdext::checked_array_iterator<char*>(fileNameBuffer, MAX_PATH));
-								fileNameBuffer[strbody.length()] = '\0';
 								/* add files to the DICOMDIR */
-								result = ddir.addDicomFile(fileNameBuffer, opt_directory);
+								result = ddir.addDicomFile(strbody.c_str(), opt_directory);
 								if (result.bad())
 								{
-									badFiles.push_back(fileNameBuffer);
+									badFiles.push_back(strbody.c_str());
 									if (!ddir.abortMode())
 									{
 										/* ignore inconsistent file, just warn (already done inside "ddir") */
@@ -653,47 +647,31 @@ traversal_restart:
 								} else
 								{
 									++goodFiles;
-									if(ddir.verboseMode()) COUT << "dicomdir maker: add file " << fileNameBuffer << endl;
+									if(ddir.verboseMode()) COUT << "dicomdir maker: add file " << strbody << endl;
 								}
 							}
 							else if(label.find("dcmmkdir") == 0)
 							{
-								//COUT << label << endl;
-								if(remainMessage)
-								{
-									remainMessage = false;
-									pQueue->Reset();
-									cursorMoved = true;
-									Sleep(1000);
-									//COUT << "remain message, restart" << endl;
-									continue;
-								}
-								else
-								{
-									pMsg = pQueue->ReceiveCurrent();
-									cursorMoved = true;
-									string strbody(_bstr_t(pMsg->Body.bstrVal));
-									copy(strbody.begin(), strbody.end(), stdext::checked_array_iterator<char*>(fileNameBuffer, MAX_PATH));
-									fileNameBuffer[strbody.length()] = '\0';
-									opt_csv = fileNameBuffer;
-									//COUT << "last message, csv = " << opt_csv << endl;
-									break;
-								}
+								CERR << label << endl;
+								pMsg = pQueue->ReceiveCurrent();
+								string strbody(_bstr_t(pMsg->Body.bstrVal));
+								fileNameList.push_back(strbody);
+								CERR << "dcmmkdir message, csv = " << strbody << endl;
+								pQueue->Reset();
+								Sleep(3000);
 							}
 							else
 							{
 								CERR << "make dicomdir: unknown message: " << label << endl;
 							}
 						}
-						if(!pMsg) CERR << "make dicomdir: wait message timeout, " << opt_queueName << endl;
+						if(!pMsg) CERR << "no more message in queue " << opt_queueName << endl;
 					}
 					catch(_com_error &comErr)
 					{
 						if(comErr.Error() == MQ_ERROR_MESSAGE_ALREADY_RECEIVED)
 						{
-							remainMessage = false;
 							pQueue->Reset();
-							cursorMoved = true;
 							COUT << "make dicomdir: concurrence of receiving message, restart" << endl;
 							goto traversal_restart;
 						}
@@ -760,7 +738,8 @@ traversal_restart:
 		}
 	}
 
-	if(opt_csv && *opt_csv != '\0')
+	size_t listSize = fileNameList.size();
+	if(listSize > 0)
 	{
 		bool validLock = false;
 		char filename[64] = "..\\etc\\*.key", rw_passwd[9] = "";
@@ -778,17 +757,23 @@ traversal_restart:
 			if(!invalidLock("..\\etc\\license.key", filename, &siv))
 				validLock = currentCount(rw_passwd) > 0;
 
-		if(validLock)
-			setBurnOnce();
-		else
-			CERR << "invalid lock: " << lockNumber << endl;
-
-		//COUT << "dicomdir OK, create index from " << opt_csv << endl;
-		char buffer[MAX_PATH];
-		strcpy_s(buffer, MAX_PATH, opt_csv);
-		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
-		if(!getBurnOnce())
-			decreaseCount(rw_passwd);
+		for(int i = 0; i < listSize; ++i)
+		{
+			char buffer[MAX_PATH];
+			strcpy_s(buffer, MAX_PATH, fileNameList.front().c_str());
+			fileNameList.pop_front();
+			CERR << "dicomdir OK, create index from " << buffer << endl;
+			if(i == listSize - 1)
+			{
+				if(validLock)
+					setBurnOnce();
+				else
+					CERR << "invalid lock: " << lockNumber << endl;
+			}
+			long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
+			if(!getBurnOnce())
+				decreaseCount(rw_passwd);
+		}
 	}
 /*
 	PROCESS_INFORMATION procinfo;

@@ -83,6 +83,7 @@ HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXM
 	string callingaetitle(buffer);
 
 	//studyDatePath = "/YYYY/MM/DD"
+	studyDatePath.clear();
 	studyDatePath.append(1, '/').append(studyDate.substr(0, 4)).append(1, '/').append(studyDate.substr(4, 2));
 	studyDatePath.append(1, '/').append(studyDate.substr(6, 2));
 
@@ -251,6 +252,7 @@ HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDocumentPt
 					}
 					else
 					{
+						cerr << "open file " << indexFilePath << endl;
 						FILE_BASIC_INFO fbi;
 						if(GetFileInformationByHandleEx(fh, FileBasicInfo, &fbi, sizeof(FILE_BASIC_INFO)))
 						{
@@ -274,6 +276,8 @@ HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDocumentPt
 				throw "Failed to create file ";
 			}
 		}
+		else
+			cerr << "create file " << indexFilePath << endl;
 	}
 	catch(_com_error &ex) 
 	{
@@ -559,6 +563,8 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 				_bstr_t studyUid = newStudy->selectSingleNode("./@StudyInstanceUID")->Gettext();
 				sprintf_s(buffer, BUFF_SIZE, "/wado_query/Patient/Study[@StudyInstanceUID='%s']", (const char*)studyUid);
 				MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(buffer);
+				//todo: merge existStudy to newStudy
+
 				if(existStudy) oldIndex->lastChild->lastChild->removeChild(existStudy); // /wado_query/Patient ->removeChild(existStudy)
 				oldIndex->lastChild->lastChild->appendChild(newStudy->cloneNode(VARIANT_TRUE)); // /wado_query/Patient ->appendChild(newStudy)
 				::SetEndOfFile(fh);
@@ -674,7 +680,7 @@ HRESULT processInputStream(istream& istrm)
 	// main index OK, the following is other index.
 
 	//dayIndexFilePath = "<indexBase>/<tagStudyDate>/YYYY/MM/DD.xml"
-	sprintf_s(buffer, BUFF_SIZE, "%s/%s/%s.xml", indexBase.c_str(), TAG_StudyDate, studyDatePath.c_str());
+	sprintf_s(buffer, BUFF_SIZE, "%s/%s%s.xml", indexBase.c_str(), TAG_StudyDate, studyDatePath.c_str());
 	string dayIndexFilePath = buffer;
 	hr = createDateIndex(pXMLDom, "xslt\\receive.xsl", dayIndexFilePath, true);
 	if (FAILED(hr))
