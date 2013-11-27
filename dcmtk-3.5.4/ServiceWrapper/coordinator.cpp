@@ -475,7 +475,17 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 	delete[] commandLine;
 }
 
-void checkStudyAccomplished()
+static bool SendArchiveStudyCommand(WorkerProcess &wp)
+{
+	if(wp.csvPath == NULL) return false;
+	string *csvPath = wp.csvPath;
+	wp.csvPath = NULL;
+	SendCommonMessageToQueue("dcmmkdir", csvPath->c_str(), MQ_PRIORITY_DCMMKDIR, wp.studyUid->c_str());
+	delete csvPath;
+	return true;
+}
+
+static void checkStudyAccomplished()
 {
 	list<WorkerProcess>::iterator iter = dirmakers.begin();
 	while((iter = find_if(iter, dirmakers.end(), [](WorkerProcess wp){ return wp.csvPath != NULL; })) != dirmakers.end())
@@ -488,10 +498,7 @@ void checkStudyAccomplished()
 		}
 		if(i >= procnum) //no more command running
 		{
-			string *csvPath = (*iter).csvPath;
-			(*iter).csvPath = NULL;
-			SendCommonMessageToQueue("dcmmkdir", csvPath->c_str(), MQ_PRIORITY_DCMMKDIR, (*iter).studyUid->c_str());
-			delete csvPath;
+			SendArchiveStudyCommand(*iter);
 		}
 		++iter;
 	}
@@ -610,7 +617,12 @@ void processMessage(IMSMQMessagePtr pMsg)
 				//dcmmkdir shall poll the study-queue, get instance message, add the instance to dicomdir.
 				//at the end of queue, generate dicomdir, generate index.
 				if(iter != dirmakers.end() && csvPath.length() > 0)
+				{
+					// send dcmmkdir command, clear cached and not send dcmmkdir command
+					SendArchiveStudyCommand(*iter);
+					// cache new csvPath
 					(*iter).csvPath = new string(csvPath);
+				}
 				else
 					cerr << "process message error: create or find dicomdir maker process failed" << endl;
 				checkStudyAccomplished();
