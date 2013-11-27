@@ -771,8 +771,9 @@ traversal_restart:
 			fileNameList.pop_front();
 			//CERR << "dicomdir OK, create index from " << buffer << endl;
 			if(i == listSize - 1 && validLock) setBurnOnce();
+			bool readyToBurn = getBurnOnce();
 			long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
-			if(!getBurnOnce()) decreaseCount(rw_passwd);
+			if(readyToBurn && !getBurnOnce()) decreaseCount(rw_passwd);
 		}
 	}
 /*
