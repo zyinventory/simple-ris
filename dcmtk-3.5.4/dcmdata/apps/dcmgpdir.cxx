@@ -614,7 +614,7 @@ int main(int argc, char *argv[])
 					}
 
 					IMSMQMessagePtr pMsg;
-					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 5L * 1000L }, 
+					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 15L * 1000L }, 
 						vtFalse = { (WORD)VT_BOOL, (WORD)0, (WORD)0, (WORD)0, VARIANT_FALSE };
 traversal_restart:
 					try
