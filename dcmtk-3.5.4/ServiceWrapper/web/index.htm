@@ -79,8 +79,19 @@
 		            xml.transformNodeToObject(xsl, outputXml);
 		            return outputXml;
 		        }
-                else
+		        else
 		            return xml.transformNode(xsl);
+		    }
+		    else if ("ActiveXObject" in window) {
+		        var xslt = new ActiveXObject("Msxml2.XSLTemplate");
+		        var xslDoc = new ActiveXObject("Msxml2.FreeThreadedDOMDocument");
+		        var xmlszer = new XMLSerializer();
+		        xslDoc.loadXML(xmlszer.serializeToString(xsl));
+		        xslt.stylesheet = xslDoc;
+		        var xslProc = xslt.createProcessor();
+		        xslProc.input = xml;
+		        xslProc.transform();
+		        return xslProc.output;
 		    }
 		    else    // FireFox£¬ Chrome
 		    {
@@ -91,7 +102,7 @@
 		            var content = xsltProcessor.transformToDocument(xml);
 		            if (outputDOM)
 		                return content;
-                    else
+		            else
 		                return xmlszer.serializeToString(content);
 		        } catch (ex) {
 		            alertMessage(ex);
