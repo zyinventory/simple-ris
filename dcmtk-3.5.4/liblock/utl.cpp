@@ -61,7 +61,7 @@ extern "C" void mkpasswd(const char *base64, unsigned int salt, char *lock_passw
 	lock_passwd[8] = '\0';
 }
 
-extern "C" int loadPublicKeyContentImpl(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char **dataptr, char *gen_rw_passwd)
+extern "C" int loadPublicKeyContentImpl(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char **ppdata, char *gen_rw_passwd)
 {
 	ifstream keystrm(publicKey);
 	if(keystrm.fail()) return -2;
@@ -83,14 +83,14 @@ extern "C" int loadPublicKeyContentImpl(const char* publicKey, SEED_SIV *siv, un
 			contentBase64 << buffer << endl;
 	}
 	string base64(contentBase64.str());
-	char *data = new char[base64.size() + 1];
-	base64.copy(data, base64.size());
-	data[base64.size()] = '\0';
-	//if(gen_lock_passwd) mkpasswd(data, lockNumber, gen_lock_passwd);
-	if(gen_rw_passwd) mkpasswd(data + 8, lockNumber, gen_rw_passwd);
+	*ppdata = new char[base64.size() + 1];
+	base64.copy(*ppdata, base64.size());
+	(*ppdata)[base64.size()] = '\0';
+	//if(gen_lock_passwd) mkpasswd(*ppdata, lockNumber, gen_lock_passwd);
+	if(gen_rw_passwd) mkpasswd((*ppdata) + 8, lockNumber, gen_rw_passwd);
 
-	int read = fillSeedSIV(siv, sizeof(SEED_SIV), data, base64.size(), PUBKEY_SKIP + (lockNumber % PUBKEY_MOD));
-	delete data;
+	int read = fillSeedSIV(siv, sizeof(SEED_SIV), *ppdata, base64.size(), PUBKEY_SKIP + (lockNumber % PUBKEY_MOD));
+	//delete data;
 	if(endTag && read == sizeof(SEED_SIV))
 		return 0;
 	else
