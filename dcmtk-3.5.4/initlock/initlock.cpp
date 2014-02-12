@@ -42,7 +42,8 @@ static void printKeyIV(SEED_SIV *sivptr, const char *filename)
 
 int echoUsage(const char *app)
 {
-	CERR << TEXT("Usage: ") << app << TEXT(" <init | (number)> <key.txt path> [init_admin_password init_rw_password]") << endl;
+	CERR << TEXT("init  Usage: ") << app << TEXT(" init <number> <key.txt path> [init_admin_password init_rw_password]") << endl
+		<< "reset Usage: " << app << TEXT(" reset <number>") << endl;
 	return -1;
 }
 
@@ -71,15 +72,8 @@ bool readKeyFromTxt(const char *keyPath)
 	return keyOK;
 }
 
-int initSecurity(const char *keyPath, int lockNumber, string &lockString)
+int initSecurity(int lockNumber, string &lockString)
 {
-	// read key.txt
-	if(!readKeyFromTxt(keyPath))
-	{
-		CERR << TEXT("key文件格式错误") << endl;
-		return -7;
-	}
-
 	long dictionary[DICTIONARY_SIZE * 2 + 4]; // (rand_request, key_response) * 2 + md5_digest
 	for(int i = 0; i < DICTIONARY_SIZE; ++i)
 	{
@@ -247,20 +241,28 @@ int _tmain(int argc, _TCHAR* argv[])
 	locale::global(locChina);
 
 	// If the directory is not specified as a command-line argument, print usage.
-	if(argc < 2) return echoUsage(argv[0]);
+	if(argc < 3) return echoUsage(argv[0]);
 
 	bool isInit = (0 == strcmp(argv[1], "init"));
 	int initNumber = 0;
-	if(!isInit)
-	{
-		initNumber = atoi(argv[1]);
-		if(initNumber == 0 && errno == EINVAL) initNumber = -1;
-	}
+	initNumber = atoi(argv[2]);
+	if(initNumber == 0 && errno == EINVAL) initNumber = -1;
+	initNumber *= 50;
 	if(initNumber < 0 || initNumber > 0xFFFF) return echoUsage(argv[0]);
 
-	// init_lock_passwd and init_rw_passwd
-	if(argc >= 4) StringCchCopy(init_lock_passwd, 9, argv[3]);
-	if(argc >= 5) StringCchCopy(init_rw_passwd, 9, argv[4]);
+	if(isInit)
+	{
+		if(argc < 4) return echoUsage(argv[0]);
+		// read key.txt
+		if(!readKeyFromTxt(argv[3]))
+		{
+			CERR << TEXT("key文件格式错误") << endl;
+			return -7;
+		}
+		// init_lock_passwd and init_rw_passwd
+		if(argc >= 5) StringCchCopy(init_lock_passwd, 9, argv[4]);
+		if(argc >= 6) StringCchCopy(init_rw_passwd, 9, argv[5]);
+	}
 
 	//open dog, get lock number
 	if(!InitiateLock(0))
@@ -285,7 +287,10 @@ int _tmain(int argc, _TCHAR* argv[])
 	if(SetLock(0, &counter, 0, "", init_rw_passwd, 0, 0))
 		CERR << "counter test OK: " << counter << endl;
 	else
-		CERR << "counter error:" << hex << LYFGetLastErr() << endl;
+	{
+		CERR << "counter test failed:" << hex << LYFGetLastErr() << endl;
+		return -5;
+	}
 
 	if(isInit && _mkdir(lockString.c_str()) && errno != EEXIST)
 	{
@@ -303,8 +308,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	bool securityOK = false;
 	if(isInit)
 	{
-		if(argc < 3) return echoUsage(argv[0]);
-		securityOK = (0 == initSecurity(argv[2], lockNumber, lockString));
+		securityOK = (0 == initSecurity(lockNumber, lockString));
 	}
 	else
 	{
