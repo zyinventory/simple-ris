@@ -752,7 +752,7 @@ traversal_restart:
 		else
 			CERR << "init lock failed:" << hex << LYFGetLastErr() << endl;
 
-		if(lockNumber != -1 && 0 == loadPublicKeyContent(filename, &siv, lockNumber, NULL, rw_passwd))
+		if(lockNumber != -1 && 0 == loadPublicKeyContentRW(filename, &siv, lockNumber, rw_passwd))
 		{
 			for(int i = 0; i < 3 && !validLock; ++i)
 			{

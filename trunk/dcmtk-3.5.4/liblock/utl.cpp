@@ -61,7 +61,7 @@ extern "C" void mkpasswd(const char *base64, unsigned int salt, char *lock_passw
 	lock_passwd[8] = '\0';
 }
 
-extern "C" int loadPublicKeyContentRW(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char **dataptr, char *gen_rw_passwd)
+extern "C" int loadPublicKeyContentImpl(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char **dataptr, char *gen_rw_passwd)
 {
 	ifstream keystrm(publicKey);
 	if(keystrm.fail()) return -2;
@@ -95,6 +95,14 @@ extern "C" int loadPublicKeyContentRW(const char* publicKey, SEED_SIV *siv, unsi
 		return 0;
 	else
 		return -1;
+}
+
+extern "C" int loadPublicKeyContentRW(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char *gen_rw_passwd)
+{
+	char *data = NULL;
+	int result = loadPublicKeyContentImpl(publicKey, siv, lockNumber, &data, gen_rw_passwd);
+	if(data) delete data;
+	return result;
 }
 
 extern "C" int invalidLock(const char *licenseRSAEnc, const char *rsaPublicKey, SEED_SIV *sivptr)
@@ -174,10 +182,10 @@ extern "C" int increaseCount(char *passwd, int charge)
 	return -15;
 }
 
-extern "C" int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char *gen_lock_passwd, char *gen_rw_passwd)
+extern "C" int loadPublicKeyContent2Pwd(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char *gen_lock_passwd, char *gen_rw_passwd)
 {
 	char *data = NULL;
-	int result = loadPublicKeyContentRW(publicKey, siv, lockNumber, &data, gen_rw_passwd);
+	int result = loadPublicKeyContentImpl(publicKey, siv, lockNumber, &data, gen_rw_passwd);
 	if(data && gen_lock_passwd) mkpasswd(data, lockNumber, gen_lock_passwd);
 	if(data) delete data;
 	return result;

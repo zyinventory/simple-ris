@@ -196,7 +196,7 @@ int burningStudy(const char *media)
 		else
 			errstream << "init lock failed:" << hex << LYFGetLastErr() << endl;
 
-		if(lockNumber != -1 && 0 == loadPublicKeyContent(filename, &siv, lockNumber, NULL, rw_passwd))
+		if(lockNumber != -1 && 0 == loadPublicKeyContentRW(filename, &siv, lockNumber, rw_passwd))
 		{
 			if(!invalidLock("..\\etc\\license.key", filename, &siv))
 			{
