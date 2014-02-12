@@ -43,7 +43,7 @@ static void printKeyIV(SEED_SIV *sivptr, const char *filename)
 int echoUsage(const char *app)
 {
 	CERR << TEXT("init  Usage: ") << app << TEXT(" init <number> <key.txt path> [init_admin_password init_rw_password]") << endl
-		<< "reset Usage: " << app << TEXT(" reset <number>") << endl;
+		<< "reset Usage: " << app << TEXT(" reset <number> [init_admin_password init_rw_password]") << endl;
 	return -1;
 }
 
@@ -263,6 +263,11 @@ int _tmain(int argc, _TCHAR* argv[])
 		if(argc >= 5) StringCchCopy(init_lock_passwd, 9, argv[4]);
 		if(argc >= 6) StringCchCopy(init_rw_passwd, 9, argv[5]);
 	}
+	else
+	{
+		if(argc >= 4) StringCchCopy(init_lock_passwd, 9, argv[3]);
+		if(argc >= 5) StringCchCopy(init_rw_passwd, 9, argv[4]);
+	}
 
 	//open dog, get lock number
 	if(!InitiateLock(0))
@@ -282,16 +287,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	String lockString = serialStringStream.str();
 	CERR << TEXT("¼ÓÃÜ¹·ÐòÁÐºÅ:") << lockString << endl;
 
-	unsigned long counter = 0;
-	//if(Counter(init_rw_passwd, 0, 0, 0, &counter))
-	if(SetLock(0, &counter, 0, "", init_rw_passwd, 0, 0))
-		CERR << "counter test OK: " << counter << endl;
-	else
-	{
-		CERR << "counter test failed:" << hex << LYFGetLastErr() << endl;
-		return -5;
-	}
-
 	if(isInit && _mkdir(lockString.c_str()) && errno != EEXIST)
 	{
 		int err = errno;
@@ -304,11 +299,21 @@ int _tmain(int argc, _TCHAR* argv[])
 		CERR << TEXT("´ò¿ªÄ¿Â¼") << lockString << TEXT("´íÎó:") << err << endl;
 		return err;
 	}
-
-	bool securityOK = false;
+	
+	unsigned long counter = 0;
+	//if(Counter(init_rw_passwd, 0, 0, 0, &counter))
+	bool initPasswdOK = (SetLock(0, &counter, 0, "", init_lock_passwd, 0, 0) != FALSE);
 	if(isInit)
 	{
-		securityOK = (0 == initSecurity(lockNumber, lockString));
+		if(initPasswdOK)
+			CERR << "³õÊ¼ÃÜÂë²âÊÔ³É¹¦" << endl;
+		else
+		{
+			CERR << "³õÊ¼ÃÜÂë²âÊÔÊ§°Ü:" << hex << LYFGetLastErr() << endl;
+			return -16;
+		}
+		int securityResult = initSecurity(lockNumber, lockString);
+		if(securityResult) return securityResult;
 	}
 	else
 	{
@@ -320,18 +325,57 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		passwdstrm.ignore(9, ':');
 		passwdstrm >> buffer;
-		passwdstrm.close();
 		if(8 == strlen(buffer))
-		{
 			strcpy_s(lock_passwd, buffer);
-			securityOK = true;
-		}
 		else
 		{
 			CERR << TEXT("passwd.txt : ¹ÜÀíÃÜÂë¶ÁÈ¡´íÎó") << endl;
+			return -16;
+		}
+		passwdstrm.ignore(9, ':');
+		passwdstrm >> buffer;
+		if(8 == strlen(buffer))
+			strcpy_s(rw_passwd, buffer);
+		else
+		{
+			CERR << TEXT("passwd.txt : ¶ÁÐ´ÃÜÂë¶ÁÈ¡´íÎó") << endl;
+			return -16;
+		}
+		passwdstrm.close();
+
+		if(initPasswdOK)
+		{
+			DWORD tmp = 0;
+			// change passwd
+			if(SetLock(7, &tmp, tmp, lock_passwd, init_lock_passwd, 0, 0))
+			{
+				CERR << TEXT("¹ÜÀíÃÜÂë:") << lock_passwd << endl;
+			}
+			else
+			{
+				CERR << TEXT("¼ÓÃÜ¹·ÐÞ¸Ä¹ÜÀíÃÜÂë´íÎó") << hex << LYFGetLastErr() << endl;
+				return -16;
+			}
+			if(SetLock(7, &tmp, tmp, rw_passwd, init_rw_passwd, 0, 0))
+			{
+				CERR << TEXT("¶ÁÐ´ÃÜÂë:") << rw_passwd << endl;
+			}
+			else
+			{
+				CERR << TEXT("¼ÓÃÜ¹·ÐÞ¸Ä¶ÁÐ´ÃÜÂë´íÎó") << hex << LYFGetLastErr() << endl;
+				return -16;
+			}
+		}
+		else
+		{
+			if(!SetLock(0, &counter, 0, "", lock_passwd, 0, 0))
+			{
+				CERR << TEXT("³õÊ¼ÃÜÂë£¬passwd.txt¶¼´íÎó") << endl;
+				return -16;
+			}
+			//else passwd.txt OK, do nothing
 		}
 	}
-	if(!securityOK) return -16;
 
 	CERR << TEXT("³õÊ¼»¯¼ÓÃÜ¹·ÄÚ´æ") << endl;
 	CERR << TEXT('|');
