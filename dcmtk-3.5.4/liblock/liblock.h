@@ -26,6 +26,7 @@ extern "C"
 	char *md5crypt(const char *passwd, const char *magic, const char *salt);
 	int getLockNumber(const char *filter, int isDirectory, char *lockname);
 	void mkpasswd(const char *base64, unsigned int salt, char *lock_passwd);
+	int loadPublicKeyContentRW(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char **dataptr, char *gen_rw_passwd);
 	int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char *gen_lock_passwd, char *gen_rw_passwd);
 	int rsaVerify(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, const char *keyfile);
 	int aes256cbc_dec(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, unsigned char *key, unsigned char* iv);

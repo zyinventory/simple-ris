@@ -61,7 +61,7 @@ extern "C" void mkpasswd(const char *base64, unsigned int salt, char *lock_passw
 	lock_passwd[8] = '\0';
 }
 
-extern "C" int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char *gen_lock_passwd, char *gen_rw_passwd)
+extern "C" int loadPublicKeyContentRW(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char **dataptr, char *gen_rw_passwd)
 {
 	ifstream keystrm(publicKey);
 	if(keystrm.fail()) return -2;
@@ -86,7 +86,7 @@ extern "C" int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, unsign
 	char *data = new char[base64.size() + 1];
 	base64.copy(data, base64.size());
 	data[base64.size()] = '\0';
-	if(gen_lock_passwd) mkpasswd(data, lockNumber, gen_lock_passwd);
+	//if(gen_lock_passwd) mkpasswd(data, lockNumber, gen_lock_passwd);
 	if(gen_rw_passwd) mkpasswd(data + 8, lockNumber, gen_rw_passwd);
 
 	int read = fillSeedSIV(siv, sizeof(SEED_SIV), data, base64.size(), PUBKEY_SKIP + (lockNumber % PUBKEY_MOD));
@@ -172,4 +172,13 @@ extern "C" int increaseCount(char *passwd, int charge)
 			return licenseCount - DUMMY_ZERO;
 	}
 	return -15;
+}
+
+extern "C" int loadPublicKeyContent(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char *gen_lock_passwd, char *gen_rw_passwd)
+{
+	char *data = NULL;
+	int result = loadPublicKeyContentRW(publicKey, siv, lockNumber, &data, gen_rw_passwd);
+	if(data && gen_lock_passwd) mkpasswd(data, lockNumber, gen_lock_passwd);
+	if(data) delete data;
+	return result;
 }
