@@ -171,7 +171,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	CERR << TEXT("生成RSA密钥:") << rsaPrivateKey << TEXT(",") << rsaPublicKey << endl;
 
 	SEED_SIV siv;
-	if(loadPublicKeyContent(rsaPublicKey, &siv, lockNumber, lock_passwd, rw_passwd))
+	if(loadPublicKeyContent2Pwd(rsaPublicKey, &siv, lockNumber, lock_passwd, rw_passwd))
 	{
 		CERR << TEXT("生成RSA公钥格式错误") << endl;
 		return -8;

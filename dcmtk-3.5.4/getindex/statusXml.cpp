@@ -222,7 +222,7 @@ int statusCharge(const char *flag)
 			return -6;
 		}
 
-		if(lockNumber != -1 && 0 == loadPublicKeyContent(filename, &siv, lockNumber, passwd, NULL))
+		if(lockNumber != -1 && 0 == loadPublicKeyContent2Pwd(filename, &siv, lockNumber, passwd, NULL))
 		{
 			if(!invalidLock("..\\etc\\license.key", filename, &siv))
 			{
@@ -303,7 +303,7 @@ int statusCharge(const char *flag)
 	}
 	else  // query counter
 	{
-		if(0 == loadPublicKeyContent(filename, &siv, lockNumber, NULL, passwd))
+		if(0 == loadPublicKeyContentRW(filename, &siv, lockNumber, passwd))
 		{
 			if(!invalidLock("..\\etc\\license.key", filename, &siv))
 			{
