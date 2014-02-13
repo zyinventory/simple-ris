@@ -4,6 +4,7 @@
 #define DICTIONARY_SIZE	56
 #define AES_OFFSET		16
 #define DECRYPT			0
+#define DUMMY_ZERO 10
 
 #if !defined(PKCS5_SALT_LEN)
 #define PKCS5_SALT_LEN	8

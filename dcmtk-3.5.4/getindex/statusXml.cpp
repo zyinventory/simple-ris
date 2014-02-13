@@ -185,6 +185,7 @@ int statusCharge(const char *flag)
 			outputContent(true);
 			return -2;
 		}
+#ifdef PACS_ENABLE_CHARGE
 		long salt = serial;
 		BOOL lockResult = TRUE;
 		lockResult = lockResult && Lock32_Function(salt, &salt, 0);
@@ -298,6 +299,21 @@ int statusCharge(const char *flag)
 			outputContent(true);
 			return -9;
 		}
+#else
+		// dummy code, must fail
+		if(!ReadLock(300, chargekey, "Tw2d@uJp", 0, 0))
+		{
+			buffer << "数量或序列号错误:" << chargekey << endl;
+			outputContent(true);
+			return -9;
+		}
+		if(!SetLock(1, (unsigned long*)&seq, 0, "fqE8km*O", "Tw2d@uJp", 0, 0))
+		{
+			buffer << "数量或序列号错误:" << chargekey << endl;
+			outputContent(true);
+			return -9;
+		}
+#endif
 		key->appendChild(pXmlDom->createTextNode(chargekey));
 		root->appendChild(key);
 	}

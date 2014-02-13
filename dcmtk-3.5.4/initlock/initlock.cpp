@@ -6,6 +6,8 @@
 #include "constant.h"
 using namespace std;
 
+#define MEM_CAPACITY 1280
+
 static _TCHAR buffer[MAX_PATH], lock_passwd[9] = "", rw_passwd[9] = "";
 
 class numpunct_no_gouping : public numpunct_byname<char>
@@ -332,7 +334,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			CERR << TEXT("passwd.txt : 管理密码读取错误") << endl;
 			return -16;
 		}
-		passwdstrm.ignore(9, ':');
+		passwdstrm.ignore(10, ':');
 		passwdstrm >> buffer;
 		if(8 == strlen(buffer))
 			strcpy_s(rw_passwd, buffer);
@@ -386,9 +388,10 @@ int _tmain(int argc, _TCHAR* argv[])
 	GetConsoleScreenBufferInfo(hOut, &info);
 	--info.dwCursorPosition.Y;
 	SetConsoleCursorPosition(hOut, info.dwCursorPosition);
-	for(int i = 1; i < 1280; ++i)
+	for(int i = 1; i < MEM_CAPACITY; ++i)
 	{
 		DWORD data = 0;
+		if(i == 300) data = 1;  // batch mode flag
 		if(WriteLock(i, &data, lock_passwd, 0, 0))
 		{
 			if(i % 16 == 0) CERR << TEXT('O');
@@ -401,8 +404,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	CERR << endl;
 
-	const int BASE_COUNTER = 10;
-	initNumber += BASE_COUNTER;
+	initNumber += DUMMY_ZERO;
 	if(SetLock(1, reinterpret_cast<unsigned long*>(&initNumber), 0, lock_passwd, lock_passwd, 0, 0))
 		CERR << TEXT("次数限制成功") << endl;
 	else
