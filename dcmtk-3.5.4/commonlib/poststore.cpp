@@ -498,9 +498,9 @@ int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, co
 					}
 
 					ofs << "COPIES=1" << endl;
-					ofs << "DATA=" << pacsBase << "\\eFilmLite\\Autorun.inf" << endl;
-					ofs << "DATA=" << pacsBase << "\\eFilmLite\\go.cmd" << endl;
-					ofs << "DATA=" << pacsBase << "\\eFilmLite\teFilmLite" << endl;
+					ofs << "DATA=" << pacsBase << "\\viewer\\Autorun.inf" << endl;
+					ofs << "DATA=" << pacsBase << "\\viewer\\go.cmd" << endl;
+					ofs << "DATA=" << pacsBase << "\\viewer\tviewer" << endl;
 					ofs << "DATA=" << buffer << endl;
 					ofs << "VOLUME_LABEL=SMARTPUB" << endl;
 					ofs << "LABEL=" << pacsBase << "\\tdd\\patientInfo.tdd" << endl;

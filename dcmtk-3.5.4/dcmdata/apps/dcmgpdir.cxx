@@ -783,7 +783,7 @@ traversal_restart:
 	memset(&sinfo, 0, sizeof(sinfo));
 	sinfo.cb = sizeof(sinfo);
 	char cmdbuff[MAX_PATH];
-	sprintf_s(cmdbuff, "..\\bin\\burning cd 0 ..\\eFilmLite %s", opt_directory);
+	sprintf_s(cmdbuff, "..\\bin\\burning cd 0 ..\\viewer %s", opt_directory);
 	if( !CreateProcess(NULL, cmdbuff, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
 	{
 		fprintf( stderr, "burning cd: Error while executing command '%s'.\n" , cmdbuff );
