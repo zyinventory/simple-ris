@@ -10,7 +10,6 @@ const char base24decode[40] = {						//0x32
 typedef long (__stdcall *LOCK_FUNC_PTR)(long);
 extern "C" int decodeCharge(const char *b24buf, unsigned int serial, LOCK_FUNC_PTR lockfunc);
 
-#define TOTAL_BUY 6400
+#define TOTAL_BUY 6272 // 6400 - 128
 #define MAX_BOX 255
-#define DUMMY_ZERO 10
 #define CHARGE_BASE 101
