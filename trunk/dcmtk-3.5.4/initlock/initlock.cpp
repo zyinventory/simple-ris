@@ -302,9 +302,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		return err;
 	}
 	
-	unsigned long counter = 0;
+	unsigned long counter = currentCount(init_lock_passwd);
 	//if(Counter(init_rw_passwd, 0, 0, 0, &counter))
-	bool initPasswdOK = (SetLock(0, &counter, 0, "", init_lock_passwd, 0, 0) != FALSE);
+	bool initPasswdOK = (counter >= 0);
 	if(isInit)
 	{
 		if(initPasswdOK)
