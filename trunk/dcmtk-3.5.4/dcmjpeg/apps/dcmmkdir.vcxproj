@@ -121,7 +121,7 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>ofstd.lib;dcmdata.lib;dcmimgle.lib;dcmimage.lib;dcmjpeg.lib;ijg8.lib;ijg12.lib;ijg16.lib;commonlib.lib;liblock.lib;cdll8.lib;zlib_d.lib;libeay32MTd.lib;ws2_32.lib;netapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ofstd.lib;dcmdata.lib;dcmimgle.lib;dcmimage.lib;dcmjpeg.lib;ijg8.lib;ijg12.lib;ijg16.lib;commonlib.lib;liblock.lib;ws2_32.lib;netapi32.lib;cdll8.lib;zlib_d.lib;libeay32MTd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
       <AdditionalLibraryDirectories>$(OutDir);..;..\..\ofstd;..\..\dcmdata;..\..\dcmimgle;..\..\dcmimage;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\tiff-3.7.4\lib;$(SolutionDir)..\dcmtk-support\libpng-1.2.8\lib;..\..\ofstd\libsrc\$(ConfigurationName);..\..\dcmdata\libsrc\$(ConfigurationName);..\..\dcmimgle\libsrc\$(ConfigurationName);..\..\dcmimage\libsrc\$(ConfigurationName);..\libsrc\$(ConfigurationName);..\libijg8\$(ConfigurationName);..\libijg12\$(ConfigurationName);..\libijg16\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\lock\lib_x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -148,7 +148,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;$(SolutionDir)liblock;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="Release";__LOCK_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -168,13 +168,15 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>ofstd.lib;dcmdata.lib;dcmimgle.lib;dcmimage.lib;dcmjpeg.lib;ijg8.lib;ijg12.lib;ijg16.lib;commonlib.lib;liblock.lib;cdll8.lib;zlib_o.lib;libeay32MT.lib;ws2_32.lib;netapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ofstd.lib;dcmdata.lib;dcmimgle.lib;dcmimage.lib;dcmjpeg.lib;ijg8.lib;ijg12.lib;ijg16.lib;commonlib.lib;liblock.lib;ws2_32.lib;netapi32.lib;cdll8static_mt_mbcs.lib;zlib_o.lib;libeay32MT.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>$(OutDir);..;..\..\ofstd;..\..\dcmdata;..\..\dcmimgle;..\..\dcmimage;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\tiff-3.7.4\lib;$(SolutionDir)..\dcmtk-support\libpng-1.2.8\lib;..\..\ofstd\libsrc\$(ConfigurationName);..\..\dcmdata\libsrc\$(ConfigurationName);..\..\dcmimgle\libsrc\$(ConfigurationName);..\..\dcmimage\libsrc\$(ConfigurationName);..\libsrc\$(ConfigurationName);..\libijg8\$(ConfigurationName);..\libijg12\$(ConfigurationName);..\libijg16\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\lock\lib_x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir);..;..\..\ofstd;..\..\dcmdata;..\..\dcmimgle;..\..\dcmimage;$(SolutionDir)..\dcmtk-support\zlib-1.2.3\lib;$(SolutionDir)..\dcmtk-support\tiff-3.7.4\lib;$(SolutionDir)..\dcmtk-support\libpng-1.2.8\lib;..\..\ofstd\libsrc\$(ConfigurationName);..\..\dcmdata\libsrc\$(ConfigurationName);..\..\dcmimgle\libsrc\$(ConfigurationName);..\..\dcmimage\libsrc\$(ConfigurationName);..\libsrc\$(ConfigurationName);..\libijg8\$(ConfigurationName);..\libijg12\$(ConfigurationName);..\libijg16\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\lock\staticlib\vs2010\lib_x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>Release/dcmmkdir.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>Release\dcmmkdir.lib</ImportLibrary>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">

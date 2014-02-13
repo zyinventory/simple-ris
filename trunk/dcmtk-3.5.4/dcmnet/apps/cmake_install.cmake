@@ -97,7 +97,6 @@ IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspeci
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/cgi-bin" TYPE EXECUTABLE FILES
 		"D:/workspace/dcmtk-3.5.4/Release/getindex.exe"
 		"D:/workspace/dcmtk-3.5.4/Release/commonlib.dll"
-		"D:/workspace/dcmtk-3.5.4/Release/cdll8.dll"
 	)
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/scripts" TYPE FILE FILES 
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/scripts/charhash.js"
@@ -116,7 +115,6 @@ IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspeci
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES 
 		"D:/workspace/dcmtk-3.5.4/Release/ServiceWrapper.exe"
 		"D:/workspace/dcmtk-3.5.4/Release/commonlib.dll"
-		"D:/workspace/dcmtk-3.5.4/Release/cdll8.dll"
 		"D:/workspace/dcmtk-3.5.4/Release/storescp.exe"
 	)
   ENDIF("${CMAKE_INSTALL_CONFIG_NAME}" MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$")

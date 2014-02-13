@@ -176,8 +176,9 @@ int statusCharge(const char *flag)
 			outputContent(true);
 			return -1;
 		}
-
+#ifdef NDEBUG
 		Sleep(4000);
+#endif
 		DWORD serial = 0;
 		if(!SetLock(8, &serial, 0, "fqE8km*O", "Tw2d@uJp", 0, 0))
 		{
@@ -301,15 +302,16 @@ int statusCharge(const char *flag)
 		}
 #else
 		// dummy code, must fail
-		if(!ReadLock(300, chargekey, "Tw2d@uJp", 0, 0))
+		DWORD tmp;
+		if(!SetLock(1, (unsigned long*)&seq, 0, chargekey, "Tw2d@uJp", 0, 0))
 		{
-			buffer << "数量或序列号错误:" << chargekey << endl;
+			buffer << "数量或序列号错误 " << seq << ":" << chargekey << endl;
 			outputContent(true);
 			return -9;
 		}
-		if(!SetLock(1, (unsigned long*)&seq, 0, "fqE8km*O", "Tw2d@uJp", 0, 0))
+		if(!ReadLock(300, &tmp, "fqE8km*O", 0, 0))
 		{
-			buffer << "数量或序列号错误:" << chargekey << endl;
+			buffer << "数量或序列号错误 " << seq << ":" << chargekey << endl;
 			outputContent(true);
 			return -9;
 		}
