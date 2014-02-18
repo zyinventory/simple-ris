@@ -53,11 +53,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -2;
 	}
 	unsigned int box = argc >= 3 ? atoi(argv[2]) : 2;
-	if(box == 0)
-	{
-		cerr << "购买盒数错误" << endl;
-		return -2;
-	}
 	if(box > MAX_BOX)
 	{
 		cerr << "一次最多购买" << MAX_BOX << "盒" << endl;
@@ -95,6 +90,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		salt = ShieldPC(salt);
 
 	char b24buf[15] = "              ";
+	if(box == 0) goto DecodeFromFile;
+
 	unsigned char cross[8];
 	DWORD buy[2], realbuy;
 	realbuy = (((fileno + 1) * box) << 16) & 0xFF0000;
@@ -126,7 +123,22 @@ int _tmain(int argc, _TCHAR* argv[])
 	// end encrypt
 
 	cerr << "流水号:" << fileno << ", " << box << "盒, 充值密码: " << b24buf;
-		
+
+DecodeFromFile:
+	if(box == 0)
+	{
+		char filename[64];
+		sprintf_s(filename, "%04d.txt", fileno);
+		ifstream card(filename);
+		if(!card.good())
+		{
+			cerr << "打开文件" << filename << "错误" << endl;
+			return -5;
+		}
+		card >> b24buf;
+		card.close();
+	}
+
 	// begin decrypt
 	unsigned int test = decodeCharge(b24buf, salt, ShieldPC);
 	switch(test)
@@ -144,7 +156,11 @@ int _tmain(int argc, _TCHAR* argv[])
 	
 	DWORD box_r = test >> 24;
 	DWORD fileno_r = test & 0xFFFF;
-	if(box == box_r && fileno == fileno_r)
+	if(box == 0 && fileno == fileno_r) // query
+	{
+		cerr << "流水号:" << fileno_r << ", " << box_r << "盒, 充值密码: " << b24buf;
+	}
+	else if(box == box_r && fileno == fileno_r) //release
 	{
 		char filename[64];
 		sprintf_s(filename, "%04d.txt", fileno);
