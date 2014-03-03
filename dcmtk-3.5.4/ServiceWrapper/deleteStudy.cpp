@@ -1,58 +1,8 @@
 #include "stdafx.h"
-#include <direct.h>
 #include <commonlib.h>
 #import <msxml3.dll>
 
 using namespace std;
-
-bool deleteTree(const char *dirpath)
-{
-	bool allOK = true;
-	WIN32_FIND_DATA wfd;
-	char fileFilter[MAX_PATH];
-	strcpy_s(fileFilter, dirpath);
-	PathAppend(fileFilter, "*.*");
-	HANDLE hDiskSearch = FindFirstFile(fileFilter, &wfd);
-	if (hDiskSearch == INVALID_HANDLE_VALUE)  // 如果没有找到或查找失败
-	{
-		DWORD winerr = GetLastError();
-		if(ERROR_FILE_NOT_FOUND == winerr)
-			cerr << fileFilter << " not found, skip" << endl;
-		return false;
-	}
-	do
-	{
-		if (strcmp(wfd.cFileName, ".") == 0 || strcmp(wfd.cFileName, "..") == 0) 
-			continue; // skip . ..
-		fileFilter[strlen(dirpath)] = '\0';
-		PathAppend(fileFilter, wfd.cFileName);
-		if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-		{
-			if(deleteTree(fileFilter))
-			{
-				if(_rmdir(fileFilter))
-				{
-					cerr << "rmdir " << fileFilter << " failed" << endl;
-					allOK = false;
-				}
-			}
-			else
-			{
-				allOK = false;
-			}
-		}
-		else
-		{
-			if(remove(fileFilter))
-			{
-				cerr << "delete " << fileFilter << " failed" << endl;
-				allOK = false;
-			}
-		}	
-	} while (FindNextFile(hDiskSearch, &wfd));
-	FindClose(hDiskSearch); // 关闭查找句柄
-	return allOK;
-}
 
 bool deleteDayStudy(const char *dayxml)
 {
@@ -72,8 +22,6 @@ bool deleteDayStudy(const char *dayxml)
 		if(deleteTree(studyPath))
 		{
 			cerr << studyPath << " delete OK" << endl;
-			if(_rmdir(studyPath))
-				cerr << "rmdir study " << studyPath << " failed" << endl;
 		}
 		else
 		{

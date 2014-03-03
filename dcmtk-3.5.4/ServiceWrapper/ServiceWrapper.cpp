@@ -142,7 +142,7 @@ void mkcmd(ostringstream *cmdStream, const char *s)
 
 int realMain(int argc, char **argv)
 {
-	deleteTree("storedir");
+	deleteSubTree("storedir");
 	resetStatus(QUEUE_NAME);
 
 	// Perform work until service stops.
@@ -269,7 +269,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	else
 	{
-		cerr << "TestDaemon start error" << endl;
+		cerr << "C-Store Daemon start error" << endl;
 		ret = -1;
 	}
 	if(oldstdout != -1) _dup2(oldstdout, _fileno(stdout));
