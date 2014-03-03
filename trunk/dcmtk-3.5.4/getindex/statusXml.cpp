@@ -387,3 +387,46 @@ int statusCharge(const char *flag)
 	outputContent(false);
 	return 0;
 }
+
+int removeStudy(const char *flag)
+{
+	ostringstream errorMessageStream;
+	char studyUID[65], patientID[65], indexPath[MAX_PATH];
+	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
+	{
+		int hashStudy = hashCode(studyUID);
+		sprintf_s(indexPath, MAX_PATH, "archdir\\%02X\\%02X\\%02X\\%02X\\%s",
+			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
+		if(deleteTree(indexPath))
+		{
+			sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%02X\\%02X\\%02X\\%02X\\%s.xml",
+				hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
+			int rmXml = remove(indexPath);
+			sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%02X\\%02X\\%02X\\%02X\\%s.txt",
+				hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
+			int rmTxt = remove(indexPath);
+			if(rmXml || rmTxt)
+				errorMessageStream << "¼ì²éÍ¼ÏñÉ¾³ý³É¹¦, ¼ì²éË÷ÒýÉ¾³ýÊ§°Ü" << endl;
+			else
+				errorMessageStream << "¼ì²éÉ¾³ý³É¹¦" << endl;
+		}
+		else
+			errorMessageStream << "¼ì²éÉ¾³ýÊ§°Ü" << endl;
+	}
+	else
+		errorMessageStream << "¼ì²éUID´íÎó" << endl;
+
+	if(cgiFormNotFound != cgiFormString("patientID", patientID, 65) && strlen(patientID) > 0)
+	{
+		if(!deleteStudyFromPatientIndex(patientID, studyUID))
+			errorMessageStream << "»¼ÕßË÷ÒýÉ¾³ý´íÎó" << endl;
+	}
+	else
+		errorMessageStream << "»¼ÕßID´íÎó" << endl;
+
+	string errorMessage = errorMessageStream.str();
+	errorMessageStream.clear();
+	fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", errorMessage.size());
+	fprintf(cgiOut, errorMessage.c_str());
+	return 0;
+}

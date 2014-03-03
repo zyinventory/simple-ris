@@ -7,6 +7,7 @@ static char pPacsBase[MAX_PATH];
 std::ostringstream buffer;
 int statusXml(CSimpleIni &ini, const char *statusFlag);
 int statusCharge(const char *flag);
+int removeStudy(const char *flag);
 
 #define CHINESE_LOCAL "chinese"  // full name: Chinese_People's Republic of China.936, posix: zh_CN.GBK
 static char patientID[65], studyUID[65], host[65], indexPath[MAX_PATH];
@@ -61,9 +62,9 @@ void outputContent(bool error)
 {
 	string content = buffer.str();
 	if(error)
-		fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", content.length());
+		fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", content.length());
 	else
-		fprintf(cgiOut, "Content-type: text/xml; charset=GBK\r\nContent-Length: %d\r\n\r\n", content.length());
+		fprintf(cgiOut, "Content-Type: text/xml; charset=GBK\r\nContent-Length: %d\r\n\r\n", content.length());
 	fprintf(cgiOut, content.c_str());
 }
 
@@ -78,7 +79,7 @@ int jnlp(int hostLength)
 	int contentLength = sizeof(jnlp0) - 1 + sizeof(jnlp1) - 1 + sizeof(jnlp2) - 1 + sizeof(jnlp3) - 1 + sizeof(jnlp4) - 1 + sizeof(jnlp5) - 1 + hostLength * 5
 		+ (indexPathLength > 0 ? sizeof(jnlp6) - 1 + sizeof(jnlp7) - 1 + hostLength + indexPathLength : 0)
 		+ sizeof(jnlp8) - 1;
-	fprintf(cgiOut, "Content-type: application/x-java-jnlp-file; charset=UTF-8\r\nContent-Length: %d\r\n\r\n", contentLength);
+	fprintf(cgiOut, "Content-Type: application/x-java-jnlp-file; charset=UTF-8\r\nContent-Length: %d\r\n\r\n", contentLength);
 	fprintf(cgiOut, jnlp0);
 	fprintf(cgiOut, host);
 	fprintf(cgiOut, jnlp1);
@@ -158,7 +159,7 @@ int queryXml(int hostLength)
 		p += sizeof(pattern) - 1;  // p start with: /pacs/" requireOnlySOPInstanceUID="false" ...
 
 		size_t contentLen = strlen(filebuffer) + hostLength + strlen(p);
-		fprintf(cgiOut, "Content-type: text/xml; charset=GBK\r\nContent-Length: %d\r\n\r\n", contentLen);
+		fprintf(cgiOut, "Content-Type: text/xml; charset=GBK\r\nContent-Length: %d\r\n\r\n", contentLen);
 
 		fprintf(cgiOut, filebuffer);
 		fprintf(cgiOut, host);
@@ -210,7 +211,7 @@ int burningStudy(const char *media)
 						cgiHeaderLocation("getindex.exe?status=html");
 						cgiHeaderContentType("text/html");
 						//char okMessage[] = "开始刻录CD/DVD...";
-						//fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(okMessage) - 1);
+						//fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(okMessage) - 1);
 						//fprintf(cgiOut, okMessage);
 						return 0;
 					}
@@ -227,7 +228,7 @@ int burningStudy(const char *media)
 			errstream << "此程序没有合法的授权" << endl;
 	}
 	string errmsg = errstream.str();
-	fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", errmsg.length());
+	fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", errmsg.length());
 	fprintf(cgiOut, errmsg.c_str());
 	return -1;
 }
@@ -241,7 +242,7 @@ int reportStatus(const char *flag)
 	//instream.close();
     if (rc < 0) {
 		char okMessage[] = "没有任务";
-		fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(okMessage) - 1);
+		fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(okMessage) - 1);
 		fprintf(cgiOut, okMessage);
 		return 0;
 	}
@@ -256,7 +257,7 @@ int reportCharge(const char *flag)
 	if(!InitiateLock(0))
 	{
 		char errorMessage[] = "没有加密锁";
-		fprintf(cgiOut, "Content-type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(errorMessage) - 1);
+		fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(errorMessage) - 1);
 		fprintf(cgiOut, errorMessage);
 		return -1;
 	}
@@ -290,6 +291,13 @@ int work()
 		return jnlp(hostLength);
 	else if(cgiFormNotFound != cgiFormString("status", flag, sizeof(flag)) && strlen(flag) > 0)
 		return reportStatus(flag);
+	else if(cgiFormNotFound != cgiFormString("remove", flag, sizeof(flag)) && strlen(flag) > 0)
+	{
+		CoInitialize(NULL);
+		int ret = removeStudy(flag);
+		CoUninitialize();
+		return ret;
+	}
 	else if(cgiFormNotFound != cgiFormString("charge", flag, sizeof(flag)) && strlen(flag) > 0)
 		return reportCharge(flag);
 	else

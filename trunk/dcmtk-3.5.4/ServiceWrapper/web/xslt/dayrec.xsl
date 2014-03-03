@@ -57,7 +57,7 @@
 				<th>AE Title</th>
 				<th>¼ì²éUID</th>
         <th>¿ÌÂ¼</th>
-			</tr>
+      </tr>
 		</thead>
 		<tbody>
 			<xsl:for-each select="Collection/Study">
@@ -97,12 +97,28 @@
           </a>
         </td>
         <td>
-          <form target="ppstatus" method="POST" action="cgi-bin/getindex.exe">
+          <form target="ppstatus" style="display:inline" method="POST" action="cgi-bin/getindex.exe">
             <input type="hidden" name="media" value="AUTO" />
             <input type="hidden" name="studyUID">
-              <xsl:attribute name="value"><xsl:value-of select="./text()" /></xsl:attribute>
+              <xsl:attribute name="value">
+                <xsl:value-of select="./text()" />
+              </xsl:attribute>
             </input>
             <input type="submit" value="¿ÌÂ¼" />
+          </form>
+          <form target="ppstatus" style="display:inline" method="POST" action="cgi-bin/getindex.exe" class="confirmDelete">
+            <input type="hidden" name="remove" value="1" />
+            <input type="hidden" name="studyUID">
+              <xsl:attribute name="value">
+                <xsl:value-of select="./text()" />
+              </xsl:attribute>
+            </input>
+            <input type="hidden" name="patientID">
+              <xsl:attribute name="value">
+                <xsl:value-of select="@PatientID" />
+              </xsl:attribute>
+            </input>
+            <input type="submit" value="É¾³ý" />
           </form>
         </td>
 			</tr>

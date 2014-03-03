@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #import <msxml3.dll>
 
+#include <io.h>
 #include "commonlib.h"
 #include "SimpleIni.h"
 #include "poststore.h"
@@ -48,6 +49,68 @@ static string parsePatientName(string &patient)
 	*regex_replace(outbuf, test.begin(), test.end(), rtrim, string("")) = '\0';
 	test = outbuf;
 	return test;
+}
+
+bool deleteSubTree(const char *dirpath)
+{
+	bool allOK = true;
+	WIN32_FIND_DATA wfd;
+	char fileFilter[MAX_PATH];
+	strcpy_s(fileFilter, dirpath);
+	PathAppend(fileFilter, "*.*");
+	HANDLE hDiskSearch = FindFirstFile(fileFilter, &wfd);
+	if (hDiskSearch == INVALID_HANDLE_VALUE)  // 如果没有找到或查找失败
+	{
+		DWORD winerr = GetLastError();
+		if(ERROR_FILE_NOT_FOUND == winerr)
+			cerr << fileFilter << " not found, skip" << endl;
+		return false;
+	}
+	do
+	{
+		if (strcmp(wfd.cFileName, ".") == 0 || strcmp(wfd.cFileName, "..") == 0) 
+			continue; // skip . ..
+		fileFilter[strlen(dirpath)] = '\0';
+		PathAppend(fileFilter, wfd.cFileName);
+		if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			if(deleteSubTree(fileFilter))
+			{
+				if(_rmdir(fileFilter))
+				{
+					cerr << "rmdir " << fileFilter << " failed" << endl;
+					allOK = false;
+				}
+			}
+			else
+			{
+				allOK = false;
+			}
+		}
+		else
+		{
+			if(remove(fileFilter))
+			{
+				cerr << "delete " << fileFilter << " failed" << endl;
+				allOK = false;
+			}
+		}	
+	} while (FindNextFile(hDiskSearch, &wfd));
+	FindClose(hDiskSearch); // 关闭查找句柄
+	return allOK;
+}
+
+bool deleteTree(const char *dirpath)
+{
+	if (_access_s(dirpath, 0))
+		return true;  // dirpath dose not exist
+
+	if(deleteSubTree(dirpath))
+	{
+		if( ! _rmdir(dirpath))
+			return true;
+	}
+	return false;
 }
 
 HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::IXMLDOMElementPtr& study)
@@ -428,6 +491,12 @@ int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, co
 			string fieldsPath(buffer);
 			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%02X\\%02X\\%02X\\%02X\\%s", pacsBase.c_str(), archivePath.c_str(),
 				hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, tagValue);
+			if (_access_s( buffer, 4 ))
+			{
+				errstrm << "data don't exist: " << buffer << endl;
+				return -4;
+			}
+
 			try
 			{
 				ofstream ofs(jdfPath.c_str(), ios_base::out | ios_base::trunc);
@@ -572,6 +641,45 @@ HRESULT mergeStudy(MSXML2::IXMLDOMNodePtr src, MSXML2::IXMLDOMNodePtr dest)
 		}
 	}
 	return S_OK;
+}
+
+bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid)
+{
+	HANDLE fileMutex = NULL;
+	char buffer[1024];
+	DWORD errorCode;
+
+	int hash = hashCode(patientID);
+	sprintf_s(buffer, 1024, "indexdir\\00100020\\%02X\\%02X\\%02X\\%02X\\%s.xml",
+		hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, patientID);
+	string indexPath(buffer);
+	if(_access_s(buffer, 0)) return true; // if xml file dose not exist, return true;
+	try
+	{
+		MSXML2::IXMLDOMDocumentPtr oldIndex;
+		fileMutex = createFileMutex(indexPath);
+
+		_variant_t xmlsrc(buffer);
+		oldIndex.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+		oldIndex->load(xmlsrc);
+
+		sprintf_s(buffer, BUFF_SIZE, "/wado_query/Patient/Study[@StudyInstanceUID='%s']", studyUid);
+		MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(buffer);
+		if(existStudy)
+		{
+			oldIndex->lastChild->lastChild->removeChild(existStudy); // /wado_query/Patient ->removeChild(existStudy)
+			//oldIndex->firstChild->attributes->getNamedItem("encoding")->text = "gbk";
+			oldIndex->save(xmlsrc);
+		}
+		if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
+	}
+	catch(...)
+	{
+		if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
+		//cerr << message << endl;
+		return false;
+	}
+	return true;
 }
 
 HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag, const char *queryValue)
