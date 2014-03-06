@@ -19,7 +19,7 @@ bool deleteDayStudy(const char *dayxml)
 		sprintf_s(studyPath, MAX_PATH, "archdir\\%02X\\%02X\\%02X\\%02X\\%s",
 			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, (LPCSTR)studyUid);
 		cerr << "deleting study " << studyPath << " ..." << endl;
-		if(deleteTree(studyPath))
+		if(deleteTree(studyPath, &cerr))
 		{
 			cerr << studyPath << " delete OK" << endl;
 		}
