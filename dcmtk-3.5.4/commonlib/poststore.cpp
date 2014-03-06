@@ -51,7 +51,7 @@ static string parsePatientName(string &patient)
 	return test;
 }
 
-bool deleteSubTree(const char *dirpath)
+bool deleteSubTree(const char *dirpath, ostream *ostrm)
 {
 	bool allOK = true;
 	WIN32_FIND_DATA wfd;
@@ -59,11 +59,14 @@ bool deleteSubTree(const char *dirpath)
 	strcpy_s(fileFilter, dirpath);
 	PathAppend(fileFilter, "*.*");
 	HANDLE hDiskSearch = FindFirstFile(fileFilter, &wfd);
+	
+	if(!ostrm) ostrm = &cerr;
+
 	if (hDiskSearch == INVALID_HANDLE_VALUE)  // 如果没有找到或查找失败
 	{
 		DWORD winerr = GetLastError();
 		if(ERROR_FILE_NOT_FOUND == winerr)
-			cerr << fileFilter << " not found, skip" << endl;
+			*ostrm << fileFilter << " not found, skip" << endl;
 		return false;
 	}
 	do
@@ -78,7 +81,7 @@ bool deleteSubTree(const char *dirpath)
 			{
 				if(_rmdir(fileFilter))
 				{
-					cerr << "rmdir " << fileFilter << " failed" << endl;
+					*ostrm << "rmdir " << fileFilter << " failed" << endl;
 					allOK = false;
 				}
 			}
@@ -91,7 +94,7 @@ bool deleteSubTree(const char *dirpath)
 		{
 			if(remove(fileFilter))
 			{
-				cerr << "delete " << fileFilter << " failed" << endl;
+				*ostrm << "delete " << fileFilter << " failed" << endl;
 				allOK = false;
 			}
 		}	
@@ -100,12 +103,12 @@ bool deleteSubTree(const char *dirpath)
 	return allOK;
 }
 
-bool deleteTree(const char *dirpath)
+bool deleteTree(const char *dirpath, ostream *ostrm)
 {
 	if (_access_s(dirpath, 0))
 		return true;  // dirpath dose not exist
 
-	if(deleteSubTree(dirpath))
+	if(deleteSubTree(dirpath, ostrm))
 	{
 		if( ! _rmdir(dirpath))
 			return true;
@@ -647,7 +650,6 @@ bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid)
 {
 	HANDLE fileMutex = NULL;
 	char buffer[1024];
-	DWORD errorCode;
 
 	int hash = hashCode(patientID);
 	sprintf_s(buffer, 1024, "indexdir\\00100020\\%02X\\%02X\\%02X\\%02X\\%s.xml",
@@ -676,7 +678,7 @@ bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid)
 	catch(...)
 	{
 		if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
-		//cerr << message << endl;
+		//cerr << indexPath << "检查节点删除失败" << endl;
 		return false;
 	}
 	return true;

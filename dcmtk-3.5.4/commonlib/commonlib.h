@@ -55,6 +55,6 @@ int changeWorkingDirectory(int argc, char **argv, char *pPacsBase = NULL);
 int hashCode(const char *, unsigned int seed = 31);
 int hashCodeW(const wchar_t *, unsigned int seed = 31);
 long long diskUsage(const char *pacsBase, const char *studyUID);
-bool deleteSubTree(const char *dirpath);
-bool deleteTree(const char *dirpath);
+bool deleteSubTree(const char *dirpath, std::ostream *ostrm = NULL);
+bool deleteTree(const char *dirpath, std::ostream *ostrm = NULL);
 bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid);

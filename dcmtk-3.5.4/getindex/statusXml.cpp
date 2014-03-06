@@ -397,14 +397,16 @@ int removeStudy(const char *flag)
 		int hashStudy = hashCode(studyUID);
 		sprintf_s(indexPath, MAX_PATH, "archdir\\%02X\\%02X\\%02X\\%02X\\%s",
 			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
-		if(deleteTree(indexPath))
+		if(deleteTree(indexPath, &errorMessageStream))
 		{
 			sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%02X\\%02X\\%02X\\%02X\\%s.xml",
 				hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
 			int rmXml = remove(indexPath);
+			if(rmXml && errno == ENOENT) rmXml = 0;
 			sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%02X\\%02X\\%02X\\%02X\\%s.txt",
 				hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
 			int rmTxt = remove(indexPath);
+			if(rmTxt && errno == ENOENT) rmTxt = 0;
 			if(rmXml || rmTxt)
 				errorMessageStream << "¼ì²éÍ¼ÏñÉ¾³ý³É¹¦, ¼ì²éË÷ÒýÉ¾³ýÊ§°Ü" << endl;
 			else
