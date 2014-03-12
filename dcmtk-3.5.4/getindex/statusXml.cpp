@@ -198,6 +198,23 @@ int statusCharge(const char *flag)
 			outputContent(true);
 			return -2;
 		}
+		
+		// check batch mode flag
+		bool isBatchMode = true;
+		if(0 == loadPublicKeyContent2Pwd(filename, &siv, lockNumber, NULL, passwd))
+		{
+			DWORD data = 0;
+			if(ReadLock(MODE_FLAG_POS, &data, passwd, 0, 0))
+			{
+				 isBatchMode = (1 == (data & 1));
+			}
+		}
+		if(isBatchMode)
+		{
+			buffer << "数量或序列号错误: " << chargekey << endl;
+			outputContent(true);
+			return -16;
+		}
 
 		int retCode = decodeCharge(chargekey, salt, Lock32_Function_Wrapper);
 		switch(retCode)
