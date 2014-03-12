@@ -42,9 +42,10 @@ static void printKeyIV(SEED_SIV *sivptr, const char *filename)
 	if(writeToFile) keyiv.close();
 }
 
-int echoUsage(const char *app)
+int echoUsage(const _TCHAR *app)
 {
 	CERR << TEXT("init  Usage: ") << app << TEXT(" init <number> <key.txt path> [init_admin_password init_rw_password]") << endl
+		<< TEXT("batch init  Usage: ") << app << TEXT(" batch_init <number> <key.txt path> [init_admin_password init_rw_password]") << endl
 		<< "reset Usage: " << app << TEXT(" reset <number> [init_admin_password init_rw_password]") << endl;
 	return -1;
 }
@@ -245,7 +246,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	// If the directory is not specified as a command-line argument, print usage.
 	if(argc < 3) return echoUsage(argv[0]);
 
-	bool isInit = (0 == strcmp(argv[1], "init"));
+	bool isInit = (0 == strcmp(argv[1], "init") || 0 == strcmp(argv[1], "batch_init"));
 	int initNumber = 0;
 	initNumber = atoi(argv[2]);
 	if(initNumber == 0 && errno == EINVAL) initNumber = -1;
@@ -391,7 +392,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	for(int i = 1; i < MEM_CAPACITY; ++i)
 	{
 		DWORD data = 0;
-		if(i == 300) data = 1;  // batch mode flag
+		if(i == MODE_FLAG_POS && 0 == strcmp(argv[1], "batch_init")) data = 1;  // batch mode flag
 		if(WriteLock(i, &data, lock_passwd, 0, 0))
 		{
 			if(i % 16 == 0) CERR << TEXT('O');
