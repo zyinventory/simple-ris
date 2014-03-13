@@ -5,7 +5,6 @@
 #define AES_OFFSET		16
 #define DECRYPT			0
 #define DUMMY_ZERO 10
-#define MODE_FLAG_POS	300
 
 #if !defined(PKCS5_SALT_LEN)
 #define PKCS5_SALT_LEN	8

@@ -171,6 +171,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "getindex", "getindex\getind
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "initlock", "initlock\initlock.vcxproj", "{25B17570-D3A1-4663-8010-65F04B2612F4}"
 	ProjectSection(ProjectDependencies) = postProject
+		{27EA5740-3A51-46E7-8868-50FF7FEFED25} = {27EA5740-3A51-46E7-8868-50FF7FEFED25}
 		{2EDA894D-31F5-4DC1-8CF3-033EA19C3436} = {2EDA894D-31F5-4DC1-8CF3-033EA19C3436}
 	EndProjectSection
 EndProject

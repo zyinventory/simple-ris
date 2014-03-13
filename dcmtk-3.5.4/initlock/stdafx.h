@@ -44,3 +44,4 @@ extern "C"
 #define REGEX regex			//wregex
 #define SCANF_S sscanf_s	//swscanf_s
 #define IFSTREAM ifstream   //wifstream
+#define OFSTREAM ofstream   //wofstream
