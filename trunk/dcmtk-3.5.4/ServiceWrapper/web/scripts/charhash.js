@@ -100,11 +100,19 @@ function xslt(xml, xsl, outputDOM) {
         var xslDoc = new ActiveXObject("Msxml2.FreeThreadedDOMDocument");
         var xmlszer = new XMLSerializer();
         xslDoc.loadXML(xmlszer.serializeToString(xsl));
+        if (!xslDoc.documentElement.getAttribute('xmlns:sd'))  // if XMLSerializer lost attribute xmlns:sd, append it 
+            xslDoc.documentElement.setAttribute('xmlns:sd', 'http://www.weasis.org/xsd');
         xslt.stylesheet = xslDoc;
         var xslProc = xslt.createProcessor();
         xslProc.input = xml;
         xslProc.transform();
-        return xslProc.output;
+        if (outputDOM) {
+            var dom = new ActiveXObject("Msxml2.FreeThreadedDOMDocument");
+            dom.loadXML(xslProc.output);
+            return dom;
+        }
+        else
+            return xslProc.output;
     }
     else    // FireFox£¬ Chrome
     {
