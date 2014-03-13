@@ -2,6 +2,7 @@
 #include <lock.h>
 #include <liblock.h>
 #include <libb24.h>
+#include <gencard.h>
 #import <msxml3.dll>
 using namespace std;
 

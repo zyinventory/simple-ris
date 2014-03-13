@@ -59,6 +59,31 @@ int _tmain(int argc, _TCHAR* argv[])
 		return -2;
 	}
 
+	DWORD flag = 0;
+	ifstream flagstrm("flag.txt");
+	if(!flagstrm.good())
+	{
+		ofstream flagostrm("flag.txt");
+		if(!flagostrm.good())
+		{
+			cerr << "无法打开或创建flag.txt" << endl;
+			return -15;
+		}
+		flagostrm << flag << endl;
+		flagostrm.close();
+	}
+	else
+	{
+		flagstrm >> flag;
+		flagstrm.close();
+	}
+
+	if(flag & BATCH_INIT_FLAG)
+	{
+		cerr << "批量授权不能充值" << endl;
+		return -10;
+	}
+
 	ifstream keystrm("key.bin", ios_base::binary);
 	if(keystrm.fail())
 	{

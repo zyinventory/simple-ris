@@ -3,6 +3,7 @@
 #include <shieldpc.h>
 #include <liblock.h>
 #include <lock.h>
+#include <gencard.h>
 #include "constant.h"
 using namespace std;
 
@@ -44,9 +45,12 @@ static void printKeyIV(SEED_SIV *sivptr, const char *filename)
 
 int echoUsage(const _TCHAR *app)
 {
-	CERR << TEXT("init  Usage: ") << app << TEXT(" init <number> <key.txt path> [init_admin_password init_rw_password]") << endl
-		<< TEXT("batch init  Usage: ") << app << TEXT(" batch_init <number> <key.txt path> [init_admin_password init_rw_password]") << endl
-		<< "reset Usage: " << app << TEXT(" reset <number> [init_admin_password init_rw_password]") << endl;
+	CERR << TEXT("单授权模式(init): ") << endl
+		<< '\t' << app << TEXT(" init <number> <key.txt path> [init_admin_password init_rw_password]") << endl
+		<< endl
+		<< TEXT("批量授权模式(batch_init, reset): ") << endl
+		<< '\t' << app << TEXT(" batch_init <number> <key.txt path> [init_admin_password init_rw_password]") << endl
+		<< '\t' << app << TEXT(" reset <number> [init_admin_password init_rw_password]") << endl;
 	return -1;
 }
 
@@ -238,7 +242,7 @@ int initSecurity(int lockNumber, string &lockString)
 int _tmain(int argc, _TCHAR* argv[])
 {
 	HANDLE hFind = INVALID_HANDLE_VALUE;
-	DWORD lockNumber = 0;
+	DWORD lockNumber = 0, flag = 0;
 
 	locale locChina(locale("chinese"), new numpunct_no_gouping("chinese"));
 	locale::global(locChina);
@@ -246,12 +250,21 @@ int _tmain(int argc, _TCHAR* argv[])
 	// If the directory is not specified as a command-line argument, print usage.
 	if(argc < 3) return echoUsage(argv[0]);
 
-	bool isInit = (0 == strcmp(argv[1], "init") || 0 == strcmp(argv[1], "batch_init"));
 	int initNumber = 0;
 	initNumber = atoi(argv[2]);
 	if(initNumber == 0 && errno == EINVAL) initNumber = -1;
 	initNumber *= 50;
 	if(initNumber < 0 || initNumber > 0xFFFF) return echoUsage(argv[0]);
+	bool isInit = false;
+	if(0 == strcmp(argv[1], "batch_init"))
+	{
+		isInit = true;
+		flag |= BATCH_INIT_FLAG;
+	}
+	else if(0 == strcmp(argv[1], "init"))
+	{
+		isInit = true;
+	}
 
 	if(isInit)
 	{
@@ -290,10 +303,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	String lockString = serialStringStream.str();
 	CERR << TEXT("加密狗序列号:") << lockString << endl;
 
-	if(isInit && _mkdir(lockString.c_str()) && errno != EEXIST)
+	if(isInit && _mkdir(lockString.c_str()))
 	{
 		int err = errno;
-		CERR << TEXT("创建目录") << lockString << TEXT("错误:") << err << endl;
+		if(errno == EEXIST)
+			CERR << TEXT("目录") << lockString << TEXT("已存在，不能覆盖") << endl;
+		else
+			CERR << TEXT("创建目录") << lockString << TEXT("错误:") << err << endl;
 		return err;
 	}
 	if(_chdir(lockString.c_str()))
@@ -305,7 +321,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	
 	unsigned long counter = currentCount(init_lock_passwd);
 	//if(Counter(init_rw_passwd, 0, 0, 0, &counter))
-	bool initPasswdOK = (counter >= 0);
+	bool initPasswdOK = (counter >= 0);  // test: init_lock_passwd OK?
 	if(isInit)
 	{
 		if(initPasswdOK)
@@ -317,8 +333,16 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		int securityResult = initSecurity(lockNumber, lockString);
 		if(securityResult) return securityResult;
+		OFSTREAM flagstrm("flag.txt");
+		if(!flagstrm.good())
+		{
+			CERR << TEXT("无法创建flag.txt") << endl;
+			return -15;
+		}
+		flagstrm << flag << endl;
+		flagstrm.close();
 	}
-	else
+	else // reset
 	{
 		IFSTREAM passwdstrm("passwd.txt");
 		if(!passwdstrm.good())
@@ -369,14 +393,33 @@ int _tmain(int argc, _TCHAR* argv[])
 				return -16;
 			}
 		}
-		else
-		{
+		else // init_lock_passwd error
+		{	// test: lock_passwd(from passwd.txt) OK?
 			if(!SetLock(0, &counter, 0, "", lock_passwd, 0, 0))
 			{
 				CERR << TEXT("初始密码，passwd.txt都错误") << endl;
 				return -16;
 			}
-			//else passwd.txt OK, do nothing
+			//else passwd.txt OK, don't change passwd
+		}
+		
+		IFSTREAM flagstrm("flag.txt");
+		if(!flagstrm.good())
+		{	// in reset mode: if flag.txt doesn't exists, create it with content BATCH_INIT_FLAG.
+			OFSTREAM flagostrm("flag.txt");
+			if(!flagostrm.good())
+			{
+				cerr << "无法打开或创建flag.txt" << endl;
+				return -15;
+			}
+			flag = BATCH_INIT_FLAG;
+			flagostrm << flag << endl;
+			flagostrm.close();
+		}
+		else
+		{
+			flagstrm >> flag;
+			flagstrm.close();
 		}
 	}
 
@@ -392,7 +435,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	for(int i = 1; i < MEM_CAPACITY; ++i)
 	{
 		DWORD data = 0;
-		if(i == MODE_FLAG_POS && 0 == strcmp(argv[1], "batch_init")) data = 1;  // batch mode flag
+		if(i == MODE_FLAG_POS) data = flag;  // batch mode flag
 		if(WriteLock(i, &data, lock_passwd, 0, 0))
 		{
 			if(i % 16 == 0) CERR << TEXT('O');
