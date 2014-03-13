@@ -202,7 +202,7 @@ int statusCharge(const char *flag)
 		
 		// check batch mode flag
 		bool isBatchMode = true;
-		if(0 == loadPublicKeyContent2Pwd(filename, &siv, lockNumber, NULL, passwd))
+		if(0 == loadPublicKeyContentRW(filename, &siv, lockNumber, passwd))
 		{
 			DWORD data = 0;
 			if(ReadLock(MODE_FLAG_POS, &data, passwd, 0, 0))
