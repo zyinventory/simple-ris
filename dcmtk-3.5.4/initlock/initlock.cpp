@@ -46,11 +46,11 @@ static void printKeyIV(SEED_SIV *sivptr, const char *filename)
 int echoUsage(const _TCHAR *app)
 {
 	CERR << TEXT("单授权模式(init): ") << endl
-		<< '\t' << app << TEXT(" init <number> <key.txt path> [init_admin_password init_rw_password]") << endl
+		<< '\t' << app << TEXT(" init <盒数> <key.txt文件路径> [管理密码 读写密码]") << endl
 		<< endl
 		<< TEXT("批量授权模式(batch_init, reset): ") << endl
-		<< '\t' << app << TEXT(" batch_init <number> <key.txt path> [init_admin_password init_rw_password]") << endl
-		<< '\t' << app << TEXT(" reset <number> [init_admin_password init_rw_password]") << endl;
+		<< '\t' << app << TEXT(" batch_init <盒数> <key.txt文件路径> [管理密码 读写密码]") << endl
+		<< '\t' << app << TEXT(" reset <盒数> [管理密码 读写密码]") << endl;
 	return -1;
 }
 
