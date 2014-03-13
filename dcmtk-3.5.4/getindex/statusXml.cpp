@@ -285,7 +285,7 @@ int statusCharge(const char *flag)
 
 					increase = box * 50;
 					oldCount = licenseCount;
-					if(licenseCount >= 0 && (licenseCount + increase) <= 0xFFFF)
+					if(licenseCount >= 0 && (licenseCount + increase) <= MAX_MEDIA_COUNT)
 					{
 						licenseCount = increaseCount(passwd, increase);
 						if(licenseCount >= 0)
@@ -302,7 +302,11 @@ int statusCharge(const char *flag)
 							errorMessage = "数量写入错误";
 					}
 					else
-						errorMessage = "充值数量不能超过65535";
+					{
+						stringstream ss("充值数量不能超过");
+						ss << MAX_MEDIA_COUNT;
+						errorMessage = ss.str();
+					}
 				}
 				else
 					errorMessage = "此密码已充过";

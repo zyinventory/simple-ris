@@ -1,5 +1,6 @@
 #pragma once
 
+#define MAX_MEDIA_COUNT 0xFFFF
 #define MODE_FLAG_POS	300
 #define BATCH_INIT_FLAG	1
 

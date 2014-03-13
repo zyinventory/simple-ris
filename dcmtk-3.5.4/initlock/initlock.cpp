@@ -321,7 +321,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	
 	unsigned long counter = currentCount(init_lock_passwd);
 	//if(Counter(init_rw_passwd, 0, 0, 0, &counter))
-	bool initPasswdOK = (counter >= 0);  // test: init_lock_passwd OK?
+	bool initPasswdOK = (counter <= MAX_MEDIA_COUNT);  // test: init_lock_passwd OK?
 	if(isInit)
 	{
 		if(initPasswdOK)
