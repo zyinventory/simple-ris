@@ -50,7 +50,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG;WIN32;_CONSOLE;SI_SUPPORT_IOSTREAMS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>PACS_ENABLE_CHARGE;_DEBUG;WIN32;_CONSOLE;SI_SUPPORT_IOSTREAMS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)commonlib;$(SolutionDir)liblock;$(SolutionDir)libb24;$(SolutionDir)gencard;$(SolutionDir)libcgic;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
