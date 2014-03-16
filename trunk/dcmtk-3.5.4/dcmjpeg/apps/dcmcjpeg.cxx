@@ -687,13 +687,13 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			if (opt_verbose) COUT << "stdin readline failed" << endl;
+			if (opt_verbose) COUT << "stdin readline failed, exit..." << endl;
 			break;
 		}
 
 		if(*opt_ifname == '\0' || *opt_ofname == '\0')
 		{
-			if (opt_verbose) COUT << "stdin readline failed" << endl;
+			if (opt_verbose) COUT << "stdin in_file or out_file empty, exit..." << endl;
 			break;
 		}
 

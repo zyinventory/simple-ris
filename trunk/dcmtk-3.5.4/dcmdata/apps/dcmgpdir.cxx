@@ -101,6 +101,8 @@
 static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v"
 OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 
+static char timeBuffer[32];
+
 #define SHORTCOL 4
 #define LONGCOL 23
 
@@ -509,7 +511,10 @@ int main(int argc, char *argv[])
 	bool readQueue = false;
 	const int count = cmd.getParamCount();
 	if (opt_recurse && ddir.verboseMode())
+	{
+		if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
 		COUT << "determining input files ..." << endl;
+	}
 	/* no parameters? */
 	if (count == 0)
 	{
@@ -647,7 +652,11 @@ traversal_restart:
 								} else
 								{
 									++goodFiles;
-									if(ddir.verboseMode()) COUT << "dicomdir maker: add file " << strbody << endl;
+									if(ddir.verboseMode())
+									{
+										if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
+										COUT << "dicomdir maker: add file " << strbody << endl;
+									}
 								}
 							}
 							else if(label.find("dcmmkdir") == 0)
@@ -655,11 +664,16 @@ traversal_restart:
 								pMsg = pQueue->ReceiveCurrent();
 								string strbody(_bstr_t(pMsg->Body.bstrVal));
 								fileNameList.push_back(strbody);
-								//CERR << "dcmmkdir message, csv = " << strbody << endl;
+								if(ddir.verboseMode())
+								{
+									if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
+									COUT << "dicomdir maker ready for publish: " << strbody << endl;
+								}
 								pQueue->Reset();
 							}
 							else
 							{
+								if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
 								CERR << "make dicomdir: unknown message: " << label << endl;
 							}
 						}
@@ -670,6 +684,7 @@ traversal_restart:
 						if(comErr.Error() == MQ_ERROR_MESSAGE_ALREADY_RECEIVED)
 						{
 							pQueue->Reset();
+							if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
 							CERR << "make dicomdir: concurrence of receiving message, restart" << endl;
 							goto traversal_restart;
 						}
@@ -679,11 +694,13 @@ traversal_restart:
 				}
 				catch(_com_error &comErr)
 				{
+					if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
 					CERR << "make dicomdir error: " << comErr.ErrorMessage() << endl;
 				}
 				catch(...)
 				{
 					_com_error ce(AtlHresultFromLastError());
+					if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
 					CERR << "make dicomdir unknown error: " << ce.ErrorMessage() << endl;
 				}
 				CoUninitialize();
@@ -709,6 +726,13 @@ traversal_restart:
 				}
 				fileNameList.push_back(opt_csv);
 			}
+
+			if(ddir.verboseMode())
+			{
+				if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
+				COUT << "dicomdir maker: leave queue, begin to write DICOMDIR" << endl;
+			}
+
 			/* evaluate result of file checking/adding procedure */
 			if (goodFiles == 0)
 			{
@@ -734,6 +758,12 @@ traversal_restart:
 			/* write DICOMDIR file */
 			if (result.good() && opt_write)
 				result = ddir.writeDicomDir(opt_enctype, opt_glenc);
+			
+			if(ddir.verboseMode())
+			{
+				if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
+				COUT << "dicomdir maker: DICOMDIR is written" << endl;
+			}
 		}
 	}
 
@@ -750,7 +780,10 @@ traversal_restart:
 			lockNumber = getLockNumber(filename, FALSE, filename + 7);
 		}
 		else
+		{
+			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
 			CERR << "init lock failed:" << hex << LYFGetLastErr() << endl;
+		}
 
 		if(lockNumber != -1 && 0 == loadPublicKeyContentRW(filename, &siv, lockNumber, rw_passwd))
 		{
@@ -760,10 +793,17 @@ traversal_restart:
 				if(validResult == 0)
 					validLock = currentCount(rw_passwd) > 0;
 				else
+				{
+					if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
 					CERR << "invalid lock: " << lockNumber << ", validate license failed " << validResult << endl;
+				}
 			}
 		}
-		if(!validLock) CERR << "invalid lock: " << lockNumber << ", validate license failed" << endl;
+		if(!validLock)
+		{
+			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
+			CERR << "invalid lock: " << lockNumber << ", validate license failed" << endl;
+		}
 		for(size_t i = 0; i < listSize; ++i)
 		{
 			char buffer[MAX_PATH];
