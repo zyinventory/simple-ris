@@ -573,7 +573,10 @@ int main(int argc, char *argv[])
 	else
 		result = ddir.createNewDicomDir(opt_profile, opt_output, opt_fileset);
 
+	// If scu split study into series and one association per series,
+	// dcmmkdir must collect csv files as fileNameList, otherwise xml index will be incorrect.
 	OFList<string> fileNameList;
+
 	if (result.good())
 	{
 		/* set fileset descriptor and character set */
@@ -627,7 +630,7 @@ traversal_restart:
 						while(pMsg = pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout))
 						{
 							label = pMsg->Label;
-							if(label.find("compressed") == 0)
+							if(label.find(NOTIFY_COMPRESSED) == 0)
 							{
 								//CERR << label << endl;
 								pMsg = pQueue->ReceiveCurrent();
@@ -659,10 +662,11 @@ traversal_restart:
 									}
 								}
 							}
-							else if(label.find("dcmmkdir") == 0)
+							else if(label.find(NOTIFY_END_OF_STUDY) == 0)
 							{
 								pMsg = pQueue->ReceiveCurrent();
 								string strbody(_bstr_t(pMsg->Body.bstrVal));
+								// collect each csv file
 								fileNameList.push_back(strbody);
 								if(ddir.verboseMode())
 								{
@@ -804,13 +808,14 @@ traversal_restart:
 			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
 			CERR << "invalid lock: " << lockNumber << ", validate license failed" << endl;
 		}
+		// combine all csv files, but burn once 
 		for(size_t i = 0; i < listSize; ++i)
 		{
 			char buffer[MAX_PATH];
 			strcpy_s(buffer, MAX_PATH, fileNameList.front().c_str());
 			fileNameList.pop_front();
 			//CERR << "dicomdir OK, create index from " << buffer << endl;
-			if(i == listSize - 1 && validLock) setBurnOnce();
+			if(i == listSize - 1 && validLock) setBurnOnce(); // burn once
 			bool readyToBurn = getBurnOnce();
 			long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
 			if(readyToBurn && !getBurnOnce()) decreaseCount(rw_passwd);

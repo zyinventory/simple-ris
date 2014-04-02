@@ -187,6 +187,7 @@ static const char *opt_execOnReception = NULL;        // default: don't execute 
 static const char *opt_execOnEndOfStudy = NULL;       // default: don't execute anything on end of study
 
 OFString           lastStudySubdirectoryPathAndName, instanceCSVPath, lastArchiveFileName, lastArchiveStudyPath, lastStudyXml;
+static OFBool      assoReleaseOK = OFTrue;
 static OFBool      opt_renameOnEndOfStudy = OFFalse;  // default: don't rename any files on end of study
 static long        opt_endOfStudyTimeout = 3L;         // default: 3 second
 static OFBool      endOfStudyThroughTimeoutEvent = OFFalse;
@@ -1622,11 +1623,13 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
   }
   else if (cond == DUL_PEERABORTEDASSOCIATION)
   {
-    if (opt_verbose) COUT << "Association Aborted" << endl;
+    CERR << "Association Aborted" << endl;
+	assoReleaseOK = OFFalse;
   }
   else
   {
     CERR << "storescp: DIMSE Failure (aborting association)" << endl;
+	assoReleaseOK = OFFalse;
     /* some kind of error so abort the association */
     cond = ASC_abortAssociation(assoc);
   }
