@@ -125,7 +125,7 @@ list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 
 	string command(dirmakerCommand);
 	command.append(" -qn ").append(studyUid).append(" @");
-	//command.append("dcmmkdir -ds +r --general-purpose-dvd -wu http://localhost/pacs/ +D #v\\#s\\DICOMDIR +id #v\\#s -qn ").append(studyUid).append(" @");
+	//command.append("dcmmkdir -ds +A +I +r --general-purpose-dvd -wu http://localhost/pacs/ +D #v\\#s\\DICOMDIR +id #v\\#s -qn ").append(studyUid).append(" @");
 	string::size_type pos = 0;
 	while(pos != string::npos)
 	{
@@ -306,7 +306,7 @@ DWORD findIdleOrCompelete()
 		workers[result].instancePath = NULL;
 		if(instancePath)
 		{
-			string label("compressed ");
+			string label(NOTIFY_COMPRESSED);
 			label.append(*instancePath);
 			SendCommonMessageToQueue(label.c_str(), instancePath->c_str(), MQ_PRIORITY_COMPRESSED, studyUid->c_str());
 			delete instancePath;
@@ -480,7 +480,7 @@ static bool SendArchiveStudyCommand(WorkerProcess &wp)
 	if(wp.csvPath == NULL) return false;
 	string *csvPath = wp.csvPath;
 	wp.csvPath = NULL;
-	SendCommonMessageToQueue("dcmmkdir", csvPath->c_str(), MQ_PRIORITY_DCMMKDIR, wp.studyUid->c_str());
+	SendCommonMessageToQueue(NOTIFY_END_OF_STUDY, csvPath->c_str(), MQ_PRIORITY_DCMMKDIR, wp.studyUid->c_str());
 	delete csvPath;
 	return true;
 }
@@ -562,7 +562,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 						else
 						{
 							detectDcmmkdirProcessExit();
-							string label("compressed ");
+							string label(NOTIFY_COMPRESSED);
 							label.append(dest);
 							SendCommonMessageToQueue(label.c_str(), dest, MQ_PRIORITY_COMPRESSED, studyUid.c_str());
 							runDcmmkdir(studyUid);
