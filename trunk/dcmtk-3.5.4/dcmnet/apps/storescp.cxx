@@ -2548,7 +2548,12 @@ static void executeOnEndOfStudy()
   if(opt_disableMSMQ)
 	executeCommand( cmd );
   else
-	SendArchiveMessageToQueue(ARCHIVE_STUDY, lastStudyXml.c_str(), cmd.c_str());
+  {
+	if(assoReleaseOK)
+		SendArchiveMessageToQueue(ARCHIVE_STUDY, lastStudyXml.c_str(), cmd.c_str());
+	else
+		SendArchiveMessageToQueue(ARCHIVE_STUDY_NOT_INTEGRITY, lastStudyXml.c_str(), cmd.c_str());
+  }
 }
 
 

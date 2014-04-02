@@ -32,6 +32,7 @@
 
 typedef struct _WorkerProcess {
 	std::string *instancePath, *csvPath, *studyUid; // command level
+	bool integrityStudy;  // Is study integrity?
     HANDLE hProcess, hThread, mutexIdle, mutexRec, hChildStdInWrite; // process level
 	HANDLE hLogFile; std::string *logFilePath; // slot level
 } WorkerProcess, *PWorkerProcess, *LPWorkerProcess;

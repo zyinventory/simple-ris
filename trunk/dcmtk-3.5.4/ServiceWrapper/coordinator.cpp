@@ -198,7 +198,7 @@ static void detectDcmmkdirProcessExit()
 	working = 0;
 	while(iter != dirmakers.end())
 	{
-		workingHandles[working] = (*iter).hProcess;
+		workingHandles[working] = iter->hProcess;
 		++iter;
 		++working;
 	}
@@ -211,7 +211,7 @@ static void detectDcmmkdirProcessExit()
 			iter = find_if(dirmakers.begin(), dirmakers.end(), [workingHandles,wait](WorkerProcess wp){return wp.hProcess == workingHandles[wait];});
 			if(iter != dirmakers.end())
 			{
-				DeleteQueue((*iter).studyUid->c_str());
+				DeleteQueue(iter->studyUid->c_str());
 				closeProcHandle(*iter);
 				closeLogFile(*iter);
 				dirmakers.erase(iter);
@@ -480,11 +480,18 @@ static bool SendArchiveStudyCommand(WorkerProcess &wp)
 	if(wp.csvPath == NULL) return false;
 	string *csvPath = wp.csvPath;
 	wp.csvPath = NULL;
-	SendCommonMessageToQueue(NOTIFY_END_OF_STUDY, csvPath->c_str(), MQ_PRIORITY_DCMMKDIR, wp.studyUid->c_str());
+	if(wp.integrityStudy)
+		SendCommonMessageToQueue(NOTIFY_END_OF_STUDY, csvPath->c_str(), MQ_PRIORITY_DCMMKDIR, wp.studyUid->c_str());
+	else
+		SendCommonMessageToQueue(NOTIFY_STUDY_NOT_INTEGRITY, csvPath->c_str(), MQ_PRIORITY_DCMMKDIR, wp.studyUid->c_str());
 	delete csvPath;
+	wp.integrityStudy = false;
 	return true;
 }
 
+/* flush csvPath, called repeatedly is safely.
+ * find cached csvPath is not NULL.
+ * if compress command is not exists, send archive study command with csvPath. */
 static void checkStudyAccomplished()
 {
 	list<WorkerProcess>::iterator iter = dirmakers.begin();
@@ -493,7 +500,7 @@ static void checkStudyAccomplished()
 		size_t i;
 		for(i = 0; i < procnum; ++i)
 		{
-			if(workers[i].hProcess && workers[i].studyUid && workers[i].studyUid->compare(*(*iter).studyUid) == 0)
+			if(workers[i].hProcess && workers[i].studyUid && workers[i].studyUid->compare(*iter->studyUid) == 0)
 				break; //some command has not accomplished
 		}
 		if(i >= procnum) //no more command running
@@ -507,7 +514,7 @@ static void checkStudyAccomplished()
 void processMessage(IMSMQMessagePtr pMsg)
 {
 	HRESULT hr;
-	if(pMsg->Label == _bstr_t(ARCHIVE_INSTANCE) || pMsg->Label == _bstr_t(ARCHIVE_STUDY))
+	if(pMsg->Label == _bstr_t(ARCHIVE_INSTANCE) || pMsg->Label == _bstr_t(ARCHIVE_STUDY) || pMsg->Label == _bstr_t(ARCHIVE_STUDY_NOT_INTEGRITY))
 	{
 		try
 		{
@@ -590,7 +597,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 					}
 				}
 			}
-			else  //pMsg->Label == _bstr_t(ARCHIVE_STUDY)
+			else  //pMsg->Label == _bstr_t(ARCHIVE_STUDY) || pMsg->Label == _bstr_t(ARCHIVE_STUDY_NOT_INTEGRITY)
 			{
 				detectDcmmkdirProcessExit();
 
@@ -618,10 +625,12 @@ void processMessage(IMSMQMessagePtr pMsg)
 				//at the end of queue, generate dicomdir, generate index.
 				if(iter != dirmakers.end() && csvPath.length() > 0)
 				{
-					// send dcmmkdir command, clear cached and not send dcmmkdir command
+					// if old cached csvPath exists, then send dcmmkdir command with old cached csvPath and clear it.
 					SendArchiveStudyCommand(*iter);
 					// cache new csvPath
-					(*iter).csvPath = new string(csvPath);
+					if(iter->csvPath) delete iter->csvPath;
+					iter->csvPath = new string(csvPath);
+					iter->integrityStudy = (pMsg->Label == _bstr_t(ARCHIVE_STUDY));
 				}
 				else
 					cerr << "process message error: create or find dicomdir maker process failed" << endl;
