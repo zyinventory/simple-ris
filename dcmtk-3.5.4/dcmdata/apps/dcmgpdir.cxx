@@ -575,7 +575,8 @@ int main(int argc, char *argv[])
 
 	// If scu split study into series and one association per series,
 	// dcmmkdir must collect csv files as fileNameList, otherwise xml index will be incorrect.
-	OFList<string> fileNameList;
+	OFList<OFString> fileNameList;
+	bool isIntegrity = false;
 
 	if (result.good())
 	{
@@ -629,6 +630,7 @@ traversal_restart:
 					{
 						while(pMsg = pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout))
 						{
+							isIntegrity = false;
 							label = pMsg->Label;
 							if(label.find(NOTIFY_COMPRESSED) == 0)
 							{
@@ -665,13 +667,21 @@ traversal_restart:
 							else if(label.find(NOTIFY_END_OF_STUDY) == 0)
 							{
 								pMsg = pQueue->ReceiveCurrent();
-								string strbody(_bstr_t(pMsg->Body.bstrVal));
+								OFString strbody(_bstr_t(pMsg->Body.bstrVal));
+								if(label == NOTIFY_END_OF_STUDY) isIntegrity = true;
+								OFIterator<OFString> iter = fileNameList.begin();
+								for(; iter != fileNameList.end(); ++iter)
+								{
+									if(strbody == *iter) break;
+								}
 								// collect each csv file
-								fileNameList.push_back(strbody);
+								if(iter == fileNameList.end()) fileNameList.push_back(strbody);
 								if(ddir.verboseMode())
 								{
 									if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
-									COUT << "dicomdir maker ready for publish: " << strbody << endl;
+									COUT << "dicomdir maker ready for publish: " << strbody;
+									if(!isIntegrity) COUT << ", study is not integrity.";
+									COUT << endl;
 								}
 								pQueue->Reset();
 							}
@@ -772,10 +782,11 @@ traversal_restart:
 	}
 
 	size_t listSize = fileNameList.size();
+	bool validLock = false;
+	char rw_passwd[9] = "";
 	if(listSize > 0)
 	{
-		bool validLock = false;
-		char filename[64] = "..\\etc\\*.key", rw_passwd[9] = "";
+		char filename[64] = "..\\etc\\*.key";
 		int lockNumber = -1;
 		SEED_SIV siv;
 		if(InitiateLock(0))
@@ -808,18 +819,28 @@ traversal_restart:
 			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
 			CERR << "invalid lock: " << lockNumber << ", validate license failed" << endl;
 		}
-		// combine all csv files, but burn once 
-		for(size_t i = 0; i < listSize; ++i)
+	}
+
+	// combine all csv files, but burn once
+	for(size_t i = 0; i < listSize; ++i)
+	{
+		char buffer[MAX_PATH];
+		strcpy_s(buffer, MAX_PATH, fileNameList.front().c_str());
+		fileNameList.pop_front();
+		//CERR << "dicomdir OK, create index from " << buffer << endl;
+		if(i == listSize - 1 && validLock && isIntegrity) setBurnOnce(); // burn once
+		bool readyToBurn = getBurnOnce();
+		if(ddir.verboseMode())
 		{
-			char buffer[MAX_PATH];
-			strcpy_s(buffer, MAX_PATH, fileNameList.front().c_str());
-			fileNameList.pop_front();
-			//CERR << "dicomdir OK, create index from " << buffer << endl;
-			if(i == listSize - 1 && validLock) setBurnOnce(); // burn once
-			bool readyToBurn = getBurnOnce();
-			long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
-			if(readyToBurn && !getBurnOnce()) decreaseCount(rw_passwd);
+			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
+			COUT << "burning study: ";
+			if(readyToBurn)
+				COUT << buffer << endl;
+			else
+				COUT << "study is not integrity, skip burning" << endl;
 		}
+		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
+		if(readyToBurn && !getBurnOnce()) decreaseCount(rw_passwd);
 	}
 /*
 	PROCESS_INFORMATION procinfo;

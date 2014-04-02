@@ -51,7 +51,7 @@ bool SendArchiveMessageToQueue(const char *label, const char *body, const char *
 	{
 		string bodyXml(body);
 		string::size_type p;
-		if(strcmp(label, ARCHIVE_STUDY))
+		if(strcmp(label, ARCHIVE_STUDY) && strcmp(label, ARCHIVE_STUDY_NOT_INTEGRITY))
 		{
 			if( string::npos != (p = bodyXml.find(REPLACE_PLACE_HOLDER)) ) // uncompressed file, call dcmcjpeg
 				bodyXml.replace(p, strnlen_s(REPLACE_PLACE_HOLDER, sizeof(REPLACE_PLACE_HOLDER)), cmd);
@@ -138,7 +138,17 @@ bool DeleteQueue(const char *queueName)
 			if(qname.find(".\\private$\\") != 0)
 				qname.insert(0, ".\\private$\\");
 			pInfo->PathName = qname.c_str();
-			pInfo->Delete();
+			IMSMQQueuePtr pQueue = pInfo->Open(MQ_PEEK_ACCESS, MQ_DENY_NONE);
+			VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 0L }, 
+				vtFalse = { (WORD)VT_BOOL, (WORD)0, (WORD)0, (WORD)0, VARIANT_FALSE };
+			IMSMQMessagePtr pMsg = pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout);
+			if(pMsg)
+				cerr << "DeleteQueue " << qname << " error, message remain: " << (LPCSTR)pMsg->Label << endl;
+			else
+			{
+				pQueue->Close();
+				pInfo->Delete();
+			}
 			return true;
 		}
 		else
