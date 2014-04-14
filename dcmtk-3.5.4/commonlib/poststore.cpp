@@ -515,6 +515,7 @@ int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, co
 					}
 
 					bool paramOK = false;
+					/*
 					if(rc >= 0)
 					{
 						string publisherName(ini.GetValue("PUBLISHER1", "NAME", ""));
@@ -527,6 +528,8 @@ int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, co
 					if(! paramOK) ofs << "FORMAT=UDF102" << endl;
 
 					paramOK = false;
+					*/
+					ofs << "FORMAT=UDF102" << endl;
 					if(strcmp(MEDIA_AUTO, media))
 					{
 						ofs << "DISC_TYPE=" << media << endl;
