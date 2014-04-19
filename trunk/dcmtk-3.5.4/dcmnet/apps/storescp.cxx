@@ -2550,9 +2550,15 @@ static void executeOnEndOfStudy()
   else
   {
 	if(assoReleaseOK)
+	{
 		SendArchiveMessageToQueue(ARCHIVE_STUDY, lastStudyXml.c_str(), cmd.c_str());
+		if(opt_verbose) COUT << "send message: " << ARCHIVE_STUDY << " : " << lastStudyXml.c_str() << ',' << cmd << endl;
+	}
 	else
+	{
 		SendArchiveMessageToQueue(ARCHIVE_STUDY_NOT_INTEGRITY, lastStudyXml.c_str(), cmd.c_str());
+		CERR << "send message: " << ARCHIVE_STUDY_NOT_INTEGRITY << " : " << lastStudyXml.c_str() << ',' << cmd << endl;
+	}
   }
 }
 

@@ -133,6 +133,7 @@ int main(int argc, char *argv[])
 	const char *opt_index = "indexdir";
 	const char *opt_csv = NULL;
 	const char *opt_weburl = "http://localhost/pacs/";
+	OFCmdUnsignedInt opt_queueTimeout = 15;
 	DicomDirInterface::E_ApplicationProfile opt_profile = DicomDirInterface::AP_GeneralPurpose;
 
 	//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
@@ -247,6 +248,7 @@ int main(int argc, char *argv[])
 	cmd.addOption("--input-csv",             "-ic", 1, "filename : string", "read index information from csv file");
 	cmd.addOption("--delete-source-csv",     "-ds",    "if indexing is successful, delete source csv file");
 	cmd.addOption("--web-url",               "-wu", 1, "web url : string", "add a web url to index file, default : http://localhost/pacs/");
+	cmd.addOption("--queue-timeout",         "-qt", 1, "queue timeout : integer(1..300)", "queue receive message timeout, default : 15(second)");
 
 	/* evaluate command line */
 	prepareCmdLineArgs(argc, argv, OFFIS_CONSOLE_APPLICATION);
@@ -485,6 +487,17 @@ int main(int argc, char *argv[])
 			app.checkValue(cmd.getValue(opt_weburl));
 		if (cmd.findOption("--delete-source-csv"))
 			opt_deleteSourceCSV = OFTrue;
+		if (cmd.findOption("--queue-timeout"))
+		{
+			OFCmdUnsignedInt qt = 0;
+			app.checkValue(cmd.getValueAndCheckMinMax(qt, 1, 300));
+			opt_queueTimeout = qt;
+		}
+		if(ddir.verboseMode())
+		{
+			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
+			COUT << "dicomdir maker: queue timeout is " << opt_queueTimeout << endl;
+		}
 	}
 
 	/* set debug mode and stream for log messages */
@@ -623,7 +636,7 @@ int main(int argc, char *argv[])
 					}
 
 					IMSMQMessagePtr pMsg;
-					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 15L * 1000L }, 
+					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, opt_queueTimeout * 1000L }, 
 						vtFalse = { (WORD)VT_BOOL, (WORD)0, (WORD)0, (WORD)0, VARIANT_FALSE };
 traversal_restart:
 					try
@@ -669,6 +682,13 @@ traversal_restart:
 								pMsg = pQueue->ReceiveCurrent();
 								OFString strbody(_bstr_t(pMsg->Body.bstrVal));
 								if(label == NOTIFY_END_OF_STUDY) isIntegrity = true;
+								if(ddir.verboseMode())
+								{
+									if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
+									COUT << "dicomdir maker get message body: " << strbody;
+									if(!isIntegrity) COUT << ", study is not integrity.";
+									COUT << endl;
+								}
 								OFIterator<OFString> iter = fileNameList.begin();
 								for(; iter != fileNameList.end(); ++iter)
 								{
@@ -680,7 +700,7 @@ traversal_restart:
 								{
 									if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
 									COUT << "dicomdir maker ready for publish: " << strbody;
-									if(!isIntegrity) COUT << ", study is not integrity.";
+									if(iter == fileNameList.end()) COUT << " add to list";
 									COUT << endl;
 								}
 								pQueue->Reset();
@@ -792,7 +812,7 @@ traversal_restart:
 		if(InitiateLock(0))
 		{
 			atexit(exitHook);
-			lockNumber = getLockNumber(filename, FALSE, filename + 7);
+			lockNumber = getLockNumber(filename, FALSE, filename + 7); // 7 == strlen("..\etc\")
 		}
 		else
 		{
@@ -818,6 +838,14 @@ traversal_restart:
 		{
 			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
 			CERR << "invalid lock: " << lockNumber << ", validate license failed" << endl;
+		}
+	}
+	else
+	{
+		if(ddir.verboseMode())
+		{
+			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
+			COUT << "dicomdir maker: file name list size is 0, no file to burn." << endl;
 		}
 	}
 

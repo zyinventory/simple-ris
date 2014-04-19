@@ -14,7 +14,6 @@
 </xsl:template>
 
 <xsl:template match="/">
-<xsl:variable name="studyDate" select="/sd:wado_query/sd:Patient/sd:Study/@StudyDate" />
 <Collection>
 	<xsl:for-each select="/sd:wado_query/sd:Patient/sd:Study">
 		<Study>
@@ -24,7 +23,7 @@
 			<xsl:attribute name="PatientBirthDate"><xsl:value-of select="../@PatientBirthDate" /></xsl:attribute>
 			<xsl:attribute name="AccessionNumber"><xsl:value-of select="./@AccessionNumber" /></xsl:attribute>
 			<xsl:attribute name="StudyDate">
-				<xsl:value-of select="concat(substring($studyDate, 1, 4), '/', substring($studyDate, 5, 2), '/', substring($studyDate, 7, 2))" />
+				<xsl:value-of select="concat(substring(./@StudyDate, 1, 4), '/', substring(./@StudyDate, 5, 2), '/', substring(./@StudyDate, 7, 2))" />
 			</xsl:attribute>
 			<xsl:attribute name="Modality">
 				<xsl:call-template name="concatModalities">

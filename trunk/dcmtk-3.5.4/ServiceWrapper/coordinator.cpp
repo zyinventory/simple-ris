@@ -10,6 +10,7 @@ using namespace MSMQ;
 #include "commonlib.h"
 
 extern const char *dirmakerCommand;
+extern bool opt_verbose;
 IMSMQQueuePtr OpenOrCreateQueue(const char *queueName, MQACCESS access = MQ_SEND_ACCESS) throw(...);
 
 static SECURITY_ATTRIBUTES logSA;
@@ -17,13 +18,42 @@ static size_t procnum;
 static PWorkerProcess workers;
 static list<WorkerProcess> dirmakers;
 
-void closeProcHandle(WorkerProcess &wp)
+static std::ostream& time_header_out(ostream &os)
 {
+	char timeBuffer[32];
+	if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
+	return os;
+}
+
+static void closeProcHandle(WorkerProcess &wp)
+{
+	if(opt_verbose) time_header_out(cout) << "closeProcHandle: ";
+	WaitForSingleObject(wp.hProcess, 10 * 1000);
+	if(wp.hThread)
+	{
+		CloseHandle(wp.hThread);
+		wp.hThread = NULL;
+	}
+	if(wp.hProcess)
+	{
+		if(opt_verbose) cout << "hProcess = " << wp.hProcess;
+		CloseHandle(wp.hProcess);
+		wp.hProcess = NULL;
+	}
+	else
+	{
+		if(opt_verbose) cout << "hProcess = NULL";
+	}
+
 	if(wp.csvPath)
 	{
-		//cout << "close process csv = " << *wp.csvPath << endl;
+		if(opt_verbose) cout << ", csv = " << *wp.csvPath;
 		delete wp.csvPath;
 		wp.csvPath = NULL;
+	}
+	else
+	{
+		if(opt_verbose) cout << ", csv = NULL";
 	}
 	/*
 	bool hasStudyUid = false;
@@ -57,30 +87,32 @@ void closeProcHandle(WorkerProcess &wp)
 		CloseHandle(wp.mutexRec);
 		wp.mutexRec = NULL;
 	}
-	if(wp.studyUid)
-	{
-		delete wp.studyUid;
-		wp.studyUid = NULL;
-	}
+
 	if(wp.instancePath)
 	{
+		if(opt_verbose) cout << ", instance = " << *wp.instancePath;
 		delete wp.instancePath;
 		wp.instancePath = NULL;
 	}
-	WaitForSingleObject(wp.hProcess, 10 * 1000);
-	if(wp.hThread)
+	else
 	{
-		CloseHandle(wp.hThread);
-		wp.hThread = NULL;
+		if(opt_verbose) cout << ", instance = NULL";
 	}
-	if(wp.hProcess)
+
+	if(wp.studyUid)
 	{
-		CloseHandle(wp.hProcess);
-		wp.hProcess = NULL;
+		if(opt_verbose) cout << ", studyUID = " << *wp.studyUid;
+		delete wp.studyUid;
+		wp.studyUid = NULL;
 	}
+	else
+	{
+		if(opt_verbose) cout << ", studyUID = NULL";
+	}
+	if(opt_verbose) cout << endl;
 }
 
-list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
+static list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 {
 	list<WorkerProcess>::iterator iter = find_if(dirmakers.begin(), dirmakers.end(), 
 		[&studyUid](WorkerProcess wp){return wp.hProcess && wp.studyUid && 0 == wp.studyUid->compare(studyUid);});
@@ -112,7 +144,7 @@ list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 		delete wp.logFilePath;
 		wp.logFilePath = NULL;
 		_com_error ce(AtlHresultFromLastError());
-		cerr << TEXT("run dcmmkdir error: ") << ce.ErrorMessage() << endl;
+		time_header_out(cerr) << TEXT("run dcmmkdir error: ") << ce.ErrorMessage() << endl;
 	}
 
 	if(wp.hLogFile)
@@ -142,7 +174,7 @@ list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 
 	if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
 	{
-		//cout << "create process: " << commandLine << endl;
+		time_header_out(cout) << "create process: " << procinfo.hProcess << ", " << commandLine << endl;
 		wp.hProcess = procinfo.hProcess;
 		wp.hThread = procinfo.hThread;
 		wp.studyUid = new string(studyUid);
@@ -159,26 +191,31 @@ list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 	return iter;
 }
 
-void closeLogFile(WorkerProcess &wp)
+static void closeLogFile(WorkerProcess &wp)
 {
 	if(wp.hLogFile)
 	{
-#ifdef _DEBUG
-		cout << "closing log " << *wp.logFilePath << endl;
-#endif
+		time_header_out(cout) << "closeLogFile: " << *wp.logFilePath << endl;
 		DWORD pos = SetFilePointer(wp.hLogFile, 0, NULL, FILE_CURRENT);
 		CloseHandle(wp.hLogFile);
 		wp.hLogFile = NULL;
 		string * logFilePath = NULL;
 		if(pos == 0)
 		{
+			/*
 			int waitCloseTime = 0;
 			while(! DeleteFile(wp.logFilePath->c_str()) && waitCloseTime < 10 * 1000)
 			{
 				_com_error ce(AtlHresultFromLastError());
-				cerr << TEXT("closeLogFile error: ") << ce.ErrorMessage() << endl;
+				time_header_out(cerr) << TEXT("closeLogFile error: ") << ce.ErrorMessage() << endl;
 				waitCloseTime += 1000;
 				Sleep(1000);
+			}
+			*/
+			if(! DeleteFile(wp.logFilePath->c_str()))
+			{
+				_com_error ce(AtlHresultFromLastError());
+				time_header_out(cerr) << TEXT("closeLogFile error: ") << ce.ErrorMessage() << endl;
 			}
 		}
 		delete wp.logFilePath;
@@ -191,7 +228,18 @@ static void detectDcmmkdirProcessExit()
 	size_t working = 0;
 	DWORD  wait;
 
-	if(dirmakers.size() == 0) return;
+	//if(opt_verbose) time_header_out(cout) << "detectDcmmkdirProcessExit: ";
+	if(dirmakers.size() == 0)
+	{
+		//if(opt_verbose) time_header_out(cout) << "no dirmaker" << endl;
+		return;
+	}
+	/*
+	else
+	{
+		if(opt_verbose) time_header_out(cout) << "start" << endl;
+	}
+	*/
 	HANDLE *workingHandles = new HANDLE[dirmakers.size()];
 
 	list<WorkerProcess>::iterator iter = dirmakers.begin();
@@ -211,16 +259,42 @@ static void detectDcmmkdirProcessExit()
 			iter = find_if(dirmakers.begin(), dirmakers.end(), [workingHandles,wait](WorkerProcess wp){return wp.hProcess == workingHandles[wait];});
 			if(iter != dirmakers.end())
 			{
-				DeleteQueue(iter->studyUid->c_str());
-				closeProcHandle(*iter);
-				closeLogFile(*iter);
-				dirmakers.erase(iter);
+				string *csvPath = NULL, *studyUid = iter->studyUid;
+				bool integrityStudy = true;
+				if(iter->csvPath)
+				{
+					csvPath = iter->csvPath;
+					iter->csvPath = NULL;
+					integrityStudy = iter->integrityStudy;
+					iter->studyUid = NULL;
+
+					closeProcHandle(*iter);
+					closeLogFile(*iter);
+					dirmakers.erase(iter);
+
+					if(opt_verbose) time_header_out(cout) << "detectDcmmkdirProcessExit: resume dirmaker " << studyUid->c_str() << endl;
+					iter = runDcmmkdir(*studyUid);
+					iter->csvPath = csvPath;
+					iter->integrityStudy = integrityStudy;
+				}
+				else
+				{
+					if(opt_verbose) time_header_out(cout) << "detectDcmmkdirProcessExit: delete queue " << iter->studyUid->c_str() << endl;
+					bool restart = DeleteQueue(iter->studyUid->c_str());
+					
+					closeProcHandle(*iter);
+					closeLogFile(*iter);
+					dirmakers.erase(iter);
+
+					if(restart) runDcmmkdir(*studyUid);
+				}
 			}
 			else
-				cerr << "findIdleOrCompelete: dir maker " << wait << " not found" << endl;
+				time_header_out(cerr) << "detectDcmmkdirProcessExit: dir maker " << wait << " not found" << endl;
 		}
 	}
 	if(workingHandles) delete workingHandles;
+	//if(opt_verbose) time_header_out(cout) << "detectDcmmkdirProcessExit: end" << endl;
 }
 
 /*
@@ -229,7 +303,7 @@ return:
 	procnum		: all idle
 	other		: index of idle process
  */
-DWORD findIdleOrCompelete()
+static DWORD findIdleOrCompelete()
 {
 	size_t working = 0, idle = procnum;
 	DWORD  wait, result = 0;
@@ -252,6 +326,7 @@ DWORD findIdleOrCompelete()
 		if(wait >= WAIT_ABANDONED_0 && wait < WAIT_ABANDONED_0 + procnum)
 		{
 			result = wait - WAIT_ABANDONED_0;
+			time_header_out(cerr) << "worker process " << result << " exit abandoned" << endl;
 			closeProcHandle(workers[result]);
 		}
 		else if(wait >= WAIT_OBJECT_0 && wait < WAIT_OBJECT_0 + procnum)
@@ -272,6 +347,7 @@ DWORD findIdleOrCompelete()
 			{
 				if(workers[result].mutexIdle == workingHandles[index])
 				{
+					time_header_out(cerr) << "worker process " << result << " exit abandoned" << endl;
 					closeProcHandle(workers[result]);
 					break;
 				}
@@ -308,25 +384,26 @@ DWORD findIdleOrCompelete()
 		{
 			string label(NOTIFY_COMPRESSED);
 			label.append(*instancePath);
+			//if(opt_verbose) time_header_out(cout) << "findIdleOrCompelete: message " << NOTIFY_COMPRESSED << ':' << instancePath->c_str() << " send" << endl;
 			SendCommonMessageToQueue(label.c_str(), instancePath->c_str(), MQ_PRIORITY_COMPRESSED, studyUid->c_str());
 			delete instancePath;
 		}
 		else
-			cerr << "findIdleOrCompelete: worker process " << result << " has no instance path" << endl;
+			time_header_out(cerr) << "findIdleOrCompelete: worker process " << result << " has no instance path" << endl;
 		
 		if(studyUid)
 		{
-			//cout << "compress OK, make sure dcmmkdir start" << endl;
+			//time_header_out(cout) << "compress OK, make sure dcmmkdir start" << endl;
 			runDcmmkdir(*studyUid); // make sure dicomdir maker existing
 			delete studyUid;
 		}
 		else
-			cerr << "findIdleOrCompelete: worker process " << result << " has no study uid" << endl;
+			time_header_out(cerr) << "findIdleOrCompelete: worker process " << result << " has no study uid" << endl;
 	}
 	return result;
 }
 
-void runArchiveInstance(string &cmd, const int index, string &studyUid)
+static void runArchiveInstance(string &cmd, const int index, string &studyUid)
 {
 	PROCESS_INFORMATION procinfo;
 	STARTUPINFO sinfo;
@@ -350,7 +427,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 			delete workers[index].logFilePath;
 			workers[index].logFilePath = NULL;
 			_com_error ce(AtlHresultFromLastError());
-			cerr << TEXT("run archive command error: ") << ce.ErrorMessage() << endl;
+			time_header_out(cerr) << TEXT("run archive command error: ") << ce.ErrorMessage() << endl;
 		}
 	}
 
@@ -362,7 +439,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 		if(!SetHandleInformation(workers[index].hLogFile, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT))
 		{
 			_com_error ce(AtlHresultFromLastError());
-			cerr << TEXT("runArchiveInstance SetHandleInformation enable inherit: ") << ce.ErrorMessage() << endl;
+			time_header_out(cerr) << TEXT("runArchiveInstance SetHandleInformation enable inherit: ") << ce.ErrorMessage() << endl;
 		}
 	}
 
@@ -387,7 +464,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 
 		if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
 		{
-			cout << "create process " << index << ':' << commandLine << endl;
+			if(opt_verbose) time_header_out(cout) << "create process: " << procinfo.hProcess << " index " << index << ':' << commandLine << endl;
 			workers[index].hProcess = procinfo.hProcess;
 			workers[index].hThread = procinfo.hThread;
 			WaitForInputIdle(workers[index].hProcess, INFINITE);
@@ -399,7 +476,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 					!(workers[index].mutexIdle = OpenMutex(SYNCHRONIZE, FALSE, mutexIdleName.c_str())) && 
 					GetLastError() == ERROR_FILE_NOT_FOUND)
 				{
-					//cout << "waiting " << mutexIdleName << endl;
+					//time_header_out(cout) << "waiting " << mutexIdleName << endl;
 					Sleep(56);
 				}
 			}
@@ -411,7 +488,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 					!(workers[index].mutexRec = OpenMutex(SYNCHRONIZE, FALSE, mutexRecName.c_str())) && 
 					GetLastError() == ERROR_FILE_NOT_FOUND)
 				{
-					//cout << "waiting " << mutexRecName << endl;
+					//time_header_out(cout) << "waiting " << mutexRecName << endl;
 					Sleep(56);
 				}
 			}
@@ -419,7 +496,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 			{
 				if(WAIT_OBJECT_0 != WaitForSingleObject(workers[index].mutexIdle, INFINITE))
 				{
-					cerr << "wait idle " << index << " failed" << endl;
+					time_header_out(cerr) << "wait idle " << index << " failed" << endl;
 					closeProcHandle(workers[index]);
 				}
 			}
@@ -434,7 +511,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 		if(workers[index].hLogFile && !SetHandleInformation(workers[index].hLogFile, HANDLE_FLAG_INHERIT, 0))
 		{
 			_com_error ce(AtlHresultFromLastError());
-			cerr << TEXT("runArchiveInstance SetHandleInformation disable inherit: ") << ce.ErrorMessage() << endl;
+			time_header_out(cerr) << TEXT("runArchiveInstance SetHandleInformation disable inherit: ") << ce.ErrorMessage() << endl;
 		}
 		CloseHandle(hChildStdInRead);
 	}
@@ -443,7 +520,7 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 	{
 		if(workers[index].mutexIdle && workers[index].mutexRec)
 		{
-			//cout << "writing " << iofile << endl;
+			//time_header_out(cout) << "writing " << iofile << endl;
 			string iofileCr(iofile);
 			iofileCr.append(1, '\n');  // for dcmcjpeg: cin.getline()
 			DWORD bytesWritten;
@@ -458,19 +535,19 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 			else
 			{
 				displayErrorToCerr("wait confirm");
-				cerr << "get mutex failed, close process: " << commandLine << endl;
+				time_header_out(cerr) << "get mutex failed, close process: " << commandLine << endl;
 				closeProcHandle(workers[index]);
 			}
 		}
 		else
 		{
-			cerr << "get mutex failed, close process: " << commandLine << endl;
+			time_header_out(cerr) << "get mutex failed, close process: " << commandLine << endl;
 			closeProcHandle(workers[index]);
 		}
 	}
 	else
 	{
-		cerr << "create process " << index << " failed" << ':' << commandLine << endl;
+		time_header_out(cerr) << "create process " << index << " failed" << ':' << commandLine << endl;
 	}
 	delete[] commandLine;
 }
@@ -478,12 +555,23 @@ void runArchiveInstance(string &cmd, const int index, string &studyUid)
 static bool SendArchiveStudyCommand(WorkerProcess &wp)
 {
 	if(wp.csvPath == NULL) return false;
+
 	string *csvPath = wp.csvPath;
 	wp.csvPath = NULL;
+	
+	if(opt_verbose) time_header_out(cout) << "SendArchiveStudyCommand: ";
 	if(wp.integrityStudy)
+	{
 		SendCommonMessageToQueue(NOTIFY_END_OF_STUDY, csvPath->c_str(), MQ_PRIORITY_DCMMKDIR, wp.studyUid->c_str());
+		if(opt_verbose) cout << NOTIFY_END_OF_STUDY;
+	}
 	else
+	{
 		SendCommonMessageToQueue(NOTIFY_STUDY_NOT_INTEGRITY, csvPath->c_str(), MQ_PRIORITY_DCMMKDIR, wp.studyUid->c_str());
+		if(opt_verbose) cout << NOTIFY_STUDY_NOT_INTEGRITY;
+	}
+	if(opt_verbose) cout << " : " << csvPath->c_str() << " : " << wp.studyUid->c_str() << endl;
+
 	delete csvPath;
 	wp.integrityStudy = false;
 	return true;
@@ -497,6 +585,7 @@ static void checkStudyAccomplished()
 	list<WorkerProcess>::iterator iter = dirmakers.begin();
 	while((iter = find_if(iter, dirmakers.end(), [](WorkerProcess wp){ return wp.csvPath != NULL; })) != dirmakers.end())
 	{
+		if(opt_verbose) time_header_out(cout) << "checkStudyAccomplished: dcmmkdir " << iter->hProcess << " cache found: " << iter->csvPath->c_str() << endl;
 		size_t i;
 		for(i = 0; i < procnum; ++i)
 		{
@@ -504,14 +593,16 @@ static void checkStudyAccomplished()
 				break; //some command has not accomplished
 		}
 		if(i >= procnum) //no more command running
-		{
 			SendArchiveStudyCommand(*iter);
+		else
+		{
+			if(opt_verbose) time_header_out(cout) << "checkStudyAccomplished: " << workers[i].instancePath->c_str() << " exists, skip SendArchiveStudyCommand(WorkerProcess &wp)" << endl;
 		}
 		++iter;
 	}
 }
 
-void processMessage(IMSMQMessagePtr pMsg)
+static void processMessage(IMSMQMessagePtr pMsg)
 {
 	HRESULT hr;
 	if(pMsg->Label == _bstr_t(ARCHIVE_INSTANCE) || pMsg->Label == _bstr_t(ARCHIVE_STUDY) || pMsg->Label == _bstr_t(ARCHIVE_STUDY_NOT_INTEGRITY))
@@ -525,7 +616,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 			MSXML2::IXMLDOMNodePtr command = pXml->selectSingleNode("/wado_query/httpTag[@key='command']");
 			if(command == NULL)
 			{
-				cerr << "no command: " << pXml->xml << endl;
+				time_header_out(cerr) << "no command: " << pXml->xml << endl;
 				throw "no command";
 			}
 			string cmd(command->Getattributes()->getNamedItem("value")->text);
@@ -533,7 +624,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 			MSXML2::IXMLDOMNodePtr attrStudyUid = pXml->selectSingleNode("/wado_query/Patient/Study/@StudyInstanceUID");
 			if(attrStudyUid == NULL)
 			{
-				cerr << "no study uid: " << pXml->xml << endl;
+				time_header_out(cerr) << "no study uid: " << pXml->xml << endl;
 				throw "no study uid";
 			}
 			string studyUid(attrStudyUid->text);
@@ -577,7 +668,7 @@ void processMessage(IMSMQMessagePtr pMsg)
 					}
 					else
 					{
-						cerr << TEXT("move command format error: ") << command << endl;
+						time_header_out(cerr) << TEXT("move command format error: ") << command << endl;
 					}
 					delete[] buffer;
 				}
@@ -592,13 +683,14 @@ void processMessage(IMSMQMessagePtr pMsg)
 					}
 					else
 					{
-						cerr << "find idle process failed:" << endl;
-						cerr << cmd << endl;
+						time_header_out(cerr) << "find idle process failed:" << endl;
+						time_header_out(cerr) << cmd << endl;
 					}
 				}
 			}
 			else  //pMsg->Label == _bstr_t(ARCHIVE_STUDY) || pMsg->Label == _bstr_t(ARCHIVE_STUDY_NOT_INTEGRITY)
 			{
+				if(opt_verbose) time_header_out(cout) << "processMessage: " << pMsg->Label << ':' << pMsg->Body.bstrVal << endl;
 				detectDcmmkdirProcessExit();
 
 				string::size_type begin = cmd.find("-ic "), end;
@@ -616,10 +708,10 @@ void processMessage(IMSMQMessagePtr pMsg)
 					csvPath = cmd.substr(begin, end - begin);
 				}
 				else
-					cerr << "process message error: no csv file: " << cmd << endl;
+					time_header_out(cerr) << "process message error: no csv file: " << cmd << endl;
 				IMSMQQueuePtr pQueue = OpenOrCreateQueue(studyUid.c_str());
 				pQueue->Close();
-				//cout << "receive message archive study, start dcmmkdir" << endl;
+				//processMessage: receive message archive study, start dcmmkdir
 				list<WorkerProcess>::iterator iter = runDcmmkdir(studyUid);
 				//dcmmkdir shall poll the study-queue, get instance message, add the instance to dicomdir.
 				//at the end of queue, generate dicomdir, generate index.
@@ -631,32 +723,33 @@ void processMessage(IMSMQMessagePtr pMsg)
 					if(iter->csvPath) delete iter->csvPath;
 					iter->csvPath = new string(csvPath);
 					iter->integrityStudy = (pMsg->Label == _bstr_t(ARCHIVE_STUDY));
+					if(opt_verbose) time_header_out(cout) << "processMessage: csvPath " << csvPath << " cache to dirmaker " << iter->hProcess << endl;
 				}
 				else
-					cerr << "process message error: create or find dicomdir maker process failed" << endl;
+					time_header_out(cerr) << "process message error: create or find dicomdir maker process failed" << endl;
 				checkStudyAccomplished();
 			}
 		}
 		catch(_com_error &comErr)
 		{
-			cerr << TEXT("processMessage COM error: ") << comErr.ErrorMessage() << endl;
+			time_header_out(cerr) << TEXT("processMessage COM error: ") << comErr.ErrorMessage() << endl;
 		}
 		catch(...)
 		{
 			_com_error ce(AtlHresultFromLastError());
-			cerr << TEXT("processMessage unknown error: ") << ce.ErrorMessage() << endl;
+			time_header_out(cerr) << TEXT("processMessage unknown error: ") << ce.ErrorMessage() << endl;
 		}
 	}
 	else
 	{
-		cerr << TEXT("processMessage unknown message: ") << pMsg->Label << TEXT(':');
+		time_header_out(cerr) << TEXT("processMessage unknown message: ") << pMsg->Label << TEXT(':');
 		if(pMsg->Body.vt == VT_BSTR)
 			cerr << pMsg->Body.pbstrVal;
 		cerr << endl;
 	}
 }
 
-int pollQueue(const _TCHAR *queueName)
+static int pollQueue(const _TCHAR *queueName)
 {
 	HRESULT hr;
 	try
@@ -672,8 +765,11 @@ int pollQueue(const _TCHAR *queueName)
 				processMessage(pMsg);
 				pMsg = pQueue->Receive(NULL, NULL, NULL, &waitNext);
 			}
-			// no message, try cleaning
+			//if(opt_verbose) time_header_out(cout) << "pollQueue: no message, try cleaning: findIdleOrCompelete() and checkStudyAccomplished()" << endl;
+
+			// if completed compress found, send NOTIFY_COMPRESSED message, clear wp.instancePath and wp.studyUid.
 			DWORD index = findIdleOrCompelete();
+
 			checkStudyAccomplished();
 			if(index == WAIT_FAILED)
 				throw "findIdle error";
@@ -694,23 +790,23 @@ int pollQueue(const _TCHAR *queueName)
 	}
 	catch(_com_error &comErr)
 	{
-		cerr << TEXT("pollQueue COM error: ") << comErr.ErrorMessage() << endl;
+		time_header_out(cerr) << TEXT("pollQueue COM error: ") << comErr.ErrorMessage() << endl;
 		return -10;
 	}
 	catch(const char *message)
 	{
-		cerr << TEXT("pollQueue error: ") << message << endl;
+		time_header_out(cerr) << TEXT("pollQueue error: ") << message << endl;
 		return -10;
 	}
 	catch(...)
 	{
 		_com_error ce(AtlHresultFromLastError());
-		cerr << TEXT("pollQueue unknown error: ") << ce.ErrorMessage() << endl;
+		time_header_out(cerr) << TEXT("pollQueue unknown error: ") << ce.ErrorMessage() << endl;
 		return -10;
 	}
 }
 
-void waitAll()
+static void waitAll()
 {
 	size_t working = 0;
 	DWORD  result = 0;
@@ -742,7 +838,7 @@ int commandDispatcher(const char *queueName, int processorNumber)
 	int ret = pollQueue(queueName);
 
 	waitAll();
-	cout << "all process signaled" << endl;
+	if(opt_verbose) time_header_out(cout) << "commandDispatcher: all process signaled" << endl;
 	for(size_t i = 0; i < procnum; ++i)
 	{
 		closeProcHandle(workers[i]);
