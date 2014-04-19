@@ -15,6 +15,7 @@ static bool startXCS = false, xcsFound = false;
 static HANDLE logFile = INVALID_HANDLE_VALUE;
 
 const char *dirmakerCommand;
+bool opt_verbose = false;
 
 static size_t checkDiskFreeSpaceInMB(const char * path)
 {
@@ -121,7 +122,7 @@ void autoCleanPacsDiskByStudyDate()
 	//cerr << "auto clean done" << endl;
 }
 
-void mkcmd(ostringstream *cmdStream, const char *s)
+static void mkcmd(ostringstream *cmdStream, const char *s)
 {
 	if(strchr(s, ' '))
 		*cmdStream << '"' << s << '"' << ' ';
@@ -140,10 +141,10 @@ void mkcmd(ostringstream *cmdStream, const char *s)
 	}
 }
 
-int realMain(int argc, char **argv)
+static int realMain(int argc, char **argv)
 {
-	deleteSubTree("storedir");
-	resetStatus(QUEUE_NAME);
+	//deleteSubTree("storedir");
+	//resetStatus(QUEUE_NAME);
 
 	// Perform work until service stops.
 	ostringstream cmdStream;
@@ -151,6 +152,7 @@ int realMain(int argc, char **argv)
 	string cmd(cmdStream.str());
 	cmdStream.clear();
 	//cout << cmd << endl;
+	opt_verbose = (string::npos != cmd.find(" -v "));
 
 	PROCESS_INFORMATION procinfo;
 	STARTUPINFO sinfo;
@@ -195,7 +197,7 @@ int realMain(int argc, char **argv)
 	}
 }
 
-void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
+static void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
 {
 	SvcInit(100);
 	// Report running status when initialization is complete.

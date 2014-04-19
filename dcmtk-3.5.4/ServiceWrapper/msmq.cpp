@@ -5,7 +5,7 @@
 using namespace std;
 using namespace MSMQ;
 
-IMSMQQueuePtr createQueueAndOpen(IMSMQQueueInfoPtr &pInfo, MQACCESS access) throw(...)
+static IMSMQQueuePtr createQueueAndOpen(IMSMQQueueInfoPtr &pInfo, MQACCESS access) throw(...)
 {
 	_variant_t vtrue(true);
 	_variant_t vfalse(false);

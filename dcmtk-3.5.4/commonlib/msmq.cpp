@@ -127,6 +127,7 @@ bool SendArchiveMessageToQueue(const char *label, const char *body, const char *
 
 bool DeleteQueue(const char *queueName)
 {
+	bool queueExist = false;
 	try
 	{
 		IMSMQQueueInfoPtr pInfo;
@@ -138,34 +139,41 @@ bool DeleteQueue(const char *queueName)
 			if(qname.find(".\\private$\\") != 0)
 				qname.insert(0, ".\\private$\\");
 			pInfo->PathName = qname.c_str();
-			IMSMQQueuePtr pQueue = pInfo->Open(MQ_PEEK_ACCESS, MQ_DENY_NONE);
-			VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 0L }, 
-				vtFalse = { (WORD)VT_BOOL, (WORD)0, (WORD)0, (WORD)0, VARIANT_FALSE };
-			IMSMQMessagePtr pMsg = pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout);
-			if(pMsg)
-				cerr << "DeleteQueue " << qname << " error, message remain: " << (LPCSTR)pMsg->Label << endl;
-			else
+			IMSMQQueuePtr pQueue = pInfo->Open(MQ_PEEK_ACCESS, MQ_DENY_RECEIVE_SHARE);
+			if(pQueue)
 			{
-				pQueue->Close();
-				pInfo->Delete();
+				queueExist = true;
+				VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, 0L }, 
+					vtFalse = { (WORD)VT_BOOL, (WORD)0, (WORD)0, (WORD)0, VARIANT_FALSE };
+				IMSMQMessagePtr pMsg = pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout);
+				if(pMsg)
+				{
+					cerr << "DeleteQueue " << qname << " error, message remain: " << (LPCSTR)pMsg->Label << endl;
+					pQueue->Close();
+				}
+				else
+				{
+					pQueue->Close();
+					queueExist = FAILED(pInfo->Delete());
+				}
 			}
-			return true;
+			return queueExist;
 		}
 		else
 		{
 			cerr << "DeleteQueue error£ºqueue name is NULL" << endl;
-			return false;
+			return queueExist;
 		}
 	}
 	catch(_com_error &comErr)
 	{
 		cerr << "DeleteQueue error£º" << comErr.ErrorMessage() << endl;
-		return false;
+		return queueExist;
 	}
 	catch(...)
 	{
 		_com_error ce(AtlHresultFromLastError());
 		cerr << "DeleteQueue unknown error: " << ce.ErrorMessage() << endl;
-		return false;
+		return queueExist;
 	}
 }
