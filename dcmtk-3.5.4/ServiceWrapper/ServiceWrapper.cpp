@@ -2,7 +2,6 @@
 //
 
 #include "stdafx.h"
-#include <direct.h>
 
 #include "commonlib.h"
 #include "service.h"
@@ -151,8 +150,8 @@ static int realMain(int argc, char **argv)
 	for_each(argv + 2, argv + argc, bind1st(ptr_fun(mkcmd), &cmdStream)); // skip program and ServiceName
 	string cmd(cmdStream.str());
 	cmdStream.clear();
-	//cout << cmd << endl;
 	opt_verbose = (string::npos != cmd.find(" -v "));
+	cout << opt_verbose << ':' << cmd << endl;
 
 	PROCESS_INFORMATION procinfo;
 	STARTUPINFO sinfo;
@@ -218,12 +217,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	else
 	{
-		strcpy_s(getServiceName(), 128, argv[1]); // argv[1] must be ServiceName
+		strcpy_s(service_name, 128, argv[1]); // argv[1] must be ServiceName
+		cout << "ServiceName " << service_name << endl;
 	}
 
 	SERVICE_TABLE_ENTRY serviceTableEntry[] =
 	{
-		{ getServiceName() , SvcMain },
+		{ service_name , SvcMain },
 		{ NULL, NULL }
 	};
 
@@ -235,25 +235,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	setEnvParentPID();
 
 	changeWorkingDirectory(argc, argv);
-/*
-	char *buffer = _getcwd(NULL, 0);
-	cout << "working dir: " << buffer << endl;
-	free(buffer);
-*/
-	int stdfile = -1, oldstdout = -1, oldstderr = -1;
-	generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", timeBuffer, sizeof(timeBuffer));
-	if(prepareFileDir(timeBuffer)
-		&& ! _sopen_s(&stdfile, timeBuffer, _O_APPEND | _O_CREAT | _O_TEXT | _O_WRONLY, _SH_DENYWR, _S_IREAD | _S_IWRITE))
-	{
-		oldstdout = _dup(_fileno(stdout));
-		oldstderr = _dup(_fileno(stderr));
-		_dup2(stdfile, _fileno(stdout));
-		_dup2(stdfile, _fileno(stderr));
-		_close(stdfile);
-	}
 
-	setvbuf(stdout, NULL, _IONBF, 0);
-	setvbuf(stderr, NULL, _IONBF, 0);
+	//swithStdHandleToLog("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt");
 
 	int ret = 0;
 	if( StartServiceCtrlDispatcher( serviceTableEntry ) )
@@ -274,7 +257,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		cerr << "C-Store Daemon start error" << endl;
 		ret = -1;
 	}
-	if(oldstdout != -1) _dup2(oldstdout, _fileno(stdout));
-	if(oldstderr != -1) _dup2(oldstderr, _fileno(stderr));
+
+	//restoreStdHandle();
 	return ret;
 }
