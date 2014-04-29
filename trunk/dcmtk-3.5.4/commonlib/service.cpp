@@ -5,12 +5,11 @@
 
 using namespace std;
 
-char SERVICE_NAME[128];
+char service_name[128];
+std::ostream *ptr_ostream_service_log = NULL;
 
 static SERVICE_STATUS          gSvcStatus; 
 static SERVICE_STATUS_HANDLE   gSvcStatusHandle; 
-
-char *getServiceName() { return SERVICE_NAME; }
 
 void ReportSvcStatus( DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
 {
@@ -60,13 +59,13 @@ void SvcReportEvent(LPCTSTR szFunction, WORD eventType, DWORD eventId)
   LPCTSTR lpszStrings[2];
   TCHAR Buffer[80];
 
-  hEventSource = RegisterEventSource(NULL, SERVICE_NAME);
+  hEventSource = RegisterEventSource(NULL, service_name);
 
   if( NULL != hEventSource )
   {
 	StringCchPrintf(Buffer, 80, TEXT("%s failed with %d"), szFunction, GetLastError());
 
-	lpszStrings[0] = SERVICE_NAME;
+	lpszStrings[0] = service_name;
 	lpszStrings[1] = Buffer;
 
 	ReportEvent(hEventSource,        // event log handle
@@ -85,7 +84,7 @@ void SvcReportEvent(LPCTSTR szFunction, WORD eventType, DWORD eventId)
 
 bool WINAPI SvcInit(DWORD dwWaitHint)
 {
-  gSvcStatusHandle = RegisterServiceCtrlHandler( SERVICE_NAME, SvcCtrlHandler);
+  gSvcStatusHandle = RegisterServiceCtrlHandler( service_name, SvcCtrlHandler);
   if( !gSvcStatusHandle )
   {
 	  SvcReportEvent(TEXT("RegisterServiceCtrlHandler"), EVENTLOG_ERROR_TYPE, SVC_ERROR);

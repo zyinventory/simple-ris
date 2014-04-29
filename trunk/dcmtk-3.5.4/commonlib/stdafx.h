@@ -33,3 +33,6 @@
 
 #include <signal.h>
 #include <direct.h>        /* for _mkdir() */
+#include <io.h>
+#include <fcntl.h>
+#include <sys/stat.h>

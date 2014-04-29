@@ -109,9 +109,16 @@ static char timeBuffer[32];
 // ********************************************
 using namespace MSMQ;
 
-void exitHook()
+static void exitHook()
 {
 	TerminateLock(0);
+}
+
+static std::ostream& time_header_out(ostream &os)
+{
+	//char timeBuffer[32];
+	if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
+	return os;
 }
 
 int main(int argc, char *argv[])
@@ -493,11 +500,7 @@ int main(int argc, char *argv[])
 			app.checkValue(cmd.getValueAndCheckMinMax(qt, 1, 300));
 			opt_queueTimeout = qt;
 		}
-		if(ddir.verboseMode())
-		{
-			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
-			COUT << "dicomdir maker: queue timeout is " << opt_queueTimeout << endl;
-		}
+		if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: queue timeout is " << opt_queueTimeout << endl;
 	}
 
 	/* set debug mode and stream for log messages */
@@ -523,11 +526,7 @@ int main(int argc, char *argv[])
 	const char *param = NULL;
 	bool readQueue = false;
 	const int count = cmd.getParamCount();
-	if (opt_recurse && ddir.verboseMode())
-	{
-		if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
-		COUT << "determining input files ..." << endl;
-	}
+	if (opt_recurse && ddir.verboseMode()) time_header_out(COUT) << "determining input files ..." << endl;
 	/* no parameters? */
 	if (count == 0)
 	{
@@ -542,7 +541,7 @@ int main(int argc, char *argv[])
 			cmd.getParam(i, param);
 			if(*param == '@' && opt_queueName)
 			{
-				//COUT << "read file path from input stream" << endl;
+				//time_header_out(COUT) << "read file path from input stream" << endl;
 				readQueue = true;
 				break;
 			}
@@ -647,7 +646,6 @@ traversal_restart:
 							label = pMsg->Label;
 							if(label.find(NOTIFY_COMPRESSED) == 0)
 							{
-								//CERR << label << endl;
 								pMsg = pQueue->ReceiveCurrent();
 								string strbody(_bstr_t(pMsg->Body.bstrVal));
 								string::size_type archpos = strbody.find(opt_directory);
@@ -662,6 +660,7 @@ traversal_restart:
 								if (result.bad())
 								{
 									badFiles.push_back(strbody.c_str());
+									if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: bad file " << strbody << endl;
 									if (!ddir.abortMode())
 									{
 										/* ignore inconsistent file, just warn (already done inside "ddir") */
@@ -670,11 +669,7 @@ traversal_restart:
 								} else
 								{
 									++goodFiles;
-									if(ddir.verboseMode())
-									{
-										if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
-										COUT << "dicomdir maker: add file " << strbody << endl;
-									}
+									if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: add file " << strbody << endl;
 								}
 							}
 							else if(label.find(NOTIFY_END_OF_STUDY) == 0)
@@ -682,13 +677,7 @@ traversal_restart:
 								pMsg = pQueue->ReceiveCurrent();
 								OFString strbody(_bstr_t(pMsg->Body.bstrVal));
 								if(label == NOTIFY_END_OF_STUDY) isIntegrity = true;
-								if(ddir.verboseMode())
-								{
-									if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
-									COUT << "dicomdir maker get message body: " << strbody;
-									if(!isIntegrity) COUT << ", study is not integrity.";
-									COUT << endl;
-								}
+
 								OFIterator<OFString> iter = fileNameList.begin();
 								for(; iter != fileNameList.end(); ++iter)
 								{
@@ -698,28 +687,32 @@ traversal_restart:
 								if(iter == fileNameList.end()) fileNameList.push_back(strbody);
 								if(ddir.verboseMode())
 								{
-									if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
-									COUT << "dicomdir maker ready for publish: " << strbody;
-									if(iter == fileNameList.end()) COUT << " add to list";
-									COUT << endl;
+									time_header_out(COUT) << "dicomdir maker get";
+									if(iter == fileNameList.end())
+										COUT << " a csv message add to list";
+									else
+										COUT << " a duplicated csv message";
+									if(isIntegrity)
+										COUT << ", ready for publish: ";
+									else
+										COUT << ", study is not integrity: ";
+									COUT  << strbody << endl;
 								}
 								pQueue->Reset();
 							}
 							else
 							{
-								if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
-								CERR << "make dicomdir: unknown message: " << label << endl;
+								time_header_out(CERR) << "make dicomdir: unknown message: " << label << endl;
 							}
 						}
-						//if(!pMsg) CERR << "no more message in queue " << opt_queueName << endl;
+						//if(!pMsg) time_header_out(CERR) << "no more message in queue " << opt_queueName << endl;
 					}
 					catch(_com_error &comErr)
 					{
 						if(comErr.Error() == MQ_ERROR_MESSAGE_ALREADY_RECEIVED)
 						{
 							pQueue->Reset();
-							if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
-							CERR << "make dicomdir: concurrence of receiving message, restart" << endl;
+							time_header_out(CERR) << "make dicomdir: concurrence of receiving message, restart" << endl;
 							goto traversal_restart;
 						}
 					}
@@ -728,14 +721,12 @@ traversal_restart:
 				}
 				catch(_com_error &comErr)
 				{
-					if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
-					CERR << "make dicomdir error: " << comErr.ErrorMessage() << endl;
+					time_header_out(CERR) << "make dicomdir error: " << comErr.ErrorMessage() << endl;
 				}
 				catch(...)
 				{
 					_com_error ce(AtlHresultFromLastError());
-					if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
-					CERR << "make dicomdir unknown error: " << ce.ErrorMessage() << endl;
+					time_header_out(CERR) << "make dicomdir unknown error: " << ce.ErrorMessage() << endl;
 				}
 				CoUninitialize();
 			}
@@ -761,11 +752,7 @@ traversal_restart:
 				fileNameList.push_back(opt_csv);
 			}
 
-			if(ddir.verboseMode())
-			{
-				if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
-				COUT << "dicomdir maker: leave queue, begin to write DICOMDIR" << endl;
-			}
+			if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: leave queue, begin to write DICOMDIR" << endl;
 
 			/* evaluate result of file checking/adding procedure */
 			if (goodFiles == 0)
@@ -793,11 +780,7 @@ traversal_restart:
 			if (result.good() && opt_write)
 				result = ddir.writeDicomDir(opt_enctype, opt_glenc);
 			
-			if(ddir.verboseMode())
-			{
-				if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
-				COUT << "dicomdir maker: DICOMDIR is written" << endl;
-			}
+			if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: DICOMDIR is written" << endl;
 		}
 	}
 
@@ -816,8 +799,7 @@ traversal_restart:
 		}
 		else
 		{
-			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
-			CERR << "init lock failed:" << hex << LYFGetLastErr() << endl;
+			time_header_out(CERR) << "init lock failed:" << hex << LYFGetLastErr() << endl;
 		}
 
 		if(lockNumber != -1 && 0 == loadPublicKeyContentRW(filename, &siv, lockNumber, rw_passwd))
@@ -828,25 +810,14 @@ traversal_restart:
 				if(validResult == 0)
 					validLock = currentCount(rw_passwd) > 0;
 				else
-				{
-					if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
-					CERR << "invalid lock: " << lockNumber << ", validate license failed " << validResult << endl;
-				}
+					time_header_out(CERR) << "invalid lock: " << lockNumber << ", validate license failed " << validResult << endl;
 			}
 		}
-		if(!validLock)
-		{
-			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) CERR << timeBuffer << ' ';
-			CERR << "invalid lock: " << lockNumber << ", validate license failed" << endl;
-		}
+		if(!validLock) time_header_out(CERR) << "invalid lock: " << lockNumber << ", validate license failed" << endl;
 	}
 	else
 	{
-		if(ddir.verboseMode())
-		{
-			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
-			COUT << "dicomdir maker: file name list size is 0, no file to burn." << endl;
-		}
+		if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: file name list size is 0, no file to burn." << endl;
 	}
 
 	// combine all csv files, but burn once
@@ -855,13 +826,12 @@ traversal_restart:
 		char buffer[MAX_PATH];
 		strcpy_s(buffer, MAX_PATH, fileNameList.front().c_str());
 		fileNameList.pop_front();
-		//CERR << "dicomdir OK, create index from " << buffer << endl;
+		//time_header_out(CERR) << "dicomdir OK, create index from " << buffer << endl;
 		if(i == listSize - 1 && validLock && isIntegrity) setBurnOnce(); // burn once
 		bool readyToBurn = getBurnOnce();
 		if(ddir.verboseMode())
 		{
-			if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) COUT << timeBuffer << ' ';
-			COUT << "burning study: ";
+			time_header_out(COUT) << "burning study: ";
 			if(readyToBurn)
 				COUT << buffer << endl;
 			else

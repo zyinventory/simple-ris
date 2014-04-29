@@ -1168,7 +1168,7 @@ int main(int argc, char *argv[])
 	parentPid = atoi(parentPidBuffer);
 	delete parentPidBuffer;
   }
-  HANDLE parentHandle;
+  HANDLE parentHandle = NULL;
   if(parentPid > 0) parentHandle = OpenProcess(SYNCHRONIZE, FALSE, parentPid);
 
   while (cond.good())
@@ -2552,12 +2552,12 @@ static void executeOnEndOfStudy()
 	if(assoReleaseOK)
 	{
 		SendArchiveMessageToQueue(ARCHIVE_STUDY, lastStudyXml.c_str(), cmd.c_str());
-		if(opt_verbose) COUT << "send message: " << ARCHIVE_STUDY << " : " << lastStudyXml.c_str() << ',' << cmd << endl;
+		COUT << "send message: " << ARCHIVE_STUDY << " : " << lastStudyXml.c_str() << ',' << cmd << endl;
 	}
 	else
 	{
 		SendArchiveMessageToQueue(ARCHIVE_STUDY_NOT_INTEGRITY, lastStudyXml.c_str(), cmd.c_str());
-		CERR << "send message: " << ARCHIVE_STUDY_NOT_INTEGRITY << " : " << lastStudyXml.c_str() << ',' << cmd << endl;
+		COUT << "send message: " << ARCHIVE_STUDY_NOT_INTEGRITY << " : " << lastStudyXml.c_str() << ',' << cmd << endl;
 	}
   }
 }
