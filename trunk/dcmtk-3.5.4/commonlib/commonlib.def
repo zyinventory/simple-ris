@@ -18,7 +18,6 @@ EXPORTS
 	SvcInit
 	ReportSvcStatus
 	service_name DATA
-	ptr_ostream_service_log DATA
 	SendArchiveMessageToQueue
 	DeleteQueue
 	dcmdate2tm

@@ -3,6 +3,8 @@
 
 #include "stdafx.h"
 
+#include <io.h>
+
 #include "commonlib.h"
 #include "service.h"
 
@@ -151,7 +153,7 @@ static int realMain(int argc, char **argv)
 	string cmd(cmdStream.str());
 	cmdStream.clear();
 	opt_verbose = (string::npos != cmd.find(" -v "));
-	cout << opt_verbose << ':' << cmd << endl;
+	//cout << opt_verbose << ':' << cmd << endl;
 
 	PROCESS_INFORMATION procinfo;
 	STARTUPINFO sinfo;
@@ -207,6 +209,138 @@ static void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
 	ReportSvcStatus( SERVICE_STOPPED, NO_ERROR, 0 );
 }
 
+static HANDLE hRead = INVALID_HANDLE_VALUE, hWrite = INVALID_HANDLE_VALUE;
+static DWORD WINAPI service_stderr_thread(LPVOID lpParam) 
+{
+	char buffer[256];
+	DWORD byteRead = 0;
+	ofstream *plog = (ofstream*)lpParam;
+	while(ReadFile(hRead, buffer, sizeof(buffer), &byteRead, NULL))
+	{
+		plog->write(buffer, byteRead);
+	}
+	return 0;
+}
+
+static HANDLE hThread = NULL, hOldStdout = INVALID_HANDLE_VALUE, hOldStderr = INVALID_HANDLE_VALUE;
+static int fderr = -1, fdout = -1;
+static FILE oldout, olderr, *fpout = NULL, *fperr = NULL;
+//this function must link in EXE, faild at _open_osfhandle(...) in DLL, reason unknown.
+bool __stdcall captureStdoutToLogStream(std::ostream &flog)
+{
+	if(!flog.good()) return false;
+
+	if (CreatePipe(&hRead, &hWrite, NULL, 0))
+	{
+		hOldStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+		hOldStderr = GetStdHandle(STD_ERROR_HANDLE);
+		if(!SetStdHandle(STD_ERROR_HANDLE, hWrite))
+		{
+			flog << "replace STD_ERROR_HANDLE failed" << endl;
+			return false;
+		}
+		if(!SetStdHandle(STD_OUTPUT_HANDLE, hWrite))
+		{
+			flog << "replace STD_OUTPUT_HANDLE failed" << endl;
+			return false;
+		}
+		
+		fderr = _open_osfhandle(STD_ERROR_HANDLE, _O_WRONLY | _O_BINARY);
+		if(fderr == -1)
+		{
+			flog << "_open_osfhandle(STD_ERROR_HANDLE) failed" << endl;
+			return false;
+		}
+
+		fdout = _open_osfhandle(STD_OUTPUT_HANDLE, _O_WRONLY | _O_BINARY);
+		if(fdout == -1)
+		{
+			flog << "_open_osfhandle(STD_OUTPUT_HANDLE) failed" << endl;
+			return false;
+		}
+
+		/*
+		if(_dup2(fdout, 1))
+			flog << "_dup2(fdout, 1) error: " << errno << endl;
+		else
+			flog << "_dup2(fdout, 1) OK" << endl;
+
+		if(_dup2(fderr, 2))
+			flog << "_dup2(fderr, 2) error: " << errno << endl;
+		else
+			flog << "_dup2(fderr, 2) OK" << endl;
+		*/
+		fperr = _fdopen(fderr, "wcb");
+		if(fperr)
+		{
+			//memcpy(stderr, fperr, sizeof(FILE));
+			olderr = *stderr;
+			*stderr = *fperr;
+		}
+		else
+		{
+			flog << "_fdopen(fderr, \"wcb\") failed" << endl;
+			return false;
+		}
+
+		fpout = _fdopen(fdout, "wcb");
+		if(fpout)
+		{
+			//memcpy(stdout, fpout, sizeof(FILE));
+			oldout = *stdout;
+			*stdout = *fpout;
+		}
+		else
+		{
+			flog << "_fdopen(fpout, \"wcb\") failed" << endl;
+			return false;
+		}
+
+		hThread = CreateThread(NULL, 0, service_stderr_thread, (LPVOID)&flog, 0, NULL);
+		if(hThread)
+			return true;
+		else
+			flog << "create service log thread failed" << endl;
+	}
+	else
+		flog << "create pipe failed" << endl;
+	return false;
+}
+
+//_close fdout or fderr, _close will close hWrite.
+void __stdcall releaseStdout(std::ostream &flog)
+{
+	*stderr = olderr;
+	*stdout = oldout;
+	int errClose = 1, outClose = 1;
+	if(fpout) outClose = fclose(fpout);
+	if(outClose != 0 && fperr) errClose = fclose(fperr);
+
+	if(hOldStdout != INVALID_HANDLE_VALUE)
+	{
+		if(!SetStdHandle(STD_OUTPUT_HANDLE, hOldStdout))
+			flog << "restore old STD_OUTPUT_HANDLE failed" << endl;
+	}
+
+	if(hOldStderr != INVALID_HANDLE_VALUE)
+	{
+		if(!SetStdHandle(STD_ERROR_HANDLE, hOldStderr))
+			flog << "restore old STD_ERROR_HANDLE failed" << endl;
+	}
+
+	if(hThread)
+	{
+		if(WAIT_OBJECT_0 != WaitForSingleObject(hThread, 10 * 1000))
+		{
+			flog << "wait service log thread stop timeout" << endl;
+			TerminateThread(hThread, -1);
+		}
+	}
+	CloseHandle(hRead);
+
+	if(opt_verbose) flog << "releaseStdout: outClose = " << outClose << ", errClose = " << errClose << endl;
+}
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	locale::global(locale(CHINESE_LOCAL));
@@ -218,7 +352,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	else
 	{
 		strcpy_s(service_name, 128, argv[1]); // argv[1] must be ServiceName
-		cout << "ServiceName " << service_name << endl;
+		//cout << "ServiceName " << service_name << endl;
 	}
 
 	SERVICE_TABLE_ENTRY serviceTableEntry[] =
@@ -234,9 +368,19 @@ int _tmain(int argc, _TCHAR* argv[])
 	
 	setEnvParentPID();
 
-	changeWorkingDirectory(argc, argv);
+	if(changeWorkingDirectory(argc, argv)) return -3;
 
-	//swithStdHandleToLog("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt");
+	ofstream flog;
+	generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", timeBuffer, sizeof(timeBuffer));
+	if(prepareFileDir(timeBuffer))
+		flog.open(timeBuffer);
+	else
+		return -4;
+	if( ! captureStdoutToLogStream(flog))
+	{
+		flog << "captureStdoutToLogStream(flog) failed" << endl;
+		return -5;
+	}
 
 	int ret = 0;
 	if( StartServiceCtrlDispatcher( serviceTableEntry ) )
@@ -257,7 +401,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		cerr << "C-Store Daemon start error" << endl;
 		ret = -1;
 	}
-
-	//restoreStdHandle();
+	
+	releaseStdout(flog);
+	flog.close();
 	return ret;
 }

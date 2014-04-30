@@ -163,33 +163,6 @@ bool prepareFileDir(const char *path)
   return MkdirRecursive(filePath.substr(0, p).c_str());
 }
 
-static int stdfile = -1, oldstdout = -1, oldstderr = -1;
-bool changeStdHandleToLogFile(const char *logFilePathPattern)
-{
-	char timeBuffer[MAX_PATH];
-	generateTime(logFilePathPattern, timeBuffer, sizeof(timeBuffer));
-	if(prepareFileDir(timeBuffer)
-		&& ! _sopen_s(&stdfile, timeBuffer, _O_APPEND | _O_CREAT | _O_TEXT | _O_WRONLY, _SH_DENYWR, _S_IREAD | _S_IWRITE))
-	{
-		oldstdout = _dup(_fileno(stdout));
-		oldstderr = _dup(_fileno(stderr));
-		_dup2(stdfile, _fileno(stdout));
-		_dup2(stdfile, _fileno(stderr));
-		_close(stdfile);
-
-		setvbuf(stdout, NULL, _IONBF, 0);
-		setvbuf(stderr, NULL, _IONBF, 0);
-		return true;
-	}
-	return false;
-}
-
-void restoreStdHandle()
-{
-	if(oldstdout != -1) _dup2(oldstdout, _fileno(stdout));
-	if(oldstderr != -1) _dup2(oldstderr, _fileno(stderr));
-}
-
 //return 0 if successful, otherwise errno
 int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator)
 {
