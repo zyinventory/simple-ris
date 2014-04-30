@@ -6,12 +6,11 @@
 using namespace std;
 
 char service_name[128];
-std::ostream *ptr_ostream_service_log = NULL;
 
 static SERVICE_STATUS          gSvcStatus; 
 static SERVICE_STATUS_HANDLE   gSvcStatusHandle; 
 
-void ReportSvcStatus( DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
+void __stdcall ReportSvcStatus( DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
 {
   static DWORD dwCheckPoint = 1;
 
@@ -53,7 +52,7 @@ static void WINAPI SvcCtrlHandler( DWORD dwCtrl )
   ReportSvcStatus(gSvcStatus.dwCurrentState, NO_ERROR, 0);
 }
 
-void SvcReportEvent(LPCTSTR szFunction, WORD eventType, DWORD eventId)
+void __stdcall SvcReportEvent(LPCTSTR szFunction, WORD eventType, DWORD eventId)
 { 
   HANDLE hEventSource;
   LPCTSTR lpszStrings[2];
@@ -82,7 +81,7 @@ void SvcReportEvent(LPCTSTR szFunction, WORD eventType, DWORD eventId)
   }
 }
 
-bool WINAPI SvcInit(DWORD dwWaitHint)
+bool __stdcall SvcInit(DWORD dwWaitHint)
 {
   gSvcStatusHandle = RegisterServiceCtrlHandler( service_name, SvcCtrlHandler);
   if( !gSvcStatusHandle )
