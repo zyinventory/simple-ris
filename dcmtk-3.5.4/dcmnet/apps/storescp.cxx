@@ -189,7 +189,7 @@ static const char *opt_execOnEndOfStudy = NULL;       // default: don't execute 
 OFString           lastStudySubdirectoryPathAndName, instanceCSVPath, lastArchiveFileName, lastArchiveStudyPath, lastStudyXml;
 static OFBool      assoReleaseOK = OFTrue;
 static OFBool      opt_renameOnEndOfStudy = OFFalse;  // default: don't rename any files on end of study
-static long        opt_endOfStudyTimeout = 3L;         // default: 3 second
+static long        opt_endOfStudyTimeout = -1L;         // default: unlimited
 static OFBool      endOfStudyThroughTimeoutEvent = OFFalse;
 static const char *opt_configFile = NULL;
 static const char *opt_profileName = NULL;
@@ -246,7 +246,7 @@ extern "C" void sigChildHandler(int)
 
 static OFCommandLine *pCmd = NULL;
 
-void exitHook()
+static void exitHook()
 {
   if(inststrm.is_open())
   {
@@ -277,6 +277,13 @@ void exitHook()
   lastArchiveFileName.~OFString();
   _CrtDumpMemoryLeaks();
 #endif
+}
+
+static std::ostream& time_header_out(ostream &os)
+{
+	char timeBuffer[32];
+	if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
+	return os;
 }
 
 int main(int argc, char *argv[])
@@ -361,7 +368,6 @@ int main(int argc, char *argv[])
       // this option is only offered on Posix platforms
       cmd.addOption("--inetd",                  "-id",       "run from inetd super server (not with --fork)");
 #endif
-
       cmd.addOption("--acse-timeout",           "-ta", 1, "[s]econds: integer (default: 30)", "timeout for ACSE messages");
       cmd.addOption("--dimse-timeout",          "-td", 1, "[s]econds: integer (default: unlimited)", "timeout for DIMSE messages");
 
@@ -445,7 +451,7 @@ int main(int argc, char *argv[])
                                                              "execute command c after having received and\nprocessed all C-STORE-Request messages that\nbelong to one study" );
     cmd.addOption(  "--rename-on-eostudy",      "-rns",      "(only w/ -ss) Having received and processed\nall C-STORE-Request messages that belong to\none study, rename output files according to\na certain pattern" );
     cmd.addOption(  "--eostudy-timeout",        "-tos",  1,  "[t]imeout: integer (only w/ -ss, -xcs or -rns)",
-                                                             "specifies a timeout of t seconds for\nend-of-study determination, default is 3 seconds, if --fork-child is specified, it is infinite( -1 )." );
+                                                             "specifies a timeout of t seconds for\nend-of-study determination, default: unlimited." );
 #ifdef _WIN32
     cmd.addOption(  "--exec-sync",              "-xs",       "execute command synchronously in foreground" );
     //cmd.addOption(  "--disable-msmq",			"-dm",       "don't send message to queue, execute command directly" );
@@ -855,9 +861,7 @@ int main(int argc, char *argv[])
       opt_renameOnEndOfStudy = OFTrue;
     }
 
-	if(opt_forkedChild)
-		opt_endOfStudyTimeout = -1;
-	else if (cmd.findOption("--eostudy-timeout"))
+	if (cmd.findOption("--eostudy-timeout"))
 	{
 		if( opt_sortConcerningStudies == NULL && opt_execOnEndOfStudy == NULL && opt_renameOnEndOfStudy == OFFalse )
 		app.printError("--eostudy-timeout only in combination with --sort-conc-studies, --exec-on-eostudy or --rename-on-eostudy");
@@ -1565,7 +1569,7 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
     }
     if (opt_verbose)
     {
-      COUT << "Association Acknowledged (Max Send PDV: " << assoc->sendPDVLength << ')' << endl;;
+      time_header_out(COUT) << "Association Acknowledged (Max Send PDV: " << assoc->sendPDVLength << ')' << endl;;
       if (ASC_countAcceptedPresentationContexts(assoc->params) == 0)
         COUT << "    (but no valid presentation contexts)" << endl;
       if (opt_debug) ASC_dumpParameters(assoc->params, COUT);
@@ -1618,20 +1622,21 @@ static OFCondition acceptAssociation(T_ASC_Network *net, DcmAssociationConfigura
 
   if (cond == DUL_PEERREQUESTEDRELEASE)
   {
-    if (opt_verbose) COUT << "Association Release" << endl;
+    if (opt_verbose) time_header_out(COUT) << "Association Release" << endl;
     cond = ASC_acknowledgeRelease(assoc);
   }
   else if (cond == DUL_PEERABORTEDASSOCIATION)
   {
-    CERR << "Association Aborted" << endl;
+    time_header_out(CERR) << "Association Aborted: DUL_PEERABORTEDASSOCIATION" << endl;
 	assoReleaseOK = OFFalse;
   }
   else
   {
-    CERR << "storescp: DIMSE Failure (aborting association)" << endl;
+    time_header_out(CERR) << "storescp: DIMSE Failure (aborting association)" << endl;
 	assoReleaseOK = OFFalse;
     /* some kind of error so abort the association */
     cond = ASC_abortAssociation(assoc);
+	time_header_out(CERR) << "Association Aborted: ready for cleanup";
   }
 
 cleanup:
@@ -1658,7 +1663,7 @@ cleanup:
   {
 	inststrm.close();
 	inststrm.clear();
-	if(opt_verbose) COUT << "close file: " << instanceCSVPath << '\n';
+	if(opt_verbose) time_header_out(COUT) << "close file: " << instanceCSVPath << '\n';
 	instanceCSVPath.clear();
   }
   lastStudySubdirectoryPathAndName = subdirectoryPathAndName;
@@ -1713,27 +1718,17 @@ processCommands(T_ASC_Association * assoc)
 
     // check what kind of error occurred. If no data was
     // received, check if certain other conditions are met
+
+	// If in addition to the fact that no data was received also option --eostudy-timeout is set and
+    // if at the same time there is still a study which is considered to be open (i.e. we were actually
+    // expecting to receive more objects that belong to this study) (this is the case if lastStudyInstanceUID
+    // does not equal NULL), we have to consider that all objects for the current study have been received.
+    // In such an "end-of-study" case, we might have to execute certain optional functions which were specified
+    // by the user through command line options passed to storescp.
     if( cond == DIMSE_NODATAAVAILABLE )
     {
-      if(opt_verbose) CERR << "DIMSE_receiveCommand(...) return DIMSE_NODATAAVAILABLE, lastStudyInstanceUID: " << lastStudyInstanceUID << endl;
-	  
-	  // !!!! zhang yu modify the original algorithm !!!!
-
-	  // original algorithm:
-      // If in addition to the fact that no data was received also option --eostudy-timeout is set and
-      // if at the same time there is still a study which is considered to be open (i.e. we were actually
-      // expecting to receive more objects that belong to this study) (this is the case if lastStudyInstanceUID
-      // does not equal NULL), we have to consider that all objects for the current study have been received.
-      // In such an "end-of-study" case, we might have to execute certain optional functions which were specified
-      // by the user through command line options passed to storescp.
-
-	  // modified algorithm:
-	  // We do not know that all objects for the current study have been received.
-	  // In such case, we wait next command.
-	  // If new command is new study, exec end-of-study event. Otherwise, continue previous study.
-	  // If no next command, end-of-study event will exec on release asso.
-
-	  // So, do nothing.
+      time_header_out(CERR) << "DIMSE_receiveCommand(...) return DIMSE_NODATAAVAILABLE, lastStudyInstanceUID: " << lastStudyInstanceUID << endl;
+	  break;
     }
 
     // if the command which was received has extra status
@@ -2404,8 +2399,7 @@ static void executeOnReception()
   cmd = replaceChars( cmd, OFString(ARCHIVE_FILENAME_PLACEHOLDER), lastArchiveFileName );
 
   // Execute command in a new process
-  if(opt_verbose)
-	COUT << "Starting command On Reception: " << cmd << endl;
+  if(opt_verbose) time_header_out(COUT) << "Starting command On Reception: " << cmd << endl;
   if(opt_disableMSMQ)
 	executeCommand( cmd );
   else
@@ -2514,7 +2508,7 @@ static void executeOnEndOfStudy()
   struct tm *tmp = localtime( &t );
   char outstr[80];
 
-  if(opt_verbose) COUT << "exec end of study: " << lastStudySubdirectoryPathAndName << ',' << lastArchiveStudyPath << endl;
+  if(opt_verbose) time_header_out(COUT) << "exec end of study: " << lastStudySubdirectoryPathAndName << ',' << lastArchiveStudyPath << endl;
 
   // perform substitution for placeholder #p; #p will be substituted by lastStudySubdirectoryPathAndName
   cmd = replaceChars( cmd, OFString(PATH_PLACEHOLDER), lastStudySubdirectoryPathAndName );
@@ -2543,8 +2537,7 @@ static void executeOnEndOfStudy()
   // don't perform substitution for placeholder #z (archive filename), archive filename is next one.
 
   // Execute command in a new process
-  if(opt_verbose)
-	COUT << "exec on end of study: " << cmd << endl;
+  if(opt_verbose) time_header_out(COUT) << "exec on end of study: " << cmd << endl;
   if(opt_disableMSMQ)
 	executeCommand( cmd );
   else
@@ -2552,12 +2545,12 @@ static void executeOnEndOfStudy()
 	if(assoReleaseOK)
 	{
 		SendArchiveMessageToQueue(ARCHIVE_STUDY, lastStudyXml.c_str(), cmd.c_str());
-		COUT << "send message: " << ARCHIVE_STUDY << " : " << lastStudyXml.c_str() << ',' << cmd << endl;
+		time_header_out(COUT) << "send message: " << ARCHIVE_STUDY << " : " << lastStudyXml.c_str() << ',' << cmd << endl;
 	}
 	else
 	{
 		SendArchiveMessageToQueue(ARCHIVE_STUDY_NOT_INTEGRITY, lastStudyXml.c_str(), cmd.c_str());
-		COUT << "send message: " << ARCHIVE_STUDY_NOT_INTEGRITY << " : " << lastStudyXml.c_str() << ',' << cmd << endl;
+		time_header_out(COUT) << "send message: " << ARCHIVE_STUDY_NOT_INTEGRITY << " : " << lastStudyXml.c_str() << ',' << cmd << endl;
 	}
   }
 }
