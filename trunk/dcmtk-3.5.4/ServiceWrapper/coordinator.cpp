@@ -174,7 +174,8 @@ static list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 
 	if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
 	{
-		time_header_out(cout) << "create process: " << procinfo.hProcess << ", " << commandLine << endl;
+		time_header_out(cout) << "create process: " << procinfo.hProcess << ", " << commandLine << endl
+			<< "\tprocess log: " << *wp.logFilePath << endl;
 		wp.hProcess = procinfo.hProcess;
 		wp.hThread = procinfo.hThread;
 		wp.studyUid = new string(studyUid);
@@ -260,34 +261,42 @@ static void detectDcmmkdirProcessExit()
 			if(iter != dirmakers.end())
 			{
 				string *csvPath = NULL, *studyUid = iter->studyUid;
+				iter->studyUid = NULL; // save string*, avoid closeProcHandle(*iter) release it.
 				bool integrityStudy = true;
 				if(iter->csvPath)
 				{
 					csvPath = iter->csvPath;
-					iter->csvPath = NULL;
+					iter->csvPath = NULL;  // save string*, avoid closeProcHandle(*iter) release it.
 					integrityStudy = iter->integrityStudy;
-					iter->studyUid = NULL;
 
 					closeProcHandle(*iter);
 					closeLogFile(*iter);
 					dirmakers.erase(iter);
 
-					if(opt_verbose) time_header_out(cout) << "detectDcmmkdirProcessExit: resume dirmaker " << studyUid->c_str() << endl;
+					if(opt_verbose) time_header_out(cout) << "detectDcmmkdirProcessExit: resume dirmaker " << *studyUid << endl;
 					iter = runDcmmkdir(*studyUid);
 					iter->csvPath = csvPath;
+					csvPath = NULL;  // transfer string* to wp, don't release it manually.
 					iter->integrityStudy = integrityStudy;
 				}
 				else
 				{
-					if(opt_verbose) time_header_out(cout) << "detectDcmmkdirProcessExit: delete queue " << iter->studyUid->c_str() << endl;
-					bool restart = DeleteQueue(iter->studyUid->c_str());
-					
+					if(opt_verbose) time_header_out(cout) << "detectDcmmkdirProcessExit: try deleting queue: " << *studyUid << endl;
+					bool restart = DeleteQueue(studyUid->c_str());
+					if(opt_verbose)
+					{
+						if(restart)
+							time_header_out(cout) << "detectDcmmkdirProcessExit: delete queue failed, resume dirmaker: " << *studyUid << endl;
+						else
+							time_header_out(cout) << "detectDcmmkdirProcessExit: delete queue OK: " << *studyUid << endl;
+					}
 					closeProcHandle(*iter);
 					closeLogFile(*iter);
 					dirmakers.erase(iter);
-
+						
 					if(restart) runDcmmkdir(*studyUid);
 				}
+				if(studyUid) delete studyUid;
 			}
 			else
 				time_header_out(cerr) << "detectDcmmkdirProcessExit: dir maker " << wait << " not found" << endl;
@@ -389,7 +398,7 @@ static DWORD findIdleOrCompelete()
 			delete instancePath;
 		}
 		else
-			time_header_out(cerr) << "findIdleOrCompelete: worker process " << result << " has no instance path" << endl;
+			time_header_out(cerr) << "findIdleOrCompelete error: worker process " << result << " has no instance path" << endl;
 		
 		if(studyUid)
 		{
@@ -398,7 +407,7 @@ static DWORD findIdleOrCompelete()
 			delete studyUid;
 		}
 		else
-			time_header_out(cerr) << "findIdleOrCompelete: worker process " << result << " has no study uid" << endl;
+			time_header_out(cerr) << "findIdleOrCompelete error: worker process " << result << " has no study uid" << endl;
 	}
 	return result;
 }
@@ -622,12 +631,12 @@ static void processMessage(IMSMQMessagePtr pMsg)
 			string cmd(command->Getattributes()->getNamedItem("value")->text);
 
 			MSXML2::IXMLDOMNodePtr attrStudyUid = pXml->selectSingleNode("/wado_query/Patient/Study/@StudyInstanceUID");
-			if(attrStudyUid == NULL)
+			if(attrStudyUid == NULL || attrStudyUid->text.length() < 5)
 			{
-				time_header_out(cerr) << "no study uid: " << pXml->xml << endl;
-				throw "no study uid";
+				time_header_out(cerr) << "bad study uid: " << pXml->xml << endl;
+				throw "bad study uid";
 			}
-			string studyUid(attrStudyUid->text);
+			string studyUid((LPCSTR)attrStudyUid->text);
 
 			if(pMsg->Label == _bstr_t(ARCHIVE_INSTANCE))
 			{
