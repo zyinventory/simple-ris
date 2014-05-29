@@ -115,7 +115,7 @@ static void closeProcHandle(WorkerProcess &wp)
 static list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 {
 	list<WorkerProcess>::iterator iter = find_if(dirmakers.begin(), dirmakers.end(), 
-		[&studyUid](WorkerProcess wp){return wp.hProcess && wp.studyUid && 0 == wp.studyUid->compare(studyUid);});
+		[&studyUid](WorkerProcess &wp){return wp.hProcess && wp.studyUid && 0 == wp.studyUid->compare(studyUid);});
 	if(iter != dirmakers.end()) return iter;
 
 	WorkerProcess wp;
@@ -257,7 +257,7 @@ static void detectDcmmkdirProcessExit()
 		if(wait >= WAIT_OBJECT_0 && wait < WAIT_OBJECT_0 + working)
 		{
 			wait -= WAIT_OBJECT_0;
-			iter = find_if(dirmakers.begin(), dirmakers.end(), [workingHandles,wait](WorkerProcess wp){return wp.hProcess == workingHandles[wait];});
+			iter = find_if(dirmakers.begin(), dirmakers.end(), [workingHandles,wait](WorkerProcess &wp){return wp.hProcess == workingHandles[wait];});
 			if(iter != dirmakers.end())
 			{
 				string *csvPath = NULL, *studyUid = iter->studyUid;
@@ -473,7 +473,7 @@ static void runArchiveInstance(string &cmd, const int index, string &studyUid)
 
 		if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
 		{
-			if(opt_verbose) time_header_out(cout) << "create process: " << procinfo.hProcess << " index " << index << ':' << commandLine << endl;
+			if(opt_verbose) time_header_out(cout) << "create process: " << procinfo.hProcess << " index " << index << ':' << commandLine << " > " << *workers[index].logFilePath << endl;
 			workers[index].hProcess = procinfo.hProcess;
 			workers[index].hThread = procinfo.hThread;
 			WaitForInputIdle(workers[index].hProcess, INFINITE);
@@ -592,7 +592,7 @@ static bool SendArchiveStudyCommand(WorkerProcess &wp)
 static void checkStudyAccomplished()
 {
 	list<WorkerProcess>::iterator iter = dirmakers.begin();
-	while((iter = find_if(iter, dirmakers.end(), [](WorkerProcess wp){ return wp.csvPath != NULL; })) != dirmakers.end())
+	while((iter = find_if(iter, dirmakers.end(), [](WorkerProcess &wp){ return wp.csvPath != NULL; })) != dirmakers.end())
 	{
 		if(opt_verbose) time_header_out(cout) << "checkStudyAccomplished: dcmmkdir " << iter->hProcess << " cache found: " << iter->csvPath->c_str() << endl;
 		size_t i;
@@ -625,7 +625,7 @@ static void processMessage(IMSMQMessagePtr pMsg)
 			MSXML2::IXMLDOMNodePtr command = pXml->selectSingleNode("/wado_query/httpTag[@key='command']");
 			if(command == NULL)
 			{
-				time_header_out(cerr) << "no command: " << pXml->xml << endl;
+				time_header_out(cerr) << "processMessage: no command: " << pXml->xml << endl;
 				throw "no command";
 			}
 			string cmd(command->Getattributes()->getNamedItem("value")->text);
@@ -633,7 +633,7 @@ static void processMessage(IMSMQMessagePtr pMsg)
 			MSXML2::IXMLDOMNodePtr attrStudyUid = pXml->selectSingleNode("/wado_query/Patient/Study/@StudyInstanceUID");
 			if(attrStudyUid == NULL || attrStudyUid->text.length() < 5)
 			{
-				time_header_out(cerr) << "bad study uid: " << pXml->xml << endl;
+				time_header_out(cerr) << "processMessage: bad study uid: " << pXml->xml << endl;
 				throw "bad study uid";
 			}
 			string studyUid((LPCSTR)attrStudyUid->text);
@@ -677,29 +677,37 @@ static void processMessage(IMSMQMessagePtr pMsg)
 					}
 					else
 					{
-						time_header_out(cerr) << TEXT("move command format error: ") << command << endl;
+						time_header_out(cerr) << TEXT("processMessage: move command format error: ") << command << endl;
 					}
 					delete[] buffer;
 				}
 				else  // dcmcjpeg
 				{
+					if(opt_verbose) time_header_out(cout) << "processMessage: compress: findIdleOrCompelete..." << endl;
 					DWORD index = findIdleOrCompelete();
 					if(index != WAIT_FAILED)
 					{
 						if(index == procnum) index = 0;
 						runArchiveInstance(cmd, index, studyUid);
+						if(opt_verbose) time_header_out(cout) << "processMessage: compress: checkStudyAccomplished..." << endl;
 						checkStudyAccomplished();  // suppose instance's transfer grouped by study
 					}
 					else
 					{
-						time_header_out(cerr) << "find idle process failed:" << endl;
+						time_header_out(cerr) << "processMessage: compress: find idle process failed:" << endl;
 						time_header_out(cerr) << cmd << endl;
 					}
 				}
 			}
 			else  //pMsg->Label == _bstr_t(ARCHIVE_STUDY) || pMsg->Label == _bstr_t(ARCHIVE_STUDY_NOT_INTEGRITY)
 			{
-				if(opt_verbose) time_header_out(cout) << "processMessage: " << pMsg->Label << ':' << pMsg->Body.bstrVal << endl;
+				if(opt_verbose)
+				{
+					char uidBuffer[65];
+					time_header_out(cout) << "processMessage: " << pMsg->Label << ':';
+					if(extractStudyUid(uidBuffer, sizeof(uidBuffer), pMsg->Body.bstrVal)) cout << uidBuffer;
+					cout << endl;
+				}
 				detectDcmmkdirProcessExit();
 
 				string::size_type begin = cmd.find("-ic "), end;
@@ -736,6 +744,7 @@ static void processMessage(IMSMQMessagePtr pMsg)
 				}
 				else
 					time_header_out(cerr) << "process message error: create or find dicomdir maker process failed" << endl;
+				if(opt_verbose) time_header_out(cout) << "processMessage: end of archive: checkStudyAccomplished..." << endl;
 				checkStudyAccomplished();
 			}
 		}
@@ -753,7 +762,7 @@ static void processMessage(IMSMQMessagePtr pMsg)
 	{
 		time_header_out(cerr) << TEXT("processMessage unknown message: ") << pMsg->Label << TEXT(':');
 		if(pMsg->Body.vt == VT_BSTR)
-			cerr << pMsg->Body.pbstrVal;
+			cerr << _bstr_t(pMsg->Body.bstrVal);
 		cerr << endl;
 	}
 }
@@ -766,16 +775,27 @@ static int pollQueue(const _TCHAR *queueName)
 		IMSMQQueuePtr pQueue = OpenOrCreateQueue(queueName, MQ_RECEIVE_ACCESS);
 		_variant_t waitStart(1 * 1000); // 1 seconds
 		_variant_t waitNext(1 * 1000); // 1 seconds
+		bool alwaysIdle = true;
 		while( ! GetSignalInterruptValue() )
 		{
 			IMSMQMessagePtr pMsg = pQueue->Receive(NULL, NULL, NULL, &waitStart);
 			while(pMsg)
 			{
+				if(!alwaysIdle)
+				{
+					alwaysIdle = true;
+					time_header_out(cout) << "pollQueue: receive message, start working" << endl;
+					time_header_out(cout) << "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV" << endl;
+				}
 				processMessage(pMsg);
 				pMsg = pQueue->Receive(NULL, NULL, NULL, &waitNext);
 			}
-			//if(opt_verbose) time_header_out(cout) << "pollQueue: no message, try cleaning: findIdleOrCompelete() and checkStudyAccomplished()" << endl;
-
+			if(alwaysIdle && opt_verbose)
+			{
+				time_header_out(cout) << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" << endl;
+				time_header_out(cout) << "pollQueue: no message, try cleaning: findIdleOrCompelete() and checkStudyAccomplished()" << endl;
+				alwaysIdle = false;
+			}
 			// if completed compress found, send NOTIFY_COMPRESSED message, clear wp.instancePath and wp.studyUid.
 			DWORD index = findIdleOrCompelete();
 

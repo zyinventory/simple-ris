@@ -27,6 +27,7 @@ EXPORTS
 	changeWorkingDirectory
 	hashCode
 	hashCodeW
+	extractStudyUid
 	diskUsage
 	deleteTree
 	deleteSubTree

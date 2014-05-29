@@ -62,3 +62,4 @@ long long diskUsage(const char *pacsBase, const char *studyUID);
 bool deleteSubTree(const char *dirpath, std::ostream *ostrm = NULL);
 bool deleteTree(const char *dirpath, std::ostream *ostrm = NULL);
 bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid);
+size_t extractStudyUid(char *buffer, const size_t bufferSize, const wchar_t *body);

@@ -3,8 +3,6 @@
 
 #include "stdafx.h"
 
-#include <io.h>
-
 #include "commonlib.h"
 #include "service.h"
 
@@ -63,7 +61,7 @@ static int findAndDeleteUnarchived(const char* filepath, size_t lower)
 		//cerr << fileFilter << " is all archived" << endl;
 		return ALL_ARCHIVED;
 	}
-	unarchivedList.sort([](WIN32_FIND_DATA wfd1, WIN32_FIND_DATA wfd2)
+	unarchivedList.sort([](WIN32_FIND_DATA &wfd1, WIN32_FIND_DATA &wfd2)
 		{ return strcmp(wfd1.cFileName, wfd2.cFileName) > 0; });
 	int result = ALL_ARCHIVED;
 	do{
@@ -207,138 +205,6 @@ static void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
 	realMain(argcSV, argvSV);
 	CoUninitialize();
 	ReportSvcStatus( SERVICE_STOPPED, NO_ERROR, 0 );
-}
-
-static HANDLE hRead = INVALID_HANDLE_VALUE, hWrite = INVALID_HANDLE_VALUE;
-static DWORD WINAPI service_stderr_thread(LPVOID lpParam) 
-{
-	char buffer[256];
-	DWORD byteRead = 0;
-	ofstream *plog = (ofstream*)lpParam;
-	while(ReadFile(hRead, buffer, sizeof(buffer), &byteRead, NULL))
-	{
-		plog->write(buffer, byteRead);
-	}
-	return 0;
-}
-
-static HANDLE hThread = NULL, hOldStdout = INVALID_HANDLE_VALUE, hOldStderr = INVALID_HANDLE_VALUE;
-static int fderr = -1, fdout = -1;
-static FILE oldout, olderr, *fpout = NULL, *fperr = NULL;
-//this function must link in EXE, faild at _open_osfhandle(...) in DLL, reason unknown.
-bool __stdcall captureStdoutToLogStream(std::ostream &flog)
-{
-	if(!flog.good()) return false;
-
-	if (CreatePipe(&hRead, &hWrite, NULL, 0))
-	{
-		hOldStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-		hOldStderr = GetStdHandle(STD_ERROR_HANDLE);
-		if(!SetStdHandle(STD_ERROR_HANDLE, hWrite))
-		{
-			flog << "replace STD_ERROR_HANDLE failed" << endl;
-			return false;
-		}
-		if(!SetStdHandle(STD_OUTPUT_HANDLE, hWrite))
-		{
-			flog << "replace STD_OUTPUT_HANDLE failed" << endl;
-			return false;
-		}
-		
-		fderr = _open_osfhandle(STD_ERROR_HANDLE, _O_WRONLY | _O_BINARY);
-		if(fderr == -1)
-		{
-			flog << "_open_osfhandle(STD_ERROR_HANDLE) failed" << endl;
-			return false;
-		}
-
-		fdout = _open_osfhandle(STD_OUTPUT_HANDLE, _O_WRONLY | _O_BINARY);
-		if(fdout == -1)
-		{
-			flog << "_open_osfhandle(STD_OUTPUT_HANDLE) failed" << endl;
-			return false;
-		}
-
-		/*
-		if(_dup2(fdout, 1))
-			flog << "_dup2(fdout, 1) error: " << errno << endl;
-		else
-			flog << "_dup2(fdout, 1) OK" << endl;
-
-		if(_dup2(fderr, 2))
-			flog << "_dup2(fderr, 2) error: " << errno << endl;
-		else
-			flog << "_dup2(fderr, 2) OK" << endl;
-		*/
-		fperr = _fdopen(fderr, "wcb");
-		if(fperr)
-		{
-			//memcpy(stderr, fperr, sizeof(FILE));
-			olderr = *stderr;
-			*stderr = *fperr;
-		}
-		else
-		{
-			flog << "_fdopen(fderr, \"wcb\") failed" << endl;
-			return false;
-		}
-
-		fpout = _fdopen(fdout, "wcb");
-		if(fpout)
-		{
-			//memcpy(stdout, fpout, sizeof(FILE));
-			oldout = *stdout;
-			*stdout = *fpout;
-		}
-		else
-		{
-			flog << "_fdopen(fpout, \"wcb\") failed" << endl;
-			return false;
-		}
-
-		hThread = CreateThread(NULL, 0, service_stderr_thread, (LPVOID)&flog, 0, NULL);
-		if(hThread)
-			return true;
-		else
-			flog << "create service log thread failed" << endl;
-	}
-	else
-		flog << "create pipe failed" << endl;
-	return false;
-}
-
-//_close fdout or fderr, _close will close hWrite.
-void __stdcall releaseStdout(std::ostream &flog)
-{
-	*stderr = olderr;
-	*stdout = oldout;
-	int errClose = 1, outClose = 1;
-	if(fpout) outClose = fclose(fpout);
-	if(outClose != 0 && fperr) errClose = fclose(fperr);
-
-	if(hOldStdout != INVALID_HANDLE_VALUE)
-	{
-		if(!SetStdHandle(STD_OUTPUT_HANDLE, hOldStdout))
-			flog << "restore old STD_OUTPUT_HANDLE failed" << endl;
-	}
-
-	if(hOldStderr != INVALID_HANDLE_VALUE)
-	{
-		if(!SetStdHandle(STD_ERROR_HANDLE, hOldStderr))
-			flog << "restore old STD_ERROR_HANDLE failed" << endl;
-	}
-
-	if(hThread)
-	{
-		if(WAIT_OBJECT_0 != WaitForSingleObject(hThread, 10 * 1000))
-		{
-			flog << "wait service log thread stop timeout" << endl;
-			TerminateThread(hThread, -1);
-		}
-	}
-	CloseHandle(hRead);
-
-	if(opt_verbose) flog << "releaseStdout: outClose = " << outClose << ", errClose = " << errClose << endl;
 }
 
 int _tmain(int argc, _TCHAR* argv[])

@@ -44,3 +44,5 @@ void autoCleanPacsDiskByStudyDate();
 bool deleteDayStudy(const char *dayxml);
 bool deleteTree(const char *dirpath);
 void resetStatus(const char *queueName);
+bool __stdcall captureStdoutToLogStream(std::ostream &flog);
+void __stdcall releaseStdout(std::ostream &flog);
