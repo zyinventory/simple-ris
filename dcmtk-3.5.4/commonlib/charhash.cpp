@@ -233,3 +233,20 @@ bool decodeBase32(string &src, string &dec)
   }
   return true;
 }
+
+size_t extractStudyUid(char *buffer, const size_t bufferSize, const wchar_t *body)
+{
+	const wchar_t *body2 = wcsstr(body, L"StudyInstanceUID");
+	wregex pattern(L"StudyInstanceUID=\"([\\d\\.]+)\".*");
+	wcmatch mr;
+	size_t count = 0;
+
+	if(regex_match(body2, mr, pattern, 
+		regex_constants::match_flag_type::format_first_only | regex_constants::match_flag_type::format_no_copy))
+	{
+		//wcmatch::const_reference == const sub_match<const wchar_t*> &
+		wcmatch::const_reference uidIt = *++mr.begin();
+		wcstombs_s(&count, buffer, bufferSize, uidIt.first, uidIt.length());
+	}
+	return count;
+}
