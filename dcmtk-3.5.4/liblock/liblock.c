@@ -340,7 +340,7 @@ sign_err:
 int aes256cbc_dec(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, unsigned char *key, unsigned char* iv)
 {
 	const EVP_CIPHER *cipher=NULL;
-	unsigned char salt[PKCS5_SALT_LEN];  //, key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
+	//unsigned char salt[PKCS5_SALT_LEN], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
 	unsigned char buf[KEY_SIZE / 8], *data = NULL;
 	BIO *benc=NULL, *out=NULL, *wbio=NULL;
 	EVP_CIPHER_CTX *ctx = NULL;
