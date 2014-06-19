@@ -16,6 +16,13 @@ static HANDLE logFile = INVALID_HANDLE_VALUE;
 const char *dirmakerCommand;
 bool opt_verbose = false;
 
+std::ostream& time_header_out(ostream &os)
+{
+	char timeBuffer[32];
+	if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
+	return os;
+}
+
 static size_t checkDiskFreeSpaceInMB(const char * path)
 {
 	DWORD dwSectPerClust, dwBytesPerSect, dwFreeClusters, dwTotalClusters;
@@ -29,11 +36,7 @@ static size_t checkDiskFreeSpaceInMB(const char * path)
 	return freeGB;
 }
 
-#define NOT_ALL_ARCHIVED	0
-#define ALL_ARCHIVED		1
-#define FREE_ENOUGH			2
-
-static int findAndDeleteUnarchived(const char* filepath, size_t lower)
+static bool findAndDeleteUnarchived(const char* filepath, size_t lower)
 {
 	WIN32_FIND_DATA wfd;
 	list<WIN32_FIND_DATA> unarchivedList;
@@ -45,68 +48,55 @@ static int findAndDeleteUnarchived(const char* filepath, size_t lower)
 	{
 		DWORD winerr = GetLastError();
 		if(ERROR_FILE_NOT_FOUND == winerr)
-			cerr << fileFilter << " not found" << endl;
-		return NOT_ALL_ARCHIVED;
+			time_header_out(cerr) << fileFilter << " not found" << endl;
+		else
+			time_header_out(cerr) << fileFilter << " unknown error: " << winerr << endl;
+		return false;
 	}
 	do
 	{
 		if (strcmp(wfd.cFileName, ".") == 0 || strcmp(wfd.cFileName, "..") == 0) 
 			continue; // skip . ..
-		if(0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE))
+		if((wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || 0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE))
 			unarchivedList.push_back(wfd);
+/*		else
+			if(opt_verbose) time_header_out(cout) << filepath << '\\' << wfd.cFileName << " is archived, skip it." << endl; */
 	} while (FindNextFile(hDiskSearch, &wfd));
 	FindClose(hDiskSearch); // ¹Ø±Õ²éÕÒ¾ä±ú
 	if(unarchivedList.empty())
 	{
-		//cerr << fileFilter << " is all archived" << endl;
-		return ALL_ARCHIVED;
+		//cerr << fileFilter << " is all archived, no file shall be deleted" << endl;
+		return false;
 	}
 	unarchivedList.sort([](WIN32_FIND_DATA &wfd1, WIN32_FIND_DATA &wfd2)
 		{ return strcmp(wfd1.cFileName, wfd2.cFileName) > 0; });
-	int result = ALL_ARCHIVED;
+	bool result = false;
 	do{
 		WIN32_FIND_DATA &backItem = unarchivedList.back();
 		if(backItem.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
 			fileFilter[strlen(filepath)] = '\0';
 			PathAppend(fileFilter, backItem.cFileName);
-			int subresult = findAndDeleteUnarchived(fileFilter, lower);
-			if(subresult == ALL_ARCHIVED)
-			{
-				if(SetFileAttributes(fileFilter, backItem.dwFileAttributes | FILE_ATTRIBUTE_ARCHIVE))
-					cerr << fileFilter << " all children is archived, set this to archived" << endl;
-				else
-				{
-					cerr << fileFilter << " set to archived failed:" << GetLastError() << endl;
-					result = NOT_ALL_ARCHIVED;
-				}
-			}
-			else if(subresult == NOT_ALL_ARCHIVED)
-			{
-				cerr << filepath << " find child is not archived" << endl;
-				result = NOT_ALL_ARCHIVED;
-			}
-			else  //FREE_ENOUGH
-				return subresult;
+			if(findAndDeleteUnarchived(fileFilter, lower)) return true; //FREE_ENOUGH
 		}
-		else
+		else if(0 == (backItem.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE))
 		{
 			fileFilter[strlen(filepath)] = '\0';
 			PathAppend(fileFilter, backItem.cFileName);
-			cerr << fileFilter << " is not archived, delete!!!" << endl;
-			
+			if(opt_verbose) time_header_out(cout) << fileFilter << " is not archived, delete!!!" << endl;
 			if(deleteDayStudy(fileFilter))
 			{
 				DWORD dwFileAttributes = GetFileAttributes(fileFilter);
 				if(dwFileAttributes == INVALID_FILE_ATTRIBUTES || !SetFileAttributes(fileFilter, dwFileAttributes | FILE_ATTRIBUTE_ARCHIVE))
 				{
-					cerr << fileFilter << " set to archived failed:" << GetLastError() << endl;
-					result = NOT_ALL_ARCHIVED;
+					time_header_out(cerr) << fileFilter << " set to archived failed:" << GetLastError() << endl;
 				}
 			}
 			size_t freeMB = checkDiskFreeSpaceInMB("archdir\\");
-			if(freeMB > lower) return FREE_ENOUGH;
+			if(freeMB > lower) return true;
 		}
+		else
+			time_header_out(cerr) << "EXCEPTION: " << filepath << '\\' << wfd.cFileName << " is not dir or unarchived!" << endl;
 		unarchivedList.pop_back();
 	}while(!unarchivedList.empty());
 	return result;
@@ -115,7 +105,7 @@ static int findAndDeleteUnarchived(const char* filepath, size_t lower)
 void autoCleanPacsDiskByStudyDate()
 {
 	size_t freeMB = checkDiskFreeSpaceInMB("archdir\\");
-	size_t lower = 20 * 1024; //freeMB + 10;
+	size_t lower = 440 * 1024; //freeMB + 10;
 	if(freeMB > lower) return;
 	findAndDeleteUnarchived("indexdir\\00080020", lower);
 	//cerr << "auto clean done" << endl;

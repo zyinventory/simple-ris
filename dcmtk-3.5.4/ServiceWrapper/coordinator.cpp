@@ -18,13 +18,6 @@ static size_t procnum;
 static PWorkerProcess workers;
 static list<WorkerProcess> dirmakers;
 
-static std::ostream& time_header_out(ostream &os)
-{
-	char timeBuffer[32];
-	if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
-	return os;
-}
-
 static void closeProcHandle(WorkerProcess &wp)
 {
 	if(opt_verbose) time_header_out(cout) << "closeProcHandle: ";

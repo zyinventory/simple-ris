@@ -21,14 +21,14 @@ bool deleteDayStudy(const char *dayxml)
 		int hashStudy = hashCodeW((LPCWSTR)studyUid);
 		sprintf_s(studyPath, MAX_PATH, "archdir\\%02X\\%02X\\%02X\\%02X\\%s",
 			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, (LPCSTR)studyUid);
-		cerr << "deleting study " << studyPath << " ..." << endl;
+		if(opt_verbose) time_header_out(cout) << "deleting study " << studyPath << " ..." << endl;
 		if(deleteTree(studyPath, &cerr))
 		{
-			cerr << studyPath << " delete OK" << endl;
+			if(opt_verbose) time_header_out(cout) << studyPath << " delete OK" << endl;
 		}
 		else
 		{
-			cerr << studyPath << " delete failed" << endl;
+			time_header_out(cerr) << studyPath << " delete failed" << endl;
 			allOK = false;
 		}
 	}
