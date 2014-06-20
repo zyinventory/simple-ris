@@ -9,6 +9,7 @@ extern bool opt_verbose;
 
 bool deleteDayStudy(const char *dayxml)
 {
+	if(opt_verbose) time_header_out(cout) << "start cleaning day " << dayxml << endl;
 	MSXML2::IXMLDOMDocumentPtr dayIndex;
 	dayIndex.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 	if(VARIANT_FALSE == dayIndex->load(dayxml)) return false;
@@ -21,7 +22,6 @@ bool deleteDayStudy(const char *dayxml)
 		int hashStudy = hashCodeW((LPCWSTR)studyUid);
 		sprintf_s(studyPath, MAX_PATH, "archdir\\%02X\\%02X\\%02X\\%02X\\%s",
 			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, (LPCSTR)studyUid);
-		if(opt_verbose) time_header_out(cout) << "deleting study " << studyPath << " ..." << endl;
 		if(deleteTree(studyPath, &cerr))
 		{
 			if(opt_verbose) time_header_out(cout) << studyPath << " delete OK" << endl;
