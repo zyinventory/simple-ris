@@ -36,10 +36,10 @@ static size_t checkDiskFreeSpaceInMB(const char * path)
 	return freeGB;
 }
 
-static bool findAndDeleteUnarchived(const char* filepath, size_t lower)
+static void collectDayXmlFile(const char *filepath, list<WIN32_FIND_DATA> &findDataList)
 {
+	// if(opt_verbose) time_header_out(cout) << "start searching " << filepath << endl;
 	WIN32_FIND_DATA wfd;
-	list<WIN32_FIND_DATA> unarchivedList;
 	char fileFilter[MAX_PATH];
 	strcpy_s(fileFilter, filepath);
 	PathAppend(fileFilter, "*.*");
@@ -51,64 +51,85 @@ static bool findAndDeleteUnarchived(const char* filepath, size_t lower)
 			time_header_out(cerr) << fileFilter << " not found" << endl;
 		else
 			time_header_out(cerr) << fileFilter << " unknown error: " << winerr << endl;
-		return false;
+		return;
 	}
 	do
 	{
 		if (strcmp(wfd.cFileName, ".") == 0 || strcmp(wfd.cFileName, "..") == 0) 
 			continue; // skip . ..
-		if((wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || 0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE))
-			unarchivedList.push_back(wfd);
-/*		else
-			if(opt_verbose) time_header_out(cout) << filepath << '\\' << wfd.cFileName << " is archived, skip it." << endl; */
+		fileFilter[strlen(filepath)] = '\0';
+		PathAppend(fileFilter, wfd.cFileName);
+		if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			collectDayXmlFile(fileFilter, findDataList);
+		}
+		else if(strstr(wfd.cFileName, ".xml"))
+		{
+			strcpy_s(wfd.cFileName, MAX_PATH, fileFilter);
+			findDataList.push_back(wfd);
+		}
+		else if(opt_verbose)
+			time_header_out(cout) << filepath << '\\' << wfd.cFileName << " name is not '.xml', skip it." << endl;
 	} while (FindNextFile(hDiskSearch, &wfd));
 	FindClose(hDiskSearch); // ¹Ø±Õ²éÕÒ¾ä±ú
-	if(unarchivedList.empty())
-	{
-		//cerr << fileFilter << " is all archived, no file shall be deleted" << endl;
-		return false;
-	}
-	unarchivedList.sort([](WIN32_FIND_DATA &wfd1, WIN32_FIND_DATA &wfd2)
-		{ return strcmp(wfd1.cFileName, wfd2.cFileName) > 0; });
-	bool result = false;
+}
+
+static bool noMoreFree = false;
+static bool findAndDeleteUnarchived(list<WIN32_FIND_DATA> &findDataList, size_t lower)
+{
+	findDataList.sort([](WIN32_FIND_DATA &wfd1, WIN32_FIND_DATA &wfd2)
+		{ return *reinterpret_cast<__int64*>(&wfd1.ftLastAccessTime) > *reinterpret_cast<__int64*>(&wfd2.ftLastAccessTime); });
 	do{
-		WIN32_FIND_DATA &backItem = unarchivedList.back();
-		if(backItem.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		WIN32_FIND_DATA &backItem = findDataList.back();
+		//if(opt_verbose) time_header_out(cout) << "pop_back " << backItem.cFileName << ", last access time: "
+		//	<< *reinterpret_cast<__int64*>(&backItem.ftLastAccessTime) << endl;
+		if(deleteDayStudy(backItem.cFileName))
 		{
-			fileFilter[strlen(filepath)] = '\0';
-			PathAppend(fileFilter, backItem.cFileName);
-			if(findAndDeleteUnarchived(fileFilter, lower)) return true; //FREE_ENOUGH
-		}
-		else if(0 == (backItem.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE))
-		{
-			fileFilter[strlen(filepath)] = '\0';
-			PathAppend(fileFilter, backItem.cFileName);
-			if(opt_verbose) time_header_out(cout) << fileFilter << " is not archived, delete!!!" << endl;
-			if(deleteDayStudy(fileFilter))
+			HANDLE hFile = CreateFile(backItem.cFileName, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if(INVALID_HANDLE_VALUE == hFile)
 			{
-				DWORD dwFileAttributes = GetFileAttributes(fileFilter);
-				if(dwFileAttributes == INVALID_FILE_ATTRIBUTES || !SetFileAttributes(fileFilter, dwFileAttributes | FILE_ATTRIBUTE_ARCHIVE))
+				DWORD winerr = GetLastError();
+				time_header_out(cerr) << backItem.cFileName << " open file error:" << winerr << endl;
+			}
+			else
+			{
+				FILETIME ft;
+				SYSTEMTIME st;
+				GetSystemTime(&st);              // Gets the current system time
+				SystemTimeToFileTime(&st, &ft);  // Converts the current system time to file time format
+				if(!SetFileTime(hFile, (LPFILETIME) NULL, &ft, (LPFILETIME) NULL))
 				{
-					time_header_out(cerr) << fileFilter << " set to archived failed:" << GetLastError() << endl;
+					DWORD winerr = GetLastError();
+					time_header_out(cerr) << backItem.cFileName << " set last access time error:" << winerr << endl;
 				}
 			}
-			size_t freeMB = checkDiskFreeSpaceInMB("archdir\\");
-			if(freeMB > lower) return true;
 		}
-		else
-			time_header_out(cerr) << "EXCEPTION: " << filepath << '\\' << wfd.cFileName << " is not dir or unarchived!" << endl;
-		unarchivedList.pop_back();
-	}while(!unarchivedList.empty());
-	return result;
+		size_t freeMB = checkDiskFreeSpaceInMB("archdir\\");
+		if(freeMB > lower) return true;
+		findDataList.pop_back();
+	}while(!findDataList.empty());
+
+	size_t lastFreeMB = checkDiskFreeSpaceInMB("archdir\\");
+	time_header_out(cerr) << "All day xml is free, free " << lastFreeMB << " M, need " << lower << " M" << endl;
+	noMoreFree = true;
+	return false;
 }
 
 void autoCleanPacsDiskByStudyDate()
 {
+	if(noMoreFree) return;
 	size_t freeMB = checkDiskFreeSpaceInMB("archdir\\");
-	size_t lower = 440 * 1024; //freeMB + 10;
+	size_t lower = 20 * 1024; //20G
 	if(freeMB > lower) return;
-	findAndDeleteUnarchived("indexdir\\00080020", lower);
-	//cerr << "auto clean done" << endl;
+	list<WIN32_FIND_DATA> findDataList;
+	collectDayXmlFile("indexdir\\00080020", findDataList);
+	if(findDataList.empty())
+	{
+		if(opt_verbose) time_header_out(cout) << "No day xml files to free, free " << freeMB << " M, need " << lower << " M" << endl;
+	}
+	else
+		findAndDeleteUnarchived(findDataList, lower);
+	if(opt_verbose) time_header_out(cout) << "auto clean done" << endl;	
 }
 
 static void mkcmd(ostringstream *cmdStream, const char *s)
