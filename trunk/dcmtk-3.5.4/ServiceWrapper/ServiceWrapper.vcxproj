@@ -132,6 +132,9 @@
     <None Include="web\xslt\charge.xsl">
       <SubType>Designer</SubType>
     </None>
+    <None Include="web\xslt\color.xsl">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="web\xslt\dayrec.xsl">
       <SubType>Designer</SubType>
     </None>

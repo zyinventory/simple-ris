@@ -113,6 +113,13 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 		}
 		++sec;
 	}
+
+	// append license count
+	MSXML2::IXMLDOMElementPtr licenseNode = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "LICENSE_COUNTER", "");
+	_variant_t licenseCount(licenseCounter());
+	licenseNode->appendChild(pXmlDom->createTextNode(_bstr_t(licenseCount)));
+	root->appendChild(licenseNode);
+
 	if(hasError) root->appendChild(errorInfos);
 	buffer << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml;
 	outputContent(false);
@@ -154,7 +161,7 @@ int statusCharge(const char *flag)
 	int licenseCount = 0, oldCount = -1;
 	WORD increase = 0;
 	char countBuffer[12] = "", passwd[9] = "", filename[64] = "..\\etc\\*.key";
-	int lockNumber = getLockNumber(filename, FALSE, filename + 7);
+	int lockNumber = getLockNumber(filename, FALSE, filename + 7, 64 - 7);
 	SEED_SIV siv;
 
 	MSXML2::IXMLDOMElementPtr key;
