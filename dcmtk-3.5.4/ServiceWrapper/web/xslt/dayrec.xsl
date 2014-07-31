@@ -30,6 +30,24 @@
 		</xsl:otherwise>
 	</xsl:choose>
 </xsl:template>
+<xsl:template name="splitFunc">
+  <xsl:param name="text"/>
+  <xsl:param name="sectionLength"/>
+  <xsl:param name="by"/>
+  <xsl:choose>
+    <xsl:when test="string-length($text)>$sectionLength">
+      <xsl:value-of select="concat(substring($text, 1, $sectionLength), $by)"/>
+      <xsl:call-template name="splitFunc">
+        <xsl:with-param name="text" select="substring($text, $sectionLength + 1)"/>
+        <xsl:with-param name="sectionLength" select="$sectionLength"/>
+        <xsl:with-param name="by" select="$by"/>
+      </xsl:call-template>
+    </xsl:when>
+    <xsl:otherwise>
+      <xsl:value-of select="$text"/>
+    </xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
 <xsl:template match="/">
 <!-- html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -56,13 +74,13 @@
 				<th title="Accession Number">ÊÜÀíºÅ</th>
 				<th>AE Title</th>
 				<th>¼ì²éUID</th>
-        <th>¿ÌÂ¼</th>
+        <th style="width:7em">¿ÌÂ¼</th>
       </tr>
 		</thead>
 		<tbody>
 			<xsl:for-each select="Collection/Study">
 			<tr>
-				<td class="patientID">
+				<td class="commonCell patientID">
           <a target="_blank">
             <xsl:attribute name="href">
               index.htm?mode=00100020&amp;patientID=<xsl:value-of select="@PatientID" />
@@ -70,33 +88,45 @@
             <xsl:value-of select="@PatientID" />
           </a>
         </td>
-				<td class="patientName"><xsl:value-of select="@PatientName" /></td>
-				<td class="age">
+				<td class="commonCell patientName"><xsl:value-of select="@PatientName" /></td>
+				<td class="commonCell age">
 					<xsl:attribute name="title"><xsl:value-of select="@PatientBirthDate" /></xsl:attribute>
 					<xsl:call-template name="calculateAge">
 						<xsl:with-param name="afterYear" select="substring(@StudyDate, 1, 4)"/>
 					</xsl:call-template>
 				</td>
-				<td class="sex"><xsl:call-template name="displaySex" /></td>
-				<td class="modality"><xsl:value-of select="@Modality" /></td>
-				<td class="studyDate"><xsl:value-of select="@StudyDate" /></td>
-				<td class="seriesCount"><xsl:value-of select="@SeriesCount" /></td>
-				<td class="instanceCount"><xsl:value-of select="@InstanceCount" /></td>
-				<td class="accessionNumber"><xsl:value-of select="@AccessionNumber" /></td>
-				<td class="callingAE"><xsl:value-of select="@CallingAE" /></td>
+				<td class="commonCell sex"><xsl:call-template name="displaySex" /></td>
+				<td class="commonCell modality"><xsl:value-of select="@Modality" /></td>
+				<td class="commonCell studyDate"><xsl:value-of select="@StudyDate" /></td>
+				<td class="commonCell seriesCount"><xsl:value-of select="@SeriesCount" /></td>
+				<td class="commonCell instanceCount"><xsl:value-of select="@InstanceCount" /></td>
+				<td class="commonCell accessionNumber">
+          <xsl:call-template name="splitFunc">
+            <xsl:with-param name="text" select="@AccessionNumber"/>
+            <xsl:with-param name="sectionLength" select="8"/>
+            <xsl:with-param name="by" select="'&#x200B;'"/>
+          </xsl:call-template>
+        </td>
+				<td class="commonCell callingAE">
+          <xsl:call-template name="splitFunc">
+            <xsl:with-param name="text" select="@CallingAE"/>
+            <xsl:with-param name="sectionLength" select="8"/>
+            <xsl:with-param name="by" select="'&#x200B;'"/>
+          </xsl:call-template>
+        </td>
 				<td class="studyUID">
 					<xsl:attribute name="title"><xsl:value-of select="./text()" /></xsl:attribute>
           <a>
             <xsl:attribute name="target">pacsviewer</xsl:attribute>
             <xsl:attribute name="href">cgi-bin/getindex.exe?jnlp=1&amp;studyUID=<xsl:value-of select="./text()" /></xsl:attribute>
-						<xsl:call-template name="replaceFunc">
+						<xsl:call-template name="splitFunc">
 							<xsl:with-param name="text" select="text()"/>
-							<xsl:with-param name="replace" select="'.'"/>
-							<xsl:with-param name="by" select="'.&#x200B;'"/>
+							<xsl:with-param name="sectionLength" select="8"/>
+							<xsl:with-param name="by" select="'&#x200B;'"/>
 						</xsl:call-template>
           </a>
         </td>
-        <td>
+        <td class="buttonCell">
           <form target="ppstatus" style="display:inline" method="POST" action="cgi-bin/getindex.exe">
             <input type="hidden" name="media" value="AUTO" />
             <input type="hidden" name="studyUID">

@@ -11,7 +11,7 @@
 using namespace std;
 
 const char regxPattern[] = "^(\\d{8,12})\\.key$";
-extern "C" int getLockNumber(const char *filter, int isDirectory, char *filenamebuf)
+extern "C" int getLockNumber(const char *filter, int isDirectory, char *filenamebuf, size_t filenamebuf_size)
 {
 	WIN32_FIND_DATA ffd;
 	unsigned int lockNumber = -1;
@@ -33,14 +33,16 @@ extern "C" int getLockNumber(const char *filter, int isDirectory, char *filename
 			string fileName(ffd.cFileName);
 			if(regex_match(fileName, result, pattern))
 			{
+				/*
 				char buffer[MAX_PATH];
-				result[1].str().copy(buffer, result[1].length(), 0);
-				buffer[result[1].length()] = '\0';
-				sscanf_s(buffer, TEXT("%d"), &lockNumber);
+				size_t copied = result[1].str()._Copy_s(buffer, MAX_PATH, result[1].length(), 0);
+				buffer[min(copied, MAX_PATH - 1)] = '\0';
+				*/
+				sscanf_s(result[1].str().c_str(), TEXT("%d"), &lockNumber);
 				if(filenamebuf)
 				{
-					fileName.copy(filenamebuf, fileName.length(), 0);
-					filenamebuf[fileName.length()] = '\0';
+					size_t copied = fileName._Copy_s(filenamebuf, filenamebuf_size, fileName.length(), 0);
+					filenamebuf[min(copied, filenamebuf_size - 1)] = '\0';
 				}
 				break;
 			}
@@ -57,8 +59,8 @@ extern "C" void mkpasswd(const char *base64, unsigned int salt, char *lock_passw
 	Lock32_Function(salt, &salt_tr, 0);
 	saltBase64 << hex << setw(8) << setfill('0') << salt_tr;
 	string hash(md5crypt(base64, "1", saltBase64.str().c_str()));
-	hash.copy(lock_passwd, 8, hash.length() - 8);
-	lock_passwd[8] = '\0';
+	size_t copied = hash._Copy_s(lock_passwd, 9, 8, hash.length() - 8);
+	lock_passwd[min(copied, 8)] = '\0';
 }
 
 extern "C" int loadPublicKeyContentImpl(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char **ppdata, char *gen_rw_passwd)
@@ -84,8 +86,8 @@ extern "C" int loadPublicKeyContentImpl(const char* publicKey, SEED_SIV *siv, un
 	}
 	string base64(contentBase64.str());
 	*ppdata = new char[base64.size() + 1];
-	base64.copy(*ppdata, base64.size());
-	(*ppdata)[base64.size()] = '\0';
+	size_t copied = base64._Copy_s(*ppdata, base64.size() + 1, base64.size());
+	(*ppdata)[min(copied, base64.size())] = '\0';
 	//if(gen_lock_passwd) mkpasswd(*ppdata, lockNumber, gen_lock_passwd);
 	if(gen_rw_passwd) mkpasswd((*ppdata) + 8, lockNumber, gen_rw_passwd);
 
@@ -189,4 +191,24 @@ extern "C" int loadPublicKeyContent2Pwd(const char* publicKey, SEED_SIV *siv, un
 	if(data && gen_lock_passwd) mkpasswd(data, lockNumber, gen_lock_passwd);
 	if(data) delete data;
 	return result;
+}
+
+extern "C" int licenseCounter()
+{
+	int licenseCount = -1;
+	char passwd[9] = "", filename[64] = "..\\etc\\*.key";
+	int lockNumber = getLockNumber(filename, FALSE, filename + 7, 64 - 7);
+	if(lockNumber <= 0) return -1;
+	SEED_SIV siv;
+	if(!InitiateLock(0)) return -1;
+	if(0 == loadPublicKeyContentRW(filename, &siv, lockNumber, passwd))
+	{
+		if(!invalidLock("..\\etc\\license.key", filename, &siv))
+		{
+			licenseCount = currentCount(passwd);
+			if(licenseCount < 0 || licenseCount > 0xFFFF) licenseCount = -1;
+		}
+	}
+	TerminateLock(0);
+	return licenseCount;
 }

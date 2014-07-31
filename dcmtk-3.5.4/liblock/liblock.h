@@ -25,7 +25,7 @@ extern "C"
 	int fillSeedSIV(void *siv, size_t sivSize, void *content, size_t contentLength, size_t start);
 	void MD5_digest(void *data, size_t dataLength, unsigned char *md);
 	char *md5crypt(const char *passwd, const char *magic, const char *salt);
-	int getLockNumber(const char *filter, int isDirectory, char *lockname);
+	int getLockNumber(const char *filter, int isDirectory, char *lockname, size_t filenamebuf_size);
 	void mkpasswd(const char *base64, unsigned int salt, char *lock_passwd);
 	int loadPublicKeyContentRW(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char *gen_rw_passwd);
 	int loadPublicKeyContent2Pwd(const char* publicKey, SEED_SIV *siv, unsigned int lockNumber, char *gen_lock_passwd, char *gen_rw_passwd);
@@ -33,6 +33,7 @@ extern "C"
 	int aes256cbc_dec(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, unsigned char *key, unsigned char* iv);
 	int invalidLock(const char *licenseRSAEnc, const char *rsaPublicKey, SEED_SIV *sivptr);
 	int currentCount(char *passwd);
+	int licenseCounter();
 	int decreaseCount(char *passwd);
 	int increaseCount(char *passwd, int charge);
 #ifdef __cplusplus

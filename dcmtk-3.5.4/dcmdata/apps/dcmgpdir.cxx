@@ -795,7 +795,7 @@ traversal_restart:
 		if(InitiateLock(0))
 		{
 			atexit(exitHook);
-			lockNumber = getLockNumber(filename, FALSE, filename + 7); // 7 == strlen("..\etc\")
+			lockNumber = getLockNumber(filename, FALSE, filename + 7, 64 - 7); // 7 == strlen("..\etc\")
 		}
 		else
 		{

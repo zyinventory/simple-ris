@@ -192,7 +192,7 @@ int burningStudy(const char *media)
 		if(InitiateLock(0))
 		{
 			atexit(exitHook);
-			lockNumber = getLockNumber(filename, FALSE, filename + 7);
+			lockNumber = getLockNumber(filename, FALSE, filename + 7, 64 - 7);
 		}
 		else
 			errstream << "init lock failed:" << hex << LYFGetLastErr() << endl;

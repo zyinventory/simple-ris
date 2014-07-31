@@ -104,6 +104,7 @@ IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspeci
 	)
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/xslt" TYPE FILE FILES
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/charge.xsl"
+		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/color.xsl"
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/dayrec.xsl"
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/job.xsl"
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/xslt/mktext.xsl"

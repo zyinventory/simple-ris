@@ -80,6 +80,9 @@
     <None Include="web\xslt\charge.xsl">
       <Filter>web\xslt</Filter>
     </None>
+    <None Include="web\xslt\color.xsl">
+      <Filter>web\xslt</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Xsd Include="web\xslt\wado_query.xsd">

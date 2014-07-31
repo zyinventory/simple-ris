@@ -160,3 +160,10 @@ function displayPaitent(textValue) {
         return confirm('ÊÇ·ñÉ¾³ý¼ì²é£¿');
     });
 }
+
+function setColorBar(colorBar, color) {
+    var colorPercent = $(colorBar + ' div')[0].textContent;
+    var colorRemain = parseInt(colorPercent.substring(colorPercent.indexOf(')') + 1, colorPercent.indexOf('%')));
+    $(colorBar).progressbar({ value: colorRemain, disable: false });
+    $(colorBar + ' .ui-progressbar-value').css('background', color);
+}
