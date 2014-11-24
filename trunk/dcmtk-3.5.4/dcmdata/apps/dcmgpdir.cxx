@@ -105,6 +105,8 @@ static char timeBuffer[32];
 
 #define SHORTCOL 4
 #define LONGCOL 23
+#define GE_ImplementationClassUID "1.2.840.113619.6.286"
+#define GE_MediaStorageSOPInstanceUID "1.2.840.113619.6.286.%Y%m%d.%H%M%S."
 
 // ********************************************
 using namespace MSMQ;
@@ -119,6 +121,62 @@ static std::ostream& time_header_out(ostream &os)
 	//char timeBuffer[32];
 	if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
 	return os;
+}
+
+static bool GEMediaStorageSOPInstanceUID(char *buf, uint buf_len)
+{
+	time_t now = time(NULL);
+	struct tm calendar;
+	errno_t err = localtime_s(&calendar, &now);
+	if(!err)
+	{
+		size_t pathLen = strftime(buf, buf_len, GE_MediaStorageSOPInstanceUID, &calendar);
+		if( ! pathLen ) return false;
+		sprintf_s(buf + pathLen, buf_len - pathLen, "%d", _getpid());
+		return true;
+	}
+	return false;
+}
+
+static void checkValueGE(DcmMetaInfo *metainfo,
+                                      const DcmTagKey &atagkey,
+                                      const E_TransferSyntax oxfer)
+{
+	DcmStack stack;
+    DcmTag tag(atagkey);
+
+    DcmTagKey xtag = tag.getXTag();
+    DcmElement *elem = NULL;
+
+	if (xtag == DCM_MediaStorageSOPInstanceUID)    // (0002,0003)
+    {
+        elem = new DcmUniqueIdentifier(tag);
+        metainfo->insert(elem, OFTrue);
+		char buf[65];
+		GEMediaStorageSOPInstanceUID(buf, sizeof(buf));
+		OFstatic_cast(DcmUniqueIdentifier *, elem)->putString(buf);
+        DCM_dcmdataDebug(2, ("DcmFileFormat::checkValue() use new generated SOPInstanceUID [%s]", uid));
+    }
+	else if (xtag == DCM_ImplementationClassUID)        // (0002,0012)
+    {
+        elem = new DcmUniqueIdentifier(tag);
+        metainfo->insert(elem, OFTrue);
+        OFstatic_cast(DcmUniqueIdentifier *, elem)->putString(GE_ImplementationClassUID);
+    }
+	else if (xtag == DCM_ImplementationVersionName)     // (0002,0013)
+    {
+        elem = new DcmShortString(tag);
+        metainfo->insert(elem, OFTrue);
+        const char uid[] = "AW4_6_05_003_SLE";
+        OFstatic_cast(DcmShortString *, elem)->putString(uid);
+    }
+	else if (xtag == DCM_SourceApplicationEntityTitle)     // (0002,0016)
+    {
+        elem = new DcmApplicationEntity(tag);
+        metainfo->insert(elem, OFTrue);
+        const char uid[] = "EK1000";
+		elem->putString(uid);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -140,6 +198,7 @@ int main(int argc, char *argv[])
 	const char *opt_index = "indexdir";
 	const char *opt_csv = NULL;
 	const char *opt_weburl = "http://localhost/pacs/";
+	const char *opt_viewer = "eFilm";
 	OFCmdUnsignedInt opt_queueTimeout = 15;
 	DicomDirInterface::E_ApplicationProfile opt_profile = DicomDirInterface::AP_GeneralPurpose;
 
@@ -255,6 +314,7 @@ int main(int argc, char *argv[])
 	cmd.addOption("--input-csv",             "-ic", 1, "filename : string", "read index information from csv file");
 	cmd.addOption("--delete-source-csv",     "-ds",    "if indexing is successful, delete source csv file");
 	cmd.addOption("--web-url",               "-wu", 1, "web url : string", "add a web url to index file, default : http://localhost/pacs/");
+	cmd.addOption("--viewer",						1, "viewer : string", "which viewer will append to DVD, default : eFilm");
 	cmd.addOption("--queue-timeout",         "-qt", 1, "queue timeout : integer(1..300)", "queue receive message timeout, default : 15(second)");
 
 	/* evaluate command line */
@@ -492,6 +552,8 @@ int main(int argc, char *argv[])
 			app.checkValue(cmd.getValue(opt_csv));
 		if (cmd.findOption("--web-url"))
 			app.checkValue(cmd.getValue(opt_weburl));
+		if (cmd.findOption("--viewer"))
+			app.checkValue(cmd.getValue(opt_viewer));
 		if (cmd.findOption("--delete-source-csv"))
 			opt_deleteSourceCSV = OFTrue;
 		if (cmd.findOption("--queue-timeout"))
@@ -775,6 +837,15 @@ traversal_restart:
 				OFSTRINGSTREAM_GETSTR(oss, tmpString)
 					app.printWarning(tmpString);
 				OFSTRINGSTREAM_FREESTR(tmpString)
+			}
+
+			if(opt_viewer != NULL && opt_viewer[0] == 'G' && opt_viewer[1] == 'E') // opt_viewer start with "GE"
+			{
+				DcmMetaInfo *metinf = ddir.getDicomDir()->getDirFileFormat().getMetaInfo();
+				checkValueGE(metinf, DCM_MediaStorageSOPInstanceUID, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
+				checkValueGE(metinf, DCM_ImplementationClassUID, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
+				checkValueGE(metinf, DCM_ImplementationVersionName, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
+				checkValueGE(metinf, DCM_SourceApplicationEntityTitle, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
 			}
 			/* write DICOMDIR file */
 			if (result.good() && opt_write)

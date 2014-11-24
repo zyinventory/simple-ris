@@ -19,9 +19,10 @@ bool deleteDayStudy(const char *dayxml)
 	while(MSXML2::IXMLDOMNodePtr newStudy = listptr->nextNode())
 	{
 		_bstr_t studyUid = newStudy->Gettext();
-		int hashStudy = hashCodeW((LPCWSTR)studyUid);
-		sprintf_s(studyPath, MAX_PATH, "archdir\\%02X\\%02X\\%02X\\%02X\\%s",
-			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, (LPCSTR)studyUid);
+		char hashBuf[9];
+		__int64 hashStudy = uidHashW((LPCWSTR)studyUid, hashBuf, sizeof(hashBuf));
+		sprintf_s(studyPath, MAX_PATH, "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s",
+			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], (LPCSTR)studyUid);
 		if(deleteTree(studyPath, &cerr))
 		{
 			if(opt_verbose) time_header_out(cout) << studyPath << " delete OK" << endl;

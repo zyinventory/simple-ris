@@ -153,12 +153,12 @@ HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXM
 	studyDatePath.append(1, '/').append(studyDate.substr(0, 4)).append(1, '/').append(studyDate.substr(4, 2));
 	studyDatePath.append(1, '/').append(studyDate.substr(6, 2));
 
-	char buf[MAX_PATH];
-	unsigned int hashStudy = hashCode(studyUID.c_str());
+	char buf[MAX_PATH], hashBuf[9];
+	__int64 hashStudy = uidHash(studyUID.c_str(), hashBuf, sizeof(hashBuf));
 	if(studyUID.length() == 0) studyUID = "NULL";
-	sprintf_s(buf, sizeof(buf), "%s/%02X/%02X/%02X/%02X/%s/%08X", archivePath.c_str(),
-		hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID.c_str(), hashStudy);
-	downloadUrl = buf;  //downloadUrl = "<archivePath>/Ha/sh/Co/de/<study uid>/<study uid hashCode>"
+	sprintf_s(buf, sizeof(buf), "%s/%c%c/%c%c/%c%c/%c%c/%s/%s", archivePath.c_str(),
+		hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID.c_str(), hashBuf);
+	downloadUrl = buf;  //downloadUrl = "<archivePath>/Ha/sh/Co/de/<study uid>/<study uid hash_code>"
 
 	HRESULT hr;
 	hr = pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
@@ -277,8 +277,10 @@ HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
 		series->appendChild(instance);
 	}
 	instance->setAttribute("InstanceNumber", instanceNumber.c_str());
-	char buf[MAX_PATH];
-	sprintf_s(buf, sizeof(buf), "%s/%08X/%08X/%08X", downloadUrl.c_str(), hashCode(seriesUID.c_str()), hashCode(instanceUID.c_str()), hashCode(instanceUID.c_str(), 131));
+	char buf[MAX_PATH], hashBufSeries[9], hashBufInstance[9];
+	uidHash(seriesUID.c_str(), hashBufSeries, sizeof(hashBufSeries));
+	uidHash(instanceUID.c_str(), hashBufInstance, sizeof(hashBufInstance));
+	sprintf_s(buf, sizeof(buf), "%s/%s/%s", downloadUrl.c_str(), hashBufSeries, hashBufInstance);
 	instance->setAttribute("DirectDownloadFile", buf);
 	return S_OK;
 }
@@ -486,14 +488,15 @@ int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, co
 		}
 		if(!pacsBase.empty())
 		{
-			unsigned int hash = hashCode(tagValue);
+			char hashBuf[9];
+			__int64 hashStudy = uidHash(tagValue, hashBuf, sizeof(hashBuf));
 			sprintf_s(buffer, BUFF_SIZE, "%s\\tdd\\%s.jdf", pacsBase.c_str(), tagValue);
 			string jdfPath(buffer);
-			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s.txt", pacsBase.c_str(), indexBase.c_str(), tag,
-				hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, tagValue);
+			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s.txt", pacsBase.c_str(), indexBase.c_str(), tag,
+				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tagValue);
 			string fieldsPath(buffer);
-			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%02X\\%02X\\%02X\\%02X\\%s", pacsBase.c_str(), archivePath.c_str(),
-				hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, tagValue);
+			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s", pacsBase.c_str(), archivePath.c_str(),
+				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tagValue);
 			if (_access_s( buffer, 4 ))
 			{
 				errstrm << "data don't exist: " << buffer << endl;
@@ -652,11 +655,11 @@ HRESULT mergeStudy(MSXML2::IXMLDOMNodePtr src, MSXML2::IXMLDOMNodePtr dest)
 bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid)
 {
 	HANDLE fileMutex = NULL;
-	char buffer[1024];
+	char buffer[1024], hashBuf[9];
 
-	int hash = hashCode(patientID);
-	sprintf_s(buffer, 1024, "indexdir\\00100020\\%02X\\%02X\\%02X\\%02X\\%s.xml",
-		hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, patientID);
+	__int64 hash = uidHash(patientID, hashBuf, sizeof(hashBuf));
+	sprintf_s(buffer, 1024, "indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml",
+		hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], patientID);
 	string indexPath(buffer);
 	if(_access_s(buffer, 0)) return true; // if xml file dose not exist, return true;
 	try
@@ -691,11 +694,12 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 {
 	HRESULT hr;
 	_bstr_t tagValue = pXMLDom->selectSingleNode(queryValue)->Gettext();
-	unsigned int hash = hashCodeW(tagValue);
+	char hashBuf[9];
+	__int64 hashUid36 = uidHashW(tagValue, hashBuf, sizeof(hashBuf));
 	if(tagValue.length() == 0) return FWP_E_NULL_POINTER;
 
-	sprintf_s(buffer, BUFF_SIZE, "%s\\%s\\%02X\\%02X\\%02X\\%02X\\%s", indexBase.c_str(), tag,
-		hash >> 24 & 0xff, hash >> 16 & 0xff, hash >> 8 & 0xff, hash & 0xff, (const char*)tagValue);
+	sprintf_s(buffer, BUFF_SIZE, "%s\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s", indexBase.c_str(), tag,
+		hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], (const char*)tagValue);
 	string indexPath = buffer;
 	indexPath.append(".xml");
 	string fieldsPath = buffer;
@@ -988,10 +992,11 @@ static void searchRecursively(string &path, long long &filesizes)
 long long diskUsage(const char *pacsBase, const char *studyUID)
 {
 	long long filesizes = 0LL;
-	unsigned int hashStudy = hashCode(studyUID);
+	char hashBuf[9];
+	__int64 hashStudy = uidHash(studyUID, hashBuf, sizeof(hashBuf));
 	if(strlen(studyUID) == 0) studyUID = "NULL";
-	sprintf_s(buffer, sizeof(buffer), "%s\\pacs\\%s\\%02X\\%02X\\%02X\\%02X\\%s", pacsBase, archivePath.c_str(),
-		hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
+	sprintf_s(buffer, sizeof(buffer), "%s\\pacs\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s", pacsBase, archivePath.c_str(),
+		hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
 	string strbuf(MAX_PATH, ' ');
 	strbuf = buffer;
 

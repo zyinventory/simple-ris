@@ -333,7 +333,7 @@ DCM_dcmdataCDebug(2,  uidtmp != NULL,
                 elem = new DcmUniqueIdentifier(tag);
                 metainfo->insert(elem, OFTrue);
             }
-            if (elem->ident() == EVR_UI)
+			if (elem->ident() == EVR_UI && elem->getLength() == 0)
             {
                 const char *uid = OFFIS_IMPLEMENTATION_CLASS_UID;
                 OFstatic_cast(DcmUniqueIdentifier *, elem)->putString(uid);
@@ -347,7 +347,7 @@ DCM_dcmdataCDebug(2,  uidtmp != NULL,
                 elem = new DcmShortString(tag);
                 metainfo->insert(elem, OFTrue);
             }
-            if (elem->ident() == EVR_SH)
+            if (elem->ident() == EVR_SH && elem->getLength() == 0)
             {
                 const char *uid = OFFIS_DTK_IMPLEMENTATION_VERSION_NAME;
                 OFstatic_cast(DcmShortString *, elem)->putString(uid);

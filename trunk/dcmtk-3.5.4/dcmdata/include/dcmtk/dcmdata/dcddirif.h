@@ -114,6 +114,7 @@ class DicomDirInterface
 {
 
   public:
+	DcmDicomDir *getDicomDir() { return DicomDir; }
 
     /** list of supported media storage application profiles
      */

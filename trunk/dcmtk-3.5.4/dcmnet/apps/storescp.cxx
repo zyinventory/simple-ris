@@ -204,6 +204,7 @@ OFBool             opt_forkMode = OFFalse;
 #ifdef _WIN32
 OFBool             opt_forkedChild = OFFalse;
 OFBool             opt_execSync = OFFalse;            // default: execute in background
+OFBool             opt_disableCompress = OFFalse;
 OFBool             opt_disableMSMQ = OFFalse;
 #endif
 
@@ -454,6 +455,7 @@ int main(int argc, char *argv[])
                                                              "specifies a timeout of t seconds for\nend-of-study determination, default: unlimited." );
 #ifdef _WIN32
     cmd.addOption(  "--exec-sync",              "-xs",       "execute command synchronously in foreground" );
+	cmd.addOption(  "--disable-compress",       "-dc",       "disable compress");
     //cmd.addOption(  "--disable-msmq",			"-dm",       "don't send message to queue, execute command directly" );
 #endif
 
@@ -870,6 +872,7 @@ int main(int argc, char *argv[])
 
 #ifdef _WIN32
     if (cmd.findOption("--exec-sync")) opt_execSync = OFTrue;
+	if (cmd.findOption("--disable-compress")) opt_disableCompress = OFTrue;
 	if (cmd.findOption("--disable-msmq")) opt_disableMSMQ = OFTrue;
 #endif
 
@@ -1965,7 +1968,8 @@ storeSCPCallback(
           return;
         }
         if (tmpstr1) currentStudyInstanceUID = tmpstr1;
-		unsigned int hashStudy = hashCode(currentStudyInstanceUID.c_str());
+		char hashBuf[9];
+		uidHash(currentStudyInstanceUID.c_str(), hashBuf, sizeof(hashBuf));
 		if(currentStudyInstanceUID.length() == 0) currentStudyInstanceUID = "NULL";
 		
 		char buf[MAX_PATH];
@@ -2010,8 +2014,8 @@ storeSCPCallback(
 			currentStudyInstanceUID);
           OFString subdirectoryName(buf);
 
-		  sprintf_s(buf, sizeof(buf), "%02X\\%02X\\%02X\\%02X\\%s",
-			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff,
+		  sprintf_s(buf, sizeof(buf), "%c%c\\%c%c\\%c%c\\%c%c\\%s",
+			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7],
 			currentStudyInstanceUID.c_str());
 		  archiveStudyPath = buf;
 
@@ -2040,7 +2044,7 @@ storeSCPCallback(
 		  //     inststrm << currentStudyInstanceUID << UNIT_SEPARATOR << studyDate << UNIT_SEPARATOR << accNumber << '\n';
 		  OFOStringStream studyXmlStream;
 		  DcmXfer original_xfer((*imageDataSet)->getOriginalXfer());
-		  if(generateStudyXML(studyTextStream.str().c_str(), studyXmlStream, original_xfer.isEncapsulated()))
+		  if(generateStudyXML(studyTextStream.str().c_str(), studyXmlStream, opt_disableCompress || original_xfer.isEncapsulated()))
 			studyXml = studyXmlStream.str().c_str();
 		  else
 			studyXml.clear();
@@ -2064,12 +2068,12 @@ storeSCPCallback(
 		(*imageDataSet)->findAndGetSint32( DCM_InstanceNumber, instanceNumber );
 		inststrm << instanceNumber << '\n';
 
-		unsigned int hashSeries = hashCode(currentSeriesInstanceUID.c_str());
-		unsigned int hashImage = hashCode(sopInstanceUid.c_str());
-		unsigned int hashImage131 = hashCode(sopInstanceUid.c_str(), 131);
-		sprintf_s(buf, MAX_PATH, "%s\\%02X\\%02X\\%02X\\%02X\\%s\\%08X\\%08X\\%08X\\%08X", opt_volumeLabel.c_str(),
-			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff,
-			currentStudyInstanceUID.c_str(), hashStudy, hashSeries, hashImage, hashImage131);
+		char hashBufSeries[9], hashBufImage[9];
+		uidHash(currentSeriesInstanceUID.c_str(), hashBufSeries, sizeof(hashBufSeries));
+		uidHash(sopInstanceUid.c_str(), hashBufImage, sizeof(hashBufImage));
+		sprintf_s(buf, MAX_PATH, "%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\%s\\%s\\%s", opt_volumeLabel.c_str(),
+			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7],
+			currentStudyInstanceUID.c_str(), hashBuf, hashBufSeries, hashBufImage);
 		lastArchiveFileName = buf;
 
 		// integrate subdirectory name into file name (note that cbdata->imageFileName currently contains both
