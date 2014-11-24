@@ -152,8 +152,9 @@ extern "C" int currentCount(char *passwd)
 	{
 		if(licenseCount > 0 && licenseCount < DUMMY_ZERO)
 			licenseCount = 0;
-		else
+		else if(licenseCount > 0)
 			licenseCount -= DUMMY_ZERO;
+		// else do nothing
 		return licenseCount;
 	}
 	else

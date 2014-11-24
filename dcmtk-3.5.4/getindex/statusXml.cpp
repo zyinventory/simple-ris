@@ -423,17 +423,18 @@ int removeStudy(const char *flag)
 	char studyUID[65], patientID[65], indexPath[MAX_PATH];
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
-		int hashStudy = hashCode(studyUID);
-		sprintf_s(indexPath, MAX_PATH, "archdir\\%02X\\%02X\\%02X\\%02X\\%s",
-			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
+		char hashBuf[9];
+		__int64 hashStudy = uidHash(studyUID, hashBuf, sizeof(hashBuf));
+		sprintf_s(indexPath, MAX_PATH, "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s",
+			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
 		if(deleteTree(indexPath, &errorMessageStream))
 		{
-			sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%02X\\%02X\\%02X\\%02X\\%s.xml",
-				hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
+			sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml",
+				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
 			int rmXml = remove(indexPath);
 			if(rmXml && errno == ENOENT) rmXml = 0;
-			sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%02X\\%02X\\%02X\\%02X\\%s.txt",
-				hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
+			sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.txt",
+				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
 			int rmTxt = remove(indexPath);
 			if(rmTxt && errno == ENOENT) rmTxt = 0;
 			if(rmXml || rmTxt)

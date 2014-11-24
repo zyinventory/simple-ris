@@ -105,17 +105,18 @@ int jnlp(int hostLength)
 
 int queryXml(int hostLength)
 {
+	char hashBuf[9];
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
-		int hashStudy = hashCode(studyUID);
-		sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%02X\\%02X\\%02X\\%02X\\%s.xml",
-			hashStudy >> 24 & 0xff, hashStudy >> 16 & 0xff, hashStudy >> 8 & 0xff, hashStudy & 0xff, studyUID);
+		__int64 hashStudy = uidHash(studyUID, hashBuf, sizeof(hashBuf));
+		sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml",
+			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
 	}
 	else if(cgiFormNotFound != cgiFormString("patientID", patientID, 65) && strlen(patientID) > 0)
 	{
-		int hashPatient = hashCode(patientID);
-		sprintf_s(indexPath, MAX_PATH, "indexdir\\00100020\\%02X\\%02X\\%02X\\%02X\\%s.xml",
-			hashPatient >> 24 & 0xff, hashPatient >> 16 & 0xff, hashPatient >> 8 & 0xff, hashPatient & 0xff, patientID);
+		__int64 hashPatient = uidHash(patientID, hashBuf, sizeof(hashBuf));
+		sprintf_s(indexPath, MAX_PATH, "indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml",
+			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], patientID);
 	}
 	else
 	{

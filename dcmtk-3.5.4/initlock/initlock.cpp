@@ -319,9 +319,11 @@ int _tmain(int argc, _TCHAR* argv[])
 		return err;
 	}
 	
-	unsigned long counter = currentCount(init_lock_passwd);
+	long counter_signed = currentCount(init_lock_passwd);
 	//if(Counter(init_rw_passwd, 0, 0, 0, &counter))
-	bool initPasswdOK = (counter <= MAX_MEDIA_COUNT);  // test: init_lock_passwd OK?
+	bool initPasswdOK = (counter_signed == -1 || counter_signed <= MAX_MEDIA_COUNT);  // test: init_lock_passwd OK?
+	unsigned long counter = 0;
+	if(initPasswdOK) counter = counter_signed < 0 ? 0 : counter_signed;
 	if(isInit)
 	{
 		if(initPasswdOK)
