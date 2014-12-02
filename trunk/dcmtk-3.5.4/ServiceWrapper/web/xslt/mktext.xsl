@@ -23,18 +23,18 @@
     </xsl:if>
   </xsl:template>
   <xsl:template match="/sd:wado_query/sd:Patient/sd:Study">
-    <xsl:text>StudyDate=</xsl:text><xsl:value-of select="concat(substring(@StudyDate, 1, 4), '/', substring(@StudyDate, 5, 2), '/', substring(@StudyDate, 7, 2))" /><xsl:text>&#x000D;&#x000A;</xsl:text>
-    <xsl:text>AccessionNumber=</xsl:text><xsl:value-of select="./@AccessionNumber" /><xsl:text>&#x000D;&#x000A;</xsl:text>
-    <xsl:text>Modality=</xsl:text><xsl:call-template name="concatModalities"><xsl:with-param name="study" select="."/></xsl:call-template><xsl:text>&#x000D;&#x000A;</xsl:text>
+    <xsl:text>StudyDate=</xsl:text><xsl:value-of select="concat(substring(@StudyDate, 1, 4), '/', substring(@StudyDate, 5, 2), '/', substring(@StudyDate, 7, 2))" /><xsl:text>&#x000A;</xsl:text>
+    <xsl:text>AccessionNumber=</xsl:text><xsl:value-of select="./@AccessionNumber" /><xsl:text>&#x000A;</xsl:text>
+    <xsl:text>Modality=</xsl:text><xsl:call-template name="concatModalities"><xsl:with-param name="study" select="."/></xsl:call-template><xsl:text>&#x000A;</xsl:text>
   </xsl:template>
   <xsl:template match="/sd:wado_query/sd:Patient">
-    <xsl:text>PatientID=</xsl:text><xsl:value-of select="@PatientID" /><xsl:text>&#x000D;&#x000A;</xsl:text>
-    <xsl:text>PatientName=</xsl:text><xsl:value-of select="@PatientName" /><xsl:text>&#x000D;&#x000A;</xsl:text>
-    <xsl:text>Gender=</xsl:text><xsl:call-template name="displaySex" /><xsl:text>&#x000D;&#x000A;</xsl:text>
-    <xsl:text>Birthday=</xsl:text><xsl:if test="string-length(@PatientBirthDate)>0"><xsl:value-of select="concat(substring(@PatientBirthDate, 1, 4), '/', substring(@PatientBirthDate, 5, 2), '/', substring(@PatientBirthDate, 7, 2))" /></xsl:if><xsl:text>&#x000D;&#x000A;</xsl:text>
+    <xsl:text>PatientID=</xsl:text><xsl:value-of select="@PatientID" /><xsl:text>&#x000A;</xsl:text>
+    <xsl:text>PatientName=</xsl:text><xsl:value-of select="@PatientName" /><xsl:text>&#x000A;</xsl:text>
+    <xsl:text>Gender=</xsl:text><xsl:call-template name="displaySex" /><xsl:text>&#x000A;</xsl:text>
+    <xsl:text>Birthday=</xsl:text><xsl:if test="string-length(@PatientBirthDate)>0"><xsl:value-of select="concat(substring(@PatientBirthDate, 1, 4), '/', substring(@PatientBirthDate, 5, 2), '/', substring(@PatientBirthDate, 7, 2))" /></xsl:if><xsl:text>&#x000A;</xsl:text>
     <xsl:text>Age=</xsl:text><xsl:call-template name="calculateAge">
       <xsl:with-param name="afterYear" select="substring(sd:Study/@StudyDate, 1, 4)"/>
-    </xsl:call-template><xsl:text>&#x000D;&#x000A;</xsl:text>
+    </xsl:call-template><xsl:text>&#x000A;</xsl:text>
     <xsl:if test="count(./sd:Study)=1"><xsl:apply-templates select="sd:Study" /></xsl:if>
   </xsl:template>
 </xsl:stylesheet>
