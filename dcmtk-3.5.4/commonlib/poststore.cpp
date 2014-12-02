@@ -761,7 +761,9 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 				ofstream ofs(fieldsPath.c_str(), ios_base::out | ios_base::trunc);
 				if(strcmp(TAG_StudyInstanceUID, tag) == 0)
 					ofs << "StudySize=" << diskUsage("..", (const char*)tagValue) << endl;
-				ofs << textFields;
+				string istr((LPCSTR)textFields);
+				istr.erase(remove(istr.begin(), istr.end(), '\r'), istr.end());
+				ofs << istr;
 				ofs.close();
 			}
 
@@ -896,7 +898,7 @@ HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *arc
 	if(archPath) archivePath = archPath;
 	if(indPath) indexBase = indPath;
 	ifstream infile(inputFile);
-	if(infile)
+	if(infile.good())
 	{
 		CoInitialize(NULL);
 		hr = processInputStream(infile);
@@ -925,8 +927,7 @@ HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *arc
 	}
 	else
 	{
-		perror(inputFile);
-		cerr << "error at open file: " << inputFile <<endl;
+		cerr << "error at open csv file: " << (inputFile == NULL ? "NULL" : inputFile) <<endl;
 		hr = E_FAIL;
 	}
 	return hr;
