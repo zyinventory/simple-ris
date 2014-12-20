@@ -76,7 +76,7 @@ public:
 //    , origAETitle()
 //    , origHostName()
     , priority(pr)
-//    , ourAETitle()
+    , ourAETitle()
 //    , dstAETitle()
     , failedUIDs(NULL)
     , nRemaining(0)
@@ -87,7 +87,7 @@ public:
       origAETitle[0] = '\0';
       origHostName[0] = '\0';
       dstAETitle[0] = '\0';
-      ourAETitle[0] = '\0';
+//      ourAETitle[0] = '\0';
     }
 
     /** callback handler called by the DIMSE_storeProvider callback function.
