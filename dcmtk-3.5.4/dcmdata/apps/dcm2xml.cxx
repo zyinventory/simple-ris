@@ -197,6 +197,11 @@ static OFCondition writeFile(ostream &out,
                 csetString = "ISO_IR 138";
                 encString = "ISO-8859-8";
               }
+			  else if (charset == "GBK")
+              {
+                csetString = "GB18030";
+                encString = "GBK";
+              }
               dfile.getDataset()->putAndInsertString(DCM_SpecificCharacterSet, csetString.c_str());
             }
           }
@@ -298,7 +303,7 @@ int main(int argc, char *argv[])
       cmd.addSubGroup("character set:");
         cmd.addOption("--charset-require",     "+Cr",    "require declaration of extended charset (default)");
         cmd.addOption("--charset-assume",      "+Ca", 1, "charset: string constant",
-                                                         "(latin-1 to -5, cyrillic, arabic, greek, hebrew)\n"
+                                                         "(latin-1 to -5, cyrillic, arabic, greek, hebrew, GBK)\n"
                                                          "assume charset if undeclared ext. charset found");
     cmd.addGroup("output options:");
       cmd.addSubGroup("XML structure:");
@@ -386,9 +391,9 @@ int main(int argc, char *argv[])
           OFString charset(opt_defaultCharset);
           if (charset != "latin-1" && charset != "latin-2" && charset != "latin-3" &&
               charset != "latin-4" && charset != "latin-5" && charset != "cyrillic" &&
-              charset != "arabic" && charset != "greek" && charset != "hebrew")
+              charset != "arabic" && charset != "greek" && charset != "hebrew" && charset != "GBK")
           {
-            app.printError("unknown value for --charset-assume. known values are latin-1 to -5, cyrillic, arabic, greek, hebrew.");
+            app.printError("unknown value for --charset-assume. known values are latin-1 to -5, cyrillic, arabic, greek, hebrew, GBK.");
           }
         }
         cmd.endOptionBlock();
