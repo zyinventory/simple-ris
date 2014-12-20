@@ -70,10 +70,10 @@ public:
     , assocStarted(OFFalse)
     , origPresId(origpresid)
     , origMsgId(origmsgid)
-//    , origAETitle()
+    , origAETitle()
 //    , origHostName()
     , priority(prior)
-//    , ourAETitle()
+    , ourAETitle()
     , failedUIDs(NULL)
     , nRemaining(0)
     , nCompleted(0)
@@ -81,9 +81,9 @@ public:
     , nWarning(0)
     , getCancelled(OFFalse)
     {
-      origAETitle[0] = '\0';
+      //origAETitle[0] = '\0';
       origHostName[0] = '\0';
-      ourAETitle[0] = '\0';
+      //ourAETitle[0] = '\0';
     }
 
     /// check whether verbose mode is enabled
