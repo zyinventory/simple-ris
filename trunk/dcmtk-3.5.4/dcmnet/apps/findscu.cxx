@@ -50,6 +50,7 @@ END_EXTERN_C
 #include <GUSI.h>
 #endif
 
+#include "dcmtk/dcmdata/dctk.h"
 #include "dcmtk/dcmnet/dimse.h"
 #include "dcmtk/dcmnet/diutil.h"
 #include "dcmtk/dcmdata/dcfilefo.h"
@@ -85,7 +86,7 @@ static OFBool           opt_debug = OFFalse;
 static OFBool           opt_abortAssociation = OFFalse;
 static OFCmdUnsignedInt opt_maxReceivePDULength = ASC_DEFAULTMAXPDU;
 static OFCmdUnsignedInt opt_repeatCount = 1;
-static OFBool           opt_extractResponsesToFile = OFFalse;
+static OFBool           opt_extractResponsesToFile = OFFalse, opt_extractResponsesToXml = OFFalse;
 static const char *     opt_abstractSyntax = UID_FINDModalityWorklistInformationModel;
 static OFCmdSignedInt   opt_cancelAfterNResponses = -1;
 static DcmDataset *     overrideKeys = NULL;
@@ -312,6 +313,7 @@ main(int argc, char *argv[])
       cmd.addOption("--cancel",                          1,  "[n]umber: integer",
                                                              "cancel after n responses (default: never)");
       cmd.addOption("--extract",                "-X",        "extract responses to file (rsp0001.dcm, ...)");
+	  cmd.addOption("--extract-xml",            "-Xm",       "extract responses to file (rsp0001.xml, ...)");
 
 #ifdef WITH_OPENSSL
   cmd.addGroup("transport layer security (TLS) options:");
@@ -455,6 +457,7 @@ main(int argc, char *argv[])
       if (cmd.findOption("--abort"))   opt_abortAssociation = OFTrue;
       if (cmd.findOption("--cancel"))  app.checkValue(cmd.getValueAndCheckMin(opt_cancelAfterNResponses, 0));
       if (cmd.findOption("--extract")) opt_extractResponsesToFile = OFTrue;
+	  if (cmd.findOption("--extract-xml")) opt_extractResponsesToXml = OFTrue;
 
       /* finally parse filenames */
       int paramCount = cmd.getParamCount();
@@ -970,6 +973,186 @@ static OFBool writeToFile(const char* ofname, DcmDataset *dataset)
     return OFTrue;
 }
 
+static OFBool checkForNonASCIICharacters(DcmElement& elem)
+{
+  char *c = NULL;
+  if (elem.getString(c).good() && c)
+  {
+    while (*c)
+    {
+      if (OFstatic_cast(unsigned char, *c) > 127) return OFTrue;
+      ++c;
+    }
+  }
+  return OFFalse;
+}
+
+static OFBool checkForNonASCIICharacters(DcmItem& dataset)
+{
+  DcmStack stack;
+  while (dataset.nextObject(stack, OFTrue).good())
+  {
+    if (stack.top()->isaString())
+    {
+      if (checkForNonASCIICharacters(* OFstatic_cast(DcmElement *, stack.top())))
+        return OFTrue;
+    }
+  }
+  return OFFalse;
+}
+
+#define DOCUMENT_TYPE_DEFINITION_FILE "dcm2xml.dtd"
+
+static OFCondition writeXmlFile(ostream &out, DcmDataset *ds)
+{
+	const E_FileReadMode readMode = ERM_autoDetect;
+    const E_TransferSyntax xfer = EXS_Unknown;
+    const Uint32 maxReadLength = 4096;
+    const char defaultCharset[] = "GBK";
+    const size_t writeFlags = DCMTypes::XF_useDcmtkNamespace;
+    OFCondition result = EC_Normal;
+
+    /* determine dataset character encoding */
+    OFString encString;
+    OFString csetString;
+	if (ds->findAndGetOFString(DCM_SpecificCharacterSet, csetString).good())
+    {
+        if (csetString == "ISO_IR 6")
+            encString = "UTF-8";
+        else if (csetString == "ISO_IR 192")
+            encString = "UTF-8";
+        else if (csetString == "ISO_IR 100")
+            encString = "ISO-8859-1";
+        else if (csetString == "ISO_IR 101")
+            encString = "ISO-8859-2";
+        else if (csetString == "ISO_IR 109")
+            encString = "ISO-8859-3";
+        else if (csetString == "ISO_IR 110")
+            encString = "ISO-8859-4";
+        else if (csetString == "ISO_IR 148")
+            encString = "ISO-8859-9";
+        else if (csetString == "ISO_IR 144")
+            encString = "ISO-8859-5";
+        else if (csetString == "ISO_IR 127")
+            encString = "ISO-8859-6";
+        else if (csetString == "ISO_IR 126")
+            encString = "ISO-8859-7";
+        else if (csetString == "ISO_IR 138")
+            encString = "ISO-8859-8";
+		else if (csetString == "GB18030")
+            encString = "GBK";
+        else if (!csetString.empty())
+            CERR << "Warning: (0008,0005) Specific Character Set '" << csetString << "' not supported" << endl;
+    } else {
+        /* SpecificCharacterSet is not present in the dataset */
+        if (checkForNonASCIICharacters(*ds))
+        {
+        if (defaultCharset == NULL)
+        {
+            /* the dataset contains non-ASCII characters that really should not be there */
+            CERR << OFFIS_CONSOLE_APPLICATION << ": error: (0008,0005) Specific Character Set absent "
+                << "but extended characters used in dataset: " << ds << endl;
+            return EC_IllegalCall;
+        } else {
+            OFString charset(defaultCharset);
+            if (charset == "latin-1")
+            {
+            csetString = "ISO_IR 100";
+            encString = "ISO-8859-1";
+            }
+            else if (charset == "latin-2")
+            {
+            csetString = "ISO_IR 101";
+            encString = "ISO-8859-2";
+            }
+            else if (charset == "latin-3")
+            {
+            csetString = "ISO_IR 109";
+            encString = "ISO-8859-3";
+            }
+            else if (charset == "latin-4")
+            {
+            csetString = "ISO_IR 110";
+            encString = "ISO-8859-4";
+            }
+            else if (charset == "latin-5")
+            {
+            csetString = "ISO_IR 148";
+            encString = "ISO-8859-9";
+            }
+            else if (charset == "cyrillic")
+            {
+            csetString = "ISO_IR 144";
+            encString = "ISO-8859-5";
+            }
+            else if (charset == "arabic")
+            {
+            csetString = "ISO_IR 127";
+            encString = "ISO-8859-6";
+            }
+            else if (charset == "greek")
+            {
+            csetString = "ISO_IR 126";
+            encString = "ISO-8859-7";
+            }
+            else if (charset == "hebrew")
+            {
+            csetString = "ISO_IR 138";
+            encString = "ISO-8859-8";
+            }
+			else if (charset == "GBK")
+            {
+            csetString = "GB18030";
+            encString = "GBK";
+            }
+            ds->putAndInsertString(DCM_SpecificCharacterSet, csetString.c_str());
+        }
+        }
+    }
+
+    /* write XML document header */
+    out << "<?xml version=\"1.0\"";
+    /* optional character set */
+    if (encString.length() > 0)
+        out << " encoding=\"" << encString << "\"";
+    out << "?>" << endl;
+    /* add document type definition (DTD) */
+    if (writeFlags & DCMTypes::XF_addDocumentType)
+    {
+        out << "<!DOCTYPE ";
+        if (readMode == ERM_dataset)
+            out << "data-set";
+        else
+            out << "file-format";
+        /* embed DTD */
+        if (writeFlags & DCMTypes::XF_embedDocumentType)
+        {
+            out << " [" << endl;
+            /* copy content from DTD file */
+#ifdef HAVE_IOS_NOCREATE
+            ifstream dtdFile(DOCUMENT_TYPE_DEFINITION_FILE, ios::in|ios::nocreate);
+#else
+            ifstream dtdFile(DOCUMENT_TYPE_DEFINITION_FILE, ios::in);
+#endif
+            if (dtdFile)
+            {
+                char c;
+                /* copy all characters */
+                while (dtdFile.get(c))
+                    out << c;
+            }
+            out << "]";
+        } else { /* reference DTD */
+            out << " SYSTEM \"" << DOCUMENT_TYPE_DEFINITION_FILE << "\"";
+        }
+        out << ">" << endl;
+    }
+    /* write XML document content */
+    result = ds->writeXML(out, writeFlags);
+
+	return result;
+}
+
 static void
 progressCallback(
         void *callbackData,
@@ -992,21 +1175,42 @@ progressCallback(
      *                              mask of the C-FIND-RQ which was sent.
      */
 {
-    /* dump response number */
-    printf("RESPONSE: %d (%s)\n", responseCount,
-        DU_cfindStatusString(rsp->DimseStatus));
+	if(opt_verbose || opt_debug) {
+		/* dump response number */
+		printf("RESPONSE: %d (%s)\n", responseCount,
+			DU_cfindStatusString(rsp->DimseStatus));
 
-    /* dump data set which was received */
-    responseIdentifiers->print(COUT);
+		/* dump data set which was received */
+		responseIdentifiers->print(COUT);
 
-    /* dump delimiter */
-    printf("--------\n");
+		/* dump delimiter */
+		printf("--------\n");
+	}
 
-    /* in case opt_extractResponsesToFile is set the responses shall be extracted to a certain file */
+	/* in case opt_extractResponsesToFile is set the responses shall be extracted to a certain file */
     if (opt_extractResponsesToFile) {
         char rspIdsFileName[1024];
         sprintf(rspIdsFileName, "rsp%04d.dcm", responseCount);
         writeToFile(rspIdsFileName, responseIdentifiers);
+    }
+
+    if (opt_extractResponsesToXml) {
+		OFCondition result = EC_Normal;
+        char rspIdsFileName[1024];
+        sprintf(rspIdsFileName, "rsp%04d.xml", responseCount);
+		ofstream stream(rspIdsFileName);
+        if (stream.good()) {
+			result = writeXmlFile(stream, responseIdentifiers);
+			stream.close();
+		}
+		else {
+			errmsg("failed to create XML %s", rspIdsFileName);
+			//result = makeOFCondition(OFM_dcmnet, 1, OF_failure, errorMessage);
+			result = EC_InvalidStream;
+		}
+		if(result.good()) {
+			printf("trigger command:%s\n", rspIdsFileName);
+		}
     }
 
     MyCallbackInfo *myCallbackData = OFstatic_cast(MyCallbackInfo *, callbackData);
