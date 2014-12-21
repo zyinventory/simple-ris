@@ -138,6 +138,8 @@ static OFCondition writeFile(ostream &out,
                 encString = "ISO-8859-7";
             else if (csetString == "ISO_IR 138")
                 encString = "ISO-8859-8";
+			else if (csetString == "GB18030")
+                encString = "GBK";
             else if (!csetString.empty())
                 CERR << "Warning: (0008,0005) Specific Character Set '" << csetString << "' not supported" << endl;
         } else {
