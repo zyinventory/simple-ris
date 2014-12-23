@@ -75,6 +75,10 @@ BEGIN_EXTERN_C
 #endif
 END_EXTERN_C
 
+#ifdef HAVE_WINDOWS_H
+#include <Winsock2.h>
+#endif
+//Winsock2.h disable winsock.h in dicom.h -> dcompat.h -> windows.h
 #include "dcmtk/dcmnet/dicom.h"
 #include "dcmtk/dcmqrdb/dcmqropt.h"
 #include "dcmtk/dcmnet/dimse.h"
@@ -170,6 +174,7 @@ main(int argc, char *argv[])
    cmd.addOption("--config",                    "-c",     1, opt5.c_str(), "use specific configuration file");
 #ifdef HAVE_FORK
    cmd.addOption("--single-process",            "-s",        "single process mode");
+   cmd.addOption("--forked-child",                           "process is forked child, internal use only");
 #endif
 
   cmd.addGroup("database options:");
@@ -320,7 +325,11 @@ main(int argc, char *argv[])
       }
       if (cmd.findOption("--config")) app.checkValue(cmd.getValue(opt_configFileName));
 #ifdef HAVE_FORK
-      if (cmd.findOption("--single-process")) options.singleProcess_ = OFTrue;
+      if (cmd.findOption("--single-process"))
+		  options.singleProcess_ = OFTrue;
+	  else
+		  options.singleProcess_ = OFFalse;
+      if (cmd.findOption("--forked-child")) options.forkedChild_ = OFTrue;
 #endif
 
       if (cmd.findOption("--require-find")) options.requireFindForMove_ = OFTrue;
@@ -584,11 +593,42 @@ main(int argc, char *argv[])
     }
     }
 #endif
+#ifdef _WIN32
+	if (options.forkedChild_)
+	{
+		// child process
+		DUL_markProcessAsForkedChild();
 
+		WSAPROTOCOL_INFO protoInfo;
+		DWORD bytesRead = 0;
+		HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
+
+		// read socket handle number from stdin, i.e. the anonymous pipe
+		// to which our parent process has written the handle number.
+		if (hStdIn != NULL && hStdIn != INVALID_HANDLE_VALUE && ReadFile(hStdIn, &protoInfo, sizeof(WSAPROTOCOL_INFO), &bytesRead, NULL))
+		{
+			// make sure buffer is zero terminated
+			SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, &protoInfo, 0, WSA_FLAG_OVERLAPPED);
+			dcmExternalSocketHandle.set((int)sock);
+			if(options.debug_) COUT << "external sock " << (int)sock << endl;
+			CloseHandle(hStdIn);
+		}
+		else
+		{
+			CERR << "Error while reading socket handle: " << GetLastError() << endl;
+			return 1;
+		}
+	}
+	else
+	{
+		// parent process
+		if(!options.singleProcess_) DUL_requestForkOnTransportConnectionReceipt(argc, argv);
+	}
+#endif
     cond = ASC_initializeNetwork(NET_ACCEPTORREQUESTOR, (int)opt_port, options.acse_timeout_, &options.net_);
     if (cond.bad()) {
-    errmsg("Error initialising network:");
-    DimseCondition::dump(cond);
+		errmsg("Error initialising network:");
+		DimseCondition::dump(cond);
         return 10;
     }
 
@@ -649,8 +689,9 @@ main(int argc, char *argv[])
     /* loop waiting for associations */
     while (cond.good())
     {
-      cond = scp.waitForAssociation(options.net_);
-      if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */
+		cond = scp.waitForAssociation(options.net_);
+		if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */
+		if (options.forkedChild_) break;
     }
 
     cond = ASC_dropNetwork(&options.net_);

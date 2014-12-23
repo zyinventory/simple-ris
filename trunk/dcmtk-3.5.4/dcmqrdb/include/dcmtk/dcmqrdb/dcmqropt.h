@@ -139,6 +139,7 @@ public:
 
   /// single process mode
   OFBool      		singleProcess_;
+  OFBool			forkedChild_;
 
   /// support for patient root q/r model
   OFBool      		supportPatientRoot_;

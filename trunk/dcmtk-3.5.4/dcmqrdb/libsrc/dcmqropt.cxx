@@ -71,6 +71,7 @@ DcmQueryRetrieveOptions::DcmQueryRetrieveOptions()
 #else
 , singleProcess_(OFTrue)
 #endif
+, forkedChild_(OFFalse)
 , supportPatientRoot_(OFTrue)
 #ifdef NO_PATIENTSTUDYONLY_SUPPORT
 , supportPatientStudyOnly_(OFFalse)

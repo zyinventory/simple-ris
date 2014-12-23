@@ -1689,10 +1689,26 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 		  char buf[256];
 		  char *ip_addr = inet_ntoa(reinterpret_cast<sockaddr_in*>(&from)->sin_addr);
 		  if(ip_addr == NULL) ip_addr = "console";
-		  OFString ipSock(ip_addr);
-		  ipSock.append(1, '_');
-		  ipSock.append(itoa(sock, buf, 10));
-		  GenerateLogPath_dcmnet(buf, 1024, ipSock.c_str(), '\\');
+		  OFString appPath(command_argv[0]), appName;
+		  size_t lastPathPos = appPath.find_last_of('\\');
+		  if(lastPathPos != -1)
+		  {
+			  ++lastPathPos;
+			  size_t dotPos = appPath.find_first_of('.', lastPathPos);
+			  if(dotPos != -1)
+			  {
+				appName = ip_addr;
+			    appName.append(1, '_');
+				appName.append(appPath.substr(lastPathPos, dotPos - lastPathPos));
+			  }
+		  }
+		  if(appName.empty())
+		  {
+			  appName = ip_addr;
+			  appName.append(1, '_');
+			  appName.append(itoa(sock, buf, 10));
+		  }
+		  GenerateLogPath_dcmnet(buf, 1024, appName.c_str(), '\\');
 		  logFilePath = buf;
 		  temp = buf;
 		}
