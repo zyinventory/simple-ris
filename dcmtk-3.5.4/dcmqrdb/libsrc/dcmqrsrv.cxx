@@ -913,19 +913,33 @@ OFCondition DcmQueryRetrieveSCP::waitForAssociation(T_ASC_Network * theNet)
       }
     }
 
-    if (ASC_associationWaiting(theNet, timeout))
+	if(options_.forkedChild_)
+	{
+		cond = ASC_receiveAssociation(theNet, &assoc, (int)options_.maxPDU_);
+	}
+    else
+	{
+		if (ASC_associationWaiting(theNet, timeout))
+			cond = ASC_receiveAssociation(theNet, &assoc, (int)options_.maxPDU_);
+		else
+			return EC_Normal;
+	}
+
+	if (cond.code() == DULC_FORKEDCHILD)
+	{
+		if (options_.verbose_) DimseCondition::dump(cond);
+		else COUT << cond.text() << endl;
+		go_cleanup = OFTrue;
+	}
+    else if (cond.bad())
     {
-        cond = ASC_receiveAssociation(theNet, &assoc, (int)options_.maxPDU_);
-        if (cond.bad())
-        {
-          if (options_.verbose_)
-          {
-            DcmQueryRetrieveOptions::errmsg("Failed to receive association:");
-            DimseCondition::dump(cond);
-          }
-          go_cleanup = OFTrue;
-        }
-    } else return EC_Normal;
+		if (options_.verbose_)
+		{
+			DcmQueryRetrieveOptions::errmsg("Failed to receive association:");
+			DimseCondition::dump(cond);
+		}
+		go_cleanup = OFTrue;
+    }
 
     if (! go_cleanup)
     {
@@ -1028,7 +1042,6 @@ OFCondition DcmQueryRetrieveSCP::waitForAssociation(T_ASC_Network * theNet)
 
     if (! go_cleanup)
     {
-
         if (options_.verbose_)
         {
             printf("Association Acknowledged (Max Send PDV: %lu)\n",
@@ -1039,7 +1052,7 @@ OFCondition DcmQueryRetrieveSCP::waitForAssociation(T_ASC_Network * theNet)
                 ASC_dumpParameters(assoc->params, COUT);
         }
 
-        if (options_.singleProcess_)
+		if (options_.singleProcess_ || options_.forkedChild_)
         {
             /* don't spawn a sub-process to handle the association */
             cond = handleAssociation(assoc, options_.correctUIDPadding_);
@@ -1074,7 +1087,8 @@ OFCondition DcmQueryRetrieveSCP::waitForAssociation(T_ASC_Network * theNet)
 
     // cleanup code
     OFCondition oldcond = cond;    /* store condition flag for later use */
-    if (!options_.singleProcess_ && (cond != ASC_SHUTDOWNAPPLICATION))
+	// handleAssociation(...) called ASC_dropAssociation() and ASC_destroyAssociation
+	if (!options_.singleProcess_ && !options_.forkedChild_ && (cond != ASC_SHUTDOWNAPPLICATION))
     {
         /* the child will handle the association, we can drop it */
         cond = ASC_dropAssociation(assoc);
