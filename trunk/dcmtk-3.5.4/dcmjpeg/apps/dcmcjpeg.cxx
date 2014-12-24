@@ -762,14 +762,22 @@ int main(int argc, char *argv[])
 				if (opt_verbose) COUT << "Representation Parameter is lossy" << endl;
 			}
 
-			dataset->chooseRepresentation(opt_oxfer, rp);
-			if (dataset->canWriteXfer(opt_oxfer))
+			error = dataset->chooseRepresentation(opt_oxfer, rp);
+			if(error.good())
 			{
-				if (opt_verbose)
-					COUT << "Output transfer syntax " << opt_oxferSyn.getXferName() << " can be written\n";
-			} else {
-				CERR << "No conversion to transfer syntax " << opt_oxferSyn.getXferName() << " possible!\n";
-				if(readcmd) return 1; else continue;
+				if (dataset->canWriteXfer(opt_oxfer))
+				{
+					if (opt_verbose)
+						COUT << "Output transfer syntax " << opt_oxferSyn.getXferName() << " can be written\n";
+				} else {
+					CERR << "No conversion to transfer syntax " << opt_oxferSyn.getXferName() << " possible!\n";
+					if(readcmd) return 1; else continue;
+				}
+			}
+			else
+			{
+				needMove = OFTrue;
+				CERR << "compress " << opt_ifname << " failed, move to " << opt_ofname << endl;
 			}
 		}
 
