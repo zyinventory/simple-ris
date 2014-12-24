@@ -464,7 +464,7 @@ OFCondition DJCodecEncoder::encodeTrueLossless(
     DcmElement *dummyElem;
 
     // get relevant attributes for encoding from dataset
-    OFCondition result = datsetItem->findAndGetUint16(DCM_BitsStored, bitsStored);
+    result = datsetItem->findAndGetUint16(DCM_BitsStored, bitsStored);
     if (result.good()) result = datsetItem->findAndGetUint16(DCM_BitsAllocated, bitsAllocated);
     if (result.good()) result = datsetItem->findAndGetUint16(DCM_SamplesPerPixel, samplesPerPixel);
     if (result.good()) result = datsetItem->findAndGetUint16(DCM_Columns, columns);
