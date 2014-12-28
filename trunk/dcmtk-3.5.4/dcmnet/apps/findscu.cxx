@@ -1209,7 +1209,7 @@ progressCallback(
 			result = EC_InvalidStream;
 		}
 		if(result.good()) {
-			printf("trigger command:%s\n", rspIdsFileName);
+			printf("trigger find response:%s\n", rspIdsFileName);
 		}
     }
 

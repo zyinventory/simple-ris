@@ -55,7 +55,7 @@
 #include "dcmtk/dcmimage/diregist.h"  /* include to support color images */
 
 #include <errno.h>
-
+#include <io.h>
 #include <windows.h>
 #include "commonlib.h"
 
@@ -786,11 +786,29 @@ int main(int argc, char *argv[])
 			if (opt_verbose) COUT << "move " << opt_ifname << " to " << opt_ofname << endl;
 			if(OFStandard::fileExists(opt_ofname))
 			{
-				if(remove(opt_ofname)) perror(opt_ofname);
+				char backupName[MAX_PATH];
+				strcpy_s(backupName, opt_ofname);
+				strcat_s(backupName, ".XXXXXX");
+				_mktemp_s(backupName);
+				if( rename(opt_ifname, backupName) ) perror(opt_ifname);
+				else
+				{
+					if(remove(opt_ofname))
+					{
+						perror(opt_ofname);
+						if( rename(backupName, opt_ifname) ) perror(backupName);
+					}
+					else
+					{
+						if( rename(backupName, opt_ofname) ) perror(opt_ofname);
+					}
+				}
 			}
 			else
+			{
 				prepareFileDir(opt_ofname);
-			if( rename(opt_ifname, opt_ofname) ) perror(opt_ofname);
+				if( rename(opt_ifname, opt_ofname) ) perror(opt_ofname);
+			}
 		}
 		else
 		{

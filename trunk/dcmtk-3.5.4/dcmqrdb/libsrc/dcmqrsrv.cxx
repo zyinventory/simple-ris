@@ -909,7 +909,7 @@ OFCondition DcmQueryRetrieveSCP::waitForAssociation(T_ASC_Network * theNet)
       {
         timeout = 1;
       } else {
-        timeout = 1000;
+        timeout = 5;
       }
     }
 
