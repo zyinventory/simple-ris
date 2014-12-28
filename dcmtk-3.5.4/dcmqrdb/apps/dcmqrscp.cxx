@@ -77,6 +77,7 @@ END_EXTERN_C
 
 #ifdef HAVE_WINDOWS_H
 #include <Winsock2.h>
+#include <signal.h>
 #endif
 //Winsock2.h disable winsock.h in dicom.h -> dcompat.h -> windows.h
 #include "dcmtk/dcmnet/dicom.h"
@@ -125,6 +126,34 @@ void errmsg(const char* msg, ...)
     fprintf(stderr, "\n");
 }
 
+static int signalInterruptFlag = 0;
+static void SignalInterruptHandler(int signal)
+{
+  signalInterruptFlag = signal;
+}
+
+static void Capture_Ctrl_C()
+{
+  signalInterruptFlag = 0;
+  signal(SIGINT, SignalInterruptHandler);
+}
+
+#ifdef _DEBUG
+static OFCommandLine *pCmd = NULL;
+static DcmQueryRetrieveConfig *configPtr = NULL;
+static DcmQueryRetrieveOptions *optionsPtr = NULL;
+static DcmQueryRetrieveIndexDatabaseHandleFactory *factoryPtr = NULL;
+static void exitHook()
+{
+	dcmDataDict.clear();
+	delete pCmd;
+	delete configPtr;
+	delete optionsPtr;
+	delete factoryPtr;
+	_CrtDumpMemoryLeaks();
+}
+#endif
+
 #define SHORTCOL 4
 #define LONGCOL 21
 
@@ -134,7 +163,17 @@ main(int argc, char *argv[])
     OFCondition cond = EC_Normal;
     OFCmdUnsignedInt overridePort = 0;
     OFCmdUnsignedInt overrideMaxPDU = 0;
+#ifdef _DEBUG
+	if(strcmp("--forked-child", argv[1]))
+	{
+		_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+		atexit(exitHook);
+	}
+	optionsPtr = new DcmQueryRetrieveOptions();
+    DcmQueryRetrieveOptions &options = *optionsPtr;
+#else
     DcmQueryRetrieveOptions options;
+#endif
 
 #ifdef HAVE_GUSI_H
     /* needed for Macintosh */
@@ -155,9 +194,12 @@ main(int argc, char *argv[])
 #else
   OFConsoleApplication app(OFFIS_CONSOLE_APPLICATION , "DICOM image archive (central test node)\nThis version of dcmqrscp supports only single process mode.", rcsid);
 #endif
-
+#ifdef _DEBUG
+  pCmd = new OFCommandLine();
+  OFCommandLine &cmd = *pCmd;
+#else
   OFCommandLine cmd;
-
+#endif
   cmd.setParamColumn(LONGCOL+SHORTCOL+4);
   cmd.addParam("port", "tcp/ip port number to listen on\n(default: in config file)", OFCmdParam::PM_Optional);
 
@@ -557,9 +599,12 @@ main(int argc, char *argv[])
     errmsg("cannot access %s: %s", opt_configFileName, strerror(errno));
     return 10;
     }
-
+#ifdef _DEBUG
+    configPtr = new DcmQueryRetrieveConfig();
+	DcmQueryRetrieveConfig &config = *configPtr;
+#else
     DcmQueryRetrieveConfig config;
-
+#endif
     if (!config.init(opt_configFileName)) {
     errmsg("bad config file: %s", opt_configFileName);
     return 10;
@@ -680,18 +725,25 @@ main(int argc, char *argv[])
     DcmQueryRetrieveSQLDatabaseHandleFactory factory;
 #else
     // use linear index database (index.dat)
+#ifdef _DEBUG
+	factoryPtr = new DcmQueryRetrieveIndexDatabaseHandleFactory(&config);
+    DcmQueryRetrieveIndexDatabaseHandleFactory &factory = *factoryPtr;
+#else
     DcmQueryRetrieveIndexDatabaseHandleFactory factory(&config);
+#endif
 #endif
 
     DcmQueryRetrieveSCP scp(config, options, factory);
     scp.setDatabaseFlags(opt_checkFindIdentifier, opt_checkMoveIdentifier, options.debug_);
 
+	Capture_Ctrl_C();
     /* loop waiting for associations */
     while (cond.good())
     {
 		cond = scp.waitForAssociation(options.net_);
 		if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */
 		if (options.forkedChild_) break;
+		if (signalInterruptFlag) break;
     }
 
     cond = ASC_dropNetwork(&options.net_);
