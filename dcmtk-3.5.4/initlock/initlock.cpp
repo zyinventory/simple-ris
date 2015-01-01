@@ -1,3 +1,5 @@
+#pragma warning(disable : 4995)
+
 #include "stdafx.h"
 #include <openssl/rand.h>
 #include <shieldpc.h>
@@ -16,7 +18,7 @@ class numpunct_no_gouping : public numpunct_byname<char>
 public:
     numpunct_no_gouping(const char* name) : numpunct_byname<char>(name){ }
 protected:
-    virtual String do_grouping() const { return TEXT(""); } // no grouping
+    virtual string do_grouping() const { return ""; } // no grouping
 };
 
 void exitHook()
@@ -31,13 +33,13 @@ static void printKeyIV(SEED_SIV *sivptr, const char *filename)
 	ostream *keyivPtr = &keyiv;
 	if(keyiv.fail())
 	{
-		keyivPtr = &COUT;
+		keyivPtr = &cout;
 		writeToFile = false;
 	}
-	*keyivPtr << TEXT("-K ");
+	*keyivPtr << "-K ";
 	ostream &formatted = *keyivPtr << uppercase << hex << setw(2);
 	for_each(sivptr->key, sivptr->key + sizeof(sivptr->key), [&formatted](unsigned char c) { formatted << (int)c; });
-	*keyivPtr << TEXT(" -iv ");
+	*keyivPtr << " -iv ";
 	for_each(sivptr->iv, sivptr->iv + sizeof(sivptr->iv), [&formatted](unsigned char c) { formatted << (int)c; });
 	*keyivPtr << endl;
 	if(writeToFile) keyiv.close();
@@ -45,32 +47,32 @@ static void printKeyIV(SEED_SIV *sivptr, const char *filename)
 
 int echoUsage(const _TCHAR *app)
 {
-	CERR << TEXT("单授权模式(init): ") << endl
-		<< '\t' << app << TEXT(" init <盒数> <key.txt文件路径> [管理密码 读写密码]") << endl
+	cerr << "单授权模式(init): " << endl
+		<< '\t' << app << " init <盒数> <key.txt文件路径> [管理密码 读写密码]" << endl
 		<< endl
-		<< TEXT("批量授权模式(batch_init, reset): ") << endl
-		<< '\t' << app << TEXT(" batch_init <盒数> <key.txt文件路径> [管理密码 读写密码]") << endl
-		<< '\t' << app << TEXT(" reset <盒数> [管理密码 读写密码]") << endl;
+		<< "批量授权模式(batch_init, reset): " << endl
+		<< '\t' << app << " batch_init <盒数> <key.txt文件路径> [管理密码 读写密码]" << endl
+		<< '\t' << app << " reset <盒数> [管理密码 读写密码]" << endl;
 	return -1;
 }
 
 bool readKeyFromTxt(const char *keyPath)
 {
-	IFSTREAM keystrm(keyPath);
+	ifstream keystrm(keyPath);
 	if(!keystrm.good())
 	{
-		CERR << keyPath << TEXT(" open failed") << endl;
+		cerr << keyPath << " open failed" << endl;
 		return false;
 	}
 	bool keyOK = false;
-	REGEX linePattern(TEXT("^key(\\d) *= *(\\d+)$"));
+	regex linePattern("^key(\\d) *= *(\\d+)$");
 	while(! keystrm.getline(buffer, MAX_PATH).fail())
 	{
 		match_results<const _TCHAR*> result;
 		if(regex_match(buffer, result, linePattern))
 		{
-			CERR << TEXT("key") << result[1] << TEXT(" = ") << result[2] << endl;
-			int index = (int)result[1].str()[0] - (int)TEXT('1');
+			cerr << "key" << result[1] << " = " << result[2] << endl;
+			int index = (int)result[1].str()[0] - (int)'1';
 			key[index] = atoi(result[2].str().c_str());
 			if(keyOK = !any_of(key, key + 4, [](int value) { return value == 0; })) break;
 		}
@@ -96,7 +98,7 @@ int initSecurity(int lockNumber, string &lockString)
 		}
 		else
 		{
-			CERR << TEXT("加密狗错误: shieldPC mismatch") << endl;
+			cerr << "加密狗错误: shieldPC mismatch" << endl;
 			return -4;
 		}
 	}
@@ -105,7 +107,7 @@ int initSecurity(int lockNumber, string &lockString)
 	ofstream keyout("key.bin", ios_base::binary);
 	if(keyout.fail())
 	{
-		CERR << TEXT("保存key错误") << endl;
+		cerr << "保存key错误" << endl;
 		return -7;
 	}
 	keyout.write(reinterpret_cast<char*>(key), sizeof(key));
@@ -121,20 +123,20 @@ int initSecurity(int lockNumber, string &lockString)
 	
 	_TCHAR *rsaPrivateKey = "private.rsa", rsaPublicKey[16];
 	strcpy_s(rsaPublicKey, sizeof(rsaPublicKey), lockString.c_str());
-	strcat_s(rsaPublicKey, sizeof(rsaPublicKey), TEXT(".key"));
+	strcat_s(rsaPublicKey, sizeof(rsaPublicKey), ".key");
 
 	int ret = genrsa(KEY_SIZE, rsaPrivateKey, rsaPublicKey, passwd);
 	if(ret != 0)
 	{
-		CERR << TEXT("生成RSA密钥错误:") << ret << endl;
+		cerr << "生成RSA密钥错误:" << ret << endl;
 		return -8;
 	}
-	CERR << TEXT("生成RSA密钥:") << rsaPrivateKey << TEXT(",") << rsaPublicKey << endl;
+	cerr << "生成RSA密钥:" << rsaPrivateKey << "," << rsaPublicKey << endl;
 
 	SEED_SIV siv;
 	if(loadPublicKeyContent2Pwd(rsaPublicKey, &siv, lockNumber, lock_passwd, rw_passwd))
 	{
-		CERR << TEXT("生成RSA公钥格式错误") << endl;
+		cerr << "生成RSA公钥格式错误" << endl;
 		return -8;
 	}
 	//printKeyIV(&siv, "key_iv.hex");
@@ -143,17 +145,17 @@ int initSecurity(int lockNumber, string &lockString)
 	ret = rsaSign(licenseFileName, licenseRSAEnc, rsaPrivateKey, passwd);
 	if(ret != 0)
 	{
-		CERR << TEXT("RSA sign 错误:") << ret << TEXT(",") << licenseFileName << endl;
+		cerr << "RSA sign 错误:" << ret << "," << licenseFileName << endl;
 		return -9;
 	}
-	CERR << licenseFileName << TEXT(" => RSA sign => ") << licenseRSAEnc << endl;
+	cerr << licenseFileName << " => RSA sign => " << licenseRSAEnc << endl;
 
 	unsigned char inBuf[KEY_SIZE / 8], midBuf[KEY_SIZE / 8], outBuf[KEY_SIZE / 8];
 	ifstream licenseRSAStream(licenseRSAEnc);
 	licenseRSAStream.read((char*)inBuf, KEY_SIZE / 8);
 	if(licenseRSAStream.fail())
 	{
-		CERR << TEXT("RSA verify 错误, 读取文件错误") << licenseRSAEnc << endl;
+		cerr << "RSA verify 错误, 读取文件错误" << licenseRSAEnc << endl;
 		licenseRSAStream.close();
 		return -10;
 	}
@@ -162,7 +164,7 @@ int initSecurity(int lockNumber, string &lockString)
 	ret = rsaVerify(inBuf, KEY_SIZE / 8, midBuf, rsaPublicKey);
 	if(ret <= 0)
 	{
-		CERR << TEXT("RSA verify 错误:") << licenseRSAEnc << endl;
+		cerr << "RSA verify 错误:" << licenseRSAEnc << endl;
 		return -11;
 	}
 
@@ -170,36 +172,36 @@ int initSecurity(int lockNumber, string &lockString)
 	ret = aes256cbc_dec(midBuf + AES_OFFSET, ret - AES_OFFSET, outBuf, siv.key, siv.iv);
 	if(ret <= 0)
 	{
-		CERR << TEXT("AES decrypt 错误:") << licenseRSAEnc << endl;
+		cerr << "AES decrypt 错误:" << licenseRSAEnc << endl;
 		return -12;
 	}
-	CERR << licenseRSAEnc << TEXT(" => RSA verify => AES decrypt OK") << endl;
+	cerr << licenseRSAEnc << " => RSA verify => AES decrypt OK" << endl;
 
 	DWORD digestSig[4], *originSig = reinterpret_cast<DWORD*>(&outBuf[DICTIONARY_SIZE * 8]);
 	MD5_digest(outBuf, DICTIONARY_SIZE * 8, reinterpret_cast<unsigned char*>(digestSig));
 	if(digestSig[0] != originSig[0] || digestSig[1] != originSig[1]
 		|| digestSig[2] != originSig[2] || digestSig[3] != originSig[3])
 	{
-		CERR << TEXT("MD5 digest 错误:") << licenseRSAEnc << endl;
+		cerr << "MD5 digest 错误:" << licenseRSAEnc << endl;
 		char licenseRSADec[] = "license.dec";
 		ofstream unrsaStream(licenseRSADec);
 		unrsaStream.write((char*)outBuf, ret);
 		unrsaStream.close();
 		return -13;
 	}
-	CERR << TEXT("MD5 digest OK") << endl;
+	cerr << "MD5 digest OK" << endl;
 	
 	DWORD *loadDict = reinterpret_cast<DWORD*>(outBuf);
 	for(int i = 0; i < DICTIONARY_SIZE; ++i)
 	{
 		if(loadDict[DICTIONARY_SIZE + i] != (ShieldPC(loadDict[i]) ^ loadDict[i]))
 		{
-			CERR << TEXT("错误的授权文件") << endl;
+			cerr << "错误的授权文件" << endl;
 			return -14;
 		}
 	}
 
-	bool lockPwdOK = true, rwPwdOK = true;
+	BOOL lockPwdOK = TRUE, rwPwdOK = TRUE;
 	ofstream passwdstrm("passwd.txt", ios_base::out | ios_base::trunc);
 	//管理密码
 	if(strcmp(init_lock_passwd, lock_passwd))
@@ -209,13 +211,13 @@ int initSecurity(int lockNumber, string &lockString)
 	}
 	if(lockPwdOK)
 	{
-		CERR << TEXT("管理密码:") << lock_passwd << endl;
-		passwdstrm << TEXT("管理密码:") << lock_passwd << endl;
+		cerr << "管理密码:" << lock_passwd << endl;
+		passwdstrm << "管理密码:" << lock_passwd << endl;
 	}
 	else
 	{
-		CERR << TEXT("加密狗修改管理密码错误") << hex << LYFGetLastErr() << endl;
-		passwdstrm << TEXT("加密狗修改管理密码错误") << hex << LYFGetLastErr() << TEXT(",原管理密码不变:") << init_lock_passwd << endl;
+		cerr << "加密狗修改管理密码错误" << hex << LYFGetLastErr() << endl;
+		passwdstrm << "加密狗修改管理密码错误" << hex << LYFGetLastErr() << ",原管理密码不变:" << init_lock_passwd << endl;
 		return -16;
 	}
 	//读写密码
@@ -226,13 +228,13 @@ int initSecurity(int lockNumber, string &lockString)
 	}
 	if(rwPwdOK)
 	{
-		CERR << TEXT("读写密码:") << rw_passwd << endl;
-		passwdstrm << TEXT("读写密码:") << rw_passwd << endl;
+		cerr << "读写密码:" << rw_passwd << endl;
+		passwdstrm << "读写密码:" << rw_passwd << endl;
 	}
 	else
 	{
-		CERR << TEXT("加密狗修改读写密码错误") << hex << LYFGetLastErr() << endl;
-		passwdstrm << TEXT("加密狗修改读写密码错误") << hex << LYFGetLastErr() << TEXT(",原读写密码不变:") << init_rw_passwd << endl;
+		cerr << "加密狗修改读写密码错误" << hex << LYFGetLastErr() << endl;
+		passwdstrm << "加密狗修改读写密码错误" << hex << LYFGetLastErr() << ",原读写密码不变:" << init_rw_passwd << endl;
 		return -16;
 	}
 	passwdstrm.close();
@@ -272,50 +274,50 @@ int _tmain(int argc, _TCHAR* argv[])
 		// read key.txt
 		if(!readKeyFromTxt(argv[3]))
 		{
-			CERR << TEXT("key文件格式错误") << endl;
+			cerr << "key文件格式错误" << endl;
 			return -7;
 		}
 		// init_lock_passwd and init_rw_passwd
-		if(argc >= 5) StringCchCopy(init_lock_passwd, 9, argv[4]);
-		if(argc >= 6) StringCchCopy(init_rw_passwd, 9, argv[5]);
+		if(argc >= 5) strcpy_s(init_lock_passwd, 9, argv[4]);
+		if(argc >= 6) strcpy_s(init_rw_passwd, 9, argv[5]);
 	}
 	else
 	{
-		if(argc >= 4) StringCchCopy(init_lock_passwd, 9, argv[3]);
-		if(argc >= 5) StringCchCopy(init_rw_passwd, 9, argv[4]);
+		if(argc >= 4) strcpy_s(init_lock_passwd, 9, argv[3]);
+		if(argc >= 5) strcpy_s(init_rw_passwd, 9, argv[4]);
 	}
 
 	//open dog, get lock number
 	if(!InitiateLock(0))
 	{
-		CERR << TEXT("打开加密狗错误") << endl;
+		cerr << "打开加密狗错误" << endl;
 		return -2;
 	}
 	atexit(exitHook);
 
 	if(!SetLock(8, &lockNumber, 0, init_lock_passwd, init_lock_passwd, 0, 0))
 	{
-		CERR << TEXT("获取加密狗序列号错误:") << hex << LYFGetLastErr() << endl;
+		cerr << "获取加密狗序列号错误:" << hex << LYFGetLastErr() << endl;
 		return -5;
 	}
 	ostringstream serialStringStream;
 	serialStringStream << lockNumber;
-	String lockString = serialStringStream.str();
-	CERR << TEXT("加密狗序列号:") << lockString << endl;
+	string lockString = serialStringStream.str();
+	cerr << "加密狗序列号:" << lockString << endl;
 
 	if(isInit && _mkdir(lockString.c_str()))
 	{
 		int err = errno;
 		if(errno == EEXIST)
-			CERR << TEXT("目录") << lockString << TEXT("已存在，不能覆盖") << endl;
+			cerr << "目录" << lockString << "已存在，不能覆盖" << endl;
 		else
-			CERR << TEXT("创建目录") << lockString << TEXT("错误:") << err << endl;
+			cerr << "创建目录" << lockString << "错误:" << err << endl;
 		return err;
 	}
 	if(_chdir(lockString.c_str()))
 	{
 		int err = errno;
-		CERR << TEXT("打开目录") << lockString << TEXT("错误:") << err << endl;
+		cerr << "打开目录" << lockString << "错误:" << err << endl;
 		return err;
 	}
 	
@@ -327,18 +329,18 @@ int _tmain(int argc, _TCHAR* argv[])
 	if(isInit)
 	{
 		if(initPasswdOK)
-			CERR << "初始密码测试成功" << endl;
+			cerr << "初始密码测试成功" << endl;
 		else
 		{
-			CERR << "初始密码测试失败:" << hex << LYFGetLastErr() << endl;
+			cerr << "初始密码测试失败:" << hex << LYFGetLastErr() << endl;
 			return -16;
 		}
 		int securityResult = initSecurity(lockNumber, lockString);
 		if(securityResult) return securityResult;
-		OFSTREAM flagstrm("flag.txt");
+		ofstream flagstrm("flag.txt");
 		if(!flagstrm.good())
 		{
-			CERR << TEXT("无法创建flag.txt") << endl;
+			cerr << "无法创建flag.txt" << endl;
 			return -15;
 		}
 		flagstrm << flag << endl;
@@ -346,10 +348,10 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	else // reset
 	{
-		IFSTREAM passwdstrm("passwd.txt");
+		ifstream passwdstrm("passwd.txt");
 		if(!passwdstrm.good())
 		{
-			CERR << TEXT("无法打开passwd.txt") << endl;
+			cerr << "无法打开passwd.txt" << endl;
 			return -15;
 		}
 		passwdstrm.ignore(9, ':');
@@ -358,7 +360,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			strcpy_s(lock_passwd, buffer);
 		else
 		{
-			CERR << TEXT("passwd.txt : 管理密码读取错误") << endl;
+			cerr << "passwd.txt : 管理密码读取错误" << endl;
 			return -16;
 		}
 		passwdstrm.ignore(10, ':');
@@ -367,7 +369,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			strcpy_s(rw_passwd, buffer);
 		else
 		{
-			CERR << TEXT("passwd.txt : 读写密码读取错误") << endl;
+			cerr << "passwd.txt : 读写密码读取错误" << endl;
 			return -16;
 		}
 		passwdstrm.close();
@@ -378,20 +380,20 @@ int _tmain(int argc, _TCHAR* argv[])
 			// change passwd
 			if(SetLock(7, &tmp, tmp, lock_passwd, init_lock_passwd, 0, 0))
 			{
-				CERR << TEXT("管理密码:") << lock_passwd << endl;
+				cerr << "管理密码:" << lock_passwd << endl;
 			}
 			else
 			{
-				CERR << TEXT("加密狗修改管理密码错误") << hex << LYFGetLastErr() << endl;
+				cerr << "加密狗修改管理密码错误" << hex << LYFGetLastErr() << endl;
 				return -16;
 			}
 			if(SetLock(7, &tmp, tmp, rw_passwd, init_rw_passwd, 0, 0))
 			{
-				CERR << TEXT("读写密码:") << rw_passwd << endl;
+				cerr << "读写密码:" << rw_passwd << endl;
 			}
 			else
 			{
-				CERR << TEXT("加密狗修改读写密码错误") << hex << LYFGetLastErr() << endl;
+				cerr << "加密狗修改读写密码错误" << hex << LYFGetLastErr() << endl;
 				return -16;
 			}
 		}
@@ -399,16 +401,16 @@ int _tmain(int argc, _TCHAR* argv[])
 		{	// test: lock_passwd(from passwd.txt) OK?
 			if(!SetLock(0, &counter, 0, "", lock_passwd, 0, 0))
 			{
-				CERR << TEXT("初始密码，passwd.txt都错误") << endl;
+				cerr << "初始密码，passwd.txt都错误" << endl;
 				return -16;
 			}
 			//else passwd.txt OK, don't change passwd
 		}
 		
-		IFSTREAM flagstrm("flag.txt");
+		ifstream flagstrm("flag.txt");
 		if(!flagstrm.good())
 		{	// in reset mode: if flag.txt doesn't exists, create it with content BATCH_INIT_FLAG.
-			OFSTREAM flagostrm("flag.txt");
+			ofstream flagostrm("flag.txt");
 			if(!flagostrm.good())
 			{
 				cerr << "无法打开或创建flag.txt" << endl;
@@ -425,10 +427,10 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 	}
 
-	CERR << TEXT("初始化加密狗内存") << endl;
-	CERR << TEXT('|');
-	for(int i = 0; i < 78; ++i) CERR << TEXT('-');
-	CERR << TEXT('|');
+	cerr << "初始化加密狗内存" << endl;
+	cerr << '|';
+	for(int i = 0; i < 78; ++i) cerr << '-';
+	cerr << '|';
 	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 	CONSOLE_SCREEN_BUFFER_INFO info;
 	GetConsoleScreenBufferInfo(hOut, &info);
@@ -440,24 +442,24 @@ int _tmain(int argc, _TCHAR* argv[])
 		if(i == MODE_FLAG_POS) data = flag;  // batch mode flag
 		if(WriteLock(i, &data, lock_passwd, 0, 0))
 		{
-			if(i % 16 == 0) CERR << TEXT('O');
+			if(i % 16 == 0) cerr << 'O';
 		}
 		else
 		{
-			CERR << TEXT("加密狗写入错误") << hex << LYFGetLastErr() << endl;
+			cerr << "加密狗写入错误" << hex << LYFGetLastErr() << endl;
 			return -17;
 		}
 	}
-	CERR << endl;
+	cerr << endl;
 
 	initNumber += DUMMY_ZERO;
 	if(SetLock(1, reinterpret_cast<unsigned long*>(&initNumber), 0, lock_passwd, lock_passwd, 0, 0))
-		CERR << TEXT("次数限制成功") << endl;
+		cerr << "次数限制成功" << endl;
 	else
 	{
-		CERR << TEXT("次数限制失败:") << hex << LYFGetLastErr() << endl;
+		cerr << "次数限制失败:" << hex << LYFGetLastErr() << endl;
 		return -18;
 	}
-	CERR << TEXT("### 加密狗初始化完全成功 ###") << endl;
+	cerr << "### 加密狗初始化完全成功 ###" << endl;
 	return 0;
 }

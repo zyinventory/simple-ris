@@ -111,7 +111,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		fileno = getLeakLockNumber("*.txt", "^(\\d{4})\\.txt$");
 
 	long salt = ShieldPC(security.lockNumber);
-	for(int i = 0; i < (fileno % 13); ++i)
+	for(unsigned int i = 0; i < (fileno % 13); ++i)
 		salt = ShieldPC(salt);
 
 	char b24buf[15] = "              ";

@@ -19,7 +19,6 @@
 // TODO: 在此处引用程序需要的其他头文件
 #include <assert.h>
 #include <direct.h>
-#include <strsafe.h>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -37,11 +36,3 @@ extern "C"
 	int aes256cbc_enc(void *content, size_t contentLength, char *filename, unsigned char *key, unsigned char* iv);
 	int aes256cbc_dec(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, unsigned char *key, unsigned char* iv);
 }
-
-#define COUT cout			//wcout
-#define CERR cerr			//wcerr
-#define String string		//wstring
-#define REGEX regex			//wregex
-#define SCANF_S sscanf_s	//swscanf_s
-#define IFSTREAM ifstream   //wifstream
-#define OFSTREAM ofstream   //wofstream
