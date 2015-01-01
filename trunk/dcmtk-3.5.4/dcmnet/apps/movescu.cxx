@@ -1271,7 +1271,7 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
         DIMSE_printCMoveRSP(stdout, response);
     }
 	// report progress
-	puts("trigger move progress:");
+	printf("trigger move progress:");
 	if (response->opts & O_MOVE_NUMBEROFREMAININGSUBOPERATIONS)
 		printf(" Remaining: %d ;", response->NumberOfRemainingSubOperations);
     if (response->opts & O_MOVE_NUMBEROFCOMPLETEDSUBOPERATIONS)
@@ -1280,10 +1280,11 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
 		printf(" Failed: %d ;", response->NumberOfFailedSubOperations);
     if (response->opts & O_MOVE_NUMBEROFWARNINGSUBOPERATIONS)
 		printf(" Warning: %d ;", response->NumberOfWarningSubOperations);
-	puts("\n");
+	printf("\n");
 
     /* should we send a cancel back ?? */
     if (opt_cancelAfterNResponses == responseCount) {
+		printf("trigger move cancel after: %d\n", opt_cancelAfterNResponses);
         if (opt_verbose) {
             printf("Sending Cancel RQ, MsgId: %d, PresId: %d\n",
                 request->MessageID, myCallbackData->presId);
