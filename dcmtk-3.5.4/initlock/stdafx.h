@@ -26,13 +26,21 @@
 #include <regex>
 #include <algorithm>  
 #include <numeric>
-#include "lock.h"
+#include <lock.h>
+#include <openssl/rand.h>
+#include <shieldpc.h>
+#include <liblock.h>
+#include <gencard.h>
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif
 	int genrsa(int num, char *privateKey, char *publicKey, char *pass);
 	int rsaSign(char *infile, char *outfile, char *keyfile, char *pass);
 	int rsaVerify(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, const char *keyfile);
 	int aes256cbc_enc(void *content, size_t contentLength, char *filename, unsigned char *key, unsigned char* iv);
 	int aes256cbc_dec(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, unsigned char *key, unsigned char* iv);
+#ifdef __cplusplus
 }
+#endif
