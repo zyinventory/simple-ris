@@ -1204,12 +1204,15 @@ progressCallback(
 			stream.close();
 		}
 		else {
-			errmsg("failed to create XML %s", rspIdsFileName);
+			errmsg("trigger find failed to create XML: %s", rspIdsFileName);
 			//result = makeOFCondition(OFM_dcmnet, 1, OF_failure, errorMessage);
 			result = EC_InvalidStream;
 		}
 		if(result.good()) {
-			printf("trigger find response:%s\n", rspIdsFileName);
+			printf("trigger find response progress: %s\n", rspIdsFileName);
+		}
+		else {
+			printf("trigger find failed to write XML: %s\n", rspIdsFileName);
 		}
     }
 
@@ -1218,16 +1221,16 @@ progressCallback(
     /* should we send a cancel back ?? */
     if (opt_cancelAfterNResponses == responseCount)
     {
-        if (opt_verbose)
-        {
-            printf("Sending Cancel RQ, MsgId: %d, PresId: %d\n", request->MessageID, myCallbackData->presId);
-        }
         OFCondition cond = DIMSE_sendCancelRequest(myCallbackData->assoc, myCallbackData->presId, request->MessageID);
         if (cond.bad())
         {
-            errmsg("Cancel RQ Failed:");
+            errmsg("trigger find cancel request: Cancel RQ Failed:");
             DimseCondition::dump(cond);
         }
+		else
+		{
+            printf("trigger find cancel request: Sending Cancel RQ, MsgId: %d, PresId: %d\n", request->MessageID, myCallbackData->presId);
+		}
     }
 
 }
@@ -1309,13 +1312,10 @@ findSCU(T_ASC_Association * assoc, const char *fname)
 
 
     /* dump some more general information */
+	printf("trigger find response status: %04x, %s\n", rsp.DimseStatus, DU_cfindStatusString(rsp.DimseStatus));
     if (cond == EC_Normal) {
         if (opt_verbose) {
             DIMSE_printCFindRSP(stdout, &rsp);
-        } else {
-            if (rsp.DimseStatus != STATUS_Success) {
-                printf("Response: %s\n", DU_cfindStatusString(rsp.DimseStatus));
-            }
         }
     } else {
         if (fname) {
