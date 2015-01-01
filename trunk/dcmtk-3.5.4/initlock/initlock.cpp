@@ -1,11 +1,4 @@
-#pragma warning(disable : 4995)
-
 #include "stdafx.h"
-#include <openssl/rand.h>
-#include <shieldpc.h>
-#include <liblock.h>
-#include <lock.h>
-#include <gencard.h>
 #include "constant.h"
 using namespace std;
 
