@@ -84,8 +84,8 @@
       <xsl:otherwise>未知</xsl:otherwise>
     </xsl:choose>
   </xsl:template>
-  <xsl:template match="/tdb_status/PUBLISHER1">
-    <dt xmlns="http://www.w3.org/1999/xhtml">设备信息</dt>
+  <xsl:template match="/tdb_status/*[starts-with(local-name(), 'PUBLISHER')]">
+    <dt xmlns="http://www.w3.org/1999/xhtml">设备<xsl:value-of select="substring-after(local-name(), 'PUBLISHER')"/>信息</dt>
     <dd xmlns="http://www.w3.org/1999/xhtml">ID：<xsl:value-of select="ID"/></dd>
     <dd xmlns="http://www.w3.org/1999/xhtml">名称：<xsl:value-of select="NAME"/></dd>
     <dd xmlns="http://www.w3.org/1999/xhtml">序列号：<xsl:value-of select="SERIAL_NUMBER"/></dd>
@@ -177,7 +177,7 @@
         <dl>
           <xsl:apply-templates select="ACTIVE_JOB"/>
           <xsl:apply-templates select="COMPLETE_JOB"/>
-          <xsl:apply-templates select="PUBLISHER1"/>
+          <xsl:apply-templates select="*[starts-with(local-name(), 'PUBLISHER')]"/>
           <xsl:apply-templates select="TDB_INFO"/>
         </dl>
       </body>
