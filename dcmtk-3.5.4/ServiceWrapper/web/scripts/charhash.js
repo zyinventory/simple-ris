@@ -6,7 +6,7 @@ function getQueryString(name)
 	return null;
 }
 
-function hashCode(str)
+function hashCode(str, seed)
 {
 	var hash = 0;
 	var strKey = '';
@@ -15,22 +15,26 @@ function hashCode(str)
 	
 	if(strKey != null && strKey != '') {
 		for (var i = 0; i < strKey.length; i++) {
-			hash = (hash * 31 + strKey.charCodeAt(i)) & 0xFFFFFFFF;
+			hash = (hash * seed + strKey.charCodeAt(i)) & 0xFFFFFFFF;
 		}
-	}
-	return hash;
+    }
+    if (hash < 0)
+        return hash >>> 0;
+    else
+        return hash;
 }
 
-function toHex(hash) {
-	hash &= 0xFFFFFFFF;
-	if(hash < 0)
-		return (hash >>> 0).toString(16);
-	else
-		return hash.toString(16);
+function hashConcat(param) {
+    var h31 = hashCode(param, 31);
+    var h131 = hashCode(param, 131);
+    h31 *= 512; // <<= 9
+    h131 >>= 23;
+    h131 &= 0x1FF;
+    return h31 + h131;
 }
 
 function toHashPath(param) {
-	hashStr = toHex(hashCode(param)).toUpperCase();
+	hashStr = hashConcat(param).toString(36).toUpperCase();
 	var len = 8 - hashStr.length;
 	var str = '';
 	for(var i = 0; i < len; ++i) str += '0';

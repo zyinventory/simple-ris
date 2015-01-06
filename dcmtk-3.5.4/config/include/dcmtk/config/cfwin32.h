@@ -8,6 +8,15 @@
 #ifndef CFWIN32_H
 #define CFWIN32_H
 
+#if defined(_DEBUG)
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
+#ifndef DEBUG_NEW
+#define DEBUG_NEW new(_NORMAL_BLOCK, __FILE__, __LINE__)
+#define new DEBUG_NEW
+#endif // DEBUG_NEW
+#endif // _DEBUG
+
 /* only process if running in a Win32 environment */
 #ifdef _WIN32
 
@@ -666,7 +675,7 @@ typedef unsigned short ushort;
 /* #undef  HAVE_SYS_WAIT_H */
 
 /* Define to 1 if you have the `tempnam' function. */
-/* #undef  HAVE_TEMPNAM */
+#define  HAVE_TEMPNAM 1
 
 /* Define to 1 if you have the <thread.h> header file. */
 /* #undef  HAVE_THREAD_H */
@@ -837,7 +846,7 @@ typedef unsigned short ushort;
 #define NO_IOS_BASE_ASSIGN 1
 
 /* Define if the compiler supports std::nothrow */
-#define HAVE_STD__NOTHROW 1
+//#define HAVE_STD__NOTHROW 1
 
 /* Define if your system has a prototype for std::vfprintf in stdarg.h */
 /* #undef HAVE_PROTOTYPE_STD__VFPRINTF */
