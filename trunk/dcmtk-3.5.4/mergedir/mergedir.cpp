@@ -1,5 +1,5 @@
 #include <io.h>
-#include <Shlwapi.h>
+#include <string.h>
 #include "dcmtk/config/osconfig.h"     /* make sure OS specific configuration is included first */
 
 #include "dcmtk/dcmdata/dctk.h"
@@ -13,10 +13,6 @@
 #define OFFIS_CONSOLE_APPLICATION "mergedir"
 #define OFFIS_CONSOLE_DESCRIPTION "Merge DICOMDIR"
 
-#if defined (HAVE_WINDOWS_H) || defined(HAVE_FNMATCH_H)
-#define PATTERN_MATCHING_AVAILABLE
-#endif
-
 static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v"
   OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 
@@ -25,18 +21,38 @@ static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v"
 
 OFBool	opt_verbose = OFFalse;
 
-OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src);
+#ifdef _DEBUG
+static OFCommandLine *pCmd = NULL;
+static void exitHook()
+{
+	dcmDataDict.clear();
+	delete pCmd;
+	_CrtDumpMemoryLeaks();
+}
+#endif
+
+static OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src);
+int MergeDicomDir(OFList<OFString>& fileNames, const char *opt_output, const char *opt_fileset);
 
 int main(int argc, char *argv[])
 {
-    const char *opt_output = DEFAULT_DICOMDIR_NAME;
+#ifdef _DEBUG
+	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+	atexit(exitHook);
+#endif
+	const char *opt_output = DEFAULT_DICOMDIR_NAME;
 	const char *opt_fileset = DEFAULT_FILESETID;
     const char *opt_descriptor = NULL;
     const char *opt_charset = DEFAULT_DESCRIPTOR_CHARSET;
 
 	SetDebugLevel(( 0 ));
 	OFConsoleApplication app(OFFIS_CONSOLE_APPLICATION, OFFIS_CONSOLE_DESCRIPTION, rcsid);
+#ifdef _DEBUG
+	pCmd = new OFCommandLine();
+	OFCommandLine &cmd = *pCmd;
+#else
 	OFCommandLine cmd;
+#endif
 	cmd.setOptionColumns(LONGCOL, SHORTCOL);
 	cmd.setParamColumn(LONGCOL + SHORTCOL + 4);
 
@@ -69,6 +85,8 @@ int main(int argc, char *argv[])
         if (cmd.findOption("--char-set"))
             app.checkValue(cmd.getValue(opt_charset));
 	}
+	else
+		return -1;
 
     OFList<OFString> fileNames;
     const char *param = NULL;
@@ -90,39 +108,84 @@ int main(int argc, char *argv[])
         OFSTRINGSTREAM_GETSTR(oss, tmpString)
         app.printError(tmpString);  /* calls exit(1) */
         OFSTRINGSTREAM_FREESTR(tmpString)
-        return 1;  /* DcmDicomDir class dumps core when no data dictionary */
+        return -2;  /* DcmDicomDir class dumps core when no data dictionary */
     }
 
+	return MergeDicomDir(fileNames, opt_output, opt_fileset);
+}
+
+static void printAllImageUID(DcmDirectoryRecord *rootRecord)
+{
+	OFCondition result;
+	DcmUniqueIdentifier *ptrInstanceUID = NULL;
+	DcmStack resultStack;
+	resultStack.push(rootRecord);
+	while(rootRecord->search(DCM_ReferencedSOPInstanceUIDInFile, resultStack, ESM_afterStackTop).good())
+	{
+		DcmObject * object = resultStack.top();
+		if(object && (ptrInstanceUID = OFdynamic_cast(DcmUniqueIdentifier*, object)))
+		{
+			OFString uid;
+			result = ptrInstanceUID->getOFString(uid, 0);
+			if(result.good())
+			{
+				COUT << uid << endl;
+			}
+		}
+	}
+}
+
+int MergeDicomDir(OFList<OFString> &fileNames, const char *opt_output, const char *opt_fileset)
+{
+	int errCount = 0;
 	OFCondition cond;
 	DcmDicomDir *dest = new DcmDicomDir(opt_output, opt_fileset);
 	if (dest != NULL)
+	{
 		cond = dest->error();
+		if(cond.bad()) ++errCount;
+	}
 	else
-		{ CERR << "create or open output file " << opt_output << " error" << endl; exit(1); }
+	{
+		CERR << "create or open output file " << opt_output << " error" << endl;
+		return -3;
+	}
+
 	DcmDirectoryRecord *destRoot = &(dest->getRootRecord());
 
 	for(OFListIterator(OFString) curr = fileNames.begin(); curr != fileNames.end(); ++curr)
 	{
 		DcmDicomDir *src = new DcmDicomDir((*curr).c_str());
 		if (src != NULL)
+		{
 			cond = src->error();
+			if(cond.bad()) ++errCount;
+		}
 		else
-			{ CERR << "open input file " << *curr << " error" << endl; continue; }
-		COUT << "open input file " << *curr << endl;
+		{
+			CERR << "open input file " << *curr << " error" << endl;
+			++errCount;
+			continue;
+		}
+		if(opt_verbose) COUT << "open input file " << *curr << endl;
+
 		DcmDirectoryRecord *srcRoot = &(src->getRootRecord());
 		DcmStack resultStack;
 
 		size_t bufferlen = (*curr).length() + 1;
-		char *filepathbuffer = new char[bufferlen];
+		char filepathbuffer[512];
 		(*curr).copy(filepathbuffer, (*curr).length());
 		filepathbuffer[bufferlen - 1] = '\0';
-		PathRemoveFileSpec(filepathbuffer);
-		OFString filespec(filepathbuffer);
-		delete[] filepathbuffer;
-		filespec.append("\\*");
+		char *sppos = NULL;
+		if(sppos = strrchr(filepathbuffer, '\\'))
+			*sppos = '\0';
+		else
+			filepathbuffer[0] = '\0';
+		strcat_s(filepathbuffer, "\\*");		
+
 		_finddata_t fileinfo;
 		int nextfound = 0;
-		intptr_t searchHandle = _findfirst(filespec.c_str(), &fileinfo);
+		intptr_t searchHandle = _findfirst(filepathbuffer, &fileinfo);
 		while(nextfound == 0 && searchHandle != -1)
 		{
 			if(fileinfo.attrib & _A_SUBDIR)
@@ -137,38 +200,25 @@ int main(int argc, char *argv[])
 			nextfound = _findnext(searchHandle, &fileinfo);
 		}
 		if(searchHandle != -1) _findclose(searchHandle);
-		// find all image
-		/*
-		DcmUniqueIdentifier *ptrInstanceUID = NULL;
-		resultStack.push(rootRecord);
-		while(rootRecord->search(DCM_ReferencedSOPInstanceUIDInFile, resultStack, ESM_afterStackTop).good())
-		{
-			DcmObject * object = resultStack.top();
-			if(object && (ptrInstanceUID = OFdynamic_cast(DcmUniqueIdentifier*, object)))
-			{
-				OFString uid;
-				result = ptrInstanceUID->getOFString(uid, 0);
-				if(result.good())
-				{
-					COUT << uid << endl;
-				}
-			}
-		}
-		*/
+
 		// find patientId in patient
 		resultStack.clear();
 		DcmDirectoryRecord *patient = NULL;
 		while(patient = srcRoot->nextSub(patient))
 		{
 			cond = mergeToDest(destRoot, patient);
+			if(cond.bad()) ++errCount;
 		}
 		delete src;
 	}
-	dest->write(EXS_LittleEndianExplicit, EET_ExplicitLength, EGL_recalcGL);
+	cond = dest->write(EXS_LittleEndianExplicit, EET_ExplicitLength, EGL_recalcGL);
+	printAllImageUID(destRoot);
 	delete dest;
+	if(cond.bad()) ++errCount;
+	return errCount;
 }
 
-OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src)
+static OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src)
 {
 	DcmTagKey key, subKey;
 	E_DirRecType srcType, upperType;
@@ -180,25 +230,25 @@ OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src)
 		key = DCM_PatientID;
 		subKey = DCM_StudyInstanceUID;
 		upperType = ERT_root;
-		if(opt_verbose) CERR << "merge patient level ..." << endl;
+		if(opt_verbose) COUT << "merge patient level ..." << endl;
 		break;
 	case ERT_Study:
 		key = DCM_StudyInstanceUID;
 		subKey = DCM_SeriesInstanceUID;
 		upperType = ERT_Patient;
-		if(opt_verbose) CERR << "merge study level ..." << endl;
+		if(opt_verbose) COUT << "merge study level ..." << endl;
 		break;
 	case ERT_Series:
 		key = DCM_SeriesInstanceUID;
 		subKey = DCM_ReferencedSOPInstanceUIDInFile;
 		upperType = ERT_Study;
-		if(opt_verbose) CERR << "merge series level ..." << endl;
+		if(opt_verbose) COUT << "merge series level ..." << endl;
 		break;
 	case ERT_Image:
 		key = DCM_ReferencedSOPInstanceUIDInFile;
 		subKey = DCM_ReferencedSOPInstanceUIDInFile;
 		upperType = ERT_Series;
-		if(opt_verbose) CERR << "merge instance level ..." << endl;
+		if(opt_verbose) COUT << "merge instance level ..." << endl;
 		break;
 	default:
 		CERR << "src's record type is unexpected:" << endl;
