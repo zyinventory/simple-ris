@@ -16,6 +16,14 @@
 #include <atlbase.h>
 #include <atlstr.h>
 
+#if defined(_DEBUG)
+#include <crtdbg.h>
+#ifndef DEBUG_NEW
+#define DEBUG_NEW new(_NORMAL_BLOCK, __FILE__, __LINE__)
+#define new DEBUG_NEW
+#endif // DEBUG_NEW
+#endif // _DEBUG
+
 // TODO: 在此处引用程序需要的其他头文件
 #include <fstream>
 #include <sstream>

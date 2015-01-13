@@ -181,6 +181,13 @@ static void exitHook()
 	TerminateLock(0);
 }
 
+#ifdef _DEBUG
+static void exitHookDumpMem()
+{
+	_CrtDumpMemoryLeaks();
+}
+#endif
+
 int burningStudy(const char *media)
 {
 	ostringstream errstream;
@@ -271,6 +278,10 @@ int reportCharge(const char *flag)
 
 int work()
 {
+#ifdef _DEBUG
+	_CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+	atexit(exitHookDumpMem);
+#endif
 	//locale::global(locale(CHINESE_LOCAL));
 	int chdirOK = changeWorkingDirectory(0, NULL, pPacsBase);
 	if(chdirOK < 0)
