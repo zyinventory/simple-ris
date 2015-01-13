@@ -116,7 +116,7 @@ bool deleteTree(const char *dirpath, ostream *ostrm)
 	return false;
 }
 
-HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::IXMLDOMElementPtr& study)
+static HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXML2::IXMLDOMElementPtr& study)
 {
 	istringstream patientStrm(line);
 
@@ -223,10 +223,12 @@ HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDom, MSXM
 	}
 	study->setAttribute("StudyDate", studyDate.c_str());
 	study->setAttribute("AccessionNumber", accNum.c_str());
+	size_t studySize = diskUsage("..", studyUID.c_str()) / (1024 * 1024) + 1;
+	study->setAttribute("StudyDescription", studySize);
 	return S_OK;
 }
 
-HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
+static HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
 {
 	string inputLine(buffer);
 	istringstream instStrm(inputLine);
@@ -285,7 +287,7 @@ HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
 	return S_OK;
 }
 
-HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDocumentPtr &oldIndex)
+static HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDocumentPtr &oldIndex)
 {
 	string indexFilePath = filePath;
 	string::size_type p;
@@ -382,7 +384,7 @@ static HANDLE createFileMutex(string &indexFilePath)
 	return fileMutex;
 }
 
-HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile, string &indexFilePath, bool uniqueStudy)
+static HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *xslFile, string &indexFilePath, bool uniqueStudy)
 {
 	HRESULT hr;
 	MSXML2::IXMLDOMDocumentPtr pXsl;
@@ -610,7 +612,7 @@ int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, co
 	return -1;
 }
 
-HRESULT mergeStudy(MSXML2::IXMLDOMNodePtr src, MSXML2::IXMLDOMNodePtr dest)
+static HRESULT mergeStudy(MSXML2::IXMLDOMNodePtr src, MSXML2::IXMLDOMNodePtr dest)
 {
 	_bstr_t seriesAttr("SeriesInstanceUID"), instanceAttr("SOPInstanceUID");
 	MSXML2::IXMLDOMNodeListPtr childrenSeries = src->childNodes;
@@ -690,7 +692,7 @@ bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid)
 	return true;
 }
 
-HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag, const char *queryValue)
+static HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag, const char *queryValue)
 {
 	HRESULT hr;
 	_bstr_t tagValue = pXMLDom->selectSingleNode(queryValue)->Gettext();
@@ -759,8 +761,6 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 			{
 				_bstr_t textFields = oldIndex ? oldIndex->transformNode(pXsl) : pXMLDom->transformNode(pXsl);
 				ofstream ofs(fieldsPath.c_str(), ios_base::out | ios_base::trunc);
-				if(strcmp(TAG_StudyInstanceUID, tag) == 0)
-					ofs << "StudySize=" << diskUsage("..", (const char*)tagValue) << endl;
 				string istr((LPCSTR)textFields);
 				istr.erase(remove(istr.begin(), istr.end(), '\r'), istr.end());
 				ofs << istr;
@@ -793,7 +793,7 @@ HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag,
 	return hr;
 }
 
-HRESULT processInputStream(istream& istrm)
+static HRESULT processInputStream(istream& istrm)
 {
 	istrm.getline(buffer, BUFF_SIZE);
 	if( ! istrm.good() )
@@ -861,7 +861,7 @@ HRESULT processInputStream(istream& istrm)
 	return S_OK;
 }
 
-bool operationRetry(int(*fn)(const char *), const char *param, int state, int seconds, const char *messageHeader)
+static bool operationRetry(int(*fn)(const char *), const char *param, int state, int seconds, const char *messageHeader)
 {
 	bool opFail = true;
 	for(int i = 0; i < seconds; ++i )
