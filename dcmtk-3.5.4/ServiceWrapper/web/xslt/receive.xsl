@@ -22,6 +22,7 @@
 			<xsl:attribute name="PatientSex"><xsl:value-of select="../@PatientSex" /></xsl:attribute>
 			<xsl:attribute name="PatientBirthDate"><xsl:value-of select="../@PatientBirthDate" /></xsl:attribute>
 			<xsl:attribute name="AccessionNumber"><xsl:value-of select="./@AccessionNumber" /></xsl:attribute>
+			<xsl:attribute name="StudyDescription"><xsl:value-of select="./@StudyDescription" /></xsl:attribute>
 			<xsl:attribute name="StudyDate">
 				<xsl:value-of select="concat(substring(./@StudyDate, 1, 4), '/', substring(./@StudyDate, 5, 2), '/', substring(./@StudyDate, 7, 2))" />
 			</xsl:attribute>

@@ -23,6 +23,7 @@
     </xsl:if>
   </xsl:template>
   <xsl:template match="/sd:wado_query/sd:Patient/sd:Study">
+    <xsl:text>StudySize=</xsl:text><xsl:value-of select="./@StudyDescription" /><xsl:text>&#x000A;</xsl:text>
     <xsl:text>StudyDate=</xsl:text><xsl:value-of select="concat(substring(@StudyDate, 1, 4), '/', substring(@StudyDate, 5, 2), '/', substring(@StudyDate, 7, 2))" /><xsl:text>&#x000A;</xsl:text>
     <xsl:text>AccessionNumber=</xsl:text><xsl:value-of select="./@AccessionNumber" /><xsl:text>&#x000A;</xsl:text>
     <xsl:text>Modality=</xsl:text><xsl:call-template name="concatModalities"><xsl:with-param name="study" select="."/></xsl:call-template><xsl:text>&#x000A;</xsl:text>
