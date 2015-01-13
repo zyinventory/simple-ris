@@ -154,6 +154,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ServiceWrapper", "ServiceWrapper\ServiceWrapper.vcxproj", "{E36F8B21-73DF-4CE8-B8B3-2557C18F9EDE}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mergedir", "mergedir\mergedir.vcxproj", "{D352DA0A-0D71-491D-9363-3276B443B168}"
+	ProjectSection(ProjectDependencies) = postProject
+		{5BCFDDE3-FCC1-4BCA-86B1-86B0CA2D275B} = {5BCFDDE3-FCC1-4BCA-86B1-86B0CA2D275B}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bridge", "bridge\bridge.vcxproj", "{86571892-0D7A-4178-896B-2A84AB61FEEF}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -184,6 +187,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gencard", "gencard\gencard.
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libb24", "libb24\libb24.vcxproj", "{9509B15B-7469-4DD2-8660-2C9CFA432F1B}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmdynamic", "dcmdynamic\dcmdynamic.vcxproj", "{5BCFDDE3-FCC1-4BCA-86B1-86B0CA2D275B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{CF43B823-39A1-4E0E-B6BB-0D267F5A3FB1} = {CF43B823-39A1-4E0E-B6BB-0D267F5A3FB1}
+		{140C0096-4C8B-4854-A76D-DF0B659A6C52} = {140C0096-4C8B-4854-A76D-DF0B659A6C52}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SubversionScc) = preSolution
@@ -789,6 +798,14 @@ Global
 		{9509B15B-7469-4DD2-8660-2C9CFA432F1B}.Release|Win32.Build.0 = Release|Win32
 		{9509B15B-7469-4DD2-8660-2C9CFA432F1B}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
 		{9509B15B-7469-4DD2-8660-2C9CFA432F1B}.RelWithDebInfo|Win32.Build.0 = Release|Win32
+		{5BCFDDE3-FCC1-4BCA-86B1-86B0CA2D275B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{5BCFDDE3-FCC1-4BCA-86B1-86B0CA2D275B}.Debug|Win32.Build.0 = Debug|Win32
+		{5BCFDDE3-FCC1-4BCA-86B1-86B0CA2D275B}.MinSizeRel|Win32.ActiveCfg = Release|Win32
+		{5BCFDDE3-FCC1-4BCA-86B1-86B0CA2D275B}.MinSizeRel|Win32.Build.0 = Release|Win32
+		{5BCFDDE3-FCC1-4BCA-86B1-86B0CA2D275B}.Release|Win32.ActiveCfg = Release|Win32
+		{5BCFDDE3-FCC1-4BCA-86B1-86B0CA2D275B}.Release|Win32.Build.0 = Release|Win32
+		{5BCFDDE3-FCC1-4BCA-86B1-86B0CA2D275B}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
+		{5BCFDDE3-FCC1-4BCA-86B1-86B0CA2D275B}.RelWithDebInfo|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
