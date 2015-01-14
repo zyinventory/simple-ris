@@ -81,8 +81,10 @@
 	        else {
 	            var patientId = getQueryString('patientID');
 	            displayPaitent(toHashPath(patientId) + '/' + patientId);
+	            $("form#patientQuery > input[name='patientID']").val(patientId);
 	        }
 
+	        $("form#burnAll > input[name='matchTag']").val(mode);
 	        switch (mode) {
 	            case 'receive':
 	                $('div#containerHeader label#dateDesc').text('传输日期查询:');
@@ -101,6 +103,13 @@
 	            default:
 	                break;
 	        }
+
+	        $('form#burnAll').bind('submit', function (event) {
+	            if (mode == '00100020')
+	                $("form#burnAll > input[name='matchValue']").val($("form#patientQuery > input[name='patientID']").val());
+	            else
+	                $("form#burnAll > input[name='matchValue']").val(picker.val());
+	        });
 	    });
 	//]]>
 	</script>
@@ -121,7 +130,16 @@
         &nbsp;<a id="00100020" class="button-style" href="#">患者历史检查</a>
         &nbsp;<a id="status" class="button-style" target="ppstatus" href="cgi-bin/getindex.exe?status=html">设备状态</a>
         &nbsp;<a id="license"  class="button-style" target="ppstatus" href="cgi-bin/getindex.exe?charge=query">充值</a>
-        &nbsp;<form style="display:inline; float:right" target="_blank" method="get" action="index.htm"><input type="hidden" name="mode" value="00100020" /><input type="text" size="8" name="patientID" /><input type="submit" value="患者ID"/></form>
+        <div id="rightForm" style="float:right">
+            <form id="burnAll" style="display:inline" target="_blank" method="post" action="cgi-bin/getindex.exe">
+                <input type="hidden" name="mode" value="batchBurn" />
+                <input type="hidden" name="volumeSize" value="4000" />
+                <input type="hidden" name="matchTag" />
+                <input type="hidden" name="matchValue" />
+                <input type="submit" value="刻录全部"/>
+            </form>&nbsp;
+            <form id="patientQuery" style="display:inline" target="_blank" method="get" action="index.htm"><input type="hidden" name="mode" value="00100020" /><input type="text" size="8" name="patientID" /><input type="submit" value="患者ID"/></form>
+        </div>
 	</div>
 	<div id="containerBody" style="padding:2px"></div>
 </div>
