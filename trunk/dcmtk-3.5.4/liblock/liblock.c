@@ -347,9 +347,9 @@ int aes256cbc_dec(const unsigned char *inBuf, size_t inLen, unsigned char *outBu
 	BUF_MEM *memptr = NULL;
 	int ret = 1, i = 0;
 	long dataLength = 0;
+	int old_fmode = _fmode;
 
 	for(i = 0; i < sizeof(buf); ++i) buf[i] = i;
-	int old_fmode = _fmode;
 	apps_startup();
 	if (!load_config(bio_err, NULL))
 		goto aes_dec_end;
