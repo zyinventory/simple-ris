@@ -173,6 +173,7 @@ int genrsa(int num, char *privateKey, char *publicKey, char *passout)
 	const EVP_CIPHER *enc = EVP_aes_256_cbc();
 	RSA *rsa = NULL, *rsaPublic = NULL;
 	BIO *out = NULL;
+	int old_fmode = _fmode;
 
 	BIO_printf(bio_err,"app starting...\n");
 	apps_startup();
@@ -283,7 +284,7 @@ err:
 	//if(passout) OPENSSL_free(passout);
 	if (ret != 0)
 		ERR_print_errors(bio_err);
-	apps_shutdown();
+	apps_shutdown(old_fmode);
 	return ret;
 }
 
@@ -294,6 +295,7 @@ int rsaSign(char *infile, char *outfile, char *keyfile, char *pass)
 	unsigned char *rsa_in = NULL, *rsa_out = NULL, rev = 0;
 	int rsa_inlen, rsa_outlen = 0, keysize;
 	int ret = 1;
+	int old_fmode = _fmode;
 
 	apps_startup();
 	app_RAND_load_file(NULL, bio_err, 0);
@@ -361,7 +363,7 @@ sign_err:
 	if(rsa_out) OPENSSL_free(rsa_out);
 	if (ret != 0)
 		ERR_print_errors(bio_err);
-	apps_shutdown();
+	apps_shutdown(old_fmode);
 	return ret;
 }
 
@@ -374,6 +376,7 @@ int aes256cbc_enc(void *content, size_t contentLength, char *filename, unsigned 
 	EVP_CIPHER_CTX *ctx = NULL;
 	const EVP_MD *dgst=NULL;
 	int ret = 0;
+	int old_fmode = _fmode;
 
 	apps_startup();
 	if (!load_config(bio_err, NULL))
@@ -413,6 +416,6 @@ int aes256cbc_enc(void *content, size_t contentLength, char *filename, unsigned 
 aes_end:
 	if (benc != NULL) BIO_free(benc);
 	if (out != NULL) BIO_free_all(out);
-	apps_shutdown();
+	apps_shutdown(old_fmode);
 	return ret;
 }
