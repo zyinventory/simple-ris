@@ -32,10 +32,10 @@ extern "C"
 	int rsaVerify(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, const char *keyfile);
 	int aes256cbc_dec(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, unsigned char *key, unsigned char* iv);
 	int invalidLock(const char *licenseRSAEnc, const char *rsaPublicKey, SEED_SIV *sivptr);
-	int currentCount(char *passwd);
+	int currentCount(const char *passwd);
 	int licenseCounter();
-	int decreaseCount(char *passwd);
-	int increaseCount(char *passwd, int charge);
+	int decreaseCount(const char *passwd);
+	int increaseCount(const char *passwd, int charge);
 #ifdef __cplusplus
 }
 #endif

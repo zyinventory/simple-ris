@@ -312,7 +312,7 @@ int rsaVerify(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, c
 {
 	RSA *rsa = NULL;
 	int keysize, ret = 0;
-
+	int old_fmode = _fmode;
 	apps_startup();
 	app_RAND_load_file(NULL, bio_err, 0);
 
@@ -333,7 +333,7 @@ int rsaVerify(const unsigned char *inBuf, size_t inLen, unsigned char *outBuf, c
 	}
 sign_err:
 	if (rsa) RSA_free(rsa);
-	apps_shutdown();
+	apps_shutdown(old_fmode);
 	return ret;
 }
 
@@ -349,6 +349,7 @@ int aes256cbc_dec(const unsigned char *inBuf, size_t inLen, unsigned char *outBu
 	long dataLength = 0;
 
 	for(i = 0; i < sizeof(buf); ++i) buf[i] = i;
+	int old_fmode = _fmode;
 	apps_startup();
 	if (!load_config(bio_err, NULL))
 		goto aes_dec_end;
@@ -390,6 +391,6 @@ int aes256cbc_dec(const unsigned char *inBuf, size_t inLen, unsigned char *outBu
 aes_dec_end:
 	if (benc != NULL) BIO_free(benc);
 	if (out != NULL) BIO_free(out);
-	apps_shutdown();
+	apps_shutdown(old_fmode);
 	return ret;
 }

@@ -145,7 +145,7 @@ extern "C" int invalidLock(const char *licenseRSAEnc, const char *rsaPublicKey, 
 		return -14;
 }
 
-extern "C" int currentCount(char *passwd)
+extern "C" int currentCount(const char *passwd)
 {
 	long licenseCount;
 	if(SetLock(0, reinterpret_cast<unsigned long*>(&licenseCount), 0, "s.Wa2pUc", passwd, 0, 0))
@@ -161,7 +161,7 @@ extern "C" int currentCount(char *passwd)
 		return -15;
 }
 
-extern "C" int decreaseCount(char *passwd)
+extern "C" int decreaseCount(const char *passwd)
 {
 	if(currentCount(passwd) > 0)
 	{
@@ -172,7 +172,7 @@ extern "C" int decreaseCount(char *passwd)
 	return -15;
 }
 
-extern "C" int increaseCount(char *passwd, int charge)
+extern "C" int increaseCount(const char *passwd, int charge)
 {
 	unsigned long licenseCount = currentCount(passwd);
 	if(licenseCount >= 0)

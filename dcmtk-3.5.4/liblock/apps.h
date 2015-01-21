@@ -220,8 +220,8 @@ extern BIO *bio_err;
 			ERR_load_crypto_strings(); \
 			setup_ui_method(); } while(0)
 #    endif
-#    define apps_shutdown() \
-			do { CONF_modules_unload(1); destroy_ui_method(); \
+#    define apps_shutdown(old_fmode) \
+			do { _fmode = old_fmode; CONF_modules_unload(1); destroy_ui_method(); \
 			EVP_cleanup(); \
 			CRYPTO_cleanup_all_ex_data(); ERR_remove_state(0); \
 			ERR_free_strings(); } while(0)
