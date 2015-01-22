@@ -1530,7 +1530,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
       connected = 1;
 
       len = sizeof(from);
-      if (getsockname(sock, &from, &len))
+      if (getpeername(sock, &from, &len))
       {
           char buf3[256]; int wsaError = WSAGetLastError();
           sprintf(buf3, "TCP Initialization Error: %d %s, getsockname failed on socket %d", wsaError, strerror(wsaError), sock);
