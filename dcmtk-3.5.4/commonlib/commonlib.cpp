@@ -1,10 +1,10 @@
 #include "stdafx.h"
-
+#include "commonlib.h"
 #define PATH_SEPARATOR '\\'
 
 using namespace std;
 
-void displayErrorToCerr(TCHAR *lpszFunction)
+COMMONLIB_API void displayErrorToCerr(TCHAR *lpszFunction)
 {
 	TCHAR *lpMsgBuf;
 	TCHAR *lpDisplayBuf;
@@ -21,14 +21,14 @@ void displayErrorToCerr(TCHAR *lpszFunction)
 	LocalFree(lpDisplayBuf);
 }
 
-errno_t setEnvParentPID()
+COMMONLIB_API errno_t setEnvParentPID()
 {
   char pidString[16];
   _itoa_s(_getpid(), pidString, 16, 10);
   return _putenv_s("PARENT_PID", pidString);
 }
 
-int generateTime(const char *format, char *timeBuffer, size_t bufferSize)
+COMMONLIB_API int generateTime(const char *format, char *timeBuffer, size_t bufferSize)
 {
   time_t t = time( NULL );
   struct tm tmp;
@@ -38,7 +38,7 @@ int generateTime(const char *format, char *timeBuffer, size_t bufferSize)
 	return 0;
 }
 
-bool IsASCII(const char *str)
+COMMONLIB_API bool IsASCII(const char *str)
 {
   bool isAscii = true;
   if(str == NULL) return isAscii;
@@ -58,7 +58,7 @@ bool IsASCII(const char *str)
   s:	  input string
   maxLen: max length of string s
  */
-char *rtrim(char *s, int maxLen)
+COMMONLIB_API char *rtrim(char *s, int maxLen)
 {
   if(s == NULL) return 0;
   if(maxLen == -1)
@@ -79,23 +79,23 @@ char *rtrim(char *s, int maxLen)
 
 static int signalInterruptFlag = 0;
 
-void SignalInterruptHandler(int signal)
+COMMONLIB_API void SignalInterruptHandler(int signal)
 {
   signalInterruptFlag = signal;
 }
 
-void Capture_Ctrl_C()
+COMMONLIB_API void Capture_Ctrl_C()
 {
   signalInterruptFlag = 0;
   signal(SIGINT, SignalInterruptHandler);
 }
 
-int GetSignalInterruptValue()
+COMMONLIB_API int GetSignalInterruptValue()
 {
   return signalInterruptFlag;
 }
 
-LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime)
+COMMONLIB_API LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime)
 {
   FILETIME fileTime;
   SYSTEMTIME utcTime;
@@ -117,7 +117,7 @@ LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime)
 	return -1LL;
 }
 
-bool MkdirRecursive(const char *subdir)
+COMMONLIB_API bool MkdirRecursive(const char *subdir)
 {
   // check if the subdirectory is already existent
   if( _mkdir(subdir) )
@@ -155,7 +155,7 @@ bool MkdirRecursive(const char *subdir)
   }
 }
 
-bool prepareFileDir(const char *path)
+COMMONLIB_API bool prepareFileDir(const char *path)
 {
   string filePath = path;
   string::size_type p = filePath.rfind(L'\\');
@@ -164,7 +164,7 @@ bool prepareFileDir(const char *path)
 }
 
 //return 0 if successful, otherwise errno
-int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator)
+COMMONLIB_API int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator)
 {
   time_t now = time(NULL);
   struct tm calendar;
@@ -180,7 +180,7 @@ int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pa
   return err;
 }
 
-BOOL DeleteEmptyFile(const char *filePath)
+COMMONLIB_API BOOL DeleteEmptyFile(const char *filePath)
 {
   LARGE_INTEGER fileSize;
   HANDLE handle = ::CreateFile(filePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -197,7 +197,7 @@ BOOL DeleteEmptyFile(const char *filePath)
 	return FALSE;
 }
 
-time_t dcmdate2tm(int dcmdate)
+COMMONLIB_API time_t dcmdate2tm(int dcmdate)
 {
   struct tm timeBirth;
   timeBirth.tm_year = dcmdate / 10000 - 1900;
@@ -209,7 +209,7 @@ time_t dcmdate2tm(int dcmdate)
   return mktime(&timeBirth);
 }
 
-int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
+COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
 {
 	if(argc > 0)
 	{

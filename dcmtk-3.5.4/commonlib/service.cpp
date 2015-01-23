@@ -1,16 +1,15 @@
 #include "stdafx.h"
-#include <strsafe.h>
-
 #include "commonlib.h"
+#include "service.h"
 
 using namespace std;
 
-char service_name[128];
+COMMONLIB_API char service_name[128];
 
 static SERVICE_STATUS          gSvcStatus; 
 static SERVICE_STATUS_HANDLE   gSvcStatusHandle; 
 
-void __stdcall ReportSvcStatus( DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
+COMMONLIB_API void __stdcall ReportSvcStatus( DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
 {
   static DWORD dwCheckPoint = 1;
 
@@ -52,7 +51,7 @@ static void WINAPI SvcCtrlHandler( DWORD dwCtrl )
   ReportSvcStatus(gSvcStatus.dwCurrentState, NO_ERROR, 0);
 }
 
-void __stdcall SvcReportEvent(LPCTSTR szFunction, WORD eventType, DWORD eventId)
+COMMONLIB_API void __stdcall SvcReportEvent(LPCTSTR szFunction, WORD eventType, DWORD eventId)
 { 
   HANDLE hEventSource;
   LPCTSTR lpszStrings[2];
@@ -62,7 +61,7 @@ void __stdcall SvcReportEvent(LPCTSTR szFunction, WORD eventType, DWORD eventId)
 
   if( NULL != hEventSource )
   {
-	StringCchPrintf(Buffer, 80, TEXT("%s failed with %d"), szFunction, GetLastError());
+	sprintf_s(Buffer, 80, TEXT("%s failed with %d"), szFunction, GetLastError());
 
 	lpszStrings[0] = service_name;
 	lpszStrings[1] = Buffer;
@@ -81,7 +80,7 @@ void __stdcall SvcReportEvent(LPCTSTR szFunction, WORD eventType, DWORD eventId)
   }
 }
 
-bool __stdcall SvcInit(DWORD dwWaitHint)
+COMMONLIB_API bool __stdcall SvcInit(DWORD dwWaitHint)
 {
   gSvcStatusHandle = RegisterServiceCtrlHandler( service_name, SvcCtrlHandler);
   if( !gSvcStatusHandle )

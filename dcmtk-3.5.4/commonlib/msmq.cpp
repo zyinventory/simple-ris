@@ -5,7 +5,7 @@
 using namespace std;
 using namespace MSMQ;
 
-IMSMQQueuePtr OpenOrCreateQueue(const char *queueName) throw(...)
+static IMSMQQueuePtr OpenOrCreateQueue(const char *queueName) throw(...)
 {
 	HRESULT hr;
 	IMSMQQueueInfoPtr pInfo;
@@ -44,7 +44,7 @@ IMSMQQueuePtr OpenOrCreateQueue(const char *queueName) throw(...)
 	return pQueue;
 }
 
-bool SendArchiveMessageToQueue(const char *label, const char *body, const char *cmd)
+COMMONLIB_API bool SendArchiveMessageToQueue(const char *label, const char *body, const char *cmd)
 {
 	HRESULT hr;
 	try
@@ -125,7 +125,7 @@ bool SendArchiveMessageToQueue(const char *label, const char *body, const char *
 	}
 }
 
-bool DeleteQueue(const char *queueName)
+COMMONLIB_API bool DeleteQueue(const char *queueName)
 {
 	bool queueExist = false;
 	try

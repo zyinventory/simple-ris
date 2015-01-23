@@ -10,4 +10,4 @@
 #define DCMDYNAMIC_API __declspec(dllimport)
 #endif
 
-DCMDYNAMIC_API int MergeDicomDir(std::list<std::string> &fileNames, const char *opt_output, const char *opt_fileset);
+DCMDYNAMIC_API int MergeDicomDir(std::list<std::string> &fileNames, const char *opt_output, const char *opt_fileset, std::ostream &errlog, bool verbose);

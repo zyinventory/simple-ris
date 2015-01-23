@@ -27,8 +27,15 @@
 // TODO: 在此处引用程序需要的其他头文件
 #include <fstream>
 #include <sstream>
+#include <list>
 #include <commonlib.h>
-#include "SimpleIni.h"
+#include <study_struct.h>
+#include <dcmdynamic.h>
+#include <SimpleIni.h>
 extern "C" {
-#include "cgic.h"
+#include <cgic.h>
 }
+
+extern std::ostringstream index_errlog;
+void outputContent(bool error);
+size_t collectionToFileNameList(const char *xmlpath, std::list<Study> &filenames, bool isPatient);

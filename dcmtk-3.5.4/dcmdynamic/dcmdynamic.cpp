@@ -13,15 +13,15 @@
 #include "dcmtk/ofstd/ofcond.h"       /* for class OFCondition */
 #include "dcmtk/dcmdata/dcdebug.h"
 
-#define OFFIS_CONSOLE_APPLICATION "mergedir"
-#define OFFIS_CONSOLE_DESCRIPTION "Merge DICOMDIR"
+#define OFFIS_CONSOLE_APPLICATION "dcmdynamic"
+#define OFFIS_CONSOLE_DESCRIPTION "DcmDynamic DLL"
 
 static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v"
   OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 
 using namespace std;
 
-static void printAllImageUID(DcmDirectoryRecord *rootRecord)
+static void printAllImageUID(DcmDirectoryRecord *rootRecord, ostream &outstrm)
 {
 	OFCondition result;
 	DcmUniqueIdentifier *ptrInstanceUID = NULL;
@@ -36,7 +36,7 @@ static void printAllImageUID(DcmDirectoryRecord *rootRecord)
 			result = ptrInstanceUID->getOFString(uid, 0);
 			if(result.good())
 			{
-				COUT << uid << endl;
+				outstrm << uid << endl;
 			}
 		}
 	}
@@ -44,7 +44,7 @@ static void printAllImageUID(DcmDirectoryRecord *rootRecord)
 
 static bool opt_verbose = false;
 
-static OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src)
+static OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src, ostream &errlog)
 {
 	DcmTagKey key, subKey;
 	E_DirRecType srcType, upperType;
@@ -56,40 +56,40 @@ static OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src
 		key = DCM_PatientID;
 		subKey = DCM_StudyInstanceUID;
 		upperType = ERT_root;
-		if(opt_verbose) COUT << "merge patient level ..." << endl;
+		if(opt_verbose) errlog << "merge patient level ..." << endl;
 		break;
 	case ERT_Study:
 		key = DCM_StudyInstanceUID;
 		subKey = DCM_SeriesInstanceUID;
 		upperType = ERT_Patient;
-		if(opt_verbose) COUT << "merge study level ..." << endl;
+		if(opt_verbose) errlog << "merge study level ..." << endl;
 		break;
 	case ERT_Series:
 		key = DCM_SeriesInstanceUID;
 		subKey = DCM_ReferencedSOPInstanceUIDInFile;
 		upperType = ERT_Study;
-		if(opt_verbose) COUT << "merge series level ..." << endl;
+		if(opt_verbose) errlog << "merge series level ..." << endl;
 		break;
 	case ERT_Image:
 		key = DCM_ReferencedSOPInstanceUIDInFile;
 		subKey = DCM_ReferencedSOPInstanceUIDInFile;
 		upperType = ERT_Series;
-		if(opt_verbose) COUT << "merge instance level ..." << endl;
+		if(opt_verbose) errlog << "merge instance level ..." << endl;
 		break;
 	default:
-		CERR << "src's record type is unexpected:" << endl;
-		CERR << "src:" << endl;
-		src->print(CERR);
+		errlog << "src's record type is unexpected:" << endl;
+		errlog << "src:" << endl;
+		src->print(errlog);
 		return EC_IllegalParameter;
 	}
 
 	if(upperType != dest->getRecordType())
 	{
-		CERR << "src's and dest's record type are mismatched:" << endl;
-		CERR << "dest:" << endl;
-		dest->print(CERR);
-		CERR << "src:" << endl;
-		src->print(CERR);
+		errlog << "src's and dest's record type are mismatched:" << endl;
+		errlog << "dest:" << endl;
+		dest->print(errlog);
+		errlog << "src:" << endl;
+		src->print(errlog);
 		return EC_IllegalParameter;
 	}
 
@@ -103,11 +103,11 @@ static OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src
 		{
 			if(destSub->getRecordType() != srcType)
 			{
-				CERR << "src's and destSub's record type are mismatched:" << endl;
-				CERR << "src:" << endl;
-				src->print(CERR);
-				CERR << "destSub:" << endl;
-				destSub->print(CERR);
+				errlog << "src's and destSub's record type are mismatched:" << endl;
+				errlog << "src:" << endl;
+				src->print(errlog);
+				errlog << "destSub:" << endl;
+				destSub->print(errlog);
 				continue;
 			}
 
@@ -118,19 +118,19 @@ static OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src
 				{
 					if(srcType == ERT_Image)
 					{
-						CERR << "skip same image " << srcUid << endl;
+						if(opt_verbose) errlog << "skip same image " << srcUid << endl;
 						return EC_Normal;
 					}
 					DcmDirectoryRecord *srcSub = NULL;
 					while(srcSub = src->nextSub(srcSub))
 					{
-						if(mergeToDest(destSub, srcSub).bad())
+						if(mergeToDest(destSub, srcSub, errlog).bad())
 						{
-							CERR << "mergeToDest failed:" << endl;
-							CERR << "srcSub:" << endl;
-							srcSub->print(CERR);
-							CERR << "destSub:" << endl;
-							destSub->print(CERR);
+							errlog << "mergeToDest failed:" << endl;
+							errlog << "srcSub:" << endl;
+							srcSub->print(errlog);
+							errlog << "destSub:" << endl;
+							destSub->print(errlog);
 						}
 					}
 					return EC_Normal;
@@ -139,39 +139,41 @@ static OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src
 			}
 			else
 			{
-				CERR << "Can not find " << key.toString() << " in destSub:" << endl;
-				destSub->print(CERR);
+				errlog << "Can not find " << key.toString() << " in destSub:" << endl;
+				destSub->print(errlog);
 			}
 		}
 
-		if(opt_verbose)
-		{
-			CERR << "insert new record:" << endl;
-			src->print(CERR);
-		}
+		if(opt_verbose) errlog << "insert new record: " << key.toString() << endl;
 		return dest->insertSub(OFdynamic_cast(DcmDirectoryRecord*, src->clone()));
 	}
 	else
 	{
-		CERR << "Can not find " << key.toString() << " in src:" << endl;
-		src->print(CERR);
+		errlog << "Can not find " << key.toString() << " in src:" << endl;
+		src->print(errlog);
 	}
 	return EC_IllegalParameter;
 }
 
-DCMDYNAMIC_API int MergeDicomDir(list<string> &fileNames, const char *opt_output, const char *opt_fileset)
+DCMDYNAMIC_API int MergeDicomDir(list<string> &fileNames, const char *opt_output, const char *opt_fileset, ostream &errlog, bool verbose)
 {
+	opt_verbose = verbose;
 	int errCount = 0;
 	OFCondition cond;
+	remove(opt_output);
 	DcmDicomDir *dest = new DcmDicomDir(opt_output, opt_fileset);
 	if (dest != NULL)
 	{
 		cond = dest->error();
-		if(cond.bad()) ++errCount;
+		if(cond.bad())
+		{
+			++errCount;
+			errlog << cond.text() << endl;
+		}
 	}
 	else
 	{
-		CERR << "create or open output file " << opt_output << " error" << endl;
+		errlog << "create or open output file " << opt_output << " error" << endl;
 		return -3;
 	}
 
@@ -183,61 +185,44 @@ DCMDYNAMIC_API int MergeDicomDir(list<string> &fileNames, const char *opt_output
 		if (src != NULL)
 		{
 			cond = src->error();
-			if(cond.bad()) ++errCount;
+			if(cond.bad())
+			{
+				++errCount;
+				errlog << cond.text() << endl;
+			}
 		}
 		else
 		{
-			CERR << "open input file " << *curr << " error" << endl;
+			errlog << "open input file " << *curr << " error" << endl;
 			++errCount;
 			continue;
 		}
-		if(opt_verbose) COUT << "open input file " << *curr << endl;
+		if(opt_verbose) errlog << "open input file " << *curr << endl;
 
 		DcmDirectoryRecord *srcRoot = &(src->getRootRecord());
-		DcmStack resultStack;
-
-		size_t bufferlen = (*curr).length() + 1;
-		char filepathbuffer[512];
-		(*curr).copy(filepathbuffer, (*curr).length());
-		filepathbuffer[bufferlen - 1] = '\0';
-		char *sppos = NULL;
-		if(sppos = strrchr(filepathbuffer, '\\'))
-			*sppos = '\0';
-		else
-			filepathbuffer[0] = '\0';
-		strcat_s(filepathbuffer, "\\*");		
-
-		_finddata_t fileinfo;
-		int nextfound = 0;
-		intptr_t searchHandle = _findfirst(filepathbuffer, &fileinfo);
-		while(nextfound == 0 && searchHandle != -1)
-		{
-			if(fileinfo.attrib & _A_SUBDIR)
-				COUT << "dir: ";
-			else
-				COUT << "file: ";
-			COUT << fileinfo.name << ", last modify: ";
-			struct tm lastmodify;
-			localtime_s(&lastmodify, &fileinfo.time_write);
-			COUT << lastmodify.tm_year + 1900 << '-' << lastmodify.tm_mon + 1 << '-' << lastmodify.tm_mday << ' '
-				<< lastmodify.tm_hour << ':' << lastmodify.tm_min << ':' << lastmodify.tm_sec << endl;
-			nextfound = _findnext(searchHandle, &fileinfo);
-		}
-		if(searchHandle != -1) _findclose(searchHandle);
 
 		// find patientId in patient
-		resultStack.clear();
 		DcmDirectoryRecord *patient = NULL;
 		while(patient = srcRoot->nextSub(patient))
 		{
-			cond = mergeToDest(destRoot, patient);
-			if(cond.bad()) ++errCount;
+			cond = mergeToDest(destRoot, patient, errlog);
+			if(cond.bad())
+			{
+				++errCount;
+				errlog << cond.text() << endl;
+			}
 		}
 		delete src;
 	}
+	if(opt_verbose) errlog << "start writing " << dest->getDirFileName() << endl;
 	cond = dest->write(EXS_LittleEndianExplicit, EET_ExplicitLength, EGL_recalcGL);
-	printAllImageUID(destRoot);
+	if(opt_verbose) errlog << "write complete" << endl;
+	//printAllImageUID(destRoot, errlog);
 	delete dest;
-	if(cond.bad()) ++errCount;
+	if(cond.bad())
+	{
+		++errCount;
+		errlog << cond.text() << endl;
+	}
 	return errCount;
 }

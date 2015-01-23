@@ -1,5 +1,5 @@
 #include "stdafx.h"
-
+#include "commonlib.h"
 using namespace std;
 
 static char char32map[32] = {'0', '1', '2','3','4','5','6','7','8','9','A','B','C','D','E','F','G','H','J','K','M','N','P','Q','R','S','T','U','V','W','X','Y'};
@@ -88,21 +88,21 @@ static __int64 uidHashImpl(__int64 hash, int hash131, char *buffer, size_t buffe
 	return hash;
 }
 
-__int64 uidHashW(const wchar_t *s, char *buffer, size_t buffer_size)
+COMMONLIB_API __int64 uidHashW(const wchar_t *s, char *buffer, size_t buffer_size)
 {
 	__int64 hash = hashCodeW(s, 31);
 	int hash131 = hashCodeW(s, 131);
 	return uidHashImpl(hash, hash131, buffer, buffer_size);
 }
 
-__int64 uidHash(const char *s, char *buffer, size_t buffer_size)
+COMMONLIB_API __int64 uidHash(const char *s, char *buffer, size_t buffer_size)
 {
 	__int64 hash = hashCode(s, 31);
 	int hash131 = hashCode(s, 131);
 	return uidHashImpl(hash, hash131, buffer, buffer_size);
 }
 
-bool encodeBase32(string &src, string &enc)
+static bool encodeBase32(string &src, string &enc)
 {
   wchar_t *dest = NULL;
   size_t wlen = toWchar(src, &dest);
@@ -156,7 +156,7 @@ bool encodeBase32(string &src, string &enc)
   return true;
 }
 
-bool decodeBase32(string &src, string &dec)
+static bool decodeBase32(string &src, string &dec)
 {
   vector<wchar_t> decvt;
   string::size_type blen = src.length();
@@ -274,7 +274,7 @@ bool decodeBase32(string &src, string &dec)
   return true;
 }
 
-size_t extractStudyUid(char *buffer, const size_t bufferSize, const wchar_t *body)
+COMMONLIB_API size_t extractStudyUid(char *buffer, const size_t bufferSize, const wchar_t *body)
 {
 	const wchar_t *body2 = wcsstr(body, L"StudyInstanceUID");
 	wregex pattern(L"StudyInstanceUID=\"([\\d\\.]+)\".*");
