@@ -1,10 +1,11 @@
 #include "stdafx.h"
+#include <iomanip>
 #include <direct.h>
 #include <lock.h>
 #include <liblock.h>
 
 static char pPacsBase[MAX_PATH];
-std::ostringstream buffer;
+std::ostringstream index_errlog;
 int statusXml(CSimpleIni &ini, const char *statusFlag);
 int statusCharge(const char *flag);
 int removeStudy(const char *flag);
@@ -58,10 +59,10 @@ static const char jnlp8[] =											"</argument>\
 </jnlp>";
 using namespace std;
 
-void outputContent(bool error)
+void outputContent(bool isText)
 {
-	string content = buffer.str();
-	if(error)
+	string content = index_errlog.str();
+	if(isText)
 		fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", content.length());
 	else
 		fprintf(cgiOut, "Content-Type: text/xml; charset=GBK\r\nContent-Length: %d\r\n\r\n", content.length());
@@ -120,8 +121,8 @@ int queryXml(int hostLength)
 	}
 	else
 	{
-		if(cgiQueryString) buffer << "无效请求:" << cgiQueryString << endl;
-		if(pPacsBase) buffer << "PACS_BASE:" << pPacsBase << endl;;
+		if(cgiQueryString) index_errlog << "无效请求:" << cgiQueryString << endl;
+		if(pPacsBase) index_errlog << "PACS_BASE:" << pPacsBase << endl;;
 		outputContent(true);
 		return 0;
 	}
@@ -170,7 +171,7 @@ int queryXml(int hostLength)
 	}
 	else
 	{
-		buffer << "文件没找到" << endl;
+		index_errlog << "文件没找到" << endl;
 		outputContent(true);
 		return -1;
 	}
@@ -188,9 +189,30 @@ static void exitHookDumpMem()
 }
 #endif
 
-int burningStudy(const char *media)
+template<class FN> static int AuthenWrapper(ostream &errlog, const char *rw_passwd, FN fn)
 {
-	ostringstream errstream;
+	int licenseCount = currentCount(rw_passwd);
+	if(licenseCount > 0)
+	{
+		int result = fn(errlog);
+		if(result == 0)
+		{
+			decreaseCount(rw_passwd);
+			return 0;
+		}
+		else
+		{
+			errlog << "生成光盘刻录任务失败:" << strerror(result) << endl;
+		}
+	}
+	else
+		errlog << "可刻录光盘数不足:" << licenseCount << endl;
+
+	return -1;
+}
+
+static int burningStudy(const char *media)
+{
 	char rw_passwd[9] = "";
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
@@ -203,7 +225,7 @@ int burningStudy(const char *media)
 			lockNumber = getLockNumber(filename, FALSE, filename + 7, 64 - 7);
 		}
 		else
-			errstream << "init lock failed:" << hex << LYFGetLastErr() << endl;
+			index_errlog << "init lock failed:" << hex << LYFGetLastErr() << endl;
 
 		if(lockNumber != -1 && 0 == loadPublicKeyContentRW(filename, &siv, lockNumber, rw_passwd))
 		{
@@ -212,7 +234,7 @@ int burningStudy(const char *media)
 				int licenseCount = currentCount(rw_passwd);
 				if(licenseCount > 0)
 				{
-					int result = generateStudyJDF("0020000d", studyUID, errstream, media);
+					int result = generateStudyJDF("0020000d", studyUID, index_errlog, media);
 					if(result == 0)
 					{
 						decreaseCount(rw_passwd);
@@ -224,18 +246,18 @@ int burningStudy(const char *media)
 						return 0;
 					}
 					else
-						errstream << "生成光盘刻录任务失败:" << result << endl;
+						index_errlog << "生成光盘刻录任务失败:" << result << endl;
 				}
 				else
-					errstream << "可刻录光盘数不足:" << licenseCount << endl;
+					index_errlog << "可刻录光盘数不足:" << licenseCount << endl;
 			}
 			else
-				errstream << "此程序没有合法的授权" << endl;
+				index_errlog << "此程序没有合法的授权" << endl;
 		}
 		else
-			errstream << "此程序没有合法的授权" << endl;
+			index_errlog << "此程序没有合法的授权" << endl;
 	}
-	string errmsg = errstream.str();
+	string errmsg = index_errlog.str();
 	fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", errmsg.length());
 	fprintf(cgiOut, errmsg.c_str());
 	return -1;
@@ -276,6 +298,286 @@ int reportCharge(const char *flag)
 	return result;
 }
 
+static void splitVolume(list<Volume> &vols, list<Study> &studies, const size_t volumeSize, const char *desc)
+{
+	size_t seq = vols.size() + 1;
+	for(list<Study>::const_iterator it = studies.begin(); it != studies.end(); ++it)
+	{
+		if(it->size > volumeSize)
+		{
+			index_errlog << it->uid << "大于" << volumeSize << "MB, 无法分卷" << endl;
+			continue;
+		}
+		bool stored = false;
+		for(list<Volume>::iterator itvol = vols.begin(); itvol != vols.end(); ++itvol)
+		{
+			if(it->size < itvol->remain)
+			{
+				stored = itvol->push_back(*it, index_errlog);
+				break;
+			}
+		}
+		if(!stored) vols.push_back(Volume(seq++, volumeSize, desc, *it, index_errlog));
+		vols.sort([](const Volume &v1, const Volume &v2) { return v1.remain < v2.remain; });
+	}
+	size_t volCount = vols.size();
+	for_each(vols.begin(), vols.end(), [&volCount](Volume &v) { v.volumeCount = volCount; });
+}
+
+#define JOB_ID_MAX 40
+static bool generateJDF(Volume &vol, char *volbufNoSeq, const char *mediaType, string &jdfpath, bool isPatient, char *jobPrefix, const char *timeString)
+{
+	ofstream ofs(jdfpath);
+	jdfpath.erase(jdfpath.length() - 3);
+	if(ofs.good())
+	{
+		size_t jobpos = strlen(jobPrefix);
+		sprintf_s(jobPrefix + jobpos, JOB_ID_MAX + 1 - jobpos, "%d-%d", vol.sequence, vol.volumeCount);
+		ofs << "JOB_ID=" << timeString << "-" << jobPrefix << endl;
+		jobPrefix[jobpos] = '\0';
+		ofs << "FORMAT=UDF102" << endl;
+		ofs << "DISC_TYPE=" << mediaType << endl;
+		ofs << "COPIES=1" << endl;
+		ofs << "DATA=" << pPacsBase << "\\viewer" << endl;
+		ofs << "DATA=" << jdfpath << "dir\tDICOMDIR" << endl;
+		for(list<Study>::const_iterator its = vol.studiesOnVolume.begin(); its != vol.studiesOnVolume.end(); ++its)
+			ofs << "DATA=" << pPacsBase << "\\pacs\\"  << its->path << "\\" << its->hash << "\t" << its->hash << endl;
+		ofs << "VOLUME_LABEL=SMARTPUB" << endl;
+		if(isPatient)
+		{
+			ofs << "LABEL=" << pPacsBase << "\\tdd\\patientInfo.tdd" << endl;
+			ofs << "REPLACE_FIELD=" << pPacsBase << "\\pacs\\" << volbufNoSeq << "txt" << endl;
+		}
+		else
+		{
+			ofs << "LABEL=" << pPacsBase << "\\tdd\\batchInfo.tdd" << endl;
+			ofs << "REPLACE_FIELD=" << jdfpath << "txt" << endl;
+		}
+		ofs.close();
+		jdfpath.append("jdf");
+		return true;
+	}
+	else
+	{
+		index_errlog << "ERROR: can't create " << jdfpath << endl;
+		return false;
+	}
+}
+
+static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_t prefixLen, const char *mediaType, bool isPatient, char *jobPrefix)
+{
+	char rw_passwd[9] = "";
+	if(InitiateLock(0))
+	{
+		atexit(exitHook);
+		char filename[64] = "..\\etc\\*.key";
+		int lockNumber = -1;
+		SEED_SIV siv;
+		lockNumber = getLockNumber(filename, FALSE, filename + 7, 64 - 7);
+		if(lockNumber == -1 || 0 != loadPublicKeyContentRW(filename, &siv, lockNumber, rw_passwd))
+		{
+			index_errlog << "init lock failed:" << hex << LYFGetLastErr() << endl;
+			return;
+		}
+		if(invalidLock("..\\etc\\license.key", filename, &siv))
+		{
+			index_errlog << "init lock failed:" << hex << LYFGetLastErr() << endl;
+			return;
+		}
+	}
+	else
+	{
+		index_errlog << "init lock failed:" << hex << LYFGetLastErr() << endl;
+		return;
+	}
+
+	for(list<Volume>::iterator itv = vols.begin(); itv != vols.end(); ++itv)
+	{
+		list<string> dirlist;
+		for(list<Study>::iterator its = itv->studiesOnVolume.begin(); its != itv->studiesOnVolume.end(); ++its)
+		{
+			size_t pathlen = strlen(its->path);
+			strcat_s(its->path, "\\DICOMDIR");
+			dirlist.push_back(its->path);
+			its->path[pathlen] = '\0';
+		}
+		sprintf_s(volbuf + prefixLen, MAX_PATH - prefixLen, ".%03d.dir", itv->sequence);
+
+		if(MergeDicomDir(dirlist, volbuf, "SMART_PUB_SET", cout, false) < 0) 
+		{
+			index_errlog << "Volume " << itv->sequence << " prepare failed." << endl;
+			continue;
+		}
+
+		volbuf[prefixLen + 5] = '\0';
+		string jdfpath(pPacsBase);
+		jdfpath.append("\\pacs\\").append(volbuf).append("jdf");
+
+		if(isPatient)
+			volbuf[prefixLen + 1] = '\0';
+		else
+		{
+			strcpy_s(volbuf + prefixLen + 5, MAX_PATH - prefixLen - 5, "txt");
+			ofstream ofs(volbuf, ios_base::out | ios_base::trunc);
+			if(ofs.good())
+			{
+				ofs << "Description=" << itv->description << endl;
+				ofs << "Sequence=" << itv->sequence << endl;
+				ofs << "VolumeCount=" << itv->volumeCount << endl;
+				ofs.close();
+			}
+			else
+			{
+				index_errlog << "create field file " << volbuf << " failure." << endl;
+				continue;
+			}
+			volbuf[prefixLen + 5] = '\0';
+		}
+		char timeBuffer[16];
+		generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
+		if(generateJDF(*itv, volbuf, mediaType, jdfpath, isPatient, jobPrefix, timeBuffer))
+		{
+			itv->valid = true;
+			// execute burning
+			const Volume &vol = *itv;
+			const char *timeString = timeBuffer;
+			if(!vol.valid) continue;
+			AuthenWrapper(index_errlog, rw_passwd, [&vol, &jdfpath, timeString](ostream &errlog)-> int{
+				char buffer[MAX_PATH];
+				sprintf_s(buffer, "..\\orders\\%s_%d.jdf", timeString, vol.sequence);
+				return rename(jdfpath.c_str(), buffer);
+			});
+		}
+		else
+			index_errlog << "create JDF file " << jdfpath << " failure." << endl;
+	}
+}
+
+#define IndexPrefix "indexdir\\"
+int batchBurn()
+{
+	HANDLE mh = NULL;
+	size_t volumeSize = 0;
+	char xmlpath[MAX_PATH] = IndexPrefix, *postfix;
+	postfix = xmlpath + sizeof(IndexPrefix) - 1;
+	const char *mediaType = detectMediaType(NULL);
+	list<Volume> vols;
+	if(cgiFormNotFound != cgiFormString("volumeSize", postfix, MAX_PATH - strlen(xmlpath)) && strlen(xmlpath) > 0)
+	{
+		volumeSize = atoi(postfix);
+		if(volumeSize == 0)
+		{
+			index_errlog << "参数错误，没有分卷大小参数(VolumeSize)" << endl;
+			goto end_of_process;
+		}
+	}
+	if(cgiFormNotFound != cgiFormString("matchTag", postfix, MAX_PATH - strlen(xmlpath)) && strlen(postfix) > 0)
+	{
+		char desc[64], jobPrefix[JOB_ID_MAX + 1];
+		bool isPatient = false;
+		char *tag;
+		if(strcmp("receive", postfix) == 0 || strcmp("00080020", postfix) == 0) //传输日期 || 检查日期
+		{
+			if(*postfix == 'r')
+			{
+				strcpy_s(desc,  "传输日期:");
+				strcpy_s(jobPrefix, "ReceiveDate-");
+			}
+			else
+			{
+				strcpy_s(desc,  "检查日期:");
+				strcpy_s(jobPrefix, "StudyDate-");
+			}
+			tag = desc + 9;
+		}
+		else if(strcmp("00100020", postfix) == 0) //Patient ID
+		{
+			strcpy_s(desc,  "患者ID:");
+			strcpy_s(jobPrefix, "PatientID-");
+			tag = desc + 7;
+			isPatient = true;
+		}
+		else
+		{
+			index_errlog << "参数错误，没有选择条件" << endl;
+			goto end_of_process;
+		}
+		size_t pathlen = strlen(xmlpath);
+		postfix = xmlpath + pathlen;
+		*postfix++ = '\\';
+		*postfix = '\0';
+		++pathlen;
+		if(cgiFormNotFound != cgiFormString("matchValue", postfix, MAX_PATH - pathlen) && strlen(postfix) > 0)
+		{
+			char mutexName[MAX_PATH];
+			sprintf_s(mutexName, "Global\\%s%s", jobPrefix, postfix);
+			mh = CreateMutex(NULL, FALSE, mutexName);
+			if(mh == NULL)
+			{
+				DWORD errcode = GetLastError();
+				index_errlog << "无法创建互斥对象" << mutexName << ", error code " << hex << errcode << endl;
+				goto end_of_process;
+			}
+			DWORD waitResult = WaitForSingleObject(mh, 0);
+			if(waitResult == WAIT_TIMEOUT || waitResult == WAIT_FAILED)
+			{
+				index_errlog << "已有相同的任务在运行:" << jobPrefix << postfix << endl;
+				goto end_of_process;
+			}
+			strcat_s(desc, postfix);
+			if(isPatient)
+			{
+				char hashBuf[9];
+				__int64 hashUid36 = uidHash(postfix, hashBuf, sizeof(hashBuf));
+				sprintf_s(xmlpath + pathlen, MAX_PATH - pathlen, "%c%c\\%c%c\\%c%c\\%c%c\\%s",
+					hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tag);
+			}
+			else
+			{
+				for(char *p = postfix; *p != '\0'; ++p)
+					if(*p == '/') *p = '\\';
+			}
+			size_t prefixLen = strlen(xmlpath);
+			strcpy_s(xmlpath + prefixLen, MAX_PATH - prefixLen, ".xml");
+			list<Study> studies;
+			::CoInitialize(NULL);
+			collectionToFileNameList(xmlpath, studies, isPatient);
+			::CoUninitialize();
+			vols.push_back(Volume(1, volumeSize, desc));
+			splitVolume(vols, studies, volumeSize, desc);
+			vols.sort([](const Volume &v1, const Volume &v2) { return v1.sequence < v2.sequence; });
+			xmlpath[prefixLen] = '\0';
+			prepareDicomDirAndBurn(vols, xmlpath, prefixLen, mediaType, isPatient, jobPrefix);
+		}
+		else
+		{
+			if(isPatient)
+				index_errlog << "参数错误，没有患者ID" << endl;
+			else
+				index_errlog << "参数错误，没有日期" << endl;
+		}
+	}
+end_of_process:
+	if(mh)
+	{
+		ReleaseMutex(mh);
+		CloseHandle(mh);
+	}
+	string errbuf = index_errlog.str();
+	if(errbuf.length() == 0)
+	{
+		cgiHeaderLocation("getindex.exe?status=html");
+		cgiHeaderContentType("text/html");
+		return 0;
+	}
+	else
+	{
+		for(list<Volume>::const_iterator it = vols.begin(); it != vols.end(); ++it) it->print(index_errlog);
+		outputContent(true);
+		return -1;
+	}
+}
+
 int work()
 {
 #ifdef _DEBUG
@@ -286,8 +588,8 @@ int work()
 	int chdirOK = changeWorkingDirectory(0, NULL, pPacsBase);
 	if(chdirOK < 0)
 	{
-		buffer << "init working dir failed:" << -1 << ',' << chdirOK << endl;
-		if(pPacsBase) buffer << "PACS_BASE:" << pPacsBase << endl;
+		index_errlog << "init working dir failed:" << -1 << ',' << chdirOK << endl;
+		if(pPacsBase) index_errlog << "PACS_BASE:" << pPacsBase << endl;
 		outputContent(true);
 		return -1;
 	}
@@ -297,7 +599,10 @@ int work()
 	else
 		hostLength = sprintf_s(host, 64, "%s", cgiServerName);
 	char flag[32];
-	if(cgiFormNotFound != cgiFormString("media", flag, sizeof(flag)) && strlen(flag) > 0)
+	if(cgiFormNotFound != cgiFormString("mode", flag, sizeof(flag)) && strlen(flag) > 0
+		&& 0 == strcmp(flag, "batchBurn"))
+		return batchBurn();
+	else if(cgiFormNotFound != cgiFormString("media", flag, sizeof(flag)) && strlen(flag) > 0)
 		return burningStudy(flag);
 	else if(cgiFormNotFound != cgiFormString("jnlp", flag, sizeof(flag)) && strlen(flag) > 0)
 		return jnlp(hostLength);

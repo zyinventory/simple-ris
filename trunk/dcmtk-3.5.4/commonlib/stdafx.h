@@ -22,7 +22,7 @@
 #include <locale>
 #include <string>
 #include <iterator>
-#include <vector>
+#include <list>
 #include <algorithm>
 #include <functional>
 #include <memory>

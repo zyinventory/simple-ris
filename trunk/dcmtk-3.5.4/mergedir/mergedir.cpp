@@ -90,5 +90,5 @@ int main(int argc, char *argv[])
         return -2;  /* DcmDicomDir class dumps core when no data dictionary */
     }
 
-	return MergeDicomDir(fileNames, opt_output, opt_fileset);
+	return MergeDicomDir(fileNames, opt_output, opt_fileset, CERR, opt_verbose);
 }

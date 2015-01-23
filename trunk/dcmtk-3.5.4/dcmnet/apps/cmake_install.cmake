@@ -85,6 +85,7 @@ IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspeci
 		"D:/workspace/dcmtk-3.5.4/Debug/getindex.exe"
 		"D:/workspace/dcmtk-3.5.4/Debug/commonlib.dll"
 		"D:/workspace/dcmtk-3.5.4/Debug/cdll8.dll"
+		"D:/workspace/dcmtk-3.5.4/Debug/dcmdynamic.dll"
 	)
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES 
 		"D:/workspace/dcmtk-3.5.4/Debug/ServiceWrapper.exe"
@@ -97,6 +98,8 @@ IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspeci
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/cgi-bin" TYPE EXECUTABLE FILES
 		"D:/workspace/dcmtk-3.5.4/Release/getindex.exe"
 		"D:/workspace/dcmtk-3.5.4/Release/commonlib.dll"
+		"D:/workspace/dcmtk-3.5.4/Release/cdll8.dll"
+		"D:/workspace/dcmtk-3.5.4/Release/dcmdynamic.dll"
 	)
 	FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pacs/scripts" TYPE FILE FILES 
 		"D:/workspace/dcmtk-3.5.4/ServiceWrapper/web/scripts/charhash.js"

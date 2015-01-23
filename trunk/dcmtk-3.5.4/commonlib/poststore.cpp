@@ -20,12 +20,12 @@ string archivePath("archdir");
 string indexBase("indexdir");
 string baseurl, downloadUrl, studyDatePath;
 
-bool getBurnOnce()
+COMMONLIB_API bool getBurnOnce()
 {
 	return burnOnce;
 }
 
-void setBurnOnce()
+COMMONLIB_API void setBurnOnce()
 {
 	burnOnce = true;
 }
@@ -51,7 +51,7 @@ static string parsePatientName(string &patient)
 	return test;
 }
 
-bool deleteSubTree(const char *dirpath, ostream *ostrm)
+COMMONLIB_API bool deleteSubTree(const char *dirpath, ostream *ostrm)
 {
 	bool allOK = true;
 	WIN32_FIND_DATA wfd;
@@ -103,7 +103,7 @@ bool deleteSubTree(const char *dirpath, ostream *ostrm)
 	return allOK;
 }
 
-bool deleteTree(const char *dirpath, ostream *ostrm)
+COMMONLIB_API bool deleteTree(const char *dirpath, ostream *ostrm)
 {
 	if (_access_s(dirpath, 0))
 		return true;  // dirpath dose not exist
@@ -473,7 +473,64 @@ static HRESULT createDateIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *x
 	return S_OK;
 }
 
-int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, const char *media)
+COMMONLIB_API const char* detectMediaType(size_t *pSize)
+{
+	CSimpleIni ini(false, false, false);
+	SI_Error rc = SI_OK;
+	for(int i = 0; i < 50; ++i)
+	{
+		rc = ini.LoadFile("..\\orders\\TDBStatus.txt");
+		if(rc >= 0) break;
+		Sleep(10);
+	}
+	/*
+	bool paramOK = false;
+	if(rc >= 0)
+	{
+		string publisherName(ini.GetValue("PUBLISHER1", "NAME", ""));
+		if(publisherName.find("PP-100 ") == 0 || publisherName.find("PP-100N") == 0)
+		{
+			ofs << "FORMAT=ISO9660L2" << endl;
+			paramOK = true;
+		}
+	}
+	if(! paramOK) ofs << "FORMAT=UDF102" << endl;
+
+	paramOK = false;
+	*/
+	long mediaType = 100;
+	if (rc >= 0)
+	{
+		long mediaType1 = 100, mediaType2 = 100;
+		mediaType1 = ini.GetLongValue("PUBLISHER1", "STACKER1_SETTING", 100);
+		if(mediaType1 != 1 && mediaType1 != 4 && mediaType1 != 7 && mediaType1 != 8 && mediaType1 != 9) mediaType1 = 100;
+		mediaType2 = ini.GetLongValue("PUBLISHER1", "STACKER2_SETTING", 100);
+		if(mediaType2 != 1 && mediaType2 != 4 && mediaType2 != 7 && mediaType2 != 8 && mediaType2 != 9) mediaType2 = 100;
+		mediaType = min(mediaType1, mediaType2);
+	}
+	else
+		mediaType = 4; //MEDIA_DVD
+	switch(mediaType)
+	{
+	case 1:
+		if(pSize) *pSize = 580;
+		return MEDIA_CD;
+	case 7:
+		if(pSize) *pSize = 8000;
+		return MEDIA_DVD_DL;
+	case 8:
+		if(pSize) *pSize = 26000;
+		return MEDIA_BD;
+	case 9:
+		if(pSize) *pSize = 52000;
+		return MEDIA_BD_DL;
+	default:  //4
+		if(pSize) *pSize = 4000;
+		return MEDIA_DVD;
+	}
+}
+
+COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, const char *media)
 {
 	if(!strcmp(tag, "0020000d"))
 	{
@@ -510,73 +567,11 @@ int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, co
 				ofstream ofs(jdfPath.c_str(), ios_base::out | ios_base::trunc);
 				if(ofs.good())
 				{
-					CSimpleIni ini(false, false, false);
-					SI_Error rc = SI_OK;
-					for(int i = 0; i < 5; ++i)
-					{
-						rc = ini.LoadFile("..\\orders\\TDBStatus.txt");
-						if(rc >= 0) break;
-						Sleep(100);
-					}
-
-					bool paramOK = false;
-					/*
-					if(rc >= 0)
-					{
-						string publisherName(ini.GetValue("PUBLISHER1", "NAME", ""));
-						if(publisherName.find("PP-100 ") == 0 || publisherName.find("PP-100N") == 0)
-						{
-							ofs << "FORMAT=ISO9660L2" << endl;
-							paramOK = true;
-						}
-					}
-					if(! paramOK) ofs << "FORMAT=UDF102" << endl;
-
-					paramOK = false;
-					*/
 					ofs << "FORMAT=UDF102" << endl;
 					if(strcmp(MEDIA_AUTO, media))
-					{
 						ofs << "DISC_TYPE=" << media << endl;
-					}
 					else
-					{
-						if (rc >= 0)
-						{
-							long mediaType1 = 100, mediaType2 = 100;
-							mediaType1 = ini.GetLongValue("PUBLISHER1", "STACKER1_SETTING", 100);
-							if(mediaType1 != 1 && mediaType1 != 4 && mediaType1 != 7 && mediaType1 != 8 && mediaType1 != 9) mediaType1 = 100;
-							mediaType2 = ini.GetLongValue("PUBLISHER1", "STACKER2_SETTING", 100);
-							if(mediaType2 != 1 && mediaType2 != 4 && mediaType2 != 7 && mediaType2 != 8 && mediaType2 != 9) mediaType2 = 100;
-							switch(min(mediaType1, mediaType2))
-							{
-							case 1:
-								ofs << "DISC_TYPE=" << MEDIA_CD << endl;
-								paramOK = true;
-								break;
-							case 4:
-								ofs << "DISC_TYPE=" << MEDIA_DVD << endl;
-								paramOK = true;
-								break;
-							case 7:
-								ofs << "DISC_TYPE=" << MEDIA_DVD_DL << endl;
-								paramOK = true;
-								break;
-							case 8:
-								ofs << "DISC_TYPE=" << MEDIA_BD << endl;
-								paramOK = true;
-								break;
-							case 9:
-								ofs << "DISC_TYPE=" << MEDIA_BD_DL << endl;
-								paramOK = true;
-								break;
-							default:
-								paramOK = false;
-							}
-						}
-						if(! paramOK) ofs << "DISC_TYPE=" << MEDIA_CD << endl;
-					}
-
+						ofs << "DISC_TYPE=" << detectMediaType(NULL) << endl;
 					ofs << "COPIES=1" << endl;
 					ofs << "DATA=" << pacsBase << "\\viewer" << endl;
 					ofs << "DATA=" << buffer << endl;
@@ -654,7 +649,7 @@ static HRESULT mergeStudy(MSXML2::IXMLDOMNodePtr src, MSXML2::IXMLDOMNodePtr des
 	return S_OK;
 }
 
-bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid)
+COMMONLIB_API bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid)
 {
 	HANDLE fileMutex = NULL;
 	char buffer[1024], hashBuf[9];
@@ -891,7 +886,7 @@ static bool operationRetry(int(*fn)(const char *), const char *param, int state,
 	return ! opFail;
 }
 
-HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV)
+COMMONLIB_API HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV)
 {
 	HRESULT hr;
 	if(paramBaseUrl) baseurl = paramBaseUrl;
@@ -933,7 +928,7 @@ HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *arc
 	return hr;
 }
 
-bool generateStudyXML(const char *line, ostream &xmlStream, bool isEncapsulated)
+COMMONLIB_API bool generateStudyXML(const char *line, ostream &xmlStream, bool isEncapsulated)
 {
 	MSXML2::IXMLDOMDocumentPtr pXmlDom;
 	MSXML2::IXMLDOMElementPtr study;
@@ -990,7 +985,7 @@ static void searchRecursively(string &path, long long &filesizes)
 	}
 }
 
-long long diskUsage(const char *pacsBase, const char *studyUID)
+COMMONLIB_API long long diskUsage(const char *pacsBase, const char *studyUID)
 {
 	long long filesizes = 0LL;
 	char hashBuf[9];

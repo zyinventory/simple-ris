@@ -6,9 +6,6 @@
 #import <msxml3.dll>
 using namespace std;
 
-extern ostringstream buffer;
-void outputContent(bool error);
-
 int statusXml(CSimpleIni &ini, const char *statusFlag)
 {
 	bool hasError = false;
@@ -16,7 +13,7 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 	HRESULT hr = pXmlDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 	if (FAILED(hr))
 	{
-		buffer << "Failed to CreateInstance on an XML DOM." << endl;
+		index_errlog << "Failed to CreateInstance on an XML DOM." << endl;
 		outputContent(true);
 		return -1;
 	}
@@ -121,7 +118,7 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 	root->appendChild(licenseNode);
 
 	if(hasError) root->appendChild(errorInfos);
-	buffer << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml;
+	index_errlog << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml;
 	outputContent(false);
 	return 0;
 }
@@ -140,7 +137,7 @@ int statusCharge(const char *flag)
 	HRESULT hr = pXmlDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 	if (FAILED(hr))
 	{
-		buffer << "Failed to CreateInstance on an XML DOM." << endl;
+		index_errlog << "Failed to CreateInstance on an XML DOM." << endl;
 		outputContent(true);
 		return -1;
 	}
@@ -180,7 +177,7 @@ int statusCharge(const char *flag)
 		}
 		if(seq == -1 || (seq == 0 && errno == EINVAL))
 		{
-			buffer << "ÐòÁÐºÅ´íÎó" << endl;
+			index_errlog << "ÐòÁÐºÅ´íÎó" << endl;
 			outputContent(true);
 			return -1;
 		}
@@ -190,7 +187,7 @@ int statusCharge(const char *flag)
 		DWORD serial = 0;
 		if(!SetLock(8, &serial, 0, "fqE8km*O", "Tw2d@uJp", 0, 0))
 		{
-			buffer << "»ñÈ¡¼ÓÃÜËøÐòºÅ´íÎó:" << hex << LYFGetLastErr() << endl;
+			index_errlog << "»ñÈ¡¼ÓÃÜËøÐòºÅ´íÎó:" << hex << LYFGetLastErr() << endl;
 			outputContent(true);
 			return -2;
 		}
@@ -202,7 +199,7 @@ int statusCharge(const char *flag)
 			lockResult = lockResult && Lock32_Function(salt, &salt, 0);
 		if(!lockResult)
 		{
-			buffer << "¼ÓÃÜËøÐ£Ñé´íÎó" << endl;
+			index_errlog << "¼ÓÃÜËøÐ£Ñé´íÎó" << endl;
 			outputContent(true);
 			return -2;
 		}
@@ -219,7 +216,7 @@ int statusCharge(const char *flag)
 		}
 		if(isBatchMode)
 		{
-			buffer << "ÊýÁ¿»òÐòÁÐºÅ´íÎó: " << chargekey << endl;
+			index_errlog << "ÊýÁ¿»òÐòÁÐºÅ´íÎó: " << chargekey << endl;
 			outputContent(true);
 			return -16;
 		}
@@ -228,15 +225,15 @@ int statusCharge(const char *flag)
 		switch(retCode)
 		{
 		case -1:
-			buffer << "´íÎó1:" << chargekey << endl;
+			index_errlog << "´íÎó1:" << chargekey << endl;
 			outputContent(true);
 			return -3;
 		case -2:
-			buffer << "´íÎó2:" << chargekey << endl;
+			index_errlog << "´íÎó2:" << chargekey << endl;
 			outputContent(true);
 			return -4;
 		case -3:
-			buffer << "´íÎó3:" << chargekey << endl;
+			index_errlog << "´íÎó3:" << chargekey << endl;
 			outputContent(true);
 			return -5;
 		}
@@ -244,7 +241,7 @@ int statusCharge(const char *flag)
 		DWORD fileno = retCode & 0xFFFF;
 		if(box > MAX_BOX || fileno != seq || fileno >= TOTAL_BUY)
 		{
-			buffer << "ÊýÁ¿»òÐòÁÐºÅ´íÎó:" << chargekey << endl;
+			index_errlog << "ÊýÁ¿»òÐòÁÐºÅ´íÎó:" << chargekey << endl;
 			outputContent(true);
 			return -6;
 		}
@@ -256,21 +253,21 @@ int statusCharge(const char *flag)
 				licenseCount = currentCount(passwd);
 				if(licenseCount < 0 || licenseCount > 0xffff)
 				{
-					buffer << "ÊÚÈ¨´íÎó" << endl;
+					index_errlog << "ÊÚÈ¨´íÎó" << endl;
 					outputContent(true);
 					return -1;
 				}
 			}
 			else
 			{
-				buffer << "ÊÚÈ¨´íÎó" << endl;
+				index_errlog << "ÊÚÈ¨´íÎó" << endl;
 				outputContent(true);
 				return -1;
 			}
 		}
 		else
 		{
-			buffer << "ÊÚÈ¨´íÎó" << endl;
+			index_errlog << "ÊÚÈ¨´íÎó" << endl;
 			outputContent(true);
 			return -1;
 		}
@@ -325,7 +322,7 @@ int statusCharge(const char *flag)
 		}
 		else
 		{
-			buffer << "³äÖµÈÕÖ¾Ð´Èë´íÎó£¬ÇëÖØÊÔ" << endl;
+			index_errlog << "³äÖµÈÕÖ¾Ð´Èë´íÎó£¬ÇëÖØÊÔ" << endl;
 			outputContent(true);
 			return -9;
 		}
@@ -357,21 +354,21 @@ int statusCharge(const char *flag)
 				licenseCount = currentCount(passwd);
 				if(licenseCount < 0 || licenseCount > 0xFFFF)
 				{
-					buffer << "ÊÚÈ¨´íÎó" << endl;
+					index_errlog << "ÊÚÈ¨´íÎó" << endl;
 					outputContent(true);
 					return -1;
 				}
 			}
 			else
 			{
-				buffer << "ÊÚÈ¨´íÎó" << endl;
+				index_errlog << "ÊÚÈ¨´íÎó" << endl;
 				outputContent(true);
 				return -1;
 			}
 		}
 		else
 		{
-			buffer << "ÊÚÈ¨´íÎó" << endl;
+			index_errlog << "ÊÚÈ¨´íÎó" << endl;
 			outputContent(true);
 			return -1;
 		}
@@ -412,7 +409,7 @@ int statusCharge(const char *flag)
 		errorInfos->appendChild(pXmlDom->createTextNode(errorMessage.c_str()));
 		root->appendChild(errorInfos);
 	}
-	buffer << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml;
+	index_errlog << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml;
 	outputContent(false);
 	return 0;
 }
@@ -461,4 +458,45 @@ int removeStudy(const char *flag)
 	fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", errorMessage.size());
 	fprintf(cgiOut, errorMessage.c_str());
 	return 0;
+}
+
+size_t collectionToFileNameList(const char *xmlpath, list<Study> &studies, bool isPatient)
+{
+	MSXML2::IXMLDOMDocumentPtr pXmlDom;
+	HRESULT hr = pXmlDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+	if (FAILED(hr))
+	{
+		index_errlog << "Failed to CreateInstance on an XML DOM." << endl;
+		return -1;
+	}
+	if(!pXmlDom->load(xmlpath)) return -2;
+	MSXML2::IXMLDOMNodeListPtr pStudyList;
+	if(isPatient)
+		pStudyList = pXmlDom->selectNodes("/wado_query/Patient/Study");
+	else
+		pStudyList = pXmlDom->selectNodes("/Collection/Study");
+	if(!pStudyList) return -2;
+	while(MSXML2::IXMLDOMNodePtr pNode = pStudyList->nextNode())
+	{
+		string studyUid;
+		if(isPatient)
+			studyUid = pNode->Getattributes()->getNamedItem("StudyInstanceUID")->text;
+		else
+			studyUid = pNode->text;
+		if(studies.end() != find_if(studies.begin(), studies.end(), [&studyUid](Study &s) { return studyUid == s.uid; }))
+			continue;
+		MSXML2::IXMLDOMNodePtr studySizeAttr = pNode->Getattributes()->getNamedItem("StudyDescription");
+		int studySize = 0;
+		if(studySizeAttr) studySize = atoi(studySizeAttr->text);
+		try
+		{
+			studies.push_back(Study(studyUid.c_str(), studySize));
+		}
+		catch(exception &e)
+		{
+			index_errlog << e.what() << endl;
+		}
+	}
+	studies.sort([](const Study& s1, const Study &s2) { return s1.size > s2.size || (s1.size == s2.size && strcmp(s1.uid, s2.uid) > 0); } );
+	return pStudyList->Getlength();
 }
