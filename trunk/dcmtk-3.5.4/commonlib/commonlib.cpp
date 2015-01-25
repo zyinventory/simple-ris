@@ -158,7 +158,7 @@ COMMONLIB_API bool MkdirRecursive(const char *subdir)
 COMMONLIB_API bool prepareFileDir(const char *path)
 {
   string filePath = path;
-  string::size_type p = filePath.rfind(L'\\');
+  string::size_type p = filePath.rfind('\\');
   if(p == string::npos || p == 0) return true;
   return MkdirRecursive(filePath.substr(0, p).c_str());
 }
