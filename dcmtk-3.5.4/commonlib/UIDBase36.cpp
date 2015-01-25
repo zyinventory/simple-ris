@@ -357,3 +357,14 @@ size_t UIDBase36::uncompress(const char *uid, char *outputBuffer)
 	*dest = '\0';
 	return dest - outputBuffer;
 }
+
+static UIDBase36 b36c;
+__declspec(dllexport) errno_t UIDBase36Compress(const string &uid, char *outputBuffer, size_t bufLen)
+{
+	return b36c.compress(uid, outputBuffer, bufLen);
+}
+
+__declspec(dllexport) size_t UIDBase36UnCompress(const char *uid, char *outputBuffer)
+{
+	return b36c.uncompress(uid, outputBuffer);
+}
