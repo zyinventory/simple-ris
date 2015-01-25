@@ -23,6 +23,8 @@
 #include <string>
 #include <iterator>
 #include <list>
+#include <set>
+#include <map>
 #include <algorithm>
 #include <functional>
 #include <memory>
