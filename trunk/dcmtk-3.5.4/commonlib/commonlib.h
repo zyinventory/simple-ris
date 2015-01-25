@@ -68,3 +68,5 @@ COMMONLIB_API bool deleteSubTree(const char *dirpath, std::ostream *ostrm = NULL
 COMMONLIB_API bool deleteTree(const char *dirpath, std::ostream *ostrm = NULL);
 COMMONLIB_API bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid);
 COMMONLIB_API size_t extractStudyUid(char *buffer, const size_t bufferSize, const wchar_t *body);
+COMMONLIB_API errno_t UIDBase36Compress(const std::string &uid, char *outputBuffer, size_t bufLen);
+COMMONLIB_API size_t UIDBase36UnCompress(const char *uid, char *outputBuffer);
