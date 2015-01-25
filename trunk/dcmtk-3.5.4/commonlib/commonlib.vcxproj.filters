@@ -36,6 +36,12 @@
     <ClCompile Include="study_struct.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="mini-gmp.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="UIDBase36.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
@@ -60,6 +66,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="study_struct.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="mini-gmp.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="UIDBase36.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
