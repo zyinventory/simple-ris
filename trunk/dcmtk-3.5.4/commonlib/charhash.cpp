@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "commonlib.h"
+#include "UIDBase36.h"
 using namespace std;
 
 static char char32map[32] = {'0', '1', '2','3','4','5','6','7','8','9','A','B','C','D','E','F','G','H','J','K','M','N','P','Q','R','S','T','U','V','W','X','Y'};
@@ -100,6 +101,34 @@ COMMONLIB_API __int64 uidHash(const char *s, char *buffer, size_t buffer_size)
 	__int64 hash = hashCode(s, 31);
 	int hash131 = hashCode(s, 131);
 	return uidHashImpl(hash, hash131, buffer, buffer_size);
+}
+
+COMMONLIB_API errno_t SeriesInstancePath(const char *series, const string &instance, char *outputBuffer, size_t bufLen, char pathSeparator)
+{
+	uidHash(series, outputBuffer, bufLen);
+	char compbuf[UIDBase36::COMPRESS_MAX_LEN + 1];
+	size_t complen = UIDBase36::instance.compress(instance, compbuf, UIDBase36::COMPRESS_MAX_LEN + 1);
+	const char *src;
+	if(complen > UIDBase36::COMPRESS_LEN)
+	{
+		size_t overflow = complen - UIDBase36::COMPRESS_LEN;
+		outputBuffer[7 - overflow] = '_';
+		strncpy_s(&outputBuffer[1 + 7 - overflow], bufLen - (8 - overflow), compbuf, overflow);
+		outputBuffer[8] = pathSeparator;
+		src = &compbuf[overflow];
+	}
+	else
+	{
+		outputBuffer[8] = pathSeparator;
+		src = compbuf;
+	}
+
+	for(int groupCount = 1; *src != '\0'; src += 8, ++groupCount)
+	{
+		outputBuffer[9 * groupCount - 1] = pathSeparator;
+		strncpy_s(&outputBuffer[9 * groupCount], bufLen - 9 * groupCount, src, 8);
+	}
+	return 0;
 }
 
 static bool encodeBase32(string &src, string &enc)

@@ -216,6 +216,9 @@ static int burningStudy(const char *media)
 	char rw_passwd[9] = "";
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
+		char path[MAX_PATH];
+		SeriesInstancePath(studyUID, studyUID, path, MAX_PATH);
+
 		char countBuffer[12] = "", filename[64] = "..\\etc\\*.key";
 		int lockNumber = -1;
 		SEED_SIV siv;

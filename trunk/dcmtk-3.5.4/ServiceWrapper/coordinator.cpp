@@ -168,7 +168,7 @@ static list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 
 	if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
 	{
-		time_header_out(cout) << "create process: " << procinfo.hProcess << ", " << commandLine << endl
+		if(opt_verbose) time_header_out(cout) << "create process: " << procinfo.hProcess << ", " << commandLine << endl
 			<< "\tprocess log: " << *wp.logFilePath << endl;
 		wp.hProcess = procinfo.hProcess;
 		wp.hThread = procinfo.hThread;
@@ -439,11 +439,6 @@ static void runArchiveInstance(string &cmd, const int index, string &studyUid)
 		sinfo.dwFlags |= STARTF_USESTDHANDLES;
 		sinfo.hStdOutput = workers[index].hLogFile;
 		sinfo.hStdError = workers[index].hLogFile;
-		if(!SetHandleInformation(workers[index].hLogFile, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT))
-		{
-			_com_error ce(AtlHresultFromLastError());
-			time_header_out(cerr) << TEXT("runArchiveInstance SetHandleInformation enable inherit: ") << ce.ErrorMessage() << endl;
-		}
 	}
 
 	string::size_type pos = cmd.rfind(' ');
@@ -461,8 +456,8 @@ static void runArchiveInstance(string &cmd, const int index, string &studyUid)
 		commandLine[cmd.length()] = '\0';
 
 		HANDLE hChildStdInRead;
-		CreatePipe(&hChildStdInRead, &workers[index].hChildStdInWrite, &logSA, 0);
-		SetHandleInformation(workers[index].hChildStdInWrite, HANDLE_FLAG_INHERIT, 0);
+		CreatePipe(&hChildStdInRead, &workers[index].hChildStdInWrite, NULL, 0);
+		SetHandleInformation(hChildStdInRead, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
 		sinfo.hStdInput = hChildStdInRead;
 
 		if( CreateProcess(NULL, commandLine, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )

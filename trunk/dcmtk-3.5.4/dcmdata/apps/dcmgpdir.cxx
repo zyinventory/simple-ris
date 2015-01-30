@@ -186,6 +186,7 @@ int main(int argc, char *argv[])
 	OFBool opt_append = OFFalse;
 	OFBool opt_recurse = OFFalse;
 	OFBool opt_deleteSourceCSV = OFFalse;
+	OFBool opt_instanceUniquePath = OFFalse;
 	E_EncodingType opt_enctype = EET_ExplicitLength;
 	E_GrpLenEncoding opt_glenc = EGL_withoutGL;
 	const char *opt_output = DEFAULT_DICOMDIR_NAME;
@@ -316,6 +317,7 @@ int main(int argc, char *argv[])
 	cmd.addOption("--web-url",               "-wu", 1, "web url : string", "add a web url to index file, default : http://localhost/pacs/");
 	cmd.addOption("--viewer",						1, "viewer : string", "which viewer will append to DVD, default : eFilm");
 	cmd.addOption("--queue-timeout",         "-qt", 1, "queue timeout : integer(1..300)", "queue receive message timeout, default : 15(second)");
+	cmd.addOption("--instance-unique-path",  "-iu",    "instance path is unique" );
 
 	/* evaluate command line */
 	prepareCmdLineArgs(argc, argv, OFFIS_CONSOLE_APPLICATION);
@@ -562,6 +564,7 @@ int main(int argc, char *argv[])
 			app.checkValue(cmd.getValueAndCheckMinMax(qt, 1, 300));
 			opt_queueTimeout = qt;
 		}
+		if (cmd.findOption("--instance-unique-path")) opt_instanceUniquePath = OFTrue;
 		if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: queue timeout is " << opt_queueTimeout << endl;
 	}
 
@@ -898,8 +901,8 @@ traversal_restart:
 		strcpy_s(buffer, MAX_PATH, fileNameList.front().c_str());
 		fileNameList.pop_front();
 		//time_header_out(CERR) << "dicomdir OK, create index from " << buffer << endl;
-		if(i == listSize - 1 && validLock && isIntegrity) setBurnOnce(); // burn once
-		bool readyToBurn = getBurnOnce();
+		if(i == listSize - 1 && validLock && isIntegrity) CommonlibBurnOnce = true; // burn once
+		bool readyToBurn = CommonlibBurnOnce;
 		if(ddir.verboseMode())
 		{
 			time_header_out(COUT) << "burning study: ";
@@ -908,8 +911,10 @@ traversal_restart:
 			else
 				COUT << "study is not integrity, skip burning" << endl;
 		}
+
+		CommonlibInstanceUniquePath = opt_instanceUniquePath;
 		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
-		if(readyToBurn && !getBurnOnce()) decreaseCount(rw_passwd);
+		if(readyToBurn && !CommonlibBurnOnce) decreaseCount(rw_passwd);
 	}
 /*
 	PROCESS_INFORMATION procinfo;
