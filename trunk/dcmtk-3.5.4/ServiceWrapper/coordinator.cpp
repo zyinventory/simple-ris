@@ -194,7 +194,6 @@ static void closeLogFile(WorkerProcess &wp)
 		DWORD pos = SetFilePointer(wp.hLogFile, 0, NULL, FILE_CURRENT);
 		CloseHandle(wp.hLogFile);
 		wp.hLogFile = NULL;
-		string * logFilePath = NULL;
 		if(pos == 0)
 		{
 			/*
