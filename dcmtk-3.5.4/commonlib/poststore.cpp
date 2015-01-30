@@ -15,20 +15,11 @@ const char UNIT_SEPARATOR = 0x1F;
 const size_t BUFF_SIZE = 1024;
 const int RMDIR_WAIT_SECONDS = 10;
 static char buffer[BUFF_SIZE];
-static bool burnOnce = false;
-string archivePath("archdir");
-string indexBase("indexdir");
-string baseurl, downloadUrl, studyDatePath;
+static string archivePath("archdir");
+static string indexBase("indexdir");
+static string baseurl, downloadUrl, studyDatePath;
 
-COMMONLIB_API bool getBurnOnce()
-{
-	return burnOnce;
-}
-
-COMMONLIB_API void setBurnOnce()
-{
-	burnOnce = true;
-}
+COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
 static string parsePatientName(string &patient)
 {
@@ -279,10 +270,19 @@ static HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
 		series->appendChild(instance);
 	}
 	instance->setAttribute("InstanceNumber", instanceNumber.c_str());
-	char buf[MAX_PATH], hashBufSeries[9], hashBufInstance[9];
-	uidHash(seriesUID.c_str(), hashBufSeries, sizeof(hashBufSeries));
-	uidHash(instanceUID.c_str(), hashBufInstance, sizeof(hashBufInstance));
-	sprintf_s(buf, sizeof(buf), "%s/%s/%s", downloadUrl.c_str(), hashBufSeries, hashBufInstance);
+	char buf[MAX_PATH];
+	if(CommonlibInstanceUniquePath)
+	{
+		size_t current = sprintf_s(buf, "%s/", downloadUrl.c_str());
+		SeriesInstancePath(seriesUID.c_str(), instanceUID, buf + current, MAX_PATH - current, '/');
+	}
+	else
+	{
+		char hashBufSeries[9], hashBufInstance[9];
+		uidHash(seriesUID.c_str(), hashBufSeries, sizeof(hashBufSeries));
+		uidHash(instanceUID.c_str(), hashBufInstance, sizeof(hashBufInstance));
+		sprintf_s(buf, sizeof(buf), "%s/%s/%s", downloadUrl.c_str(), hashBufSeries, hashBufInstance);
+	}
 	instance->setAttribute("DirectDownloadFile", buf);
 	return S_OK;
 }
@@ -763,8 +763,8 @@ static HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const cha
 			}
 
 			// jdf file
-			if(burnOnce)
-				burnOnce = (0 != generateStudyJDF(tag, (const char*)tagValue, cerr));
+			if(CommonlibBurnOnce)
+				CommonlibBurnOnce = (0 != generateStudyJDF(tag, (const char*)tagValue, cerr));
 		}
 		else
 		{

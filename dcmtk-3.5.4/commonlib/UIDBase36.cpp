@@ -7,6 +7,7 @@ MapString2Int UIDBase36::uid2index;
 MapInt2String UIDBase36::index2uid;
 volatile LONG UIDBase36::REF_COUNTER = 0;
 volatile bool UIDBase36::INIT_OK = false;
+UIDBase36 UIDBase36::instance;
 
 UIDBase36::UIDBase36(void)
 {
@@ -268,9 +269,9 @@ UIDBase36::UIDBase36(void)
 	// instace init
 }
 
-errno_t UIDBase36::compress(const string &uid, char *outputBuffer, size_t bufLen)
+size_t UIDBase36::compress(const string &uid, char *outputBuffer, size_t bufLen)
 {
-	if(uid.length() == 0 || uid.length() > UID_LEN) return EINVAL;
+	if(uid.length() == 0 || uid.length() > UID_LEN) return 0;
 	size_t cursor = 0;
 	char buff[UID_LEN + 2], b36buff[UID_LEN * 2 + 1];
 	char *start = buff;
@@ -282,15 +283,18 @@ errno_t UIDBase36::compress(const string &uid, char *outputBuffer, size_t bufLen
 		if(uid2index.end() != entry)
 		{
 			cursor = *it;
+#ifdef _DEBUG
 			if(entry->second < HEADER_WARNING) cerr << "WARNING: header match fallback: " << uid << endl;
+#endif
 			_itoa_s(entry->second, start, UID_LEN, 11);
 			start += 3;
 			break;
 		}
 	}
+#ifdef _DEBUG
 	// can't match any header
 	if(cursor == 0) cerr << "WARNING: header can't match: " << uid << endl;
-
+#endif
 	for_each(uid.begin() + cursor, uid.end(), [&start](const char c) {
 		switch(c)
 		{
@@ -307,15 +311,20 @@ errno_t UIDBase36::compress(const string &uid, char *outputBuffer, size_t bufLen
 	*start = '\0';
 	//cout << buff << endl;
 	start = &(b36buff[UID_LEN]);
-	if(base11_to_base37(buff, start)) return EINVAL;
+	if(base11_to_base37(buff, start)) return 0;
 	size_t b37len = strlen(start);
-	if(b37len > UIDBase36_COMPRESS_LEN) cerr << "OVERFLOW: " << uid << endl;
-	while(b37len < UIDBase36_COMPRESS_LEN)
+#ifdef _DEBUG
+	if(b37len > COMPRESS_LEN) cerr << "OVERFLOW: " << uid << endl;
+#endif
+	while(b37len < COMPRESS_LEN)
 	{
 		*--start = '0';
 		++b37len;
 	}
-	return strcpy_s(outputBuffer, bufLen, start);
+	if(strcpy_s(outputBuffer, bufLen, start))
+		return 0;
+	else
+		return b37len;
 }
 
 size_t UIDBase36::uncompress(const char *uid, char *outputBuffer)
@@ -356,15 +365,4 @@ size_t UIDBase36::uncompress(const char *uid, char *outputBuffer)
 	}
 	*dest = '\0';
 	return dest - outputBuffer;
-}
-
-static UIDBase36 b36c;
-__declspec(dllexport) errno_t UIDBase36Compress(const string &uid, char *outputBuffer, size_t bufLen)
-{
-	return b36c.compress(uid, outputBuffer, bufLen);
-}
-
-__declspec(dllexport) size_t UIDBase36UnCompress(const char *uid, char *outputBuffer)
-{
-	return b36c.uncompress(uid, outputBuffer);
 }

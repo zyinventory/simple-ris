@@ -206,6 +206,7 @@ OFBool             opt_forkedChild = OFFalse;
 OFBool             opt_execSync = OFFalse;            // default: execute in background
 OFBool             opt_disableCompress = OFFalse;
 OFBool             opt_disableMSMQ = OFFalse;
+OFBool             opt_instanceUniquePath = OFFalse;
 #endif
 
 #ifdef WITH_OPENSSL
@@ -456,7 +457,8 @@ int main(int argc, char *argv[])
 #ifdef _WIN32
     cmd.addOption(  "--exec-sync",              "-xs",       "execute command synchronously in foreground" );
 	cmd.addOption(  "--disable-compress",       "-dc",       "disable compress");
-    //cmd.addOption(  "--disable-msmq",			"-dm",       "don't send message to queue, execute command directly" );
+    cmd.addOption(  "--disable-msmq",			"-dm",       "don't send message to queue, execute command directly" );
+    cmd.addOption(  "--instance-unique-path",	"-iu",       "instance path is unique" );
 #endif
 
 #ifdef WITH_OPENSSL
@@ -874,8 +876,8 @@ int main(int argc, char *argv[])
     if (cmd.findOption("--exec-sync")) opt_execSync = OFTrue;
 	if (cmd.findOption("--disable-compress")) opt_disableCompress = OFTrue;
 	if (cmd.findOption("--disable-msmq")) opt_disableMSMQ = OFTrue;
+	if (cmd.findOption("--instance-unique-path")) opt_instanceUniquePath = OFTrue;
 #endif
-
   }
 
 #ifdef WITH_OPENSSL
@@ -2068,12 +2070,23 @@ storeSCPCallback(
 		(*imageDataSet)->findAndGetSint32( DCM_InstanceNumber, instanceNumber );
 		inststrm << instanceNumber << '\n';
 
-		char hashBufSeries[9], hashBufImage[9];
-		uidHash(currentSeriesInstanceUID.c_str(), hashBufSeries, sizeof(hashBufSeries));
-		uidHash(sopInstanceUid.c_str(), hashBufImage, sizeof(hashBufImage));
-		sprintf_s(buf, MAX_PATH, "%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\%s\\%s\\%s", opt_volumeLabel.c_str(),
-			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7],
-			currentStudyInstanceUID.c_str(), hashBuf, hashBufSeries, hashBufImage);
+		if(opt_instanceUniquePath)
+		{
+			CommonlibInstanceUniquePath = true;
+			size_t buflen = sprintf_s(buf, MAX_PATH, "%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\%s\\", opt_volumeLabel.c_str(),
+				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7],
+				currentStudyInstanceUID.c_str(), hashBuf);
+			SeriesInstancePath(currentSeriesInstanceUID.c_str(), sopInstanceUid.c_str(), buf + buflen, MAX_PATH - buflen);
+		}
+		else
+		{
+			char hashBufSeries[9], hashBufImage[9];
+			uidHash(currentSeriesInstanceUID.c_str(), hashBufSeries, sizeof(hashBufSeries));
+			uidHash(sopInstanceUid.c_str(), hashBufImage, sizeof(hashBufImage));
+			sprintf_s(buf, MAX_PATH, "%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\%s\\%s\\%s", opt_volumeLabel.c_str(),
+				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7],
+				currentStudyInstanceUID.c_str(), hashBuf, hashBufSeries, hashBufImage);
+		}
 		lastArchiveFileName = buf;
 
 		// integrate subdirectory name into file name (note that cbdata->imageFileName currently contains both

@@ -33,10 +33,12 @@
 #else
 #define DATE_FORMAT_YEAR_TO_SECOND "%F %T"
 #endif
-#define UIDBase36_MAX_LEN 43
+#define SERIES_INSTANCE_PATH_MAX 54  // series_hash(8) + instance_group(9) * 5 + \0(1)
 
 const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
   ADD_DEFAULT_CHARSET[] = "Add default character set ", UNKNOWN_CHARSET[] = "Unknown character set ", OVERRIDE_BY[] = " is override by ";
+
+extern COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
 COMMONLIB_API void displayErrorToCerr(TCHAR *lpszFunction);
 COMMONLIB_API int GetSignalInterruptValue();
@@ -51,8 +53,6 @@ COMMONLIB_API int GenerateLogPath(char *buf, size_t bufLen, const char *appName,
 COMMONLIB_API BOOL DeleteEmptyFile(const char *filePath);
 COMMONLIB_API const char* detectMediaType(size_t *pSize);
 COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, std::ostream &errstrm, const char *media = MEDIA_AUTO);
-COMMONLIB_API bool getBurnOnce();
-COMMONLIB_API void setBurnOnce();
 COMMONLIB_API long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV = false);
 COMMONLIB_API time_t dcmdate2tm(int dcmdate);
 COMMONLIB_API bool generateStudyXML(const char *line, std::ostream &xmlStream, bool isEncapsulated = false);
@@ -69,5 +69,4 @@ COMMONLIB_API bool deleteSubTree(const char *dirpath, std::ostream *ostrm = NULL
 COMMONLIB_API bool deleteTree(const char *dirpath, std::ostream *ostrm = NULL);
 COMMONLIB_API bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid);
 COMMONLIB_API size_t extractStudyUid(char *buffer, const size_t bufferSize, const wchar_t *body);
-COMMONLIB_API errno_t UIDBase36Compress(const std::string &uid, char *outputBuffer, size_t bufLen);
-COMMONLIB_API size_t UIDBase36UnCompress(const char *uid, char *outputBuffer);
+COMMONLIB_API errno_t SeriesInstancePath(const char *series, const std::string &instance, char *outputBuffer, size_t bufLen, char pathSeparator = '\\');

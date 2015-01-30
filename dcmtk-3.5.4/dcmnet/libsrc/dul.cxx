@@ -1642,12 +1642,6 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
         HANDLE hChildStdInRead;
         HANDLE hChildStdInWrite;
 
-        SECURITY_ATTRIBUTES sa;
-        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-		// Set the bInheritHandle flag so pipe handles are inherited.
-        sa.bInheritHandle = TRUE;
-        sa.lpSecurityDescriptor = NULL;
-
         // prepare the command line
         OFString cmdLine = command_argv[0];
         cmdLine += " --forked-child";
@@ -1667,7 +1661,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
         }
 
 		// create anonymous pipe
-        if (!CreatePipe(&hChildStdInRead, &hChildStdInWrite, &sa,0)) 
+        if (!CreatePipe(&hChildStdInRead, &hChildStdInWrite, NULL,0))
         {
             char buf4[256];
             sprintf(buf4, "Error %i while creating anonymous pipe",OFstatic_cast(int, GetLastError()));
@@ -1675,7 +1669,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
         }
 
 		// Ensure the write handle to the pipe is not inherited.
-		SetHandleInformation( hChildStdInWrite, HANDLE_FLAG_INHERIT, 0);
+		SetHandleInformation(hChildStdInRead, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
 
 		SECURITY_ATTRIBUTES logSA;
 		logSA.bInheritHandle = TRUE;
@@ -1751,6 +1745,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
         {
 			CloseHandle(hChildStdInWrite);
 			CloseHandle(hChildStdInRead);
+			if(logFile != INVALID_HANDLE_VALUE) CloseHandle(logFile);
             char buf4[256];
             sprintf(buf4, "CreateProcess failed: (%i)",(int)GetLastError());
             return makeDcmnetCondition(DULC_CANNOTFORK, OF_error, buf4);
