@@ -202,7 +202,9 @@ template<class FN> static int AuthenWrapper(ostream &errlog, const char *rw_pass
 		}
 		else
 		{
-			errlog << "生成光盘刻录任务失败:" << strerror(result) << endl;
+			char errmsg[1024];
+			strerror_s(errmsg, result);
+			errlog << "生成光盘刻录任务失败:" << errmsg << endl;
 		}
 	}
 	else
@@ -581,6 +583,65 @@ end_of_process:
 	}
 }
 
+static int wadoRequest(const char *flag)
+{
+	char *buffer = NULL;
+	int status = 404;
+	ifstream xmlfile;
+	if(cgiFormNotFound == cgiFormString("studyUID", studyUID, 65) || strlen(studyUID) == 0)
+		goto study_process_error;
+	char hashBuf[9];
+	__int64 hashUid36 = uidHash(studyUID, hashBuf, sizeof(hashBuf));
+	if(strcmp(flag, "WADO") == 0)
+	{
+		char seriesUID[65], objectUID[65], instancePath[MAX_PATH];
+		const char *contentType = "application/dicom";
+		if(cgiFormNotFound == cgiFormString("seriesUID", seriesUID, 65) || strlen(seriesUID) == 0)
+			goto study_process_error;
+		if(cgiFormNotFound == cgiFormString("objectUID", objectUID, 65) || strlen(objectUID) == 0)
+			goto study_process_error;
+		int pathlen = sprintf_s(instancePath, MAX_PATH, "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\%s\\",
+			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID, hashBuf);
+		SeriesInstancePath(seriesUID, objectUID, instancePath + pathlen, MAX_PATH - pathlen);
+
+		xmlfile.open(instancePath, ios_base::binary);
+		if(xmlfile.fail()) goto study_process_error;
+		istream::pos_type pos = xmlfile.seekg(0, ios_base::end).tellg();
+		streamoff length = (streamoff)pos;
+		xmlfile.seekg(0, ios_base::beg);
+		buffer = new char[length];
+		if(xmlfile.read(buffer, pos).fail()) goto study_process_error;
+		hashUid36 = uidHash(objectUID, hashBuf, sizeof(hashBuf));
+		fprintf_s(cgiOut, "Content-Type: %s\r\nContent-Length: %I64d\r\nContent-Disposition: attachment; filename=\"%s.dcm\"\r\n\r\n", contentType, length, hashBuf);
+		size_t written = fwrite(buffer, 1, length, cgiOut);
+	}
+	else //generate study list
+	{
+		char dirpath[MAX_PATH], xmlpath[MAX_PATH];
+		sprintf_s(dirpath, MAX_PATH, "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\DICOMDIR",
+			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
+		sprintf_s(xmlpath, MAX_PATH, "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\dicomdir.xml",
+			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
+		if(!DicomDir2Xml(dirpath, xmlpath)) goto study_process_error;
+
+		xmlfile.open(xmlpath, ios_base::binary);
+		if(xmlfile.fail()) goto study_process_error;
+		istream::pos_type pos = xmlfile.seekg(0, ios_base::end).tellg();
+		streamoff length = (streamoff)pos;
+		xmlfile.seekg(0, ios_base::beg);
+		buffer = new char[length];
+		if(xmlfile.read(buffer, pos).fail()) goto study_process_error;
+		fprintf(cgiOut, "Content-Type: text/xml; charset=GBK\r\nContent-Length: %d\r\n\r\n", length);
+		size_t written = fwrite(buffer, 1, length, cgiOut);
+	}
+	status = 0;
+study_process_error:
+	if(xmlfile.is_open()) xmlfile.close();
+	if(buffer) delete[] buffer;
+	if(status > 0) cgiHeaderStatus(status, "Study Not Found");
+	return status;
+}
+
 int work()
 {
 #ifdef _DEBUG
@@ -611,6 +672,8 @@ int work()
 		return jnlp(hostLength);
 	else if(cgiFormNotFound != cgiFormString("status", flag, sizeof(flag)) && strlen(flag) > 0)
 		return reportStatus(flag);
+	else if(cgiFormNotFound != cgiFormString("requestType", flag, sizeof(flag)) && strlen(flag) > 0)
+		return wadoRequest(flag);
 	else if(cgiFormNotFound != cgiFormString("remove", flag, sizeof(flag)) && strlen(flag) > 0)
 	{
 		CoInitialize(NULL);

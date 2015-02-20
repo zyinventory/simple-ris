@@ -2,6 +2,7 @@
 #include <string>
 #include <io.h>
 #include <string.h>
+#include <fcntl.h>  //_O_BINARY
 
 #include "dcmtk/config/osconfig.h"     /* make sure OS specific configuration is included first */
 #include "dcmtk/dcmdata/dctk.h"
@@ -28,6 +29,8 @@ int main(int argc, char *argv[])
 	const char *opt_fileset = "DCMTK_MEDIA_DEMO";
     const char *opt_descriptor = NULL;
     const char *opt_charset = "ISO_IR 100";
+
+	_setmode( _fileno( stdout ), _O_BINARY );
 
 	OFConsoleApplication app(OFFIS_CONSOLE_APPLICATION, OFFIS_CONSOLE_DESCRIPTION, rcsid);
 	OFCommandLine cmd;
@@ -90,5 +93,6 @@ int main(int argc, char *argv[])
         return -2;  /* DcmDicomDir class dumps core when no data dictionary */
     }
 
-	return MergeDicomDir(fileNames, opt_output, opt_fileset, CERR, opt_verbose);
+	//return MergeDicomDir(fileNames, opt_output, opt_fileset, CERR, opt_verbose);
+	return DicomDir2Xml(fileNames.front().c_str(), opt_output) ? 0 : -1;
 }
