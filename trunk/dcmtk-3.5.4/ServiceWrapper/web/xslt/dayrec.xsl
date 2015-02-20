@@ -101,12 +101,15 @@
 				<td class="commonCell seriesCount"><xsl:value-of select="@SeriesCount" /></td>
 				<td class="commonCell instanceCount"><xsl:value-of select="@InstanceCount" /></td>
 				<td class="commonCell accessionNumber">
-          <xsl:call-template name="splitFunc">
-            <xsl:with-param name="text" select="@AccessionNumber"/>
-            <xsl:with-param name="sectionLength" select="8"/>
-            <xsl:with-param name="by" select="'&#x200B;'"/>
-          </xsl:call-template>
-        </td>
+					<a target="pacsviewer">
+						<xsl:attribute name="href">cgi-bin/getindex.exe?requestType=wadolist&amp;studyUID=<xsl:value-of select="./text()"/></xsl:attribute>
+						<xsl:call-template name="splitFunc">
+							<xsl:with-param name="text" select="@AccessionNumber"/>
+							<xsl:with-param name="sectionLength" select="8"/>
+							<xsl:with-param name="by" select="'&#x200B;'"/>
+						</xsl:call-template>
+					</a>
+				</td>
 				<td class="commonCell callingAE">
           <xsl:call-template name="splitFunc">
             <xsl:with-param name="text" select="@CallingAE"/>

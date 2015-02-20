@@ -21,3 +21,5 @@
 #include <string>
 #include <list>
 #include <io.h>
+#include <algorithm>
+#include <fstream>

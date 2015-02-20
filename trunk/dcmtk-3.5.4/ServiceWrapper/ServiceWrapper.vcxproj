@@ -150,6 +150,7 @@
     <None Include="web\xslt\status.xsl">
       <SubType>Designer</SubType>
     </None>
+    <None Include="web\xslt\wadolist.xsl" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\commonlib\commonlib.vcxproj">
