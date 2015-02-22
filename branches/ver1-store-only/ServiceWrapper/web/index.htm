@@ -1,0 +1,152 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=gbk" />
+	<!-- meta http-equiv="refresh" content="10" / -->
+	<title>PACS</title>
+	<link rel="stylesheet" type="text/css" href="styles/smoothness/jquery-ui-1.9.1.custom.css" />
+	<style type="text/css">
+		#containerBody table	{ border-style:solid; border-width:1px; border-color:black; border-collapse:collapse; margin:0px; width:100%; }
+		#containerBody thead	{ background-color:#aaa; }
+		#containerBody th		{ border-style:solid; border-width:1px; }
+		#containerBody td		{ border-style:solid; border-width:1px; }
+		#containerBody tr:nth-child(even)	{ background-color:#ccc; }
+		.highlight	{ background-color:yellow; }
+		.progress-label { float:left; text-align:center; width:100%; font-size:0.85em; }
+		.commonCell { font-size:0.85em; }
+		.studyUID { font-size:0.75em; }
+		.pacs-tab { display:inline-block; margin-left:4px; border-top:1px solid darkgray; border-left:1px solid darkgray; border-right:1px solid darkgray; padding-left:6px; padding-right:6px; padding-top:2px; }
+		.pacs-hidden-tab { background-color:darkgray; padding-bottom:4px; border-bottom:1px solid darkgray; }
+		.vertical-spliter { display:inline-block; margin-right:4px; margin-left:4px; border-left:solid 2px gray; padding-left:2px; vertical-align:top; }
+		.ui-button .ui-button-text { display:block; line-height:1em; }
+		.ui-button-text-only .ui-button-text { padding-top:0.2em; padding-bottom:0.2em; padding-right:1em; }
+	</style>
+	<script type="text/javascript" src="scripts/jquery-1.8.2.min.js"></script>
+	<script type="text/javascript" src="scripts/jquery-ui-1.9.1.custom.min.js"></script>
+	<script type="text/javascript" src="scripts/jquery.ui.datepicker-zh-CN.js"></script>
+	<script type="text/javascript" src="scripts/charhash.js"></script>
+	<script type="text/javascript">
+	//<![CDATA[
+	    jQuery(document).ready(function () {
+	        $("a.button-style").button();
+
+	        $.ajaxSetup({ async: false, cache: false });
+	        var result = $.get('xslt/dayrec.xsl', {}, function (body, txt, ref) { xslDoc = body; }, 'xml');
+	        if (result.status != 200) {
+	            alertMessage('Load XSLT dayrec failed: ' + result.statusText);
+	        }
+	        result = $.get('xslt/receive.xsl', {}, function (body, txt, ref) { xslDoc2 = body; }, 'xml');
+	        if (result.status != 200) {
+	            alertMessage('Load XSLT receive failed: ' + result.statusText);
+	        }
+
+	        var xslColor;
+	        result = $.get('xslt/color.xsl', {}, function (body, txt, ref) { xslColor = body; }, 'xml');
+	        if (result.status != 200) {
+	            alertMessage('Load XSLT receive failed: ' + result.statusText);
+	        }
+	        result = $.get('cgi-bin/getindex.exe?status=xml', {}, function (body, txt, ref) {
+	            $('#headerBar').html(xslt(body, xslColor));
+	        }, 'xml');
+	        if (result.status == 200) {
+	            setColorBar('#colorRemainC', 'cyan');
+	            setColorBar('#colorRemainM', 'magenta');
+	            setColorBar('#colorRemainY', 'yellow');
+	            setColorBar('#colorRemainLC', '#c0ffff');
+	            setColorBar('#colorRemainLM', '#ffa0ff');
+	            setColorBar('#colorRemainK', 'black');
+
+	            setColorBar('#stacker1', 'lime');
+	            setColorBar('#stacker2', 'lime');
+	        }
+
+	        var today = $.datepicker.formatDate('yy/mm/dd', new Date());
+	        picker = $('#datepicker');
+	        picker.attr('readonly', true);
+	        picker.val(today);
+	        picker.datepicker({
+	            changeMonth: true,
+	            changeYear: true,
+	            selectOtherMonths: true,
+	            showButtonPanel: true,
+	            showOtherMonths: true,
+	            dateFormat: 'yy/mm/dd',
+	            defaultDate: today,
+	            onSelect: displayContent
+	        });
+
+	        if (mode == 'receive' || mode == '00080020') {
+	            displayContent(today);
+	        }
+	        else {
+	            var patientId = getQueryString('patientID');
+	            displayPaitent(toHashPath(patientId) + '/' + patientId);
+	            $("form#patientQuery > input[name='patientID']").val(patientId);
+	        }
+
+	        $("form#burnAll > input[name='matchTag']").val(mode);
+	        switch (mode) {
+	            case 'receive':
+	                $('div#containerHeader label#dateDesc').text('传输日期查询:');
+	                $('div#containerHeader > div#receiveTab').css('display', 'none');
+	                $('div#containerHeader > a#00100020').css('display', 'none');
+	                break;
+	            case '00080020':
+	                $('div#containerHeader label#dateDesc').text('检查日期查询:');
+	                $('div#containerHeader > div#studyDateTab').css('display', 'none');
+	                $('div#containerHeader > a#00100020').css('display', 'none');
+	                break;
+	            case '00100020':
+	                $('div#containerHeader > div#currentTab').css('display', 'none');
+	                $('div#containerHeader > a#00100020').attr('href', 'cgi-bin/getindex.exe?jnlp=1&patientID=' + getQueryString('patientID'));
+	                break;
+	            default:
+	                break;
+	        }
+
+	        $('form#burnAll').bind('submit', function (event) {
+	            if (mode == '00100020')
+	                $("form#burnAll > input[name='matchValue']").val($("form#patientQuery > input[name='patientID']").val());
+	            else
+	                $("form#burnAll > input[name='matchValue']").val(picker.val());
+	        });
+	    });
+	//]]>
+	</script>
+</head>
+<body>
+<div id="headerBar" style="height:76px; overflow:hidden"></div>
+<div id="containerPane" class="ui-widget ui-widget-content ui-widget-helper-clearfix">
+	<div id="containerHeader" class="ui-widget-header ui-widget-helper-clearfix" style="border-width:0px; padding-top:2px">
+        <div id="currentTab" class="pacs-tab ui-corner-top" style="background-color:white; border-bottom:2px solid white">
+		    <label id="dateDesc" for="datepicker">传输日期查询:</label><input type="text" id="datepicker" style="width:6.5em" />
+        </div>
+        <div id="receiveTab" class="pacs-tab pacs-hidden-tab ui-corner-top">
+            <a id="receive" style="text-decoration:none" href="index.htm">传输日期查询</a>
+        </div>
+        <div id="studyDateTab" class="pacs-tab pacs-hidden-tab ui-corner-top">
+		    <a id="00080020" style="text-decoration:none" href="index.htm?mode=00080020">检查日期查询</a>
+        </div>
+        &nbsp;<a id="00100020" class="button-style" href="#">患者历史检查</a>
+        &nbsp;<a id="status" class="button-style" target="ppstatus" href="cgi-bin/getindex.exe?status=html">设备状态</a>
+        &nbsp;<a id="license"  class="button-style" target="ppstatus" href="cgi-bin/getindex.exe?charge=query">充值</a>
+        <div id="rightForm" style="float:right">
+            <form id="burnAll" style="display:inline" target="_blank" method="post" action="cgi-bin/getindex.exe">
+                <input type="hidden" name="mode" value="batchBurn" />
+                <input type="hidden" name="volumeSize" value="4000" />
+                <input type="hidden" name="matchTag" />
+                <input type="hidden" name="matchValue" />
+                <input type="submit" value="刻录全部"/>
+            </form>&nbsp;
+            <form id="patientQuery" style="display:inline" target="_blank" method="get" action="index.htm"><input type="hidden" name="mode" value="00100020" /><input type="text" size="8" name="patientID" /><input type="submit" value="患者ID"/></form>
+        </div>
+	</div>
+	<div id="containerBody" style="padding:2px"></div>
+</div>
+<div id="console" class="ui-state-error"></div>
+<!-- applet id="socketProxy" style="float:right" width="540" height="400" codebase="jars" archive="socketproxy.jar" code="com.walnut.applet.socketproxy.SocketProxy">
+    <PARAM NAME="java_arguments" VALUE="-Djnlp.packEnabled=true"/>
+</applet>
+    <param name="jnlp_href" value="socketproxy.jnlp" -->
+</body>
+</html>
