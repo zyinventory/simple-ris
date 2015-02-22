@@ -2241,7 +2241,8 @@ OFCondition DcmQueryRetrieveIndexDatabaseHandle::startMoveRequest(
 #ifndef NO_GET_SUPPORT
     /* experimental support for GET */
     else if (strcmp( SOPClassUID, UID_GETPatientRootQueryRetrieveInformationModel) == 0)
-        handle->rootLevel = PATIENT_ROOT ; // if app C-GET bug(no patient id in patient level), change to STUDY_ROOT
+		// app use relational queries, StudyUID is the only condition, no PaitentID, don't use PATIENT_ROOT.
+        handle->rootLevel = STUDY_ROOT ;
     else if (strcmp( SOPClassUID, UID_GETStudyRootQueryRetrieveInformationModel) == 0)
         handle->rootLevel = STUDY_ROOT ;
 #ifndef NO_PATIENTSTUDYONLY_SUPPORT
