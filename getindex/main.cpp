@@ -582,7 +582,7 @@ end_of_process:
 		return -1;
 	}
 }
-
+#define CHUNK_BUFFER_SIZE 64*1024
 static int wadoRequest(const char *flag)
 {
 	char *buffer = NULL;
@@ -596,6 +596,8 @@ static int wadoRequest(const char *flag)
 	{
 		char seriesUID[65], objectUID[65], instancePath[MAX_PATH];
 		const char *contentType = "application/dicom";
+		if(cgiFormNotFound == cgiFormString("contentType", seriesUID, 65) || strcmp(seriesUID, contentType))
+			goto study_process_error;
 		if(cgiFormNotFound == cgiFormString("seriesUID", seriesUID, 65) || strlen(seriesUID) == 0)
 			goto study_process_error;
 		if(cgiFormNotFound == cgiFormString("objectUID", objectUID, 65) || strlen(objectUID) == 0)
@@ -606,14 +608,17 @@ static int wadoRequest(const char *flag)
 
 		xmlfile.open(instancePath, ios_base::binary);
 		if(xmlfile.fail()) goto study_process_error;
-		istream::pos_type pos = xmlfile.seekg(0, ios_base::end).tellg();
-		streamoff length = (streamoff)pos;
-		xmlfile.seekg(0, ios_base::beg);
-		buffer = new char[length];
-		if(xmlfile.read(buffer, pos).fail()) goto study_process_error;
-		hashUid36 = uidHash(objectUID, hashBuf, sizeof(hashBuf));
-		fprintf_s(cgiOut, "Content-Type: %s\r\nContent-Length: %I64d\r\nContent-Disposition: attachment; filename=\"%s.dcm\"\r\n\r\n", contentType, length, hashBuf);
-		size_t written = fwrite(buffer, 1, length, cgiOut);
+		buffer = new char[CHUNK_BUFFER_SIZE];
+		fprintf_s(cgiOut, "Content-Type: %s\r\nTransfer-Encoding:chunked\r\n\r\n", contentType);
+		do {
+			xmlfile.read(buffer, CHUNK_BUFFER_SIZE);
+			unsigned int read = static_cast<unsigned int>(xmlfile.gcount());
+			if(read == 0) break;
+			fprintf_s(cgiOut, "%X\r\n", read);
+			size_t written = fwrite(buffer, 1, read, cgiOut);
+			written = fwrite("\r\n", 1, 2, cgiOut);
+		} while(xmlfile.good());
+		fwrite("0\r\n\r\n", 1, 5, cgiOut);
 	}
 	else //generate study list
 	{
@@ -627,7 +632,7 @@ static int wadoRequest(const char *flag)
 		xmlfile.open(xmlpath, ios_base::binary);
 		if(xmlfile.fail()) goto study_process_error;
 		istream::pos_type pos = xmlfile.seekg(0, ios_base::end).tellg();
-		streamoff length = (streamoff)pos;
+		unsigned int length = (streamoff)pos;
 		xmlfile.seekg(0, ios_base::beg);
 		buffer = new char[length];
 		if(xmlfile.read(buffer, pos).fail()) goto study_process_error;
