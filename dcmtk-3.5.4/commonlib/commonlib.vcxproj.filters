@@ -42,6 +42,9 @@
     <ClCompile Include="UIDBase36.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="common_public.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />

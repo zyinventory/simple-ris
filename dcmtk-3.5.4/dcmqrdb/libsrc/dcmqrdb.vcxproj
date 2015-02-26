@@ -218,6 +218,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\commonlib\common_public.cpp" />
     <ClCompile Include="dcmqrcbf.cxx" />
     <ClCompile Include="dcmqrcbg.cxx" />
     <ClCompile Include="dcmqrcbm.cxx" />

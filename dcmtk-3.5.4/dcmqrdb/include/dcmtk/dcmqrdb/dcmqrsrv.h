@@ -178,6 +178,7 @@ private:
   const DcmQueryRetrieveOptions& options_;
 };
 
+int changeWorkingDirectory_internal(int argc, char **argv, char *pPacsBase);
 #endif
 
 /*
