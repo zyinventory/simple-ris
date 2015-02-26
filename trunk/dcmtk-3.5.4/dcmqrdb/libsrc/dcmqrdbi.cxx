@@ -3383,8 +3383,8 @@ OFCondition DcmQueryRetrieveIndexDatabaseHandle::makeNewStoreFileName(
                 const char      * /* SOPInstanceUID */ ,
                 char            *newImageFileName)
 {
-
-    OFString filename;
+	strcpy_s(newImageFileName, MAXPATHLEN + 1, handle->storageArea);
+/*    OFString filename;
     char prefix[12];
 
     const char *m = dcmSOPClassUIDToModality(SOPClassUID);
@@ -3395,7 +3395,7 @@ OFCondition DcmQueryRetrieveIndexDatabaseHandle::makeNewStoreFileName(
     newImageFileName[0]=0; // return empty string in case of error
     if (! fnamecreator.makeFilename(seed, handle->storageArea, prefix, ".dcm", filename)) return DcmQRIndexDatabaseError;
 
-    strcpy(newImageFileName, filename.c_str());
+    strcpy(newImageFileName, filename.c_str()); */
     return EC_Normal;
 }
 

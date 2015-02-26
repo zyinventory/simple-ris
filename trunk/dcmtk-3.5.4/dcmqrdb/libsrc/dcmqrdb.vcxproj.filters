@@ -42,6 +42,9 @@
     <ClCompile Include="dcmqrtis.cxx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\commonlib\common_public.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcmtk\dcmqrdb\dcmqrcbf.h">

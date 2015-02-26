@@ -392,9 +392,9 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
             imageFileName);
         if (dbcond.bad()) {
             DcmQueryRetrieveOptions::errmsg("storeSCP: Database: makeNewStoreFileName Failed");
-            /* must still receive data */
+            // must still receive data
             strcpy(imageFileName, NULL_DEVICE_NAME);
-            /* callback will send back out of resources status */
+            // callback will send back out of resources status
             context.setStatus(STATUS_STORE_Refused_OutOfResources);
         }
     }

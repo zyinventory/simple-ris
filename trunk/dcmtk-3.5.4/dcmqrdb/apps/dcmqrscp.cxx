@@ -639,6 +639,7 @@ main(int argc, char *argv[])
     }
 #endif
 #ifdef _WIN32
+	changeWorkingDirectory_internal(0, NULL, NULL);
 	if (options.forkedChild_)
 	{
 		// child process

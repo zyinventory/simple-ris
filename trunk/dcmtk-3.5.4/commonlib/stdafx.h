@@ -25,8 +25,6 @@
 #include <list>
 #include <set>
 #include <map>
-#include <algorithm>
-#include <functional>
 #include <memory>
 #include <iostream>
 #include <fstream>
