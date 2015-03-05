@@ -92,7 +92,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;..\..\dcmtls\include;D:\workspace\dcmtk-support\openssl-0.9.8a\include;$(SolutionDir)commonlib;..\..\dcmdata\include\dcmtk\dcmdata;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;..\..\dcmtls\include;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include;$(SolutionDir)commonlib;..\..\dcmdata\include\dcmtk\dcmdata;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="Debug";_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -114,10 +114,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>commonlib.lib;ofstd.lib;dcmdata.lib;dcmnet.lib;dcmtls.lib;zlib_d.lib;dcmtkssl_d.lib;dcmtkeay_d.lib;netapi32.lib;wsock32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ws2_32.lib;$(SolutionDir)$(ConfigurationName)\commonlib.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\..\dcmdata\libsrc\$(Configuration)\dcmdata.lib;..\..\dcmnet\libsrc\$(Configuration)\dcmnet.lib;..\..\dcmtls\libsrc\$(Configuration)\dcmtls.lib;libz.lib;dcmtkssl.lib;dcmtkeay.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\..\$(Configuration);..\..\ofstd\libsrc\$(Configuration);..\..\dcmnet\libsrc\$(Configuration);..\..\dcmdata\libsrc\$(Configuration);..\..\dcmtls\libsrc\$(Configuration);D:\workspace\dcmtk-support\openssl-0.9.8a\lib;D:\workspace\dcmtk-support\zlib-1.2.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib\$(ConfigurationName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>Debug\storescp.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
@@ -141,7 +141,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;..\..\dcmtls\include;D:\workspace\dcmtk-support\openssl-0.9.8a\include;$(SolutionDir)commonlib;..\..\dcmdata\include\dcmtk\dcmdata;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;..\..\dcmtls\include;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include;$(SolutionDir)commonlib;..\..\dcmdata\include\dcmtk\dcmdata;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -162,10 +162,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>commonlib.lib;ofstd.lib;dcmdata.lib;dcmnet.lib;dcmtls.lib;zlib_o.lib;dcmtkssl_o.lib;dcmtkeay_o.lib;netapi32.lib;wsock32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ws2_32.lib;$(SolutionDir)$(ConfigurationName)\commonlib.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\..\dcmdata\libsrc\$(Configuration)\dcmdata.lib;..\..\dcmnet\libsrc\$(Configuration)\dcmnet.lib;..\..\dcmtls\libsrc\$(Configuration)\dcmtls.lib;libz.lib;dcmtkssl.lib;dcmtkeay.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\..\$(Configuration);..\..\ofstd\libsrc\$(Configuration);..\..\dcmnet\libsrc\$(Configuration);..\..\dcmdata\libsrc\$(Configuration);..\..\dcmtls\libsrc\$(Configuration);D:\workspace\dcmtk-support\openssl-0.9.8a\lib;D:\workspace\dcmtk-support\zlib-1.2.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib\$(ConfigurationName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>Release/storescp.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <HeapCommitSize>0</HeapCommitSize>
@@ -188,7 +188,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;..\..\dcmtls\include;D:\workspace\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;..\..\dcmtls\include;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include;$(SolutionDir)commonlib;..\..\dcmdata\include\dcmtk\dcmdata;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="MinSizeRel";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -209,10 +209,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\MinSizeRel\ofstd.lib;..\..\dcmdata\libsrc\MinSizeRel\dcmdata.lib;..\libsrc\MinSizeRel\dcmnet.lib;zlib_o.lib;..\..\dcmtls\libsrc\MinSizeRel\dcmtls.lib;dcmtkssl_o.lib;dcmtkeay_o.lib</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ws2_32.lib;$(SolutionDir)$(ConfigurationName)\commonlib.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\..\dcmdata\libsrc\$(Configuration)\dcmdata.lib;..\..\dcmnet\libsrc\$(Configuration)\dcmnet.lib;..\..\dcmtls\libsrc\$(Configuration)\dcmtls.lib;libz.lib;dcmtkssl.lib;dcmtkeay.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmtls\$(OutDir);..\..\dcmtls;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\openssl-0.9.8a\lib\$(OutDir);D:\workspace\dcmtk-support\openssl-0.9.8a\lib;..\..\ofstd\libsrc\MinSizeRel\$(OutDir);..\..\ofstd\libsrc\MinSizeRel;..\..\dcmdata\libsrc\MinSizeRel\$(OutDir);..\..\dcmdata\libsrc\MinSizeRel;..\libsrc\MinSizeRel\$(OutDir);..\libsrc\MinSizeRel;..\..\dcmtls\libsrc\MinSizeRel\$(OutDir);..\..\dcmtls\libsrc\MinSizeRel;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib\$(ConfigurationName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>MinSizeRel/storescp.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <HeapCommitSize>0</HeapCommitSize>
@@ -235,7 +235,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;..\..\dcmtls\include;D:\workspace\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\ofstd\include\dcmtk\ofstd;..\..\dcmdata\include;..\..\dcmtls\include;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include;$(SolutionDir)commonlib;..\..\dcmdata\include\dcmtk\dcmdata;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="RelWithDebInfo";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -257,10 +257,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\RelWithDebInfo\ofstd.lib;..\..\dcmdata\libsrc\RelWithDebInfo\dcmdata.lib;..\libsrc\RelWithDebInfo\dcmnet.lib;zlib_o.lib;..\..\dcmtls\libsrc\RelWithDebInfo\dcmtls.lib;dcmtkssl_o.lib;dcmtkeay_o.lib</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ws2_32.lib;$(SolutionDir)$(ConfigurationName)\commonlib.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\..\dcmdata\libsrc\$(Configuration)\dcmdata.lib;..\..\dcmnet\libsrc\$(Configuration)\dcmnet.lib;..\..\dcmtls\libsrc\$(Configuration)\dcmtls.lib;libz.lib;dcmtkssl.lib;dcmtkeay.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmtls\$(OutDir);..\..\dcmtls;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\openssl-0.9.8a\lib\$(OutDir);D:\workspace\dcmtk-support\openssl-0.9.8a\lib;..\..\ofstd\libsrc\RelWithDebInfo\$(OutDir);..\..\ofstd\libsrc\RelWithDebInfo;..\..\dcmdata\libsrc\RelWithDebInfo\$(OutDir);..\..\dcmdata\libsrc\RelWithDebInfo;..\libsrc\RelWithDebInfo\$(OutDir);..\libsrc\RelWithDebInfo;..\..\dcmtls\libsrc\RelWithDebInfo\$(OutDir);..\..\dcmtls\libsrc\RelWithDebInfo;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib\$(ConfigurationName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>RelWithDebInfo/storescp.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
