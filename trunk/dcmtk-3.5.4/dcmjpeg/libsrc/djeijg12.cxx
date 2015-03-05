@@ -322,7 +322,9 @@ OFCondition DJCompressIJG12Bit::encode(
     Uint16 /* samplesPerPixel */,
     Uint8 * /* image_buffer */,
     Uint8 *& /* to */,
-    Uint32 & /* length */)
+    Uint32 & /* length */,
+	Uint8 pixelRepresentation,
+	double minUsed, double maxUsed)
 {
   return EC_IllegalCall;
 }
@@ -334,7 +336,9 @@ OFCondition DJCompressIJG12Bit::encode(
   Uint16 samplesPerPixel,
   Uint16 * image_buffer,
   Uint8 * & to,
-  Uint32 & length)
+  Uint32 & length,
+  Uint8 pixelRepresentation,
+  double minUsed, double maxUsed)
 {
 
   struct jpeg_compress_struct cinfo;
@@ -393,9 +397,11 @@ OFCondition DJCompressIJG12Bit::encode(
       jpeg_simple_progression(&cinfo);
       break;
     case EJM_lossless:
-     // always disables any kind of color space conversion
-     jpeg_simple_lossless(&cinfo,psv,pt);
-     break;
+      // always disables any kind of color space conversion
+      jpeg_simple_lossless(&cinfo,psv,pt);
+      break;
+    default:
+      break;
   }
   
   cinfo.smoothing_factor = cparam->getSmoothingFactor();

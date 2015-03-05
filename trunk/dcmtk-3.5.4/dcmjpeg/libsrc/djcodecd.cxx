@@ -92,6 +92,7 @@ OFCondition DJCodecDecoder::decode(
     Uint16 imageRows = 0;
     Uint16 imageColumns = 0;
     Sint32 imageFrames = 1;
+	Uint16 imageBitsAllocated = 0;
     Uint16 imageBitsStored = 0;
     Uint16 imageHighBit = 0;
     const char *sopClassUID = NULL;
@@ -103,6 +104,7 @@ OFCondition DJCodecDecoder::decode(
     if (result.good()) result = ((DcmItem *)dataset)->findAndGetUint16(DCM_SamplesPerPixel, imageSamplesPerPixel);
     if (result.good()) result = ((DcmItem *)dataset)->findAndGetUint16(DCM_Rows, imageRows);
     if (result.good()) result = ((DcmItem *)dataset)->findAndGetUint16(DCM_Columns, imageColumns);
+	if (result.good()) result = ((DcmItem *)dataset)->findAndGetUint16(DCM_BitsAllocated, imageBitsAllocated);
     if (result.good()) result = ((DcmItem *)dataset)->findAndGetUint16(DCM_BitsStored, imageBitsStored);
     if (result.good()) result = ((DcmItem *)dataset)->findAndGetUint16(DCM_HighBit, imageHighBit);
     if (result.good()) result = ((DcmItem *)dataset)->findAndGetUint16(DCM_PixelRepresentation, pixelRep);
@@ -131,7 +133,7 @@ OFCondition DJCodecDecoder::decode(
         result = pixItem->getUint8Array(jpegData);
         if (result.good())
         {
-          Uint8 precision = scanJpegDataForBitDepth(jpegData, fragmentLength);
+          Uint8 precision = isJPEG2000() ? imageBitsAllocated : scanJpegDataForBitDepth(jpegData, fragmentLength);
           if (precision == 0) result = EC_CannotChangeRepresentation; // something has gone wrong, bail out
           else
           {
@@ -157,19 +159,61 @@ OFCondition DJCodecDecoder::decode(
                   if (result.good())
                   {
                     result = EJ_Suspension;
-                    while (EJ_Suspension == result)
-                    {
-                      result = pixSeq->getItem(pixItem, currentItem++);
-                      if (result.good())
-                      {
-                        fragmentLength = pixItem->getLength();
-                        result = pixItem->getUint8Array(jpegData);
-                        if (result.good())
-                        {
-                          result = jpeg->decode(jpegData, fragmentLength, imageData8, frameSize, isSigned);
-                        }
-                      }
-                    }
+
+					// for open jpeg, we need to pack all fragments into a single congiuous buffer
+					if (isJPEG2000() && pixSeq->card() > 2)  {
+
+						struct BufferInfo {
+							Uint8* buf;
+							Uint32 len;
+						};
+						BufferInfo* buffers = new BufferInfo[pixSeq->card()];
+						memset(buffers, 0, sizeof(BufferInfo) * pixSeq->card());
+						Uint32 totalLength =0;
+						int i = 0;
+						while (currentItem < pixSeq->card())
+						{
+							result = pixSeq->getItem(pixItem, currentItem++);
+							if (result.good())
+							{
+								fragmentLength = pixItem->getLength();
+								totalLength += fragmentLength;
+								result = pixItem->getUint8Array(buffers[i].buf);
+								if (result.good())
+								{
+ 									buffers[i].len = fragmentLength;
+								}
+							}
+							i++;
+						}
+
+						jpegData = new Uint8[totalLength];
+						memset(jpegData, 0, totalLength);
+						totalLength =0;
+						for (int i = 0; i < pixSeq->card()-1; ++i) {
+							if (buffers[i].buf) {
+								memcpy(jpegData + totalLength, buffers[i].buf, buffers[i].len);
+								totalLength += buffers[i].len;
+							}
+						}
+						result = jpeg->decode(jpegData, totalLength, imageData8, frameSize, isSigned);
+
+					 } else {
+
+						  while (EJ_Suspension == result)
+						  {
+							result = pixSeq->getItem(pixItem, currentItem++);
+							if (result.good())
+							{
+							  fragmentLength = pixItem->getLength();
+							  result = pixItem->getUint8Array(jpegData);
+							  if (result.good())
+							  {
+								result = jpeg->decode(jpegData, fragmentLength, imageData8, frameSize, isSigned);
+							  }
+							}
+						  }
+	  				}
                     if (result.good())
                     {
                       if (! createPlanarConfigurationInitialized)

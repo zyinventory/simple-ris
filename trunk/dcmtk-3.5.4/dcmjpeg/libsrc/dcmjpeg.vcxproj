@@ -223,6 +223,7 @@
     <ClCompile Include="djcodecd.cxx" />
     <ClCompile Include="djcodece.cxx" />
     <ClCompile Include="djcparam.cxx" />
+    <ClCompile Include="djdec2k.cpp" />
     <ClCompile Include="djdecbas.cxx" />
     <ClCompile Include="djdecext.cxx" />
     <ClCompile Include="djdeclol.cxx" />
@@ -233,9 +234,12 @@
     <ClCompile Include="djdijg12.cxx" />
     <ClCompile Include="djdijg16.cxx" />
     <ClCompile Include="djdijg8.cxx" />
+    <ClCompile Include="djdijp2k.cpp" />
     <ClCompile Include="djeijg12.cxx" />
     <ClCompile Include="djeijg16.cxx" />
+    <ClCompile Include="djeijg2k.cpp" />
     <ClCompile Include="djeijg8.cxx" />
+    <ClCompile Include="djenc2k.cpp" />
     <ClCompile Include="djencbas.cxx" />
     <ClCompile Include="djencext.cxx" />
     <ClCompile Include="djenclol.cxx" />
@@ -246,6 +250,7 @@
     <ClCompile Include="djrplol.cxx" />
     <ClCompile Include="djrploss.cxx" />
     <ClCompile Include="djutils.cxx" />
+    <ClCompile Include="OPJSupport.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcmtk\dcmjpeg\ddpiimpl.h" />
@@ -253,6 +258,7 @@
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djcodecd.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djcodece.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djcparam.h" />
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdec2k.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djdecabs.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djdecbas.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djdecext.h" />
@@ -264,9 +270,12 @@
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djdijg12.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djdijg16.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djdijg8.h" />
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdijp2k.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djeijg12.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djeijg16.h" />
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djeijg2k.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djeijg8.h" />
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djenc2k.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djencabs.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djencbas.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djencext.h" />
@@ -278,6 +287,7 @@
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djrplol.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djrploss.h" />
     <ClInclude Include="..\include\dcmtk\dcmjpeg\djutils.h" />
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\OPJSupport.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\dcmdata\libsrc\dcmdata.vcxproj">
