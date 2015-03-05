@@ -50,6 +50,10 @@ DJDecoderP14SV1::~DJDecoderP14SV1()
 {
 }
 
+OFBool DJDecoderP14SV1::isJPEG2000() const
+{
+	return OFFalse;
+}
 
 E_TransferSyntax DJDecoderP14SV1::supportedTransferSyntax() const
 {
