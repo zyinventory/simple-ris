@@ -91,7 +91,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;$(SolutionDir)dcmjpeg\include;$(SolutionDir)dcmimgle\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;..\..\dcmtls\include;D:\workspace\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;$(SolutionDir)dcmjpeg\include;$(SolutionDir)dcmimgle\include;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;..\..\dcmtls\include;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;ON_THE_FLY_COMPRESSION;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -113,10 +113,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\..\dcmdata\libsrc\$(Configuration)\dcmdata.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmtls\libsrc\$(Configuration)\dcmtls.lib;..\libsrc\$(Configuration)\dcmnet.lib;zlib_d.lib;dcmtkssl_d.lib;dcmtkeay_d.lib</AdditionalDependencies>
+      <AdditionalDependencies>gdi32.lib;advapi32.lib;user32.lib;netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\..\dcmdata\libsrc\$(Configuration)\dcmdata.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmtls\libsrc\$(Configuration)\dcmtls.lib;..\libsrc\$(Configuration)\dcmnet.lib;libz.lib;dcmtkssl.lib;dcmtkeay.lib;openjp2.lib</AdditionalDependencies>
       <OutputFile>Debug\storescu.exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmtls\$(OutDir);..\..\dcmtls;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\openssl-0.9.8a\lib\$(OutDir);D:\workspace\dcmtk-support\openssl-0.9.8a\lib;..\..\ofstd\libsrc\Debug\$(OutDir);..\..\ofstd\libsrc\Debug;..\..\dcmdata\libsrc\Debug\$(OutDir);..\..\dcmdata\libsrc\Debug;..\libsrc\Debug\$(OutDir);..\libsrc\Debug;..\..\dcmtls\libsrc\Debug\$(OutDir);..\..\dcmtls\libsrc\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>Debug/storescu.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
@@ -139,7 +139,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;$(SolutionDir)dcmjpeg\include;$(SolutionDir)dcmimgle\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;..\..\dcmtls\include;D:\workspace\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;$(SolutionDir)dcmjpeg\include;$(SolutionDir)dcmimgle\include;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;..\..\dcmtls\include;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;ON_THE_FLY_COMPRESSION;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -160,10 +160,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\..\dcmdata\libsrc\$(Configuration)\dcmdata.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmtls\libsrc\$(Configuration)\dcmtls.lib;..\libsrc\$(Configuration)\dcmnet.lib;zlib_o.lib;dcmtkssl_o.lib;dcmtkeay_o.lib</AdditionalDependencies>
+      <AdditionalDependencies>gdi32.lib;advapi32.lib;user32.lib;netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\..\dcmdata\libsrc\$(Configuration)\dcmdata.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmtls\libsrc\$(Configuration)\dcmtls.lib;..\libsrc\$(Configuration)\dcmnet.lib;libz.lib;dcmtkssl.lib;dcmtkeay.lib;openjp2.lib</AdditionalDependencies>
       <OutputFile>Release\storescu.exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmtls\$(OutDir);..\..\dcmtls;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\openssl-0.9.8a\lib\$(OutDir);D:\workspace\dcmtk-support\openssl-0.9.8a\lib;..\..\ofstd\libsrc\Release\$(OutDir);..\..\ofstd\libsrc\Release;..\..\dcmdata\libsrc\Release\$(OutDir);..\..\dcmdata\libsrc\Release;..\libsrc\Release\$(OutDir);..\libsrc\Release;..\..\dcmtls\libsrc\Release\$(OutDir);..\..\dcmtls\libsrc\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>Release/storescu.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>Release\storescu.lib</ImportLibrary>
@@ -185,7 +185,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;$(SolutionDir)dcmjpeg\include;$(SolutionDir)dcmimgle\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;..\..\dcmtls\include;D:\workspace\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;$(SolutionDir)dcmjpeg\include;$(SolutionDir)dcmimgle\include;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;..\..\dcmtls\include;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="MinSizeRel";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -206,10 +206,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\MinSizeRel\ofstd.lib;..\..\dcmdata\libsrc\MinSizeRel\dcmdata.lib;..\libsrc\MinSizeRel\dcmnet.lib;zlib_o.lib;..\..\dcmtls\libsrc\MinSizeRel\dcmtls.lib;dcmtkssl_o.lib;dcmtkeay_o.lib</AdditionalDependencies>
+      <AdditionalDependencies>gdi32.lib;advapi32.lib;user32.lib;netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\..\dcmdata\libsrc\$(Configuration)\dcmdata.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmtls\libsrc\$(Configuration)\dcmtls.lib;..\libsrc\$(Configuration)\dcmnet.lib;libz.lib;dcmtkssl.lib;dcmtkeay.lib;openjp2.lib</AdditionalDependencies>
       <OutputFile>MinSizeRel\storescu.exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmtls\$(OutDir);..\..\dcmtls;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\openssl-0.9.8a\lib\$(OutDir);D:\workspace\dcmtk-support\openssl-0.9.8a\lib;..\..\ofstd\libsrc\MinSizeRel\$(OutDir);..\..\ofstd\libsrc\MinSizeRel;..\..\dcmdata\libsrc\MinSizeRel\$(OutDir);..\..\dcmdata\libsrc\MinSizeRel;..\libsrc\MinSizeRel\$(OutDir);..\libsrc\MinSizeRel;..\..\dcmtls\libsrc\MinSizeRel\$(OutDir);..\..\dcmtls\libsrc\MinSizeRel;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>MinSizeRel/storescu.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>MinSizeRel\storescu.lib</ImportLibrary>
@@ -231,7 +231,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;$(SolutionDir)dcmjpeg\include;$(SolutionDir)dcmimgle\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;..\..\dcmtls\include;D:\workspace\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;$(SolutionDir)dcmjpeg\include;$(SolutionDir)dcmimgle\include;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;..\..\dcmtls\include;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="RelWithDebInfo";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -253,10 +253,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\RelWithDebInfo\ofstd.lib;..\..\dcmdata\libsrc\RelWithDebInfo\dcmdata.lib;..\libsrc\RelWithDebInfo\dcmnet.lib;zlib_o.lib;..\..\dcmtls\libsrc\RelWithDebInfo\dcmtls.lib;dcmtkssl_o.lib;dcmtkeay_o.lib</AdditionalDependencies>
+      <AdditionalDependencies>gdi32.lib;advapi32.lib;user32.lib;netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(Configuration)\ofstd.lib;..\..\dcmdata\libsrc\$(Configuration)\dcmdata.lib;..\..\dcmjpeg\libsrc\$(Configuration)\dcmjpeg.lib;..\..\dcmjpeg\libijg8\$(Configuration)\ijg8.lib;..\..\dcmjpeg\libijg12\$(Configuration)\ijg12.lib;..\..\dcmjpeg\libijg16\$(Configuration)\ijg16.lib;..\..\dcmimgle\libsrc\$(Configuration)\dcmimgle.lib;..\..\dcmtls\libsrc\$(Configuration)\dcmtls.lib;..\libsrc\$(Configuration)\dcmnet.lib;libz.lib;dcmtkssl.lib;dcmtkeay.lib;openjp2.lib</AdditionalDependencies>
       <OutputFile>RelWithDebInfo\storescu.exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmtls\$(OutDir);..\..\dcmtls;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\openssl-0.9.8a\lib\$(OutDir);D:\workspace\dcmtk-support\openssl-0.9.8a\lib;..\..\ofstd\libsrc\RelWithDebInfo\$(OutDir);..\..\ofstd\libsrc\RelWithDebInfo;..\..\dcmdata\libsrc\RelWithDebInfo\$(OutDir);..\..\dcmdata\libsrc\RelWithDebInfo;..\libsrc\RelWithDebInfo\$(OutDir);..\libsrc\RelWithDebInfo;..\..\dcmtls\libsrc\RelWithDebInfo\$(OutDir);..\..\dcmtls\libsrc\RelWithDebInfo;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>RelWithDebInfo/storescu.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
