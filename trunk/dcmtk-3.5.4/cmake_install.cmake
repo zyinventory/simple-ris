@@ -2,7 +2,7 @@
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  SET(CMAKE_INSTALL_PREFIX "D:/workspace/dcmtk-3.5.4/../dcmtk-3.5.4-win32-i386")
+  SET(CMAKE_INSTALL_PREFIX "D:/workspace/dcmtk-3.5.4-trunk/../dcmtk-3.5.4-win32-i386")
 ENDIF(NOT DEFINED CMAKE_INSTALL_PREFIX)
 STRING(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -29,28 +29,28 @@ ENDIF(NOT CMAKE_INSTALL_COMPONENT)
 
 IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
   FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/doc" TYPE FILE FILES
-    "D:/workspace/dcmtk-3.5.4/COPYRIGHT"
-    "D:/workspace/dcmtk-3.5.4/FAQ"
-    "D:/workspace/dcmtk-3.5.4/HISTORY"
+    "D:/workspace/dcmtk-3.5.4-trunk/COPYRIGHT"
+    "D:/workspace/dcmtk-3.5.4-trunk/FAQ"
+    "D:/workspace/dcmtk-3.5.4-trunk/HISTORY"
     )
 ENDIF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
 
 IF(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  INCLUDE("D:/workspace/dcmtk-3.5.4/config/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/ofstd/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmdata/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmtls/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmnet/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmqrdb/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmimgle/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmimage/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmjpeg/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmsign/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmsr/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmpstat/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmwlm/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/doxygen/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/config/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/ofstd/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmdata/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmtls/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmnet/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmimgle/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmimage/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmjpeg/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmsign/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmsr/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmpstat/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmwlm/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/doxygen/cmake_install.cmake")
 
 ENDIF(NOT CMAKE_INSTALL_LOCAL_ONLY)
 
@@ -60,7 +60,7 @@ ELSE(CMAKE_INSTALL_COMPONENT)
   SET(CMAKE_INSTALL_MANIFEST "install_manifest.txt")
 ENDIF(CMAKE_INSTALL_COMPONENT)
 
-FILE(WRITE "D:/workspace/dcmtk-3.5.4/${CMAKE_INSTALL_MANIFEST}" "")
+FILE(WRITE "D:/workspace/dcmtk-3.5.4-trunk/${CMAKE_INSTALL_MANIFEST}" "")
 FOREACH(file ${CMAKE_INSTALL_MANIFEST_FILES})
-  FILE(APPEND "D:/workspace/dcmtk-3.5.4/${CMAKE_INSTALL_MANIFEST}" "${file}\n")
+  FILE(APPEND "D:/workspace/dcmtk-3.5.4-trunk/${CMAKE_INSTALL_MANIFEST}" "${file}\n")
 ENDFOREACH(file)

@@ -1,8 +1,8 @@
-# Install script for directory: D:/workspace/dcmtk-3.5.4/dcmimage
+# Install script for directory: D:/workspace/dcmtk-3.5.4-trunk/dcmimage
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  SET(CMAKE_INSTALL_PREFIX "D:/workspace/dcmtk-3.5.4/../dcmtk-3.5.4-win32-i386")
+  SET(CMAKE_INSTALL_PREFIX "D:/workspace/dcmtk-3.5.4-trunk/../dcmtk-3.5.4-win32-i386")
 ENDIF(NOT DEFINED CMAKE_INSTALL_PREFIX)
 STRING(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -29,9 +29,9 @@ ENDIF(NOT CMAKE_INSTALL_COMPONENT)
 
 IF(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmimage/libsrc/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmimage/apps/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmimage/include/dcmtk/dcmimage/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmimage/libsrc/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmimage/apps/cmake_install.cmake")
+  INCLUDE("D:/workspace/dcmtk-3.5.4-trunk/dcmimage/include/dcmtk/dcmimage/cmake_install.cmake")
 
 ENDIF(NOT CMAKE_INSTALL_LOCAL_ONLY)
 
