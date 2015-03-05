@@ -57,8 +57,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock\lib_x86;$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static</AdditionalLibraryDirectories>
-      <AdditionalDependencies>liblock.lib;cdll8.lib;libeay32MTd.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\lock\lib_x86</AdditionalLibraryDirectories>
+      <AdditionalDependencies>liblock.lib;cdll8.lib;libeay32MTd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -77,8 +77,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\lock\lib_x86;$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static</AdditionalLibraryDirectories>
-      <AdditionalDependencies>liblock.lib;cdll8.lib;libeay32MT.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\OpenSSL_0.9.8y\lib\VC\static;$(SolutionDir)..\dcmtk-support\lock\staticlib\vs2010\lib_x86</AdditionalLibraryDirectories>
+      <AdditionalDependencies>liblock.lib;cdll8static_mt_mbcs.lib;libeay32MT.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
