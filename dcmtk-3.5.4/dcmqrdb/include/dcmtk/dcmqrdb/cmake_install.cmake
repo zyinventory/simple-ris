@@ -1,8 +1,8 @@
-# Install script for directory: D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb
+# Install script for directory: D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  SET(CMAKE_INSTALL_PREFIX "D:/workspace/dcmtk-3.5.4/../dcmtk-3.5.4-win32-i386")
+  SET(CMAKE_INSTALL_PREFIX "D:/workspace/dcmtk-3.5.4-trunk/../dcmtk-3.5.4-win32-i386")
 ENDIF(NOT DEFINED CMAKE_INSTALL_PREFIX)
 STRING(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -29,19 +29,19 @@ ENDIF(NOT CMAKE_INSTALL_COMPONENT)
 
 IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
   FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/dcmtk/dcmqrdb" TYPE FILE FILES
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrcbf.h"
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrcbg.h"
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrcbm.h"
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrcbs.h"
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrcnf.h"
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrdba.h"
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrdbi.h"
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrdbs.h"
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqridx.h"
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqropt.h"
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrptb.h"
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrsrv.h"
-    "D:/workspace/dcmtk-3.5.4/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrtis.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrcbf.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrcbg.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrcbm.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrcbs.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrcnf.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrdba.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrdbi.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrdbs.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqridx.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqropt.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrptb.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrsrv.h"
+    "D:/workspace/dcmtk-3.5.4-trunk/dcmqrdb/include/dcmtk/dcmqrdb/dcmqrtis.h"
     )
 ENDIF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
 
