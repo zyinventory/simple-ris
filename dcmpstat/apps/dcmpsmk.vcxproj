@@ -76,7 +76,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\dcmimgle\include;..\..\dcmqrdb\include;..\..\dcmsr\include;..\..\dcmsign\include;..\..\dcmtls\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\openssl-0.9.8a\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\dcmimgle\include;..\..\dcmqrdb\include;..\..\dcmsr\include;..\..\dcmsign\include;..\..\dcmtls\include;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -112,10 +112,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\Debug\ofstd.lib;..\..\dcmdata\libsrc\Debug\dcmdata.lib;..\..\dcmnet\libsrc\Debug\dcmnet.lib;..\..\dcmqrdb\libsrc\Debug\dcmqrdb.lib;..\..\dcmimgle\libsrc\Debug\dcmimgle.lib;..\libsrc\Debug\dcmpstat.lib;zlib_d.lib;..\..\dcmsr\libsrc\Debug\dcmsr.lib</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\..\dcmqrdb\libsrc\$(ConfigurationName)\dcmqrdb.lib;..\..\dcmimgle\libsrc\$(ConfigurationName)\dcmimgle.lib;..\libsrc\$(ConfigurationName)\dcmpstat.lib;..\..\dcmsr\libsrc\$(ConfigurationName)\dcmsr.lib;libz.lib</AdditionalDependencies>
       <OutputFile>Debug\dcmpsmk.exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmtls\$(OutDir);..\..\dcmtls;..\..\dcmnet\$(OutDir);..\..\dcmnet;..\..\dcmqrdb\$(OutDir);..\..\dcmqrdb;..\..\dcmimgle\$(OutDir);..\..\dcmimgle;..\..\dcmsr\$(OutDir);..\..\dcmsr;..\..\dcmsign\$(OutDir);..\..\dcmsign;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\libxml2-2.6.26\lib\$(OutDir);D:\workspace\dcmtk-support\libxml2-2.6.26\lib;D:\workspace\dcmtk-support\openssl-0.9.8a\lib\$(OutDir);D:\workspace\dcmtk-support\openssl-0.9.8a\lib;..\..\ofstd\libsrc\Debug\$(OutDir);..\..\ofstd\libsrc\Debug;..\..\dcmdata\libsrc\Debug\$(OutDir);..\..\dcmdata\libsrc\Debug;..\..\dcmnet\libsrc\Debug\$(OutDir);..\..\dcmnet\libsrc\Debug;..\..\dcmqrdb\libsrc\Debug\$(OutDir);..\..\dcmqrdb\libsrc\Debug;..\..\dcmimgle\libsrc\Debug\$(OutDir);..\..\dcmimgle\libsrc\Debug;..\libsrc\Debug\$(OutDir);..\libsrc\Debug;..\..\dcmsr\libsrc\Debug\$(OutDir);..\..\dcmsr\libsrc\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>Debug/dcmpsmk.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
@@ -124,7 +124,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\dcmimgle\include;..\..\dcmqrdb\include;..\..\dcmsr\include;..\..\dcmsign\include;..\..\dcmtls\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\openssl-0.9.8a\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\dcmimgle\include;..\..\dcmqrdb\include;..\..\dcmsr\include;..\..\dcmsign\include;..\..\dcmtls\include;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -159,10 +159,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\Release\ofstd.lib;..\..\dcmdata\libsrc\Release\dcmdata.lib;..\..\dcmnet\libsrc\Release\dcmnet.lib;..\..\dcmqrdb\libsrc\Release\dcmqrdb.lib;..\..\dcmimgle\libsrc\Release\dcmimgle.lib;..\libsrc\Release\dcmpstat.lib;zlib_o.lib;..\..\dcmsr\libsrc\Release\dcmsr.lib</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\..\dcmqrdb\libsrc\$(ConfigurationName)\dcmqrdb.lib;..\..\dcmimgle\libsrc\$(ConfigurationName)\dcmimgle.lib;..\libsrc\$(ConfigurationName)\dcmpstat.lib;..\..\dcmsr\libsrc\$(ConfigurationName)\dcmsr.lib;libz.lib</AdditionalDependencies>
       <OutputFile>Release\dcmpsmk.exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmtls\$(OutDir);..\..\dcmtls;..\..\dcmnet\$(OutDir);..\..\dcmnet;..\..\dcmqrdb\$(OutDir);..\..\dcmqrdb;..\..\dcmimgle\$(OutDir);..\..\dcmimgle;..\..\dcmsr\$(OutDir);..\..\dcmsr;..\..\dcmsign\$(OutDir);..\..\dcmsign;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\libxml2-2.6.26\lib\$(OutDir);D:\workspace\dcmtk-support\libxml2-2.6.26\lib;D:\workspace\dcmtk-support\openssl-0.9.8a\lib\$(OutDir);D:\workspace\dcmtk-support\openssl-0.9.8a\lib;..\..\ofstd\libsrc\Release\$(OutDir);..\..\ofstd\libsrc\Release;..\..\dcmdata\libsrc\Release\$(OutDir);..\..\dcmdata\libsrc\Release;..\..\dcmnet\libsrc\Release\$(OutDir);..\..\dcmnet\libsrc\Release;..\..\dcmqrdb\libsrc\Release\$(OutDir);..\..\dcmqrdb\libsrc\Release;..\..\dcmimgle\libsrc\Release\$(OutDir);..\..\dcmimgle\libsrc\Release;..\libsrc\Release\$(OutDir);..\libsrc\Release;..\..\dcmsr\libsrc\Release\$(OutDir);..\..\dcmsr\libsrc\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>Release/dcmpsmk.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>Release\dcmpsmk.lib</ImportLibrary>
@@ -170,7 +170,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\dcmimgle\include;..\..\dcmqrdb\include;..\..\dcmsr\include;..\..\dcmsign\include;..\..\dcmtls\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\openssl-0.9.8a\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\dcmimgle\include;..\..\dcmqrdb\include;..\..\dcmsr\include;..\..\dcmsign\include;..\..\dcmtls\include;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -205,10 +205,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\MinSizeRel\ofstd.lib;..\..\dcmdata\libsrc\MinSizeRel\dcmdata.lib;..\..\dcmnet\libsrc\MinSizeRel\dcmnet.lib;..\..\dcmqrdb\libsrc\MinSizeRel\dcmqrdb.lib;..\..\dcmimgle\libsrc\MinSizeRel\dcmimgle.lib;..\libsrc\MinSizeRel\dcmpstat.lib;zlib_o.lib;..\..\dcmsr\libsrc\MinSizeRel\dcmsr.lib</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\..\dcmqrdb\libsrc\$(ConfigurationName)\dcmqrdb.lib;..\..\dcmimgle\libsrc\$(ConfigurationName)\dcmimgle.lib;..\libsrc\$(ConfigurationName)\dcmpstat.lib;..\..\dcmsr\libsrc\$(ConfigurationName)\dcmsr.lib;libz.lib</AdditionalDependencies>
       <OutputFile>MinSizeRel\dcmpsmk.exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmtls\$(OutDir);..\..\dcmtls;..\..\dcmnet\$(OutDir);..\..\dcmnet;..\..\dcmqrdb\$(OutDir);..\..\dcmqrdb;..\..\dcmimgle\$(OutDir);..\..\dcmimgle;..\..\dcmsr\$(OutDir);..\..\dcmsr;..\..\dcmsign\$(OutDir);..\..\dcmsign;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\libxml2-2.6.26\lib\$(OutDir);D:\workspace\dcmtk-support\libxml2-2.6.26\lib;D:\workspace\dcmtk-support\openssl-0.9.8a\lib\$(OutDir);D:\workspace\dcmtk-support\openssl-0.9.8a\lib;..\..\ofstd\libsrc\MinSizeRel\$(OutDir);..\..\ofstd\libsrc\MinSizeRel;..\..\dcmdata\libsrc\MinSizeRel\$(OutDir);..\..\dcmdata\libsrc\MinSizeRel;..\..\dcmnet\libsrc\MinSizeRel\$(OutDir);..\..\dcmnet\libsrc\MinSizeRel;..\..\dcmqrdb\libsrc\MinSizeRel\$(OutDir);..\..\dcmqrdb\libsrc\MinSizeRel;..\..\dcmimgle\libsrc\MinSizeRel\$(OutDir);..\..\dcmimgle\libsrc\MinSizeRel;..\libsrc\MinSizeRel\$(OutDir);..\libsrc\MinSizeRel;..\..\dcmsr\libsrc\MinSizeRel\$(OutDir);..\..\dcmsr\libsrc\MinSizeRel;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>MinSizeRel/dcmpsmk.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>MinSizeRel\dcmpsmk.lib</ImportLibrary>
@@ -216,7 +216,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\dcmimgle\include;..\..\dcmqrdb\include;..\..\dcmsr\include;..\..\dcmsign\include;..\..\dcmtls\include;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\openssl-0.9.8a\include;D:\workspace\dcmtk-support\libxml2-2.6.26\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\dcmimgle\include;..\..\dcmqrdb\include;..\..\dcmsr\include;..\..\dcmsign\include;..\..\dcmtls\include;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;$(SolutionDir)..\dcmtk-support\openssl-0.9.8a\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -252,10 +252,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\RelWithDebInfo\ofstd.lib;..\..\dcmdata\libsrc\RelWithDebInfo\dcmdata.lib;..\..\dcmnet\libsrc\RelWithDebInfo\dcmnet.lib;..\..\dcmqrdb\libsrc\RelWithDebInfo\dcmqrdb.lib;..\..\dcmimgle\libsrc\RelWithDebInfo\dcmimgle.lib;..\libsrc\RelWithDebInfo\dcmpstat.lib;zlib_o.lib;..\..\dcmsr\libsrc\RelWithDebInfo\dcmsr.lib</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\..\dcmqrdb\libsrc\$(ConfigurationName)\dcmqrdb.lib;..\..\dcmimgle\libsrc\$(ConfigurationName)\dcmimgle.lib;..\libsrc\$(ConfigurationName)\dcmpstat.lib;..\..\dcmsr\libsrc\$(ConfigurationName)\dcmsr.lib;libz.lib</AdditionalDependencies>
       <OutputFile>RelWithDebInfo\dcmpsmk.exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>..\$(OutDir);..;..\..\ofstd\$(OutDir);..\..\ofstd;..\..\dcmdata\$(OutDir);..\..\dcmdata;..\..\dcmtls\$(OutDir);..\..\dcmtls;..\..\dcmnet\$(OutDir);..\..\dcmnet;..\..\dcmqrdb\$(OutDir);..\..\dcmqrdb;..\..\dcmimgle\$(OutDir);..\..\dcmimgle;..\..\dcmsr\$(OutDir);..\..\dcmsr;..\..\dcmsign\$(OutDir);..\..\dcmsign;D:\workspace\dcmtk-support\zlib-1.2.3\lib\$(OutDir);D:\workspace\dcmtk-support\zlib-1.2.3\lib;D:\workspace\dcmtk-support\libxml2-2.6.26\lib\$(OutDir);D:\workspace\dcmtk-support\libxml2-2.6.26\lib;D:\workspace\dcmtk-support\openssl-0.9.8a\lib\$(OutDir);D:\workspace\dcmtk-support\openssl-0.9.8a\lib;..\..\ofstd\libsrc\RelWithDebInfo\$(OutDir);..\..\ofstd\libsrc\RelWithDebInfo;..\..\dcmdata\libsrc\RelWithDebInfo\$(OutDir);..\..\dcmdata\libsrc\RelWithDebInfo;..\..\dcmnet\libsrc\RelWithDebInfo\$(OutDir);..\..\dcmnet\libsrc\RelWithDebInfo;..\..\dcmqrdb\libsrc\RelWithDebInfo\$(OutDir);..\..\dcmqrdb\libsrc\RelWithDebInfo;..\..\dcmimgle\libsrc\RelWithDebInfo\$(OutDir);..\..\dcmimgle\libsrc\RelWithDebInfo;..\libsrc\RelWithDebInfo\$(OutDir);..\libsrc\RelWithDebInfo;..\..\dcmsr\libsrc\RelWithDebInfo\$(OutDir);..\..\dcmsr\libsrc\RelWithDebInfo;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>RelWithDebInfo/dcmpsmk.pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
