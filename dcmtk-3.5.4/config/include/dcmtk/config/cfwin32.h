@@ -561,6 +561,9 @@ typedef unsigned short ushort;
 /* Define to 1 if you have the <stat.h> header file. */
 /* #undef  HAVE_STAT_H */
 
+/* Use the ANSI Standard string class */
+#define HAVE_STD_STRING 1
+
 /* Define to 1 if you have the <stdarg.h> header file. */
 #define HAVE_STDARG_H 1
 
@@ -578,6 +581,9 @@ typedef unsigned short ushort;
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #define HAVE_STDLIB_H 1
+
+/* Use the standard template library (STL) */
+#define HAVE_STL 1
 
 /* Define if ANSI standard C++ includes use std namespace */
 /* defined below */
