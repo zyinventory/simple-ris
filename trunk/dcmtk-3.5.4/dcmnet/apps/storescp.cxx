@@ -260,23 +260,23 @@ static void exitHook()
 #ifdef _DEBUG
   delete pCmd;
   dcmDataDict.clear();
-  opt_fileNameExtension.~OFString();
-  callingaetitle.~OFString();
-  calledaetitle.~OFString();
-  callingpresentationaddress.~OFString();
-  opt_outputDirectory.~OFString();
-  opt_volumeLabel.~OFString();
-  lastStudyInstanceUID.~OFString();
-  lastStudySubdirectoryPathAndName.~OFString();
-  lastArchiveStudyPath.~OFString();
-  lastStudyXml.~OFString();
-  subdirectoryPathAndName.~OFString();
-  archiveStudyPath.~OFString();
-  studyXml.~OFString();
-  instanceCSVPath.~OFString();
-  opt_ciphersuites.~OFString();
+  opt_fileNameExtension.clear();
+  callingaetitle.clear();
+  calledaetitle.clear();
+  callingpresentationaddress.clear();
+  opt_outputDirectory.clear();
+  opt_volumeLabel.clear();
+  lastStudyInstanceUID.clear();
+  lastStudySubdirectoryPathAndName.clear();
+  lastArchiveStudyPath.clear();
+  lastStudyXml.clear();
+  subdirectoryPathAndName.clear();
+  archiveStudyPath.clear();
+  studyXml.clear();
+  instanceCSVPath.clear();
+  opt_ciphersuites.clear();
   outputFileNameArray.clear();
-  lastArchiveFileName.~OFString();
+  lastArchiveFileName.clear();
   _CrtDumpMemoryLeaks();
 #endif
 }

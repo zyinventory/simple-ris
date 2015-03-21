@@ -622,7 +622,7 @@ int main(int argc, char *argv[])
 
 	// remove DICOMDIR for avoiding warning message.
 	// algorithm copied from OFList<T>::remove
-	OFIterator<OFString> first = fileNames.begin();
+	OFListIterator(OFString) first = fileNames.begin();
 	if(!readQueue)
 	{
 		while(first != fileNames.end())
@@ -743,7 +743,7 @@ traversal_restart:
 								OFString strbody(_bstr_t(pMsg->Body.bstrVal));
 								if(label == NOTIFY_END_OF_STUDY) isIntegrity = true;
 
-								OFIterator<OFString> iter = fileNameList.begin();
+								OFListIterator(OFString) iter = fileNameList.begin();
 								for(; iter != fileNameList.end(); ++iter)
 								{
 									if(strbody == *iter) break;

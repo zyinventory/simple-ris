@@ -513,8 +513,8 @@ int MdfConsoleEngine::startProvidingService()
     //parse command line into file and job list
     parseCommandLine();
     //iterators for job and file loops
-    OFIterator<MdfJob> job_it;
-    OFIterator<OFString> file_it;
+    OFListIterator(MdfJob) job_it;
+    OFListIterator(OFString) file_it;
     file_it=files->begin();
     //outer loop: iterate over all files
     for (unsigned int i=0; i<files->size(); i++)
