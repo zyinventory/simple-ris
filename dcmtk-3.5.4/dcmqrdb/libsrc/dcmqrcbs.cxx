@@ -83,9 +83,16 @@ void DcmQueryRetrieveStoreContext::saveImageToDB(
     
     if (status == STATUS_Success)
     {
-        dbcond = dbHandle.storeRequest(
-            req->AffectedSOPClassUID, req->AffectedSOPInstanceUID,
-            imageFileName, &dbStatus);
+		if(cbIndex)
+		{
+			dbcond = cbIndex(this);
+		}
+		else
+		{
+			dbcond = dbHandle.storeRequest(
+				req->AffectedSOPClassUID, req->AffectedSOPInstanceUID,
+				imageFileName, &dbStatus);
+		}
         if (dbcond.bad())
         {
             DcmQueryRetrieveOptions::errmsg("storeSCP: Database: storeRequest Failed (%s)",
@@ -199,8 +206,7 @@ void DcmQueryRetrieveStoreContext::callbackHandler(
 				writeToFile(dcmff, fileName, rsp);
             }
             if (rsp->DimseStatus == STATUS_Success) {
-                //saveImageToDB(req, fileName, rsp, stDetail);
-				//todo: write message to Named Pipe
+                saveImageToDB(req, fileName, rsp, stDetail);
             }
         }
 end_process:

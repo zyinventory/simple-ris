@@ -116,6 +116,7 @@ DcmQueryRetrieveSCP::DcmQueryRetrieveSCP(
 , dbDebug_(OFFalse)
 , factory_(factory)
 , options_(options)
+, cbToDcmQueryRetrieveStoreContext(NULL)
 {
 }
 
@@ -372,6 +373,9 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
     DcmFileFormat dcmff;
 
     DcmQueryRetrieveStoreContext context(dbHandle, options_, STATUS_Success, &dcmff, correctUIDPadding);
+	context.cbIndex = cbToDcmQueryRetrieveStoreContext;
+	strcpy_s(context.calledAPTitle, assoc->params->DULparams.calledAPTitle);
+	strcpy_s(context.callingAPTitle, assoc->params->DULparams.callingAPTitle);
 
     if (options_.verbose_) {
         printf("Received Store SCP: ");
@@ -433,7 +437,7 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
     } else {
         cond = DIMSE_storeProvider(assoc, presId, request, (char *)NULL, (int)options_.useMetaheader_,
                                    &dset, storeCallback,
-                                   (void*)&context, options_.blockMode_, options_.dimse_timeout_);
+								   (void*)&context, options_.blockMode_, options_.dimse_timeout_);
     }
 
     if (cond.bad()) {
@@ -902,7 +906,7 @@ OFCondition DcmQueryRetrieveSCP::waitForAssociation(T_ASC_Network * theNet)
     int timeout;
     OFBool go_cleanup = OFFalse;
 
-    if (options_.singleProcess_) timeout = 1000;
+    if (options_.singleProcess_) timeout = 1;
     else
     {
       if (processtable_.countChildProcesses() > 0)

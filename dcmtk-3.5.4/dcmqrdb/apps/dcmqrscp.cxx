@@ -90,6 +90,10 @@ END_EXTERN_C
 #include "dcmtk/dcmdata/cmdlnarg.h"
 #include "dcmtk/ofstd/ofconapp.h"
 #include "dcmtk/dcmdata/dcuid.h"       /* for dcmtk version name */
+#include "dcmtk/dcmqrdb/dcmqrcbs.h"
+#include "dcmtk/dcmdata/dcdatset.h"
+#include "dcmtk/dcmdata/dcdeftag.h"
+#include <commonlib.h>
 
 #ifdef WITH_SQL_DATABASE
 #include "dcmtk/dcmqrdbx/dcmqrdbq.h"
@@ -126,33 +130,52 @@ void errmsg(const char* msg, ...)
     fprintf(stderr, "\n");
 }
 
-static int signalInterruptFlag = 0;
-static void SignalInterruptHandler(int signal)
-{
-  signalInterruptFlag = signal;
-}
-
-static void Capture_Ctrl_C()
-{
-  signalInterruptFlag = 0;
-  signal(SIGINT, SignalInterruptHandler);
-}
 
 #ifdef _DEBUG
 static OFCommandLine *pCmd = NULL;
 static DcmQueryRetrieveConfig *configPtr = NULL;
 static DcmQueryRetrieveOptions *optionsPtr = NULL;
 static DcmQueryRetrieveIndexDatabaseHandleFactory *factoryPtr = NULL;
+#endif
+static bool com_is_init = false;
+
 static void exitHook()
 {
+	if(com_is_init) CoUninitialize();
+#ifdef _DEBUG
 	dcmDataDict.clear();
-	delete pCmd;
-	delete configPtr;
-	delete optionsPtr;
-	delete factoryPtr;
+	if(pCmd) delete pCmd;
+	if(configPtr) delete configPtr;
+	if(optionsPtr) delete optionsPtr;
+	if(factoryPtr) delete factoryPtr;
 	_CrtDumpMemoryLeaks();
-}
 #endif
+}
+
+OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
+{
+	if(!com_is_init) com_is_init = SUCCEEDED(CoInitialize(NULL));
+
+	DcmDataset *pds = pc->getDataset();
+	DcmXfer xfer(pds->getOriginalXfer());
+	const char *studyUID, *seriesUID, *instanceUID;
+	pds->findAndGetString(DCM_StudyInstanceUID, studyUID);
+	pds->findAndGetString(DCM_SeriesInstanceUID, seriesUID);
+	pds->findAndGetString(DCM_SOPInstanceUID, instanceUID);
+	
+	stringstream strmbuf;
+	strmbuf << "rec " << pc->callingAPTitle << " " << pc->calledAPTitle << " " << endl;
+	string label = strmbuf.str();
+	strmbuf.clear();
+	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getElement() << " " << studyUID << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getElement() << " " << seriesUID << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getElement() << " " << instanceUID << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() << " " << xfer.getXferID() << endl;
+	strmbuf << pc->getFileName() << endl;
+	string body = strmbuf.str();
+
+	return EC_Normal;
+}
 
 #define SHORTCOL 4
 #define LONGCOL 21
@@ -164,11 +187,7 @@ main(int argc, char *argv[])
     OFCmdUnsignedInt overridePort = 0;
     OFCmdUnsignedInt overrideMaxPDU = 0;
 #ifdef _DEBUG
-	if(strcmp("--forked-child", argv[1]))
-	{
-		_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
-		atexit(exitHook);
-	}
+	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 	optionsPtr = new DcmQueryRetrieveOptions();
     DcmQueryRetrieveOptions &options = *optionsPtr;
 #else
@@ -639,6 +658,7 @@ main(int argc, char *argv[])
     }
 #endif
 #ifdef _WIN32
+	atexit(exitHook);
 	changeWorkingDirectory_internal(0, NULL, NULL);
 	if (options.forkedChild_)
 	{
@@ -736,6 +756,7 @@ main(int argc, char *argv[])
 
     DcmQueryRetrieveSCP scp(config, options, factory);
     scp.setDatabaseFlags(opt_checkFindIdentifier, opt_checkMoveIdentifier, options.debug_);
+	scp.cbToDcmQueryRetrieveStoreContext = triggerReceiveEvent;
 
 	Capture_Ctrl_C();
     /* loop waiting for associations */
@@ -744,7 +765,7 @@ main(int argc, char *argv[])
 		cond = scp.waitForAssociation(options.net_);
 		if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */
 		if (options.forkedChild_) break;
-		if (signalInterruptFlag) break;
+		if (GetSignalInterruptValue()) break;
     }
 
     cond = ASC_dropNetwork(&options.net_);

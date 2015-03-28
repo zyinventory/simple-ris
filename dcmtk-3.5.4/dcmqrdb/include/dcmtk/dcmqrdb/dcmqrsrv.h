@@ -64,9 +64,15 @@ enum CTN_RefuseReason
 
 /** main class for Query/Retrieve Service Class Provider
  */
+#ifndef DCMQR_INDEX_CALLBACK
+#define DCMQR_INDEX_CALLBACK
+class DcmQueryRetrieveStoreContext;
+typedef OFCondition(*IndexCallback)(DcmQueryRetrieveStoreContext *pc);
+#endif //DCMQR_INDEX_CALLBACK
 class DcmQueryRetrieveSCP
 {
 public:
+  IndexCallback cbToDcmQueryRetrieveStoreContext;
 
   /** constructor
    *  @param config SCP configuration facility
