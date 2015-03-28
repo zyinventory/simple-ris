@@ -33,12 +33,6 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="msmq.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="msmq_security.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="deleteStudy.cpp">
       <Filter>源文件</Filter>
     </ClCompile>

@@ -11,7 +11,6 @@ using namespace MSMQ;
 
 extern const char *dirmakerCommand;
 extern bool opt_verbose;
-IMSMQQueuePtr OpenOrCreateQueue(const char *queueName, MQACCESS access = MQ_SEND_ACCESS) throw(...);
 
 static SECURITY_ATTRIBUTES logSA;
 static size_t procnum;
@@ -714,8 +713,7 @@ static void processMessage(IMSMQMessagePtr pMsg)
 				}
 				else
 					time_header_out(cerr) << "process message error: no csv file: " << cmd << endl;
-				IMSMQQueuePtr pQueue = OpenOrCreateQueue(studyUid.c_str());
-				pQueue->Close();
+				EnsureQueueExist(studyUid.c_str());
 				//processMessage: receive message archive study, start dcmmkdir
 				list<WorkerProcess>::iterator iter = runDcmmkdir(studyUid);
 				//dcmmkdir shall poll the study-queue, get instance message, add the instance to dicomdir.
@@ -760,7 +758,10 @@ static int pollQueue(const _TCHAR *queueName)
 	HRESULT hr;
 	try
 	{
-		IMSMQQueuePtr pQueue = OpenOrCreateQueue(queueName, MQ_RECEIVE_ACCESS);
+		EnsureQueueExist(queueName);
+		IMSMQQueueInfoPtr pInfo("MSMQ.MSMQQueueInfo");
+		pInfo->PathName = queueName;
+		IMSMQQueuePtr pQueue = pInfo->Open(MQ_RECEIVE_ACCESS, MQ_DENY_NONE);
 		_variant_t waitStart(1 * 1000); // 1 seconds
 		_variant_t waitNext(1 * 1000); // 1 seconds
 		bool alwaysIdle = true;
