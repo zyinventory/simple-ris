@@ -36,6 +36,7 @@
 
 #include "dcmtk/config/osconfig.h"    /* make sure OS specific configuration is included first */
 #include "dcmtk/dcmnet/dimse.h"
+#include "dcmtk/dcmdata/dcfilefo.h"
 
 class DcmQueryRetrieveDatabaseHandle;
 class DcmQueryRetrieveOptions;
@@ -44,9 +45,21 @@ class DcmFileFormat;
 /** this class maintains the context information that is passed to the 
  *  callback function called by DIMSE_storeProvider.
  */
+#ifndef DCMQR_INDEX_CALLBACK
+#define DCMQR_INDEX_CALLBACK
+class DcmQueryRetrieveStoreContext;
+typedef OFCondition(*IndexCallback)(DcmQueryRetrieveStoreContext *pc);
+#endif //DCMQR_INDEX_CALLBACK
 class DcmQueryRetrieveStoreContext
 {
 public:
+	IndexCallback cbIndex;
+	char callingAPTitle[DUL_LEN_TITLE + 1];
+    char calledAPTitle[DUL_LEN_TITLE + 1];
+	
+	DcmDataset *getDataset() { return dcmff->getDataset(); }
+	const char *getFileName() { return fileName; }
+
     /** constructor
      *  @param handle reference to database handle
      *  @param options options for the Q/R service
@@ -66,6 +79,7 @@ public:
     , fileName(NULL)
     , dcmff(ff)
     , correctUIDPadding(correctuidpadding)
+	, cbIndex(NULL)
     {
     }
 
