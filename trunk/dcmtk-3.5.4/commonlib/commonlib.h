@@ -57,7 +57,8 @@ COMMONLIB_API long generateIndex(char *inputFile, const char *paramBaseUrl, cons
 COMMONLIB_API time_t dcmdate2tm(int dcmdate);
 COMMONLIB_API bool generateStudyXML(const char *line, std::ostream &xmlStream, bool isEncapsulated = false);
 COMMONLIB_API bool SendArchiveMessageToQueue(const char *label, const char *body, const char *cmd);
-//bool SendCommonMessageToQueue(const char *label, const char *body, const long priority, const char *queueName);
+COMMONLIB_API bool SendCommonMessageToQueue(const char *label, const char *body, const long priority, const char *queueName);
+COMMONLIB_API bool EnsureQueueExist(const char *queuePath);
 COMMONLIB_API bool DeleteQueue(const char *queueName);
 COMMONLIB_API errno_t setEnvParentPID();
 COMMONLIB_API int generateTime(const char *format, char *timeBuffer, size_t bufferSize);

@@ -85,6 +85,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmqridx", "dcmqrdb\apps\dcmqridx.vcxproj", "{8A34DB9E-5A71-420D-91D1-DE4FDB5DD8D1}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmqrscp", "dcmqrdb\apps\dcmqrscp.vcxproj", "{4EB5CA3D-49CA-4565-BFA3-22F7C28E0380}"
+	ProjectSection(ProjectDependencies) = postProject
+		{2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205} = {2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmqrti", "dcmqrdb\apps\dcmqrti.vcxproj", "{908D07A8-2B48-4487-BA0C-9202832D882B}"
 EndProject

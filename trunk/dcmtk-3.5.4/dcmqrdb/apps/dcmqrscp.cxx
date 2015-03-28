@@ -658,8 +658,11 @@ main(int argc, char *argv[])
     }
 #endif
 #ifdef _WIN32
-	atexit(exitHook);
 	changeWorkingDirectory_internal(0, NULL, NULL);
+	CoInitialize(NULL);
+	atexit(exitHook);
+	if(! EnsureQueueExist(QUEUE_NAME))
+		return -99;
 	if (options.forkedChild_)
 	{
 		// child process

@@ -4,7 +4,7 @@
 
 using namespace std;
 
-HRESULT ModifyDaclInfo(PSECURITY_DESCRIPTOR pSecurityDescriptor, LPCWSTR wszFormatName)
+static HRESULT ModifyDaclInfo(PSECURITY_DESCRIPTOR pSecurityDescriptor, LPCWSTR wszFormatName)
 {
 	// Validate the input parameters.
 	if (pSecurityDescriptor == NULL || wszFormatName == NULL)
