@@ -73,8 +73,16 @@ OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 
 #define SHORTCOL 4
 #define LONGCOL 21
-
+#ifdef NDEBUG
 static HANDLE mutexIdle = NULL, mutexRec = NULL;
+#endif //NDEBUG
+
+static std::ostream& time_header_out(std::ostream &os)
+{
+	char timeBuffer[32];
+	if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
+	return os;
+}
 
 int main(int argc, char *argv[])
 {
@@ -641,7 +649,7 @@ int main(int argc, char *argv[])
 	/* make sure data dictionary is loaded */
 	if (!dcmDataDict.isDictionaryLoaded())
 	{
-		CERR << "Warning: no data dictionary loaded, "
+		time_header_out(CERR) << "Warning: no data dictionary loaded, "
 			<< "check environment variable: "
 			<< DCM_DICT_ENVIRONMENT_VARIABLE << endl;
 	}
@@ -649,7 +657,7 @@ int main(int argc, char *argv[])
 	// open inputfile
 	if ((opt_ifname == NULL) || (strlen(opt_ifname) == 0))
 	{
-		CERR << "invalid filename: <empty string>" << endl;
+		time_header_out(CERR) << "invalid filename: <empty string>" << endl;
 		return 1;
 	}
 
@@ -661,6 +669,7 @@ int main(int argc, char *argv[])
 		readcmd = OFFalse;
 		opt_ifname = ifile;
 		opt_ofname = ofile;
+#ifdef NDEBUG
 		char buffer[32];
 		sprintf_s(buffer, 32, "Global\\dcmcjpeg%d", opt_processNumber);
 		mutexIdle = CreateMutex(NULL, TRUE, buffer);
@@ -668,54 +677,57 @@ int main(int argc, char *argv[])
 			WaitForSingleObject(mutexIdle, INFINITE);
 		sprintf_s(buffer, 32, "Global\\receive%d", opt_processNumber);
 		mutexRec = CreateMutex(NULL, FALSE, buffer);
+#endif //NDEBUG
 	}
 
 	while(true)
 	{
 		//DWORD timerbase = GetTickCount();
-		//COUT << "start timing..." << endl;
+		//CERR << "start timing..." << endl;
+#ifdef NDEBUG
 		if(mutexIdle && mutexRec)
 			if(WAIT_OBJECT_0 != SignalObjectAndWait(mutexIdle, mutexRec, INFINITE, FALSE)) displayErrorToCerr("enter idle");
-		if (opt_verbose) COUT << "waiting input..." << endl;
+#endif //NDEBUG
+		if (opt_verbose) time_header_out(CERR) << "waiting input..." << endl;
 		if(readcmd || (cin.getline(ifile, MAX_PATH, ' ').good() && cin.getline(ofile, MAX_PATH, '\n').good()))
 		{
 			if (opt_verbose)
 			{
-				COUT << "input: " << opt_ifname << endl;
-				COUT << "output: " << opt_ofname << endl;
+				time_header_out(CERR) << "input: " << opt_ifname << endl;
+				time_header_out(CERR) << "output: " << opt_ofname << endl;
 			}
 		}
 		else
 		{
-			if (opt_verbose) COUT << "stdin readline failed, exit..." << endl;
+			if (opt_verbose) time_header_out(CERR) << "stdin readline failed, exit..." << endl;
 			break;
 		}
 
 		if(*opt_ifname == '\0' || *opt_ofname == '\0')
 		{
-			if (opt_verbose) COUT << "stdin in_file or out_file empty, exit..." << endl;
+			if (opt_verbose) time_header_out(CERR) << "stdin in_file or out_file empty, exit..." << endl;
 			break;
 		}
-
+#ifdef NDEBUG
 		if(mutexIdle && mutexRec)
 			if(WAIT_OBJECT_0 != SignalObjectAndWait(mutexRec, mutexIdle, INFINITE, FALSE)) displayErrorToCerr("confirm command");
-
+#endif //NDEBUG
 		opt_oxfer = opt_oxferBak;
 		needMove = OFFalse;
 
 		if (opt_verbose)
-			COUT << "reading input file " << opt_ifname << endl;
+			time_header_out(CERR) << "reading input file " << opt_ifname << endl;
 
 		DcmFileFormat fileformat;
 		//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
-		//COUT << "before load file " << GetTickCount() - timerbase << endl;
+		//CERR << "before load file " << GetTickCount() - timerbase << endl;
 		OFCondition error = fileformat.loadFile(opt_ifname, opt_ixfer, EGL_noChange, DCM_MaxReadLength, opt_readMode);
-		//COUT << "after load file " << GetTickCount() - timerbase << endl;
+		//CERR << "after load file " << GetTickCount() - timerbase << endl;
 		//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END) ) displayErrorToCerr("SetPriorityClass");
 
 		if (error.bad())
 		{
-			CERR << "Error: " << error.text() << ": reading file: " <<  opt_ifname << endl;
+			time_header_out(CERR) << "Error: " << error.text() << ": reading file: " <<  opt_ifname << endl;
 			if(readcmd) return 1; else continue;
 		}
 		DcmDataset *dataset = fileformat.getDataset();
@@ -724,10 +736,10 @@ int main(int argc, char *argv[])
 		if (original_xfer.isEncapsulated() && ( ! opt_skipCompressed ))
 		{
 			if (opt_verbose)
-				COUT << "DICOM file is already compressed, convert to uncompressed xfer syntax first\n";
+				time_header_out(CERR) << "DICOM file is already compressed, convert to uncompressed xfer syntax first\n";
 			if (EC_Normal != dataset->chooseRepresentation(EXS_LittleEndianExplicit, NULL))
 			{
-				CERR << "No conversion from compressed original to uncompressed xfer syntax possible!\n";
+				time_header_out(CERR) << "No conversion from compressed original to uncompressed xfer syntax possible!\n";
 				if(readcmd) return 1; else continue;
 			}
 		}
@@ -735,14 +747,14 @@ int main(int argc, char *argv[])
 		if( original_xfer.isEncapsulated()  && opt_skipCompressed )
 		{
 			if (opt_verbose)
-				COUT << "Convert DICOM file is already compressed, skip compressing, move original\n";
+				time_header_out(CERR) << "Convert DICOM file is already compressed, skip compressing, move original\n";
 			opt_oxfer = original_xfer.getXfer();
 			needMove = OFTrue;
 		}
 		else
 		{
 			if (opt_verbose)
-				COUT << "Convert DICOM file to compressed transfer syntax\n";
+				time_header_out(CERR) << "Convert DICOM file to compressed transfer syntax\n";
 
 			DcmXfer opt_oxferSyn(opt_oxfer);
 
@@ -754,12 +766,12 @@ int main(int argc, char *argv[])
 			if ((opt_oxfer == EXS_JPEGProcess14SV1TransferSyntax)||
 				(opt_oxfer == EXS_JPEGProcess14TransferSyntax))
 			{
-				if (opt_verbose) COUT << "Representation Parameter is lossless" << endl;
+				if (opt_verbose) time_header_out(CERR) << "Representation Parameter is lossless" << endl;
 				rp = &rp_lossless;
 			}
 			else
 			{
-				if (opt_verbose) COUT << "Representation Parameter is lossy" << endl;
+				if (opt_verbose) time_header_out(CERR) << "Representation Parameter is lossy" << endl;
 			}
 
 			error = dataset->chooseRepresentation(opt_oxfer, rp);
@@ -768,22 +780,22 @@ int main(int argc, char *argv[])
 				if (dataset->canWriteXfer(opt_oxfer))
 				{
 					if (opt_verbose)
-						COUT << "Output transfer syntax " << opt_oxferSyn.getXferName() << " can be written\n";
+						time_header_out(CERR) << "Output transfer syntax " << opt_oxferSyn.getXferName() << " can be written\n";
 				} else {
-					CERR << "No conversion to transfer syntax " << opt_oxferSyn.getXferName() << " possible!\n";
+					time_header_out(CERR) << "No conversion to transfer syntax " << opt_oxferSyn.getXferName() << " possible!\n";
 					if(readcmd) return 1; else continue;
 				}
 			}
 			else
 			{
 				needMove = OFTrue;
-				CERR << "compress " << opt_ifname << " failed, move to " << opt_ofname << endl;
+				time_header_out(CERR) << "compress " << opt_ifname << " failed, move to " << opt_ofname << endl;
 			}
 		}
 
 		if(needMove)
 		{
-			if (opt_verbose) COUT << "move " << opt_ifname << " to " << opt_ofname << endl;
+			if (opt_verbose) time_header_out(CERR) << "move " << opt_ifname << " to " << opt_ofname << endl;
 			if(OFStandard::fileExists(opt_ofname))
 			{
 				char backupName[MAX_PATH];
@@ -821,32 +833,32 @@ int main(int argc, char *argv[])
 			}
 
 			if (opt_verbose)
-				COUT << "creating output file " << opt_ofname << endl;
+				time_header_out(CERR) << "creating output file " << opt_ofname << endl;
 			prepareFileDir(opt_ofname);
 
 			//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
-			//COUT << "before load into mem " << GetTickCount() - timerbase << endl;
+			//CERR << "before load into mem " << GetTickCount() - timerbase << endl;
 			fileformat.loadAllDataIntoMemory();
-			//COUT << "after load into mem " << GetTickCount() - timerbase << endl;
+			//CERR << "after load into mem " << GetTickCount() - timerbase << endl;
 			error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
 				opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
-			//COUT << "after save " << GetTickCount() - timerbase << endl;
+			//CERR << "after save " << GetTickCount() - timerbase << endl;
 			//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END) ) displayErrorToCerr("SetPriorityClass");
 
 			if (error.bad())
 			{
-				CERR << "Error: "
+				time_header_out(CERR) << "Error: "
 					<< error.text()
 					<< ": writing file: " <<  opt_ofname << endl;
 				if(readcmd) return 1; else continue;
 			}
 
 			if (opt_verbose)
-				COUT << "conversion successful\n";
+				time_header_out(CERR) << "conversion successful\n";
 
 			if(opt_deleteSourceFile)
 			{
-				if (opt_verbose) COUT << "delete source file: " << opt_ifname << endl;
+				if (opt_verbose) time_header_out(CERR) << "delete source file: " << opt_ifname << endl;
 				if( remove(opt_ifname) )
 				{
 					int errnoRmdir = 0;
@@ -858,10 +870,10 @@ int main(int argc, char *argv[])
 
 		if(readcmd) break;
 	}
-
+#ifdef NDEBUG
 	if(mutexIdle) { ReleaseMutex(mutexIdle); CloseHandle(mutexIdle); }
 	if(mutexRec) { ReleaseMutex(mutexRec); CloseHandle(mutexRec); }
-
+#endif //NDEBUG
 	// deregister global codecs
 	DJDecoderRegistration::cleanup();
 	DJEncoderRegistration::cleanup();
