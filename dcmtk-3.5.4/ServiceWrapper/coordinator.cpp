@@ -19,8 +19,67 @@ static list<WorkerProcess> dirmakers;
 
 static void closeProcHandle(WorkerProcess &wp)
 {
-	if(opt_verbose) time_header_out(cout) << "closeProcHandle: ";
-	WaitForSingleObject(wp.hProcess, 10 * 1000);
+	if(opt_verbose)
+	{
+		time_header_out(cout) << "closeProcHandle: ";
+		if(wp.hProcess)
+			cout << "hProcess = " << wp.hProcess;
+		else
+			cout << "hProcess = NULL";
+		cout << " start..." << endl;
+	}
+	if(wp.hChildStdInWrite)
+	{
+		CloseHandle(wp.hChildStdInWrite);
+		wp.hChildStdInWrite = NULL;
+	}
+	// close handle
+	if(wp.mutexIdle)
+	{
+		CloseHandle(wp.mutexIdle);
+		wp.mutexIdle = NULL;
+	}
+	if(wp.mutexRec)
+	{
+		CloseHandle(wp.mutexRec);
+		wp.mutexRec = NULL;
+	}
+	BOOL termOK = TRUE;
+	DWORD procExit = WAIT_OBJECT_0;
+	if(wp.hProcess)
+	{
+		procExit = WaitForSingleObject(wp.hProcess, 1 * 1000);
+		if(opt_verbose) time_header_out(cout) << "closeProcHandle: hProcess = " << wp.hProcess;
+		if(procExit == WAIT_OBJECT_0)
+		{
+			if(opt_verbose) cout << ", close self ";
+		}
+		else if(procExit == WAIT_TIMEOUT)
+		{
+			if(opt_verbose) cout << ", close timeout, TerminateProcess(): ";
+			termOK = TerminateProcess(wp.hProcess, -1);
+		}
+		else //if(procExit == WAIT_FAILED)
+		{
+			if(opt_verbose) cout << ", close failed, TerminateProcess(): ";
+			termOK = TerminateProcess(wp.hProcess, -1);
+		}
+
+		if(opt_verbose)
+		{
+			if(termOK)
+				cout << "OK";
+			else
+			{
+				_com_error ce(AtlHresultFromLastError());
+				cout << ce.ErrorMessage() << endl;
+			}
+		}
+	}
+	else
+	{
+		if(opt_verbose) time_header_out(cout) << "closeProcHandle: hProcess = NULL";
+	}
 	if(wp.hThread)
 	{
 		CloseHandle(wp.hThread);
@@ -28,15 +87,9 @@ static void closeProcHandle(WorkerProcess &wp)
 	}
 	if(wp.hProcess)
 	{
-		if(opt_verbose) cout << "hProcess = " << wp.hProcess;
 		CloseHandle(wp.hProcess);
 		wp.hProcess = NULL;
 	}
-	else
-	{
-		if(opt_verbose) cout << "hProcess = NULL";
-	}
-
 	if(wp.csvPath)
 	{
 		if(opt_verbose) cout << ", csv = " << *wp.csvPath;
@@ -64,22 +117,6 @@ static void closeProcHandle(WorkerProcess &wp)
 	if(wp.csvPath || wp.studyUid || wp.instancePath)
 		cout << endl;
 	*/
-	if(wp.hChildStdInWrite)
-	{
-		CloseHandle(wp.hChildStdInWrite);
-		wp.hChildStdInWrite = NULL;
-	}
-	if(wp.mutexIdle)
-	{
-		CloseHandle(wp.mutexIdle);
-		wp.mutexIdle = NULL;
-	}
-	if(wp.mutexRec)
-	{
-		CloseHandle(wp.mutexRec);
-		wp.mutexRec = NULL;
-	}
-
 	if(wp.instancePath)
 	{
 		if(opt_verbose) cout << ", instance = " << *wp.instancePath;
@@ -329,6 +366,7 @@ static DWORD findIdleOrCompelete()
 			result = wait - WAIT_ABANDONED_0;
 			time_header_out(cerr) << "worker process " << result << " exit abandoned" << endl;
 			closeProcHandle(workers[result]);
+			closeLogFile(workers[result]);
 		}
 		else if(wait >= WAIT_OBJECT_0 && wait < WAIT_OBJECT_0 + procnum)
 			result = wait - WAIT_OBJECT_0;
@@ -386,7 +424,7 @@ static DWORD findIdleOrCompelete()
 			string label(NOTIFY_COMPRESSED);
 			label.append(*instancePath);
 			//if(opt_verbose) time_header_out(cout) << "findIdleOrCompelete: message " << NOTIFY_COMPRESSED << ':' << instancePath->c_str() << " send" << endl;
-			SendCommonMessageToQueue(label.c_str(), instancePath->c_str(), MQ_PRIORITY_COMPRESSED, studyUid->c_str());
+			SendCommonMessageToQueue(label.c_str(), instancePath->c_str(), MQ_PRIORITY_RECEIVED, studyUid->c_str());
 			delete instancePath;
 		}
 		else
@@ -521,6 +559,7 @@ static void runArchiveInstance(string &cmd, const int index, string &studyUid)
 			iofileCr.append(1, '\n');  // for dcmcjpeg: cin.getline()
 			DWORD bytesWritten;
 			WriteFile(workers[index].hChildStdInWrite, iofileCr.c_str(), iofileCr.length(), &bytesWritten, NULL);
+			if(opt_verbose) time_header_out(cout) << "write param to dcmcjpeg: " << iofile << endl;
 			if(WAIT_OBJECT_0 == SignalObjectAndWait(workers[index].mutexIdle, workers[index].mutexRec, INFINITE, FALSE))
 			{
 				workers[index].studyUid = new string(studyUid);
@@ -658,7 +697,7 @@ static void processMessage(IMSMQMessagePtr pMsg)
 							detectDcmmkdirProcessExit();
 							string label(NOTIFY_COMPRESSED);
 							label.append(dest);
-							SendCommonMessageToQueue(label.c_str(), dest, MQ_PRIORITY_COMPRESSED, studyUid.c_str());
+							SendCommonMessageToQueue(label.c_str(), dest, MQ_PRIORITY_RECEIVED, studyUid.c_str());
 							runDcmmkdir(studyUid);
 						}
 					}
@@ -791,15 +830,15 @@ static int pollQueue(const _TCHAR *queueName)
 			checkStudyAccomplished();
 			if(index == WAIT_FAILED)
 				throw "findIdle error";
-			else if(index == procnum) // no process, close all log file
+			else if(index == procnum) // no process, clean disk
 			{
-				for(size_t i = 0; i < procnum; ++i) closeLogFile(workers[i]);
+				//for(size_t i = 0; i < procnum; ++i) closeLogFile(workers[i]);
 				autoCleanPacsDiskByStudyDate();
 			}
 			else // close one process
 			{
 				closeProcHandle(workers[index]);
-				//closeLogFile(index);
+				closeLogFile(workers[index]);
 			}
 		}
 		hr = pQueue->Close();
