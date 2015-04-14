@@ -47,7 +47,8 @@ int statusXml(CSimpleIni &ini, const char *statusFlag)
 			if(string::npos != currentSection.find("PUBLISHER", 0) || currentSection == "TDB_INFO"
 				|| currentSection == "ACTIVE_JOB" || currentSection == "COMPLETE_JOB")
 			{
-				MSXML2::IXMLDOMElementPtr sectionNode = pXmlDom->createNode(MSXML2::NODE_ELEMENT, currentSection.c_str(), "");
+				MSXML2::IXMLDOMElementPtr sectionNode = pXmlDom->createNode(MSXML2::NODE_ELEMENT, 
+					string::npos == currentSection.find("PUBLISHER", 0) ? currentSection.c_str() : "PUBLISHER", "");
 				CSimpleIni::TNamesDepend keys;
 				ini.GetAllKeys((*sec).pItem, keys);
 				CSimpleIni::TNamesDepend::iterator key = keys.begin();
