@@ -49,15 +49,15 @@
 	            $('#headerBar').html(xslt(body, xslColor));
 	        }, 'xml');
 	        if (result.status == 200) {
-	            setColorBar('#colorRemainC', 'cyan');
-	            setColorBar('#colorRemainM', 'magenta');
-	            setColorBar('#colorRemainY', 'yellow');
-	            setColorBar('#colorRemainLC', '#c0ffff');
-	            setColorBar('#colorRemainLM', '#ffa0ff');
-	            setColorBar('#colorRemainK', 'black');
+	            setColorBar('.colorRemainC', 'cyan');
+	            setColorBar('.colorRemainM', 'magenta');
+	            setColorBar('.colorRemainY', 'yellow');
+	            setColorBar('.colorRemainLC', '#c0ffff');
+	            setColorBar('.colorRemainLM', '#ffa0ff');
+	            setColorBar('.colorRemainK', 'black');
 
-	            setColorBar('#stacker1', 'lime');
-	            setColorBar('#stacker2', 'lime');
+	            setColorBar('.stacker1', 'lime');
+	            setColorBar('.stacker2', 'lime');
 	        }
 
 	        var today = $.datepicker.formatDate('yy/mm/dd', new Date());
@@ -115,7 +115,7 @@
 	</script>
 </head>
 <body>
-<div id="headerBar" style="height:76px; overflow:hidden"></div>
+<div id="headerBar"></div>
 <div id="containerPane" class="ui-widget ui-widget-content ui-widget-helper-clearfix">
 	<div id="containerHeader" class="ui-widget-header ui-widget-helper-clearfix" style="border-width:0px; padding-top:2px">
         <div id="currentTab" class="pacs-tab ui-corner-top" style="background-color:white; border-bottom:2px solid white">

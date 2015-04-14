@@ -166,8 +166,10 @@ function displayPaitent(textValue) {
 }
 
 function setColorBar(colorBar, color) {
-    var colorPercent = $(colorBar + ' div')[0].textContent;
-    var colorRemain = parseInt(colorPercent.substring(colorPercent.indexOf(')') + 1, colorPercent.indexOf('%')));
-    $(colorBar).progressbar({ value: colorRemain, disable: false });
-    $(colorBar + ' .ui-progressbar-value').css('background', color);
+    $(colorBar).each(function (i, elm) {
+        var colorPercent = $(elm).children('div.progress-label')[0].textContent;
+        var colorRemain = parseInt(colorPercent.substring(colorPercent.indexOf(')') + 1, colorPercent.indexOf('%')));
+        $(elm).progressbar({ value: colorRemain, disable: false });
+        $(elm).children('.ui-progressbar-value').css('background', color);
+    });
 }
