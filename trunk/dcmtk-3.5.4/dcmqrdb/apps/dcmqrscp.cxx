@@ -158,22 +158,30 @@ OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 
 	DcmDataset *pds = pc->getDataset();
 	DcmXfer xfer(pds->getOriginalXfer());
-	const char *studyUID, *seriesUID, *instanceUID;
+	const char *studyUID, *seriesUID, *instanceUID, *modality;
 	pds->findAndGetString(DCM_StudyInstanceUID, studyUID);
 	pds->findAndGetString(DCM_SeriesInstanceUID, seriesUID);
 	pds->findAndGetString(DCM_SOPInstanceUID, instanceUID);
-	
+	pds->findAndGetString(DCM_Modality, modality);
+
 	stringstream strmbuf;
-	strmbuf << "rec " << pc->callingAPTitle << " " << pc->calledAPTitle << " " << endl;
+	strmbuf << "rec " << modality << " " << pc->callingAPTitle << " " << pc->calledAPTitle << endl;
 	string label = strmbuf.str();
+	strmbuf.str(string());
 	strmbuf.clear();
+	strmbuf << pc->getFileName() << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getElement() << " " << studyUID << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getElement() << " " << seriesUID << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getElement() << " " << instanceUID << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() << " " << xfer.getXferID() << endl;
-	strmbuf << pc->getFileName() << endl;
 	string body = strmbuf.str();
-
+	if(!SendCommonMessageToQueue(label.c_str(), body.c_str(), MQ_PRIORITY_RECEIVED, NULL))
+	{
+		cerr << "Send message to queue error:" << endl;
+		cerr << "label: " << label << endl;
+		cerr << "body:" << endl;
+		cerr << body << endl;
+	}
 	return EC_Normal;
 }
 
