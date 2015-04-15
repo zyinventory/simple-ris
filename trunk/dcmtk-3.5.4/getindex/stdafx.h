@@ -28,10 +28,10 @@
 #include <fstream>
 #include <sstream>
 #include <list>
+#include <algorithm>
 #include <commonlib.h>
 #include <study_struct.h>
 #include <dcmdynamic.h>
-#include <SimpleIni.h>
 extern "C" {
 #include <cgic.h>
 }
