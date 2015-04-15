@@ -6,7 +6,6 @@
 
 static char pPacsBase[MAX_PATH];
 std::ostringstream index_errlog;
-int statusXml(CSimpleIni &ini, const char *statusFlag);
 int statusCharge(const char *flag);
 int removeStudy(const char *flag);
 
@@ -268,26 +267,15 @@ static int burningStudy(const char *media)
 	return -1;
 }
 
-int reportStatus(const char *flag)
+#define TDB_STATUS "..\\orders\\TDBStatus.txt"
+static int reportStatus(const char *flag)
 {
-    CSimpleIni ini(false, false, false);
-    //std::ifstream instream;
-    //instream.open("..\\orders\\TDBStatus.txt", std::ifstream::in | std::ifstream::binary, _SH_DENYNO);
-	SI_Error rc = ini.LoadFile("..\\orders\\TDBStatus.txt");
-	//instream.close();
-    if (rc < 0) {
-		char okMessage[] = "没有任务";
-		fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", sizeof(okMessage) - 1);
-		fprintf(cgiOut, okMessage);
-		return 0;
-	}
-	CoInitialize(NULL);
-	int result = statusXml(ini, flag);
-	CoUninitialize();
+	int result = StatusXml(flag, TDB_STATUS, licenseCounter(), index_errlog);
+	outputContent(result);
 	return result;
 }
 
-int reportCharge(const char *flag)
+static int reportCharge(const char *flag)
 {
 	if(!InitiateLock(0))
 	{
@@ -296,9 +284,7 @@ int reportCharge(const char *flag)
 		fprintf(cgiOut, errorMessage);
 		return -1;
 	}
-	CoInitialize(NULL);
 	int result = statusCharge(flag);
-	CoUninitialize();
 	TerminateLock(0);
 	return result;
 }
@@ -336,6 +322,10 @@ static bool generateJDF(Volume &vol, char *volbufNoSeq, const char *mediaType, s
 	jdfpath.erase(jdfpath.length() - 3);
 	if(ofs.good())
 	{
+		string valid_publisher;
+		bool valid_found = SelectValidPublisher(TDB_STATUS, valid_publisher);
+		if(valid_found || valid_publisher.find("error:", 0) == string::npos)
+			ofs << "PUBLISHER=" << valid_publisher << endl;
 		size_t jobpos = strlen(jobPrefix);
 		sprintf_s(jobPrefix + jobpos, JOB_ID_MAX + 1 - jobpos, "%d-%d", vol.sequence, vol.volumeCount);
 		ofs << "JOB_ID=" << timeString << "-" << jobPrefix << endl;
@@ -408,7 +398,7 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_
 		}
 		sprintf_s(volbuf + prefixLen, MAX_PATH - prefixLen, ".%03d.dir", itv->sequence);
 
-		if(MergeDicomDir(dirlist, volbuf, "SMART_PUB_SET", cout, false) < 0) 
+		if(MergeDicomDir(dirlist, volbuf, "SMART_PUB_SET", index_errlog, false) < 0) 
 		{
 			index_errlog << "Volume " << itv->sequence << " prepare failed." << endl;
 			continue;
@@ -545,9 +535,7 @@ int batchBurn()
 			size_t prefixLen = strlen(xmlpath);
 			strcpy_s(xmlpath + prefixLen, MAX_PATH - prefixLen, ".xml");
 			list<Study> studies;
-			::CoInitialize(NULL);
 			collectionToFileNameList(xmlpath, studies, isPatient);
-			::CoUninitialize();
 			vols.push_back(Volume(1, volumeSize, desc));
 			splitVolume(vols, studies, volumeSize, desc);
 			vols.sort([](const Volume &v1, const Volume &v2) { return v1.sequence < v2.sequence; });
@@ -680,12 +668,7 @@ int work()
 	else if(cgiFormNotFound != cgiFormString("requestType", flag, sizeof(flag)) && strlen(flag) > 0)
 		return wadoRequest(flag);
 	else if(cgiFormNotFound != cgiFormString("remove", flag, sizeof(flag)) && strlen(flag) > 0)
-	{
-		CoInitialize(NULL);
-		int ret = removeStudy(flag);
-		CoUninitialize();
-		return ret;
-	}
+		return removeStudy(flag);
 	else if(cgiFormNotFound != cgiFormString("charge", flag, sizeof(flag)) && strlen(flag) > 0)
 		return reportCharge(flag);
 	else
@@ -694,5 +677,8 @@ int work()
 
 extern "C" int cppWrapper()
 {
-	return work();
+	CoInitialize(NULL);
+	int wr = work();
+	CoUninitialize();
+	return wr;
 }

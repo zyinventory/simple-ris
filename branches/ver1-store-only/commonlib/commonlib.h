@@ -70,3 +70,5 @@ COMMONLIB_API bool deleteTree(const char *dirpath, std::ostream *ostrm = NULL);
 COMMONLIB_API bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid);
 COMMONLIB_API size_t extractStudyUid(char *buffer, const size_t bufferSize, const wchar_t *body);
 COMMONLIB_API errno_t SeriesInstancePath(const char *series, const std::string &instance, char *outputBuffer, size_t bufLen, char pathSeparator = '\\');
+COMMONLIB_API bool SelectValidPublisher(const char *ini_path, std::string &valid_publisher);
+COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int licenseCnt, std::ostream &outputbuf);
