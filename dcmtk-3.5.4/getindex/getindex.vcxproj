@@ -50,7 +50,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>PACS_ENABLE_CHARGE;_DEBUG;WIN32;_CONSOLE;SI_SUPPORT_IOSTREAMS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>PACS_ENABLE_CHARGE;WIN32;_CONSOLE;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)commonlib;$(SolutionDir)liblock;$(SolutionDir)libb24;$(SolutionDir)gencard;$(SolutionDir)libcgic;$(SolutionDir)dcmdynamic;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -71,7 +71,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>PACS_ENABLE_CHARGE;__LOCK_STATIC;NDEBUG;WIN32;_CONSOLE;SI_SUPPORT_IOSTREAMS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>PACS_ENABLE_CHARGE;WIN32;_CONSOLE;__LOCK_STATIC;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)commonlib;$(SolutionDir)liblock;$(SolutionDir)libb24;$(SolutionDir)gencard;$(SolutionDir)libcgic;$(SolutionDir)dcmdynamic;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>

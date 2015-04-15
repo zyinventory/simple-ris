@@ -1016,3 +1016,208 @@ COMMONLIB_API long long diskUsage(const char *pacsBase, const char *studyUID)
 	}
 	return filesizes;
 }
+
+COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publisher)
+{
+    CSimpleIni ini(false, false, false);
+    //std::ifstream instream;
+    //instream.open("..\\orders\\TDBStatus.txt", std::ifstream::in | std::ifstream::binary, _SH_DENYNO);
+	SI_Error rc = ini.LoadFile(ini_path);
+	//instream.close();
+    if (rc < 0) {
+		valid_publisher = "error:没有任务";
+		return false;
+	}
+	CSimpleIni::TNamesDepend sections;
+	ini.GetAllSections(sections);
+	CSimpleIni::TNamesDepend::iterator sec = sections.begin();
+	string default_publisher;
+	while(sec != sections.end())
+	{
+		string currentSection((*sec).pItem);
+		if(string::npos == currentSection.find("PUBLISHER", 0))
+		{
+			++sec;
+			continue;
+		}
+		CSimpleIni::TNamesDepend keys;
+		ini.GetAllKeys((*sec).pItem, keys);
+		CSimpleIni::TNamesDepend::iterator key = keys.begin();
+		bool valid = true;
+		long stack1 = 0, stack2 = 0, d1_status = -1, d1_life = 100, d2_status = -1, d2_life = 100;
+		const char *pname = ini.GetValue(currentSection.c_str(), "NAME", NULL);
+		string name;
+		if(pname == NULL || *pname == '\0')
+		{
+			++sec;
+			continue;
+		}
+		else
+			name = pname;
+
+		if(default_publisher.empty()) default_publisher = name;
+
+		while(key != keys.end())
+		{
+			string currentKey((*key).pItem);
+			if(currentKey == "INFO1")
+			{
+				const char *pv = ini.GetValue(currentSection.c_str(), currentKey.c_str(), NULL);
+				valid = (pv == NULL || *pv == '\0');
+			}
+			else if(currentKey == "STACK1") { stack1 = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 0); }
+			else if(currentKey == "STACK2") { stack2 = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 0); }
+			else if(0 == currentKey.find("INK_", 0)) { valid = (0 < ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1)); }
+			else if(currentKey == "PRINTER_STATUS")
+			{
+				long prn_status = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1);
+				valid = (prn_status == 1 || prn_status == 2 || prn_status == 3 || prn_status == 4 || prn_status == 6);
+			}
+			else if(currentKey == "MAINTENANCE_BOX_FREE_SPACE") { valid = (0 < ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1)); }
+			else if(currentKey == "DRIVE1_STATUS") { d1_status = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1); }
+			else if(currentKey == "DRIVE2_STATUS") { d2_status = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1); }
+			else if(currentKey == "DRIVE1_LIFE") { d1_life = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 100); }
+			else if(currentKey == "DRIVE2_LIFE") { d2_life = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 100); }
+			if(!valid) break;
+			++key;
+		}
+		if(valid)
+		{
+			valid = ((stack1 + stack2) > 0 && ((d1_status == 1 && d1_life < 100) || (d2_status == 1 && d2_life < 100)));
+			if(valid)
+			{
+				valid_publisher = name;
+				return true;
+			}
+		}
+		++sec;
+	}
+	valid_publisher = default_publisher.empty() ? "error:没有可用的刻录机" : default_publisher;
+	return false;
+}
+
+COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int licenseCnt, std::ostream &outputbuf)
+{
+	bool hasError = false;
+	MSXML2::IXMLDOMDocumentPtr pXmlDom;
+	HRESULT hr = pXmlDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+	if (FAILED(hr))
+	{
+		outputbuf << "Failed to CreateInstance on an XML DOM." << endl;
+		return -1;
+	}
+	pXmlDom->preserveWhiteSpace = VARIANT_FALSE;
+	pXmlDom->async = VARIANT_FALSE;
+
+	MSXML2::IXMLDOMProcessingInstructionPtr pi = pXmlDom->createProcessingInstruction("xml", "version=\"1.0\" encoding=\"gbk\"");
+	if (pi != NULL) pXmlDom->appendChild(pi);
+
+	MSXML2::IXMLDOMProcessingInstructionPtr pXslt = NULL;
+	if(strcmp(statusFlag, "xml"))
+	{
+		pXslt = pXmlDom->createProcessingInstruction("xml-stylesheet", "type=\"text/xml\" href=\"../xslt/status.xsl\"");
+		if (pXslt != NULL) pXmlDom->appendChild(pXslt);
+	}
+
+	MSXML2::IXMLDOMElementPtr root = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "tdb_status", "");
+	pXmlDom->appendChild(root);
+	MSXML2::IXMLDOMElementPtr errorInfos = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "error_infos", "");
+
+	CSimpleIni ini(false, false, false);
+    //std::ifstream instream;
+    //instream.open("..\\orders\\TDBStatus.txt", std::ifstream::in | std::ifstream::binary, _SH_DENYNO);
+	SI_Error rc = ini.LoadFile(ini_path);
+	//instream.close();
+    if (rc < 0) {
+		outputbuf << "没有任务" << endl;
+		return -2;
+	}
+
+	CSimpleIni::TNamesDepend sections;
+	ini.GetAllSections(sections);
+	CSimpleIni::TNamesDepend::iterator sec = sections.begin();
+	while(sec != sections.end())
+	{
+		string currentSection;
+		const char *currentKey = NULL, *currentValue = NULL;
+		try
+		{
+			currentSection = (*sec).pItem;
+			if(string::npos != currentSection.find("PUBLISHER", 0) || currentSection == "TDB_INFO"
+				|| currentSection == "ACTIVE_JOB" || currentSection == "COMPLETE_JOB")
+			{
+				MSXML2::IXMLDOMElementPtr sectionNode = pXmlDom->createNode(MSXML2::NODE_ELEMENT, 
+					string::npos == currentSection.find("PUBLISHER", 0) ? currentSection.c_str() : "PUBLISHER", "");
+				CSimpleIni::TNamesDepend keys;
+				ini.GetAllKeys((*sec).pItem, keys);
+				CSimpleIni::TNamesDepend::iterator key = keys.begin();
+				while(key != keys.end())
+				{
+					currentKey = (*key).pItem;
+					currentValue = ini.GetValue(currentSection.c_str(), currentKey);
+					MSXML2::IXMLDOMElementPtr item;
+					if(currentSection == "ACTIVE_JOB" || currentSection == "COMPLETE_JOB")
+					{
+						item = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "JOB", "");
+						item->setAttribute("id", currentValue);
+					}
+					else
+					{
+						item = pXmlDom->createNode(MSXML2::NODE_ELEMENT, currentKey, "");
+						item->appendChild(pXmlDom->createTextNode(currentValue));
+					}
+					sectionNode->appendChild(item);
+					currentKey = NULL;
+					currentValue = NULL;
+					++key;
+				}
+				root->appendChild(sectionNode);
+			}
+			else  // treats it as job
+			{
+				MSXML2::IXMLDOMElementPtr sectionNode = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "JOB_STATUS", "");
+				sectionNode->setAttribute("id", currentSection.c_str());
+				CSimpleIni::TNamesDepend keys;
+				ini.GetAllKeys((*sec).pItem, keys);
+				CSimpleIni::TNamesDepend::iterator key = keys.begin();
+				while(key != keys.end())
+				{
+					currentKey = (*key).pItem;
+					currentValue = ini.GetValue(currentSection.c_str(), currentKey);
+					MSXML2::IXMLDOMElementPtr item = pXmlDom->createNode(MSXML2::NODE_ELEMENT, currentKey, "");
+					item->appendChild(pXmlDom->createTextNode(currentValue));
+					sectionNode->appendChild(item);
+					currentKey = NULL;
+					currentValue = NULL;
+					++key;
+				}
+				root->appendChild(sectionNode);
+			}
+		}
+		catch(_com_error &ex) 
+		{
+			hasError = true;
+			ostringstream errbuf;
+			errbuf << "设备状态错误: 0x" << hex << ex.Error() << ',' << ex.ErrorMessage();
+			if(! currentSection.empty())
+			{
+				errbuf << ", [" << currentSection  << ']';
+				if(currentKey) errbuf << ", " << currentKey	<< " = " << (currentValue ? currentValue : "");
+			}
+			MSXML2::IXMLDOMElementPtr errorInfo = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "error_info", "");
+			errorInfo->appendChild(pXmlDom->createTextNode(errbuf.str().c_str()));
+			errorInfos->appendChild(errorInfo);
+		}
+		++sec;
+	}
+
+	// append license count
+	MSXML2::IXMLDOMElementPtr licenseNode = pXmlDom->createNode(MSXML2::NODE_ELEMENT, "LICENSE_COUNTER", "");
+	_variant_t licenseCount(licenseCnt);
+	licenseNode->appendChild(pXmlDom->createTextNode(_bstr_t(licenseCount)));
+	root->appendChild(licenseNode);
+
+	if(hasError) root->appendChild(errorInfos);
+	outputbuf << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml;
+	return 0;
+}
