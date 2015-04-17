@@ -267,7 +267,6 @@ static int burningStudy(const char *media)
 	return -1;
 }
 
-#define TDB_STATUS "..\\orders\\TDBStatus.txt"
 static int reportStatus(const char *flag)
 {
 	int result = StatusXml(flag, TDB_STATUS, licenseCounter(), index_errlog);
