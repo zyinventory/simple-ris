@@ -567,6 +567,10 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 				ofstream ofs(jdfPath.c_str(), ios_base::out | ios_base::trunc);
 				if(ofs.good())
 				{
+					string valid_publisher;
+					bool valid_found = SelectValidPublisher(TDB_STATUS, valid_publisher);
+					if(valid_found || valid_publisher.find("error:", 0) == string::npos)
+						ofs << "PUBLISHER=" << valid_publisher << endl;
 					ofs << "FORMAT=UDF102" << endl;
 					if(strcmp(MEDIA_AUTO, media))
 						ofs << "DISC_TYPE=" << media << endl;
@@ -1065,8 +1069,8 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
 				const char *pv = ini.GetValue(currentSection.c_str(), currentKey.c_str(), NULL);
 				valid = (pv == NULL || *pv == '\0');
 			}
-			else if(currentKey == "STACK1") { stack1 = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 0); }
-			else if(currentKey == "STACK2") { stack2 = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 0); }
+			else if(currentKey == "STACKER1") { stack1 = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 0); }
+			else if(currentKey == "STACKER2") { stack2 = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 0); }
 			else if(0 == currentKey.find("INK_", 0)) { valid = (0 < ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1)); }
 			else if(currentKey == "PRINTER_STATUS")
 			{
