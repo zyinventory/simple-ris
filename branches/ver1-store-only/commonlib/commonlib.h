@@ -34,6 +34,7 @@
 #define DATE_FORMAT_YEAR_TO_SECOND "%F %T"
 #endif
 #define SERIES_INSTANCE_PATH_MAX 54  // series_hash(8) + instance_group(9) * 5 + \0(1)
+#define TDB_STATUS "..\\orders\\TDBStatus.txt"
 
 const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
   ADD_DEFAULT_CHARSET[] = "Add default character set ", UNKNOWN_CHARSET[] = "Unknown character set ", OVERRIDE_BY[] = " is override by ";
