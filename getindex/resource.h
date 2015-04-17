@@ -14,9 +14,9 @@
 #endif
 
 #ifdef PACS_ENABLE_CHARGE
-#define FILEVER        1,1,5,1
-#define STRFILEVER     "1.1.5.1\0"
+#define FILEVER        1,1,6,1
+#define STRFILEVER     "1.1.6.1\0"
 #else
-#define FILEVER        1,1,5,2
-#define STRFILEVER     "1.1.5.2\0"
+#define FILEVER        1,1,6,2
+#define STRFILEVER     "1.1.6.2\0"
 #endif
