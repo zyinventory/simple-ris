@@ -600,7 +600,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 				return -3;
 			}
 			char timeBuffer[16];
-			generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
+			GenerateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
 			sprintf_s(buffer, BUFF_SIZE, "%s\\orders\\%s_%s.jdf", pacsBase.c_str(), timeBuffer, tagValue);
 			if(!rename(jdfPath.c_str(), buffer))
 				return 0;

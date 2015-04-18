@@ -155,9 +155,6 @@ void DcmQueryRetrieveStoreContext::checkRequestAgainstDataset(
     }
 }
 
-__int64 uidHash_internal(const char *s, char *buffer, size_t buffer_size);
-bool prepareFileDir_internal(const char *path);
-
 void DcmQueryRetrieveStoreContext::callbackHandler(
     /* in */
     T_DIMSE_StoreProgress *progress,    /* progress state */
@@ -180,36 +177,15 @@ void DcmQueryRetrieveStoreContext::callbackHandler(
             }
         }
 
-		const char *studyUid = NULL, *seriesUid = NULL, *sopInstanceUid = NULL;
-		char hashBuf[9];
         if (!options_.ignoreStoreData_ && rsp->DimseStatus == STATUS_Success) {
             if ((imageDataSet)&&(*imageDataSet)) {
-				DcmXfer xfer((*imageDataSet)->getOriginalXfer());
-				(*imageDataSet)->findAndGetString(DCM_StudyInstanceUID, studyUid);
-				(*imageDataSet)->findAndGetString(DCM_SeriesInstanceUID, seriesUid);
-				(*imageDataSet)->findAndGetString(DCM_SOPInstanceUID, sopInstanceUid);
-				if(studyUid == NULL || seriesUid == NULL || sopInstanceUid == NULL)
-				{
-					rsp->DimseStatus = STATUS_STORE_Error_DataSetDoesNotMatchSOPClass;
-					goto end_process;
-				}
-				uidHash_internal(studyUid, hashBuf, sizeof(hashBuf));
-				//fileName is defined in DcmQueryRetrieveSCP::storeSCP(): char imageFileName[MAXPATHLEN+1];
-				//so, const_cast fileName is safely.
-				char *fileNameVar = const_cast<char*>(fileName);
-				size_t storageAreaLen = strlen(fileName);
-				sprintf_s(fileNameVar + storageAreaLen, MAXPATHLEN + 1 - storageAreaLen, 
-					"\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\%s\\%s\\%s.dcm",
-					hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7],
-					studyUid, seriesUid, sopInstanceUid, xfer.getXferID());
-				prepareFileDir_internal(fileName);
-				writeToFile(dcmff, fileName, rsp);
+                writeToFile(dcmff, fileName, rsp);
             }
             if (rsp->DimseStatus == STATUS_Success) {
                 saveImageToDB(req, fileName, rsp, stDetail);
             }
         }
-end_process:
+
         if (options_.verbose_) {
             printf("Sending:\n");
             DIMSE_printCStoreRSP(stdout, rsp);

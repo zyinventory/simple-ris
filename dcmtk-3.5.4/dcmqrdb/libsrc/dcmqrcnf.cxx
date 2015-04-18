@@ -500,6 +500,7 @@ int DcmQueryRetrieveConfig::readAETable(FILE *cnffp, int *lineno)
       CNF_Config.AEEntries = helpentry;
 
       CNF_Config.AEEntries[noOfAEEntries - 1].ApplicationTitle = parsevalues(&lineptr);
+	  CNF_Config.AEEntries[noOfAEEntries - 1].AutoPublish = parsevalues(&lineptr);
       CNF_Config.AEEntries[noOfAEEntries - 1].StorageArea = parsevalues(&lineptr);
       CNF_Config.AEEntries[noOfAEEntries - 1].Access = parsevalues(&lineptr);
       CNF_Config.AEEntries[noOfAEEntries - 1].StorageQuota = parseQuota(&lineptr);
@@ -860,6 +861,14 @@ int DcmQueryRetrieveConfig::getMaxAssociations() const
    return(maxAssociations_);
 }
 
+bool DcmQueryRetrieveConfig::getAutoPublish(const char *AETitle) const
+{
+   for(int i = 0; i < CNF_Config.noOfAEEntries; i++) {
+      if (!strcmp(AETitle, CNF_Config.AEEntries[i].ApplicationTitle))
+		  return strcmp("MANUAL", CNF_Config.AEEntries[i].AutoPublish) != 0;
+   }
+   return true;
+}
 
 const char *DcmQueryRetrieveConfig::getStorageArea(const char *AETitle) const
 {

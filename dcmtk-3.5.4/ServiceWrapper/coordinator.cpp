@@ -162,7 +162,7 @@ static list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 	sinfo.cb = sizeof(STARTUPINFO);
 
 	char timebuf[48];
-	generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", timebuf, 48);
+	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", timebuf, 48);
 	ostringstream strbuf;
 	strbuf << timebuf << studyUid << ".txt";
 	wp.logFilePath = new string(strbuf.str());
@@ -454,7 +454,7 @@ static void runArchiveInstance(string &cmd, const int index, string &studyUid)
 	if( ! workers[index].hLogFile )
 	{
 		char timebuf[48];
-		generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", timebuf, 48);
+		GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", timebuf, 48);
 		ostringstream strbuf;
 		strbuf << timebuf << index << "_dcmcjpeg.txt";
 		workers[index].logFilePath = new string(strbuf.str());

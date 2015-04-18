@@ -428,7 +428,7 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_
 			volbuf[prefixLen + 5] = '\0';
 		}
 		char timeBuffer[16];
-		generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
+		GenerateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
 		if(generateJDF(*itv, volbuf, mediaType, jdfpath, isPatient, jobPrefix, timeBuffer))
 		{
 			itv->valid = true;

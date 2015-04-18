@@ -62,7 +62,7 @@ COMMONLIB_API bool SendCommonMessageToQueue(const char *label, const char *body,
 COMMONLIB_API bool EnsureQueueExist(const char *queuePath);
 COMMONLIB_API bool DeleteQueue(const char *queueName);
 COMMONLIB_API errno_t setEnvParentPID();
-COMMONLIB_API int generateTime(const char *format, char *timeBuffer, size_t bufferSize);
+COMMONLIB_API size_t GenerateTime(const char *format, char *timeBuffer, size_t bufferSize, time_t *time_now = NULL);
 COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase = NULL);
 COMMONLIB_API __int64 uidHashW(const wchar_t *s, char *buffer = NULL, size_t buffer_size = 0);
 COMMONLIB_API __int64 uidHash(const char *s, char *buffer = NULL, size_t buffer_size = 0);
@@ -74,3 +74,5 @@ COMMONLIB_API size_t extractStudyUid(char *buffer, const size_t bufferSize, cons
 COMMONLIB_API errno_t SeriesInstancePath(const char *series, const std::string &instance, char *outputBuffer, size_t bufLen, char pathSeparator = '\\');
 COMMONLIB_API bool SelectValidPublisher(const char *ini_path, std::string &valid_publisher);
 COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int licenseCnt, std::ostream &outputbuf);
+COMMONLIB_API bool encodeBase32(const char *src, char *enc);
+COMMONLIB_API bool decodeBase32(const char *src, char *dec);

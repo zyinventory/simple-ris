@@ -92,9 +92,9 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <AssemblerListingLocation>Debug</AssemblerListingLocation>
+      <AssemblerListingLocation>$(ConfigurationName)</AssemblerListingLocation>
       <ObjectFileName>$(IntDir)</ObjectFileName>
-      <ProgramDataBaseFileName>Debug/dcmqrdb.pdb</ProgramDataBaseFileName>
+      <ProgramDataBaseFileName>$(ConfigurationName)\dcmqrdb.pdb</ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
@@ -129,9 +129,9 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <AssemblerListingLocation>Release</AssemblerListingLocation>
+      <AssemblerListingLocation>$(ConfigurationName)</AssemblerListingLocation>
       <ObjectFileName>$(IntDir)</ObjectFileName>
-      <ProgramDataBaseFileName>Release/dcmqrdb.pdb</ProgramDataBaseFileName>
+      <ProgramDataBaseFileName>$(ConfigurationName)\dcmqrdb.pdb</ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -165,9 +165,9 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <AssemblerListingLocation>MinSizeRel</AssemblerListingLocation>
+      <AssemblerListingLocation>$(ConfigurationName)</AssemblerListingLocation>
       <ObjectFileName>$(IntDir)</ObjectFileName>
-      <ProgramDataBaseFileName>MinSizeRel/dcmqrdb.pdb</ProgramDataBaseFileName>
+      <ProgramDataBaseFileName>$(ConfigurationName)\dcmqrdb.pdb</ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -201,9 +201,9 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <AssemblerListingLocation>RelWithDebInfo</AssemblerListingLocation>
+      <AssemblerListingLocation>$(ConfigurationName)</AssemblerListingLocation>
       <ObjectFileName>$(IntDir)</ObjectFileName>
-      <ProgramDataBaseFileName>RelWithDebInfo/dcmqrdb.pdb</ProgramDataBaseFileName>
+      <ProgramDataBaseFileName>$(ConfigurationName)\dcmqrdb.pdb</ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>

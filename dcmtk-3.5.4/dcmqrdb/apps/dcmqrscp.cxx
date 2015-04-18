@@ -94,6 +94,7 @@ END_EXTERN_C
 #include "dcmtk/dcmdata/dcdatset.h"
 #include "dcmtk/dcmdata/dcdeftag.h"
 #include <commonlib.h>
+#include <algorithm>
 
 #ifdef WITH_SQL_DATABASE
 #include "dcmtk/dcmqrdbx/dcmqrdbq.h"
@@ -158,14 +159,25 @@ OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 
 	DcmDataset *pds = pc->getDataset();
 	DcmXfer xfer(pds->getOriginalXfer());
-	const char *studyUID, *seriesUID, *instanceUID, *modality;
+	const char *patientID, *patientsName = NULL, *studyUID, *seriesUID, *instanceUID, *modality, *studyDate;
+	pds->findAndGetString(DCM_PatientID, patientID);
+	pds->findAndGetString(DCM_PatientsName, patientsName);
 	pds->findAndGetString(DCM_StudyInstanceUID, studyUID);
 	pds->findAndGetString(DCM_SeriesInstanceUID, seriesUID);
 	pds->findAndGetString(DCM_SOPInstanceUID, instanceUID);
 	pds->findAndGetString(DCM_Modality, modality);
+	pds->findAndGetString(DCM_StudyDate, studyDate);
+
+	string patientsNameSrc((patientsName == NULL || *patientsName == '\0') ? "(NULL)" : patientsName);
+	//rtrim
+	//patientsNameSrc.erase(find_if(patientsNameSrc.rbegin(), patientsNameSrc.rend(), std::not1(std::ptr_fun<int, int>(::isspace))).base(), patientsNameSrc.end());
+	//ltrim
+	//patientsNameSrc.erase(patientsNameSrc.begin(), find_if(patientsNameSrc.begin(), patientsNameSrc.end(), std::not1(std::ptr_fun<int, int>(::isspace))));
+	char *b32name = new char[patientsNameSrc.length() * 4 + 1];
+	encodeBase32(patientsNameSrc.c_str(), b32name);
 
 	stringstream strmbuf;
-	strmbuf << "rec " << modality << " " << pc->callingAPTitle << " " << pc->calledAPTitle << endl;
+	strmbuf << "rec " << modality << " " << pc->callingAPTitle << " " << pc->calledAPTitle << " " << (configPtr->getAutoPublish(pc->calledAPTitle) ? "1" : "0") << endl;
 	string label = strmbuf.str();
 	strmbuf.str(string());
 	strmbuf.clear();
@@ -174,6 +186,10 @@ OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 	strmbuf << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getElement() << " " << seriesUID << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getElement() << " " << instanceUID << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() << " " << xfer.getXferID() << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_PatientID.getElement() << " " << patientID << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientsName.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_PatientsName.getElement() << " " << b32name << endl;
+	delete b32name;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyDate.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_StudyDate.getElement() << " " << studyDate << endl;
 	string body = strmbuf.str();
 	if(!SendCommonMessageToQueue(label.c_str(), body.c_str(), MQ_PRIORITY_RECEIVED, NULL))
 	{
@@ -626,13 +642,11 @@ main(int argc, char *argv[])
     errmsg("cannot access %s: %s", opt_configFileName, strerror(errno));
     return 10;
     }
-#ifdef _DEBUG
-    configPtr = new DcmQueryRetrieveConfig();
+
+	configPtr = new DcmQueryRetrieveConfig();
 	DcmQueryRetrieveConfig &config = *configPtr;
-#else
-    DcmQueryRetrieveConfig config;
-#endif
-    if (!config.init(opt_configFileName)) {
+
+	if (!config.init(opt_configFileName)) {
     errmsg("bad config file: %s", opt_configFileName);
     return 10;
     }
@@ -666,7 +680,7 @@ main(int argc, char *argv[])
     }
 #endif
 #ifdef _WIN32
-	changeWorkingDirectory_internal(0, NULL, NULL);
+	changeWorkingDirectory(0, NULL, NULL);
 	CoInitialize(NULL);
 	atexit(exitHook);
 	if(! EnsureQueueExist(QUEUE_NAME))

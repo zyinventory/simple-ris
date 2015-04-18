@@ -123,7 +123,16 @@ public:
    *  sub-operations of C-MOVE.
    */
    ~DcmQueryRetrieveIndexDatabaseHandle();
-  
+
+  // set my additional properties
+  const char *getCallingAE() const;
+  errno_t setCallingAE(const char* calling);
+  const char *getCalledAE() const;
+  errno_t setCalledAE(const char* called);
+  bool getAutoPublish() const;
+  void setAutoPublish(bool autopub);
+  // end of additional properties
+ 
   /** set the debug level.
    *  @param debug level, zero or nonzero
    */

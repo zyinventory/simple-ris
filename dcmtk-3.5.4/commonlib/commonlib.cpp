@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "commonlib.h"
+#define PATH_SEPARATOR '\\'
 
 using namespace std;
 
@@ -25,16 +26,6 @@ COMMONLIB_API errno_t setEnvParentPID()
   char pidString[16];
   _itoa_s(_getpid(), pidString, 16, 10);
   return _putenv_s("PARENT_PID", pidString);
-}
-
-COMMONLIB_API int generateTime(const char *format, char *timeBuffer, size_t bufferSize)
-{
-  time_t t = time( NULL );
-  struct tm tmp;
-  if( localtime_s( &tmp, &t ) == 0 )
-	return strftime(timeBuffer, bufferSize, format, &tmp);
-  else
-	return 0;
 }
 
 COMMONLIB_API bool IsASCII(const char *str)
@@ -116,6 +107,52 @@ COMMONLIB_API LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime)
 	return -1LL;
 }
 
+COMMONLIB_API bool MkdirRecursive(const char *subdir)
+{
+  // check if the subdirectory is already existent
+  if( _mkdir(subdir) )
+  {
+	if(errno == EEXIST)
+	  return true;
+  }
+  else
+  {
+	return true;
+  }
+
+  string subdirectoryPath = subdir;
+  size_t position = subdirectoryPath.rfind(PATH_SEPARATOR);
+  if(position != string::npos)
+  {
+    string upperLevel = subdirectoryPath.substr(0, position);
+	bool mkResult = MkdirRecursive(upperLevel.c_str());
+    if(mkResult != true)
+    {
+      return mkResult;
+    }
+    // else: upper level exist, create current level
+  }
+
+  // if it is not existent create it
+  if( _mkdir( subdirectoryPath.c_str() ) == -1 && errno != EEXIST)
+  {
+	cerr << "Could not create subdirectory " << subdirectoryPath.c_str() << endl;
+    return false;
+  }
+  else
+  {
+    return true;
+  }
+}
+
+COMMONLIB_API bool prepareFileDir(const char *path)
+{
+  string filePath = path;
+  string::size_type p = filePath.rfind('\\');
+  if(p == string::npos || p == 0) return true;
+  return MkdirRecursive(filePath.substr(0, p).c_str());
+}
+
 //return 0 if successful, otherwise errno
 COMMONLIB_API int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator)
 {
@@ -160,4 +197,52 @@ COMMONLIB_API time_t dcmdate2tm(int dcmdate)
   timeBirth.tm_min = 0;
   timeBirth.tm_sec = 0;
   return mktime(&timeBirth);
+}
+
+COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
+{
+	if(argc > 0)
+	{
+		char **endPos = argv + argc;
+		char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
+		if(pos == endPos) pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "--working-directory")));
+		if(pos != endPos)
+		{
+			if(! _chdir(*++pos))
+			{
+				if(pPacsBase) strcpy_s(pPacsBase, MAX_PATH, *++pos);
+				return -2;
+			}
+			else
+				return 0;
+		}
+		// else get working dir from PACS_BASE in env
+	}
+
+	char* workingDirBuffer;
+	size_t requiredSize;
+	getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
+	if(requiredSize > 0)
+	{
+		char pacsdir[] = "\\pacs";
+		workingDirBuffer = new char[requiredSize + sizeof(pacsdir)];
+		getenv_s( &requiredSize, workingDirBuffer, requiredSize, "PACS_BASE");
+		if(pPacsBase)
+			strcpy_s(pPacsBase, MAX_PATH, workingDirBuffer);
+		strcpy_s(workingDirBuffer + requiredSize - 1, sizeof(pacsdir), pacsdir);
+		int chdirFail = _chdir(workingDirBuffer);
+		delete workingDirBuffer;
+		if(chdirFail) return -1;
+	}
+	else
+	{
+		if(!_chdir("C:\\usr\\local\\dicom\\pacs"))
+			return -3;
+		if(pPacsBase)
+		{
+			char base[] = "C:\\usr\\local\\dicom";
+			strcpy_s(pPacsBase, sizeof(base), base);
+		}
+	}
+	return 0;
 }

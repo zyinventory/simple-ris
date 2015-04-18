@@ -19,7 +19,7 @@ bool opt_verbose = false;
 std::ostream& time_header_out(ostream &os)
 {
 	char timeBuffer[32];
-	if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
+	if(GenerateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
 	return os;
 }
 
@@ -177,7 +177,7 @@ static int realMain(int argc, char **argv)
 	logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
 
 	HANDLE logFile = INVALID_HANDLE_VALUE;
-	generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_storescp.txt", timeBuffer, sizeof(timeBuffer));
+	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_storescp.txt", timeBuffer, sizeof(timeBuffer));
 	if(prepareFileDir(timeBuffer))
 		logFile = CreateFile(timeBuffer, GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 
@@ -248,7 +248,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	if(changeWorkingDirectory(argc, argv)) return -3;
 
 	ofstream flog;
-	generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", timeBuffer, sizeof(timeBuffer));
+	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", timeBuffer, sizeof(timeBuffer));
 	if(prepareFileDir(timeBuffer))
 		flog.open(timeBuffer);
 	else

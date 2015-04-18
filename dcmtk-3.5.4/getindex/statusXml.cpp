@@ -156,7 +156,7 @@ int statusCharge(const char *flag)
 		}
 
 		char timeBuffer[16];
-		generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
+		GenerateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
 		ofstream chargeLog("pacs_log\\charge.log", ios_base::app, _SH_DENYRW);
 		if(!chargeLog.fail())
 		{
