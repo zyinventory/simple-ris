@@ -3244,6 +3244,36 @@ int DcmQueryRetrieveIndexDatabaseHandle::getDebugLevel() const
     return debugLevel;
 }
 
+const char *DcmQueryRetrieveIndexDatabaseHandle::getCallingAE() const
+{
+  return handle->callingAE;
+}
+
+errno_t DcmQueryRetrieveIndexDatabaseHandle::setCallingAE(const char* calling)
+{
+	return strcpy_s(handle->callingAE, calling);
+}
+
+const char *DcmQueryRetrieveIndexDatabaseHandle::getCalledAE() const
+{
+  return handle->calledAE;
+}
+
+errno_t DcmQueryRetrieveIndexDatabaseHandle::setCalledAE(const char* called)
+{
+	return strcpy_s(handle->calledAE, called);
+}
+
+bool DcmQueryRetrieveIndexDatabaseHandle::getAutoPublish() const
+{
+	return handle->auto_publish;
+}
+
+void DcmQueryRetrieveIndexDatabaseHandle::setAutoPublish(bool autopub)
+{
+	handle->auto_publish = autopub;
+}
+
 void DcmQueryRetrieveIndexDatabaseHandle::dbdebug(int level, const char* format, ...) const
 {
     va_list ap;
@@ -3374,6 +3404,8 @@ DcmQueryRetrieveIndexDatabaseHandle::~DcmQueryRetrieveIndexDatabaseHandle()
     }
 }
 
+size_t GenerateTime_internal(const char *format, char *timeBuffer, size_t bufferSize, time_t *time_now);
+
 /**********************************
  *      Provides a storage filename
  */
@@ -3383,19 +3415,20 @@ OFCondition DcmQueryRetrieveIndexDatabaseHandle::makeNewStoreFileName(
                 const char      * /* SOPInstanceUID */ ,
                 char            *newImageFileName)
 {
-	strcpy_s(newImageFileName, MAXPATHLEN + 1, handle->storageArea);
-/*    OFString filename;
-    char prefix[12];
+    OFString filename;
+    char prefix[64];
+	time_t now;
+	size_t time_len = GenerateTime_internal("%Y%m%d%H%M%S", prefix, sizeof(prefix), &now);
 
     const char *m = dcmSOPClassUIDToModality(SOPClassUID);
     if (m==NULL) m = "XX";
-    sprintf(prefix, "%s_", m);
+	sprintf_s(prefix + time_len, sizeof(prefix) - time_len, "~%d~%s~%s~%s~", handle->auto_publish ? 1 : 0, m, handle->callingAE, handle->calledAE);
     // unsigned int seed = fnamecreator.hashString(SOPInstanceUID);
-    unsigned int seed = (unsigned int)time(NULL);
+    unsigned int seed = (unsigned int)now;
     newImageFileName[0]=0; // return empty string in case of error
     if (! fnamecreator.makeFilename(seed, handle->storageArea, prefix, ".dcm", filename)) return DcmQRIndexDatabaseError;
 
-    strcpy(newImageFileName, filename.c_str()); */
+    strcpy(newImageFileName, filename.c_str());
     return EC_Normal;
 }
 
@@ -3456,14 +3489,18 @@ DcmQueryRetrieveIndexDatabaseHandleFactory::~DcmQueryRetrieveIndexDatabaseHandle
 }
 
 DcmQueryRetrieveDatabaseHandle *DcmQueryRetrieveIndexDatabaseHandleFactory::createDBHandle(
-    const char * /* callingAETitle */,
+    const char * callingAETitle,
     const char *calledAETitle,
     OFCondition& result) const
 {
-  return new DcmQueryRetrieveIndexDatabaseHandle(
+  DcmQueryRetrieveIndexDatabaseHandle *ph = new DcmQueryRetrieveIndexDatabaseHandle(
     config_->getStorageArea(calledAETitle),
     config_->getMaxStudies(calledAETitle),
     config_->getMaxBytesPerStudy(calledAETitle), result);
+  ph->setCalledAE(calledAETitle);
+  ph->setCallingAE(callingAETitle);
+  ph->setAutoPublish(config_->getAutoPublish(calledAETitle));
+  return ph;
 }
 
 

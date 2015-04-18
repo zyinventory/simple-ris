@@ -216,6 +216,9 @@ struct DB_Private_Handle
     DB_LEVEL queryLevel ;
     char indexFilename[DBC_MAXSTRING+1] ;
     char storageArea[DBC_MAXSTRING+1] ;
+	char callingAE[DIC_AE_LEN+1] ;
+	char calledAE[DIC_AE_LEN+1] ;
+	bool auto_publish;
     long maxBytesPerStudy ;
     long maxStudiesAllowed ;
     int idxCounter ;

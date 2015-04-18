@@ -71,6 +71,9 @@ struct DcmQueryRetrieveConfigAEEntry
     /// application entity title
     const char *ApplicationTitle;
 
+	/// publish mode
+	const char *AutoPublish;
+
     /// name of storage area  
     const char *StorageArea;
 
@@ -157,6 +160,13 @@ public:
    *     0 - else
    */
   int checkForSameVendor(const char *AETitle1, const char *AETitle2) const;
+
+  /*
+   *  get AutoPublish for AETitle
+   *  Input : AETitle
+   *  Return : MANUAL: false, otherwise: true 
+   */
+  bool getAutoPublish(const char *AETitle) const;
 
   /*
    *  get Storage Area for AETitle

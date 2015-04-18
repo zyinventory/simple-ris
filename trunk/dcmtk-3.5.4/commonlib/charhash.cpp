@@ -11,7 +11,96 @@ static unsigned char inv32map[] = {
   22, 23, 24, 25, 26, 27, 28, 29, 30, 31                           // 0x5?
 };
 
-size_t toWchar(std::string &src, wchar_t **dest);
+static size_t toWchar(const char *src, wchar_t **dest)
+{
+  size_t blen = strlen(src);
+  if(blen == 0) { *dest = NULL; return 0; }
+
+  size_t charlen = 0;
+  errno_t en = mbstowcs_s(&charlen, NULL, 0, src, blen);
+  if(en != 0 || charlen <= 0) { *dest = NULL; return 0; }
+
+  *dest = new wchar_t[charlen];
+  size_t wlen = 0;
+  mbstowcs_s(&wlen, *dest, charlen, src, charlen);
+  if(wlen > 0 && (*dest)[wlen - 1] == L'\0') --wlen;
+  if(wlen == 0) { delete *dest; *dest = NULL; return 0; }
+  return wlen;
+}
+
+static int toUTF8(wchar_t *pWide, string &dest)
+{
+  int nBytes = ::WideCharToMultiByte(CP_UTF8, 0, pWide, -1, NULL, 0, NULL, NULL);
+  if(nBytes == 0) return 0;
+  char* pNarrow = new char[nBytes + 1];
+  nBytes = ::WideCharToMultiByte(CP_UTF8, 0, pWide, -1, pNarrow, nBytes + 1, NULL, NULL);
+  dest = pNarrow;
+  delete [] pNarrow;
+  return nBytes;
+}
+
+static int hashCodeW(const wchar_t *s, unsigned int seed)
+{
+  size_t wlen = wcsnlen_s(s, 128);
+  if(wlen == 0) return 0;
+  unsigned int hash = 0;
+  for(size_t i = 0; i < wlen; i++)
+  {
+	hash = hash * seed + s[i];
+  }
+  return hash;
+}
+
+static int hashCode(const char *s, unsigned int seed)
+{
+  if(s == NULL) return 0;
+  wchar_t *p = NULL;
+  size_t wlen = toWchar(s, &p);
+  if(wlen == 0) return 0;
+  unsigned int hash = hashCodeW(p, seed);
+  delete p;
+  return hash;
+}
+
+static __int64 uidHashImpl(__int64 hash, int hash131, char *buffer, size_t buffer_size)
+{
+	hash <<= 9;
+	hash &= 0x1FFFFFFFFFFL;
+	hash131 >>= 23;
+	hash131 &= 0x1FF;
+	hash |= hash131;
+	if(buffer && ! _i64toa_s(hash, buffer, buffer_size, 36))
+	{
+		_strupr_s(buffer, buffer_size);
+		size_t buflen = strlen(buffer);
+		if(buflen < 8 && buffer_size >=9)
+		{
+			for(int i = 0; i < 9; ++i)
+			{
+				int tail = buflen - i;
+				if(tail < 0)
+					buffer[8 - i] = '0';
+				else
+					buffer[8 - i] = buffer[tail];
+			}
+		}
+	}
+	return hash;
+}
+
+COMMONLIB_API __int64 uidHashW(const wchar_t *s, char *buffer, size_t buffer_size)
+{
+	__int64 hash = hashCodeW(s, 31);
+	int hash131 = hashCodeW(s, 131);
+	return uidHashImpl(hash, hash131, buffer, buffer_size);
+}
+
+COMMONLIB_API __int64 uidHash(const char *s, char *buffer, size_t buffer_size)
+{
+	__int64 hash = hashCode(s, 31);
+	int hash131 = hashCode(s, 131);
+	return uidHashImpl(hash, hash131, buffer, buffer_size);
+}
 
 COMMONLIB_API errno_t SeriesInstancePath(const char *series, const string &instance, char *outputBuffer, size_t bufLen, char pathSeparator)
 {
@@ -41,7 +130,7 @@ COMMONLIB_API errno_t SeriesInstancePath(const char *series, const string &insta
 	return 0;
 }
 
-static bool encodeBase32(string &src, string &enc)
+COMMONLIB_API bool encodeBase32(const char *src, char *enc)
 {
   wchar_t *dest = NULL;
   size_t wlen = toWchar(src, &dest);
@@ -86,7 +175,8 @@ static bool encodeBase32(string &src, string &enc)
   }
   if(rbit > 0) encstr << char32map[remain];
   delete dest;
-  enc = encstr.str();
+  string b32str = encstr.str();
+  strcpy_s(enc, b32str.length() + 1, b32str.c_str());
   /*
   cout << enc;
   cout.unsetf(ios_base::hex);
@@ -95,10 +185,10 @@ static bool encodeBase32(string &src, string &enc)
   return true;
 }
 
-static bool decodeBase32(string &src, string &dec)
+COMMONLIB_API bool decodeBase32(const char *src, char *dec)
 {
   vector<wchar_t> decvt;
-  string::size_type blen = src.length();
+  string::size_type blen = strlen(src);
   if(blen > 0)
   {
 	wchar_t remain = 0;
@@ -203,11 +293,8 @@ static bool decodeBase32(string &src, string &dec)
 	  delete[] wsrc;
 	  return false;
 	}
-	char *dest = new char[bytelen];
 	size_t count = 0;
-	wcstombs_s(&count, dest, bytelen, wsrc, bytelen);
-	dec = dest;
-	delete[] dest;
+	wcstombs_s(&count, dec, bytelen, wsrc, bytelen);
 	delete[] wsrc;
   }
   return true;
