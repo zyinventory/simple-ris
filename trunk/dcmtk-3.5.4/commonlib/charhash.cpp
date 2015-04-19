@@ -130,7 +130,7 @@ COMMONLIB_API errno_t SeriesInstancePath(const char *series, const string &insta
 	return 0;
 }
 
-COMMONLIB_API bool encodeBase32(const char *src, char *enc)
+COMMONLIB_API bool encodeBase32(const char *src, char *enc, size_t enc_buf_size)
 {
   wchar_t *dest = NULL;
   size_t wlen = toWchar(src, &dest);
@@ -176,7 +176,7 @@ COMMONLIB_API bool encodeBase32(const char *src, char *enc)
   if(rbit > 0) encstr << char32map[remain];
   delete dest;
   string b32str = encstr.str();
-  strcpy_s(enc, b32str.length() + 1, b32str.c_str());
+  strcpy_s(enc, enc_buf_size, b32str.c_str());
   /*
   cout << enc;
   cout.unsetf(ios_base::hex);
@@ -185,7 +185,7 @@ COMMONLIB_API bool encodeBase32(const char *src, char *enc)
   return true;
 }
 
-COMMONLIB_API bool decodeBase32(const char *src, char *dec)
+COMMONLIB_API bool decodeBase32(const char *src, char *dec, size_t dec_buf_size)
 {
   vector<wchar_t> decvt;
   string::size_type blen = strlen(src);
@@ -294,7 +294,7 @@ COMMONLIB_API bool decodeBase32(const char *src, char *dec)
 	  return false;
 	}
 	size_t count = 0;
-	wcstombs_s(&count, dec, bytelen, wsrc, bytelen);
+	wcstombs_s(&count, dec, dec_buf_size, wsrc, bytelen);
 	delete[] wsrc;
   }
   return true;

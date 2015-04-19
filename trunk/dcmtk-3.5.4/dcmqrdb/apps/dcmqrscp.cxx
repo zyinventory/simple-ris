@@ -159,7 +159,7 @@ OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 
 	DcmDataset *pds = pc->getDataset();
 	DcmXfer xfer(pds->getOriginalXfer());
-	const char *patientID, *patientsName = NULL, *studyUID, *seriesUID, *instanceUID, *modality, *studyDate;
+	const char *patientID, *patientsName = NULL, *studyUID, *seriesUID, *instanceUID, *modality, *studyDate, *accessionNumber;
 	pds->findAndGetString(DCM_PatientID, patientID);
 	pds->findAndGetString(DCM_PatientsName, patientsName);
 	pds->findAndGetString(DCM_StudyInstanceUID, studyUID);
@@ -167,14 +167,17 @@ OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 	pds->findAndGetString(DCM_SOPInstanceUID, instanceUID);
 	pds->findAndGetString(DCM_Modality, modality);
 	pds->findAndGetString(DCM_StudyDate, studyDate);
+	pds->findAndGetString(DCM_AccessionNumber, accessionNumber);
 
 	string patientsNameSrc((patientsName == NULL || *patientsName == '\0') ? "(NULL)" : patientsName);
+	patientsNameSrc.insert(0, 3, ' ').append(4, ' ');
 	//rtrim
-	//patientsNameSrc.erase(find_if(patientsNameSrc.rbegin(), patientsNameSrc.rend(), std::not1(std::ptr_fun<int, int>(::isspace))).base(), patientsNameSrc.end());
+	patientsNameSrc.erase(find_if(patientsNameSrc.rbegin(), patientsNameSrc.rend(), std::not1(std::ptr_fun<int, int>(::isspace))).base(), patientsNameSrc.end());
 	//ltrim
-	//patientsNameSrc.erase(patientsNameSrc.begin(), find_if(patientsNameSrc.begin(), patientsNameSrc.end(), std::not1(std::ptr_fun<int, int>(::isspace))));
-	char *b32name = new char[patientsNameSrc.length() * 4 + 1];
-	encodeBase32(patientsNameSrc.c_str(), b32name);
+	patientsNameSrc.erase(patientsNameSrc.begin(), find_if(patientsNameSrc.begin(), patientsNameSrc.end(), std::not1(std::ptr_fun<int, int>(::isspace))));
+	size_t bufsize = patientsNameSrc.length() * 4 + 1;
+	char *b32name = new char[bufsize];
+	encodeBase32(patientsNameSrc.c_str(), b32name, bufsize);
 
 	stringstream strmbuf;
 	strmbuf << "rec " << modality << " " << pc->callingAPTitle << " " << pc->calledAPTitle << " " << (configPtr->getAutoPublish(pc->calledAPTitle) ? "1" : "0") << endl;
@@ -186,6 +189,7 @@ OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 	strmbuf << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getElement() << " " << seriesUID << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getElement() << " " << instanceUID << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() << " " << xfer.getXferID() << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getElement() << " " << accessionNumber << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_PatientID.getElement() << " " << patientID << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientsName.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_PatientsName.getElement() << " " << b32name << endl;
 	delete b32name;
@@ -207,6 +211,7 @@ OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 int
 main(int argc, char *argv[])
 {
+	locale::global(locale(CHINESE_LOCAL));
     OFCondition cond = EC_Normal;
     OFCmdUnsignedInt overridePort = 0;
     OFCmdUnsignedInt overrideMaxPDU = 0;
