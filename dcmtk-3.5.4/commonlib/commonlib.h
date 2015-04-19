@@ -74,5 +74,5 @@ COMMONLIB_API size_t extractStudyUid(char *buffer, const size_t bufferSize, cons
 COMMONLIB_API errno_t SeriesInstancePath(const char *series, const std::string &instance, char *outputBuffer, size_t bufLen, char pathSeparator = '\\');
 COMMONLIB_API bool SelectValidPublisher(const char *ini_path, std::string &valid_publisher);
 COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int licenseCnt, std::ostream &outputbuf);
-COMMONLIB_API bool encodeBase32(const char *src, char *enc);
-COMMONLIB_API bool decodeBase32(const char *src, char *dec);
+COMMONLIB_API bool encodeBase32(const char *src, char *enc, size_t enc_buf_size);
+COMMONLIB_API bool decodeBase32(const char *src, char *dec, size_t dec_buf_size);
