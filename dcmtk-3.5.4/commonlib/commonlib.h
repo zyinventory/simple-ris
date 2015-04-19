@@ -39,6 +39,9 @@
 const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
   ADD_DEFAULT_CHARSET[] = "Add default character set ", UNKNOWN_CHARSET[] = "Unknown character set ", OVERRIDE_BY[] = " is override by ";
 
+//must set locale correctly, otherwise isspace() will crash.
+#define STRING_TRIM(str) str.erase(find_if(str.rbegin(), str.rend(), std::not1(std::ptr_fun<int, int>(::isspace))).base(), str.end()); str.erase(str.begin(), find_if(str.begin(), str.end(), std::not1(std::ptr_fun<int, int>(::isspace))))
+
 extern COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
 COMMONLIB_API void displayErrorToCerr(TCHAR *lpszFunction);

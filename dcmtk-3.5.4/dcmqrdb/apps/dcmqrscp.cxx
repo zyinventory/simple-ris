@@ -170,11 +170,7 @@ OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 	pds->findAndGetString(DCM_AccessionNumber, accessionNumber);
 
 	string patientsNameSrc((patientsName == NULL || *patientsName == '\0') ? "(NULL)" : patientsName);
-	patientsNameSrc.insert(0, 3, ' ').append(4, ' ');
-	//rtrim
-	patientsNameSrc.erase(find_if(patientsNameSrc.rbegin(), patientsNameSrc.rend(), std::not1(std::ptr_fun<int, int>(::isspace))).base(), patientsNameSrc.end());
-	//ltrim
-	patientsNameSrc.erase(patientsNameSrc.begin(), find_if(patientsNameSrc.begin(), patientsNameSrc.end(), std::not1(std::ptr_fun<int, int>(::isspace))));
+	STRING_TRIM(patientsNameSrc);
 	size_t bufsize = patientsNameSrc.length() * 4 + 1;
 	char *b32name = new char[bufsize];
 	encodeBase32(patientsNameSrc.c_str(), b32name, bufsize);
