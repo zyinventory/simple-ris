@@ -3264,14 +3264,14 @@ errno_t DcmQueryRetrieveIndexDatabaseHandle::setCalledAE(const char* called)
 	return strcpy_s(handle->calledAE, called);
 }
 
-bool DcmQueryRetrieveIndexDatabaseHandle::getAutoPublish() const
+const char* DcmQueryRetrieveIndexDatabaseHandle::getAutoPublish() const
 {
-	return handle->auto_publish;
+	return handle->autoPublish;
 }
 
-void DcmQueryRetrieveIndexDatabaseHandle::setAutoPublish(bool autopub)
+void DcmQueryRetrieveIndexDatabaseHandle::setAutoPublish(const char *autopub)
 {
-	handle->auto_publish = autopub;
+	strcpy_s(handle->autoPublish, autopub);
 }
 
 void DcmQueryRetrieveIndexDatabaseHandle::dbdebug(int level, const char* format, ...) const
@@ -3422,7 +3422,7 @@ OFCondition DcmQueryRetrieveIndexDatabaseHandle::makeNewStoreFileName(
 
     const char *m = dcmSOPClassUIDToModality(SOPClassUID);
     if (m==NULL) m = "XX";
-	sprintf_s(prefix + time_len, sizeof(prefix) - time_len, "~%d~%s~%s~%s~", handle->auto_publish ? 1 : 0, m, handle->callingAE, handle->calledAE);
+	sprintf_s(prefix + time_len, sizeof(prefix) - time_len, "~%s~%s~%s~%s~", m, handle->callingAE, handle->calledAE, handle->autoPublish);
     // unsigned int seed = fnamecreator.hashString(SOPInstanceUID);
     unsigned int seed = (unsigned int)now;
     newImageFileName[0]=0; // return empty string in case of error
@@ -3489,7 +3489,7 @@ DcmQueryRetrieveIndexDatabaseHandleFactory::~DcmQueryRetrieveIndexDatabaseHandle
 }
 
 DcmQueryRetrieveDatabaseHandle *DcmQueryRetrieveIndexDatabaseHandleFactory::createDBHandle(
-    const char * callingAETitle,
+    const char *callingAETitle,
     const char *calledAETitle,
     OFCondition& result) const
 {
@@ -3499,7 +3499,8 @@ DcmQueryRetrieveDatabaseHandle *DcmQueryRetrieveIndexDatabaseHandleFactory::crea
     config_->getMaxBytesPerStudy(calledAETitle), result);
   ph->setCalledAE(calledAETitle);
   ph->setCallingAE(callingAETitle);
-  ph->setAutoPublish(config_->getAutoPublish(calledAETitle));
+  const char *pub = config_->getAutoPublish(calledAETitle);
+  ph->setAutoPublish(pub ? pub : "");
   return ph;
 }
 

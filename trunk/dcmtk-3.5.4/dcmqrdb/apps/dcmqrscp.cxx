@@ -176,7 +176,7 @@ OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 	encodeBase32(patientsNameSrc.c_str(), b32name, bufsize);
 
 	stringstream strmbuf;
-	strmbuf << "rec " << modality << " " << pc->callingAPTitle << " " << pc->calledAPTitle << " " << (configPtr->getAutoPublish(pc->calledAPTitle) ? "1" : "0") << endl;
+	strmbuf << "rec " << modality << " " << pc->callingAPTitle << " " << pc->calledAPTitle << " " << configPtr->getAutoPublish(pc->calledAPTitle) << endl;
 	string label = strmbuf.str();
 	strmbuf.str(string());
 	strmbuf.clear();

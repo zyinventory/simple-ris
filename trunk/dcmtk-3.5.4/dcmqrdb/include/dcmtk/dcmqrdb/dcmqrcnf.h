@@ -164,9 +164,12 @@ public:
   /*
    *  get AutoPublish for AETitle
    *  Input : AETitle
-   *  Return : MANUAL: false, otherwise: true 
+   *  Return : 
+   *    PATIENT: auto publish per patient.
+   *    STUDY: auto publish per study.
+   *    MANUAL: don't auto publish, response message to session queue.
    */
-  bool getAutoPublish(const char *AETitle) const;
+  const char* getAutoPublish(const char *AETitle) const;
 
   /*
    *  get Storage Area for AETitle

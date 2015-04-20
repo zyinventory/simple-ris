@@ -218,7 +218,7 @@ struct DB_Private_Handle
     char storageArea[DBC_MAXSTRING+1] ;
 	char callingAE[DIC_AE_LEN+1] ;
 	char calledAE[DIC_AE_LEN+1] ;
-	bool auto_publish;
+	char autoPublish[DIC_UI_LEN * 2] ;
     long maxBytesPerStudy ;
     long maxStudiesAllowed ;
     int idxCounter ;

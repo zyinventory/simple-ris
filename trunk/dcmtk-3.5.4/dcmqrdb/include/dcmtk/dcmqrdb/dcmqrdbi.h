@@ -129,8 +129,8 @@ public:
   errno_t setCallingAE(const char* calling);
   const char *getCalledAE() const;
   errno_t setCalledAE(const char* called);
-  bool getAutoPublish() const;
-  void setAutoPublish(bool autopub);
+  const char* getAutoPublish() const;
+  void setAutoPublish(const char *autopub);
   // end of additional properties
  
   /** set the debug level.
