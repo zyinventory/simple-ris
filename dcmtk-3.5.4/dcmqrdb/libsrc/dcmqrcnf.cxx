@@ -861,13 +861,13 @@ int DcmQueryRetrieveConfig::getMaxAssociations() const
    return(maxAssociations_);
 }
 
-bool DcmQueryRetrieveConfig::getAutoPublish(const char *AETitle) const
+const char* DcmQueryRetrieveConfig::getAutoPublish(const char *AETitle) const
 {
    for(int i = 0; i < CNF_Config.noOfAEEntries; i++) {
       if (!strcmp(AETitle, CNF_Config.AEEntries[i].ApplicationTitle))
-		  return strcmp("MANUAL", CNF_Config.AEEntries[i].AutoPublish) != 0;
+		  return CNF_Config.AEEntries[i].AutoPublish;
    }
-   return true;
+   return NULL;
 }
 
 const char *DcmQueryRetrieveConfig::getStorageArea(const char *AETitle) const
