@@ -29,23 +29,24 @@
 	//<![CDATA[
 	    jQuery(document).ready(function () {
 	        $("a.button-style").button();
+	        var prefix = location.href.substr(0, location.href.lastIndexOf('/') + 1);
 
 	        $.ajaxSetup({ async: false, cache: false });
-	        var result = $.get('xslt/dayrec.xsl', {}, function (body, txt, ref) { xslDoc = body; }, 'xml');
+	        var result = $.get(prefix + 'xslt/dayrec.xsl', {}, function (body, txt, ref) { xslDoc = body; }, 'xml');
 	        if (result.status != 200) {
 	            alertMessage('Load XSLT dayrec failed: ' + result.statusText);
 	        }
-	        result = $.get('xslt/receive.xsl', {}, function (body, txt, ref) { xslDoc2 = body; }, 'xml');
+	        result = $.get(prefix + 'xslt/receive.xsl', {}, function (body, txt, ref) { xslDoc2 = body; }, 'xml');
 	        if (result.status != 200) {
 	            alertMessage('Load XSLT receive failed: ' + result.statusText);
 	        }
 
 	        var xslColor;
-	        result = $.get('xslt/color.xsl', {}, function (body, txt, ref) { xslColor = body; }, 'xml');
+	        result = $.get(prefix + 'xslt/color.xsl', {}, function (body, txt, ref) { xslColor = body; }, 'xml');
 	        if (result.status != 200) {
 	            alertMessage('Load XSLT receive failed: ' + result.statusText);
 	        }
-	        result = $.get('cgi-bin/getindex.exe?status=xml', {}, function (body, txt, ref) {
+	        result = $.get(prefix + 'cgi-bin/getindex.exe?status=xml', {}, function (body, txt, ref) {
 	            $('#headerBar').html(xslt(body, xslColor));
 	        }, 'xml');
 	        if (result.status == 200) {
@@ -87,12 +88,12 @@
 	        $("form#burnAll > input[name='matchTag']").val(mode);
 	        switch (mode) {
 	            case 'receive':
-	                $('div#containerHeader label#dateDesc').text('传输日期查询:');
+	                $('div#containerHeader label#dateDesc').text('传输日期:');
 	                $('div#containerHeader > div#receiveTab').css('display', 'none');
 	                $('div#containerHeader > a#00100020').css('display', 'none');
 	                break;
 	            case '00080020':
-	                $('div#containerHeader label#dateDesc').text('检查日期查询:');
+	                $('div#containerHeader label#dateDesc').text('检查日期:');
 	                $('div#containerHeader > div#studyDateTab').css('display', 'none');
 	                $('div#containerHeader > a#00100020').css('display', 'none');
 	                break;
@@ -119,15 +120,15 @@
 <div id="containerPane" class="ui-widget ui-widget-content ui-widget-helper-clearfix">
 	<div id="containerHeader" class="ui-widget-header ui-widget-helper-clearfix" style="border-width:0px; padding-top:2px">
         <div id="currentTab" class="pacs-tab ui-corner-top" style="background-color:white; border-bottom:2px solid white">
-		    <label id="dateDesc" for="datepicker">传输日期查询:</label><input type="text" id="datepicker" style="width:6.5em" />
+		    <label id="dateDesc" for="datepicker">传输日期:</label><input type="text" id="datepicker" style="width:6.5em" />
         </div>
         <div id="receiveTab" class="pacs-tab pacs-hidden-tab ui-corner-top">
-            <a id="receive" style="text-decoration:none" href="index.htm">传输日期查询</a>
+            <a id="receive" style="text-decoration:none" href="index.htm">传输日期</a>
         </div>
         <div id="studyDateTab" class="pacs-tab pacs-hidden-tab ui-corner-top">
-		    <a id="00080020" style="text-decoration:none" href="index.htm?mode=00080020">检查日期查询</a>
+		    <a id="00080020" style="text-decoration:none" href="index.htm?mode=00080020">检查日期</a>
         </div>
-        &nbsp;<a id="00100020" class="button-style" href="#">患者历史检查</a>
+        &nbsp;<a id="00100020" class="button-style" href="#">全部阅片</a>
         &nbsp;<a id="status" class="button-style" target="ppstatus" href="cgi-bin/getindex.exe?status=html">设备状态</a>
         &nbsp;<a id="license"  class="button-style" target="ppstatus" href="cgi-bin/getindex.exe?charge=query">充值</a>
         <div id="rightForm" style="float:right">
