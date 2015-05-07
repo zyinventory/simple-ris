@@ -132,9 +132,9 @@ void errmsg(const char* msg, ...)
 }
 
 
+static DcmQueryRetrieveConfig *configPtr = NULL;
 #ifdef _DEBUG
 static OFCommandLine *pCmd = NULL;
-static DcmQueryRetrieveConfig *configPtr = NULL;
 static DcmQueryRetrieveOptions *optionsPtr = NULL;
 static DcmQueryRetrieveIndexDatabaseHandleFactory *factoryPtr = NULL;
 #endif
@@ -143,10 +143,10 @@ static bool com_is_init = false;
 static void exitHook()
 {
 	if(com_is_init) CoUninitialize();
+	if(configPtr) delete configPtr;
 #ifdef _DEBUG
 	dcmDataDict.clear();
 	if(pCmd) delete pCmd;
-	if(configPtr) delete configPtr;
 	if(optionsPtr) delete optionsPtr;
 	if(factoryPtr) delete factoryPtr;
 	_CrtDumpMemoryLeaks();

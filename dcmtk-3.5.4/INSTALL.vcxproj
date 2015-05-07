@@ -183,6 +183,8 @@ if errorlevel 1 goto VCReportError
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CMakeFiles\INSTALL_force.rule;%(AdditionalInputs)</AdditionalInputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CMakeFiles\INSTALL_force;%(Outputs)</Outputs>
     </CustomBuild>
+    <None Include="CMakeCache.txt" />
+    <None Include="CMakeLists.txt" />
     <None Include="config\cmake_install.cmake">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </None>
