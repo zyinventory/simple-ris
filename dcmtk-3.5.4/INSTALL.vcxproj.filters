@@ -454,6 +454,8 @@
     <None Include="COPYRIGHT" />
     <None Include="FAQ" />
     <None Include="HISTORY" />
+    <None Include="CMakeCache.txt" />
+    <None Include="CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
     <Xsd Include="dcmsr\apps\dsr2xml.xsd">
