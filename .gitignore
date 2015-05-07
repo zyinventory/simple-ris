@@ -6,3 +6,4 @@ dcmtk-3.5.4-win32-i386/
 *.suo
 *.sdf
 *.opensdf
+dcmtk-3.5.4/install_manifest.txt
