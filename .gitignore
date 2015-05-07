@@ -1,2 +1,8 @@
 dcmtk-support/
 dcmtk-3.5.4-win32-i386/
+**/Debug/*
+**/Release/*
+*.vcxproj.user
+*.suo
+*.sdf
+*.opensdf
