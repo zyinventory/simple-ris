@@ -1,8 +1,8 @@
-# Install script for directory: D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg
+# Install script for directory: ${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  SET(CMAKE_INSTALL_PREFIX "D:/workspace/dcmtk-3.5.4/../dcmtk-3.5.4-win32-i386")
+  SET(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/../dcmtk-3.5.4-win32-i386")
 ENDIF(NOT DEFINED CMAKE_INSTALL_PREFIX)
 STRING(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -29,36 +29,36 @@ ENDIF(NOT CMAKE_INSTALL_COMPONENT)
 
 IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
   FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/dcmtk/dcmjpeg" TYPE FILE FILES
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/ddpiimpl.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/dipijpeg.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djcodecd.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djcodece.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djcparam.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djdecabs.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djdecbas.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djdecext.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djdeclol.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djdecode.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djdecpro.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djdecsps.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djdecsv1.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djdijg12.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djdijg16.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djdijg8.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djeijg12.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djeijg16.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djeijg8.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djencabs.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djencbas.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djencext.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djenclol.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djencode.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djencpro.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djencsps.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djencsv1.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djrplol.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djrploss.h"
-    "D:/workspace/dcmtk-3.5.4/dcmjpeg/include/dcmtk/dcmjpeg/djutils.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/ddpiimpl.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/dipijpeg.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djcodecd.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djcodece.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djcparam.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djdecabs.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djdecbas.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djdecext.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djdeclol.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djdecode.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djdecpro.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djdecsps.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djdecsv1.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djdijg12.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djdijg16.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djdijg8.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djeijg12.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djeijg16.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djeijg8.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djencabs.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djencbas.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djencext.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djenclol.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djencode.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djencpro.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djencsps.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djencsv1.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djrplol.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djrploss.h"
+    "${CMAKE_SOURCE_DIR}/dcmjpeg/include/dcmtk/dcmjpeg/djutils.h"
     )
 ENDIF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
 

@@ -1,8 +1,8 @@
-# Install script for directory: D:/workspace/dcmtk-3.5.4/dcmimgle/tests
+# Install script for directory: ${CMAKE_SOURCE_DIR}/dcmimgle/tests
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  SET(CMAKE_INSTALL_PREFIX "D:/workspace/dcmtk-3.5.4/../dcmtk-3.5.4-win32-i386")
+  SET(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/../dcmtk-3.5.4-win32-i386")
 ENDIF(NOT DEFINED CMAKE_INSTALL_PREFIX)
 STRING(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -29,10 +29,10 @@ ENDIF(NOT CMAKE_INSTALL_COMPONENT)
 
 IF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
   FILE(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/data" TYPE FILE FILES
-    "D:/workspace/dcmtk-3.5.4/dcmimgle/tests/camera.lut"
-    "D:/workspace/dcmtk-3.5.4/dcmimgle/tests/monitor.lut"
-    "D:/workspace/dcmtk-3.5.4/dcmimgle/tests/printer.lut"
-    "D:/workspace/dcmtk-3.5.4/dcmimgle/tests/scanner.lut"
+    "${CMAKE_SOURCE_DIR}/dcmimgle/tests/camera.lut"
+    "${CMAKE_SOURCE_DIR}/dcmimgle/tests/monitor.lut"
+    "${CMAKE_SOURCE_DIR}/dcmimgle/tests/printer.lut"
+    "${CMAKE_SOURCE_DIR}/dcmimgle/tests/scanner.lut"
     )
 ENDIF(NOT CMAKE_INSTALL_COMPONENT OR "${CMAKE_INSTALL_COMPONENT}" STREQUAL "Unspecified")
 

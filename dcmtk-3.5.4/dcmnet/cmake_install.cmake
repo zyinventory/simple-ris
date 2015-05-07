@@ -1,8 +1,8 @@
-# Install script for directory: D:/workspace/dcmtk-3.5.4/dcmnet
+# Install script for directory: ${CMAKE_SOURCE_DIR}/dcmnet
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  SET(CMAKE_INSTALL_PREFIX "D:/workspace/dcmtk-3.5.4/../dcmtk-3.5.4-win32-i386")
+  SET(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/../dcmtk-3.5.4-win32-i386")
 ENDIF(NOT DEFINED CMAKE_INSTALL_PREFIX)
 STRING(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -29,11 +29,11 @@ ENDIF(NOT CMAKE_INSTALL_COMPONENT)
 
 IF(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmnet/libsrc/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmnet/apps/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmnet/include/dcmtk/dcmnet/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmnet/docs/cmake_install.cmake")
-  INCLUDE("D:/workspace/dcmtk-3.5.4/dcmnet/etc/cmake_install.cmake")
+  INCLUDE("${CMAKE_SOURCE_DIR}/dcmnet/libsrc/cmake_install.cmake")
+  INCLUDE("${CMAKE_SOURCE_DIR}/dcmnet/apps/cmake_install.cmake")
+  INCLUDE("${CMAKE_SOURCE_DIR}/dcmnet/include/dcmtk/dcmnet/cmake_install.cmake")
+  INCLUDE("${CMAKE_SOURCE_DIR}/dcmnet/docs/cmake_install.cmake")
+  INCLUDE("${CMAKE_SOURCE_DIR}/dcmnet/etc/cmake_install.cmake")
 
 ENDIF(NOT CMAKE_INSTALL_LOCAL_ONLY)
 
