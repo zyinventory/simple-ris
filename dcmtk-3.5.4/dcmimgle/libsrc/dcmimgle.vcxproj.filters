@@ -1,0 +1,225 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{6986fce6-7906-4710-ac79-ce3e6fb06e24}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{9be892cd-f636-41e4-9289-6c569366eace}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dcmimage.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dibaslut.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="diciefn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dicielut.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="didislut.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="didispfn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="didocu.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="digsdfn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="digsdlut.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="diimage.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="diinpx.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="diluptab.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dimo1img.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dimo2img.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dimoimg.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dimoimg3.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dimoimg4.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dimoimg5.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dimomod.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dimoopx.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dimopx.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="diovdat.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="diovlay.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="diovlimg.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="diovpln.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="diutils.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dcmimage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dibaslut.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diciefn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dicielut.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dicrvfit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\didislut.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\didispfn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\didocu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diflipt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\digsdfn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\digsdlut.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diimage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diinpx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diinpxt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diinpxt2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diinpxtp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diluptab.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimo1img.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimo2img.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimocpt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimoflt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimoimg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimoipxt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimomod.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimoopx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimoopxt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimopx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimopxt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimorot.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dimosct.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diobjcou.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diovdat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diovlay.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diovlimg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diovpln.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dipixel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diplugin.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dipxrept.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diregbas.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\dirotat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\discalet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\displint.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\ditranst.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmimgle\diutils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,189 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{c3c34d0b-e9d1-4a72-99af-b90db3cf64a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{a325c512-381f-47ee-adef-bd77dfeae4ab}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ddpiimpl.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dipijpeg.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djcodecd.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djcodece.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djcparam.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djdecbas.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djdecext.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djdeclol.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djdecode.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djdecpro.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djdecsps.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djdecsv1.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djdijg12.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djdijg16.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djdijg8.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djeijg12.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djeijg16.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djeijg8.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djencbas.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djencext.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djenclol.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djencode.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djencpro.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djencsps.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djencsv1.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djrplol.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djrploss.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="djutils.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\ddpiimpl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\dipijpeg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djcodecd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djcodece.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djcparam.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdecabs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdecbas.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdecext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdeclol.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdecode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdecpro.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdecsps.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdecsv1.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdijg12.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdijg16.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djdijg8.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djeijg12.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djeijg16.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djeijg8.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djencabs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djencbas.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djencext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djenclol.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djencode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djencpro.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djencsps.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djencsv1.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djrplol.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djrploss.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmjpeg\djutils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

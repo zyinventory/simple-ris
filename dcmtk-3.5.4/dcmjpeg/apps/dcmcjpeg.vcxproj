@@ -1,0 +1,311 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|Win32">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|Win32">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{FE0F5CDA-B1C7-448C-972C-17AEACE2015F}</ProjectGuid>
+    <RootNamespace>dcmcjpeg</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">dcmcjpeg.dir\Debug\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">dcmcjpeg.dir\Release\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">dcmcjpeg.dir\MinSizeRel\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">dcmcjpeg.dir\RelWithDebInfo\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">true</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</GenerateManifest>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Midl>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>false</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+      <GenerateStublessProxies>true</GenerateStublessProxies>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <OutputDirectory>$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <DllDataFileName>
+      </DllDataFileName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;_DEBUG;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <AssemblerListingLocation>Debug</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>Debug/dcmcjpeg.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+    <Link>
+      <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmimgle\libsrc\$(ConfigurationName)\dcmimgle.lib;..\..\dcmimage\libsrc\$(ConfigurationName)\dcmimage.lib;..\libsrc\$(ConfigurationName)\dcmjpeg.lib;..\libijg8\$(ConfigurationName)\ijg8.lib;..\libijg12\$(ConfigurationName)\ijg12.lib;..\libijg16\$(ConfigurationName)\ijg16.lib;$(SolutionDir)$(Configuration)\commonlib.lib;libz.lib;openjp2.lib</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
+      <Version>0.0</Version>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>Debug/dcmcjpeg.pdb</ProgramDatabaseFile>
+      <SubSystem>Console</SubSystem>
+      <ImportLibrary>Debug\dcmcjpeg.lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Midl>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>false</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+      <GenerateStublessProxies>true</GenerateStublessProxies>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <OutputDirectory>$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <DllDataFileName>
+      </DllDataFileName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;NDEBUG;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <AssemblerListingLocation>Release</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>Release/dcmcjpeg.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+    <Link>
+      <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmimgle\libsrc\$(ConfigurationName)\dcmimgle.lib;..\..\dcmimage\libsrc\$(ConfigurationName)\dcmimage.lib;..\libsrc\$(ConfigurationName)\dcmjpeg.lib;..\libijg8\$(ConfigurationName)\ijg8.lib;..\libijg12\$(ConfigurationName)\ijg12.lib;..\libijg16\$(ConfigurationName)\ijg16.lib;$(SolutionDir)$(Configuration)\commonlib.lib;libz.lib;openjp2.lib</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
+      <Version>0.0</Version>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ProgramDatabaseFile>Release/dcmcjpeg.pdb</ProgramDatabaseFile>
+      <SubSystem>Console</SubSystem>
+      <ImportLibrary>Release\dcmcjpeg.lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">
+    <Midl>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="MinSizeRel";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>false</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+      <GenerateStublessProxies>true</GenerateStublessProxies>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <OutputDirectory>$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <DllDataFileName>
+      </DllDataFileName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;NDEBUG;CMAKE_INTDIR="MinSizeRel";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <AssemblerListingLocation>MinSizeRel</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>MinSizeRel/dcmcjpeg.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="MinSizeRel";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+    <Link>
+      <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmimgle\libsrc\$(ConfigurationName)\dcmimgle.lib;..\..\dcmimage\libsrc\$(ConfigurationName)\dcmimage.lib;..\libsrc\$(ConfigurationName)\dcmjpeg.lib;..\libijg8\$(ConfigurationName)\ijg8.lib;..\libijg12\$(ConfigurationName)\ijg12.lib;..\libijg16\$(ConfigurationName)\ijg16.lib;$(SolutionDir)$(Configuration)\commonlib.lib;libz.lib;openjp2.lib</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
+      <Version>0.0</Version>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ProgramDatabaseFile>MinSizeRel/dcmcjpeg.pdb</ProgramDatabaseFile>
+      <SubSystem>Console</SubSystem>
+      <ImportLibrary>MinSizeRel\dcmcjpeg.lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">
+    <Midl>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="RelWithDebInfo";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>false</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+      <GenerateStublessProxies>true</GenerateStublessProxies>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <OutputDirectory>$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <DllDataFileName>
+      </DllDataFileName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;$(SolutionDir)commonlib;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;NDEBUG;CMAKE_INTDIR="RelWithDebInfo";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <AssemblerListingLocation>RelWithDebInfo</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>RelWithDebInfo/dcmcjpeg.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;CMAKE_INTDIR="RelWithDebInfo";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmimgle\include;..\..\dcmimage\include;..\libijg8;..\libijg12;..\libijg16;D:\workspace\dcmtk-support\zlib-1.2.3\include;D:\workspace\dcmtk-support\tiff-3.7.4\include;D:\workspace\dcmtk-support\libpng-1.2.8\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+    <Link>
+      <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>netapi32.lib;wsock32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmimgle\libsrc\$(ConfigurationName)\dcmimgle.lib;..\..\dcmimage\libsrc\$(ConfigurationName)\dcmimage.lib;..\libsrc\$(ConfigurationName)\dcmjpeg.lib;..\libijg8\$(ConfigurationName)\ijg8.lib;..\libijg12\$(ConfigurationName)\ijg12.lib;..\libijg16\$(ConfigurationName)\ijg16.lib;$(SolutionDir)$(Configuration)\commonlib.lib;libz.lib;openjp2.lib</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
+      <Version>0.0</Version>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>RelWithDebInfo/dcmcjpeg.pdb</ProgramDatabaseFile>
+      <SubSystem>Console</SubSystem>
+      <ImportLibrary>RelWithDebInfo\dcmcjpeg.lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="dcmcjpeg.cxx" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\commonlib\commonlib.vcxproj">
+      <Project>{2ddd40cc-6ce9-483a-9b9c-73aad0dc8205}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\..\dcmdata\libsrc\dcmdata.vcxproj">
+      <Project>{cf43b823-39a1-4e0e-b6bb-0d267f5a3fb1}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\..\dcmimage\libsrc\dcmimage.vcxproj">
+      <Project>{1506887f-55c2-4159-8a98-31c3543854be}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\..\dcmimgle\libsrc\dcmimgle.vcxproj">
+      <Project>{5b7ab301-0ae2-4a5c-8dc0-95d3fc403d9f}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\..\ofstd\libsrc\ofstd.vcxproj">
+      <Project>{140c0096-4c8b-4854-a76d-df0b659a6c52}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\libijg12\ijg12.vcxproj">
+      <Project>{286d7bff-8f2e-4dc4-a9db-5f4f862c22e1}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\libijg16\ijg16.vcxproj">
+      <Project>{bd9786cb-157c-4aed-89a3-538260b89b58}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\libijg8\ijg8.vcxproj">
+      <Project>{1dd522fa-c8d0-46ff-8d31-778666e23f23}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\libsrc\dcmjpeg.vcxproj">
+      <Project>{9d800639-f50b-4832-a06c-4055784b1a4d}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

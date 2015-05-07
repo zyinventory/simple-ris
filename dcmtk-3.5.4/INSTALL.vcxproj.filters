@@ -1,0 +1,468 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{192298e8-d9f8-4c45-bf78-2d251af7f289}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="config">
+      <UniqueIdentifier>{645e61a7-40d6-43df-aff2-539230117b05}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="config\include">
+      <UniqueIdentifier>{78feae78-0ba5-4ad7-bc5b-167f04dac05b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ofstd">
+      <UniqueIdentifier>{296a7c88-2234-4610-b7c4-1a1f18b4c876}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ofstd\libsrc">
+      <UniqueIdentifier>{231eb152-f064-450b-b3c7-924b8767a978}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ofstd\include">
+      <UniqueIdentifier>{99975929-b8cb-4993-aa6f-8bbf6a0aecf4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmdata">
+      <UniqueIdentifier>{7ca2ee9d-3e05-45c9-9132-1eddd9c89c46}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmdata\apps">
+      <UniqueIdentifier>{c3fe16b1-4306-489e-9c4d-69185ac925be}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmdata\docs">
+      <UniqueIdentifier>{10003216-170e-42d5-8efb-181c34745de6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmdata\include">
+      <UniqueIdentifier>{926941df-7491-408a-a803-b5faca119db6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmdata\libsrc">
+      <UniqueIdentifier>{5d585bee-6506-4e50-97f9-c83edfc495b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmtls">
+      <UniqueIdentifier>{b84fd2b6-7186-4f97-bf04-52bf0516e57d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmtls\docs">
+      <UniqueIdentifier>{f254218e-3f12-4ef0-a9da-a43f0a3f21ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmtls\include">
+      <UniqueIdentifier>{338e2061-8523-4108-b0c3-603dc7229e6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmtls\libsrc">
+      <UniqueIdentifier>{26999e6f-c6b7-4043-ab6e-de4794ee6cd3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmnet">
+      <UniqueIdentifier>{53a0620e-d721-4f1e-9ea1-ce65a78f864f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmnet\apps">
+      <UniqueIdentifier>{0da7a3c7-af3b-4d07-bb83-4f950fc93d06}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmnet\docs">
+      <UniqueIdentifier>{d3bda910-5315-4fa8-a6a6-d8c82397b5af}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmnet\etc">
+      <UniqueIdentifier>{e308eb37-4603-4dd2-b4ca-d8ab31e7846d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmnet\include">
+      <UniqueIdentifier>{818c5ae5-d891-46d6-878c-268acc8609fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmnet\libsrc">
+      <UniqueIdentifier>{2de43aca-bfd6-4dbf-8ec4-05729f9430fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmqrdb">
+      <UniqueIdentifier>{c5f3e4f9-8f13-490d-b5c8-bcb86bc32dcd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmqrdb\apps">
+      <UniqueIdentifier>{498c2842-fb68-41b6-bd7d-e051b03852a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmqrdb\docs">
+      <UniqueIdentifier>{862062d7-bfa6-4b0b-ab16-9ec1eaad6d3c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmqrdb\etc">
+      <UniqueIdentifier>{dc34748f-0534-4df6-87fc-a2b9856bb1ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmqrdb\include">
+      <UniqueIdentifier>{0247bfa2-8d6d-46f2-9ddf-0b88cf0fc226}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmqrdb\libsrc">
+      <UniqueIdentifier>{54d6922d-8b31-4113-99f2-0060e13061bb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmimgle">
+      <UniqueIdentifier>{361f5625-3a27-4f3b-93a6-98f9cdb53126}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmimgle\apps">
+      <UniqueIdentifier>{65dd10cb-98c8-4ca7-a09f-eb052acb2d24}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmimgle\include">
+      <UniqueIdentifier>{60214197-4f45-4a45-bb63-5ba17b07ec3f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmimgle\libsrc">
+      <UniqueIdentifier>{ae3542f5-c0db-4c4d-a39f-42750a4da0ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmimgle\tests">
+      <UniqueIdentifier>{852e9129-6728-4bd8-a736-9467eea919e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmimage">
+      <UniqueIdentifier>{244624ea-7ba3-43da-96d5-af33c23bd38d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmimage\apps">
+      <UniqueIdentifier>{988b0248-22e8-42e9-b8ab-229d0af12eb7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmimage\include">
+      <UniqueIdentifier>{a83dd5fe-099a-44a2-b375-6e5d389a76e3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmimage\libsrc">
+      <UniqueIdentifier>{4729da51-6f69-4364-8e86-a7f365142612}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmjpeg">
+      <UniqueIdentifier>{c1919aef-37f4-4fee-9f0a-6e48e2cbf181}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmjpeg\apps">
+      <UniqueIdentifier>{c2151836-ac29-4ea2-88dd-9febacbc46e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmjpeg\include">
+      <UniqueIdentifier>{a8f84004-5b9e-4a72-b690-9d9d5c97f12a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmjpeg\libijg12">
+      <UniqueIdentifier>{311e16be-b5a6-4a7f-a5e1-16cf3d84d67c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmjpeg\libijg16">
+      <UniqueIdentifier>{17616bda-4a2c-47f6-a4e7-45a8255c688b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmjpeg\libijg8">
+      <UniqueIdentifier>{965ae00b-b225-4949-b9be-164b693ae26d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmjpeg\libsrc">
+      <UniqueIdentifier>{3db7f12f-7cad-4eaa-aca6-eb9583b47032}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmsign">
+      <UniqueIdentifier>{1e20fd00-bcf9-4aaa-ac6e-e7addc9c9d95}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmsign\apps">
+      <UniqueIdentifier>{7358ebf1-06be-41bf-8f34-54695bf2650e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmsign\include">
+      <UniqueIdentifier>{2f3bd4d2-c93d-4cf4-b953-06ffd4fd37c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmsign\libsrc">
+      <UniqueIdentifier>{5d079d5d-c7c2-45fe-a1b9-7de827bca8cb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmsr">
+      <UniqueIdentifier>{1b75ead1-ca89-47f9-ae34-d46dcc00680e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmsr\apps">
+      <UniqueIdentifier>{d1ba3657-7645-4cf9-a81a-36c6b78dabc9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmsr\include">
+      <UniqueIdentifier>{2a99bf76-37e7-4f7f-bc51-59e6699fad8c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmsr\libsrc">
+      <UniqueIdentifier>{54e58adf-db77-4bbe-94c7-4cc3e7c095e0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmsr\tests">
+      <UniqueIdentifier>{2b6997f2-b49a-492a-8a0b-9d4a29205771}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmpstat">
+      <UniqueIdentifier>{fbf2d749-3172-48a3-805f-5d1a4000f388}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmpstat\apps">
+      <UniqueIdentifier>{cc4f14cd-f251-4645-a218-b5177378cbbe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmpstat\etc">
+      <UniqueIdentifier>{9163efeb-de51-4a96-9371-88718e868fea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmpstat\include">
+      <UniqueIdentifier>{f12655d5-1e4c-4d60-85fa-2a33bc41b893}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmpstat\libsrc">
+      <UniqueIdentifier>{36ba3064-fda7-4213-a984-a727d1f9fa2b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmpstat\tests">
+      <UniqueIdentifier>{82a3953a-44b6-484e-a88d-7353c4c8f45e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmwlm">
+      <UniqueIdentifier>{d9c1ecc3-4287-41fb-ab51-d79bad534bb5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmwlm\apps">
+      <UniqueIdentifier>{18466203-781e-4a54-8dde-193931e1bff4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmwlm\docs">
+      <UniqueIdentifier>{ba652509-d0af-4b28-9a41-8c7fb19e165a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmwlm\include">
+      <UniqueIdentifier>{cf19bed2-5b39-41a6-af52-ba2ae5330d8c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmwlm\libsrc">
+      <UniqueIdentifier>{58185c29-8057-4c5f-8cef-e27012306245}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="doxygen">
+      <UniqueIdentifier>{62dca2fe-71cd-442b-ba51-7039fc740d22}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="config\cmake_install.cmake">
+      <Filter>config</Filter>
+    </None>
+    <None Include="config\include\dcmtk\config\cmake_install.cmake">
+      <Filter>config\include</Filter>
+    </None>
+    <None Include="ofstd\cmake_install.cmake">
+      <Filter>ofstd</Filter>
+    </None>
+    <None Include="ofstd\libsrc\cmake_install.cmake">
+      <Filter>ofstd\libsrc</Filter>
+    </None>
+    <None Include="ofstd\include\dcmtk\ofstd\cmake_install.cmake">
+      <Filter>ofstd\include</Filter>
+    </None>
+    <None Include="dcmdata\cmake_install.cmake">
+      <Filter>dcmdata</Filter>
+    </None>
+    <None Include="dcmdata\apps\cmake_install.cmake">
+      <Filter>dcmdata\apps</Filter>
+    </None>
+    <None Include="dcmdata\apps\dumppat.txt">
+      <Filter>dcmdata\apps</Filter>
+    </None>
+    <None Include="dcmdata\docs\cmake_install.cmake">
+      <Filter>dcmdata\docs</Filter>
+    </None>
+    <None Include="dcmdata\docs\datadict.txt">
+      <Filter>dcmdata\docs</Filter>
+    </None>
+    <None Include="dcmdata\include\dcmtk\dcmdata\cmake_install.cmake">
+      <Filter>dcmdata\include</Filter>
+    </None>
+    <None Include="dcmdata\libsrc\cmake_install.cmake">
+      <Filter>dcmdata\libsrc</Filter>
+    </None>
+    <None Include="dcmdata\apps\dcm2xml.dtd">
+      <Filter>dcmdata\libsrc</Filter>
+    </None>
+    <None Include="dcmdata\libsrc\dicom.dic">
+      <Filter>dcmdata\libsrc</Filter>
+    </None>
+    <None Include="dcmdata\libsrc\private.dic">
+      <Filter>dcmdata\libsrc</Filter>
+    </None>
+    <None Include="dcmtls\cmake_install.cmake">
+      <Filter>dcmtls</Filter>
+    </None>
+    <None Include="dcmtls\docs\ciphers.txt">
+      <Filter>dcmtls\docs</Filter>
+    </None>
+    <None Include="dcmtls\docs\cmake_install.cmake">
+      <Filter>dcmtls\docs</Filter>
+    </None>
+    <None Include="dcmtls\docs\randseed.txt">
+      <Filter>dcmtls\docs</Filter>
+    </None>
+    <None Include="dcmtls\include\dcmtk\dcmtls\cmake_install.cmake">
+      <Filter>dcmtls\include</Filter>
+    </None>
+    <None Include="dcmtls\libsrc\cmake_install.cmake">
+      <Filter>dcmtls\libsrc</Filter>
+    </None>
+    <None Include="dcmnet\cmake_install.cmake">
+      <Filter>dcmnet</Filter>
+    </None>
+    <None Include="dcmnet\apps\cmake_install.cmake">
+      <Filter>dcmnet\apps</Filter>
+    </None>
+    <None Include="dcmnet\docs\asconfig.txt">
+      <Filter>dcmnet\docs</Filter>
+    </None>
+    <None Include="dcmnet\docs\cmake_install.cmake">
+      <Filter>dcmnet\docs</Filter>
+    </None>
+    <None Include="dcmnet\docs\testing.txt">
+      <Filter>dcmnet\docs</Filter>
+    </None>
+    <None Include="dcmnet\etc\cmake_install.cmake">
+      <Filter>dcmnet\etc</Filter>
+    </None>
+    <None Include="dcmnet\etc\storescp.cfg">
+      <Filter>dcmnet\etc</Filter>
+    </None>
+    <None Include="dcmnet\etc\storescu.cfg">
+      <Filter>dcmnet\etc</Filter>
+    </None>
+    <None Include="dcmnet\include\dcmtk\dcmnet\cmake_install.cmake">
+      <Filter>dcmnet\include</Filter>
+    </None>
+    <None Include="dcmnet\libsrc\cmake_install.cmake">
+      <Filter>dcmnet\libsrc</Filter>
+    </None>
+    <None Include="dcmqrdb\cmake_install.cmake">
+      <Filter>dcmqrdb</Filter>
+    </None>
+    <None Include="dcmqrdb\apps\cmake_install.cmake">
+      <Filter>dcmqrdb\apps</Filter>
+    </None>
+    <None Include="dcmqrdb\docs\cmake_install.cmake">
+      <Filter>dcmqrdb\docs</Filter>
+    </None>
+    <None Include="dcmqrdb\docs\dcmqrcnf.txt">
+      <Filter>dcmqrdb\docs</Filter>
+    </None>
+    <None Include="dcmqrdb\docs\dcmqrset.txt">
+      <Filter>dcmqrdb\docs</Filter>
+    </None>
+    <None Include="dcmqrdb\etc\cmake_install.cmake">
+      <Filter>dcmqrdb\etc</Filter>
+    </None>
+    <None Include="dcmqrdb\etc\dcmqrscp.cfg">
+      <Filter>dcmqrdb\etc</Filter>
+    </None>
+    <None Include="dcmqrdb\include\dcmtk\dcmqrdb\cmake_install.cmake">
+      <Filter>dcmqrdb\include</Filter>
+    </None>
+    <None Include="dcmqrdb\libsrc\cmake_install.cmake">
+      <Filter>dcmqrdb\libsrc</Filter>
+    </None>
+    <None Include="dcmimgle\cmake_install.cmake">
+      <Filter>dcmimgle</Filter>
+    </None>
+    <None Include="dcmimgle\apps\cmake_install.cmake">
+      <Filter>dcmimgle\apps</Filter>
+    </None>
+    <None Include="dcmimgle\include\dcmtk\dcmimgle\cmake_install.cmake">
+      <Filter>dcmimgle\include</Filter>
+    </None>
+    <None Include="dcmimgle\libsrc\cmake_install.cmake">
+      <Filter>dcmimgle\libsrc</Filter>
+    </None>
+    <None Include="dcmimgle\tests\camera.lut">
+      <Filter>dcmimgle\tests</Filter>
+    </None>
+    <None Include="dcmimgle\tests\cmake_install.cmake">
+      <Filter>dcmimgle\tests</Filter>
+    </None>
+    <None Include="dcmimgle\tests\monitor.lut">
+      <Filter>dcmimgle\tests</Filter>
+    </None>
+    <None Include="dcmimgle\tests\printer.lut">
+      <Filter>dcmimgle\tests</Filter>
+    </None>
+    <None Include="dcmimgle\tests\scanner.lut">
+      <Filter>dcmimgle\tests</Filter>
+    </None>
+    <None Include="dcmimage\cmake_install.cmake">
+      <Filter>dcmimage</Filter>
+    </None>
+    <None Include="dcmimage\apps\cmake_install.cmake">
+      <Filter>dcmimage\apps</Filter>
+    </None>
+    <None Include="dcmimage\include\dcmtk\dcmimage\cmake_install.cmake">
+      <Filter>dcmimage\include</Filter>
+    </None>
+    <None Include="dcmimage\libsrc\cmake_install.cmake">
+      <Filter>dcmimage\libsrc</Filter>
+    </None>
+    <None Include="dcmjpeg\cmake_install.cmake">
+      <Filter>dcmjpeg</Filter>
+    </None>
+    <None Include="dcmjpeg\apps\cmake_install.cmake">
+      <Filter>dcmjpeg\apps</Filter>
+    </None>
+    <None Include="dcmjpeg\include\dcmtk\dcmjpeg\cmake_install.cmake">
+      <Filter>dcmjpeg\include</Filter>
+    </None>
+    <None Include="dcmjpeg\libijg12\cmake_install.cmake">
+      <Filter>dcmjpeg\libijg12</Filter>
+    </None>
+    <None Include="dcmjpeg\libijg16\cmake_install.cmake">
+      <Filter>dcmjpeg\libijg16</Filter>
+    </None>
+    <None Include="dcmjpeg\libijg8\cmake_install.cmake">
+      <Filter>dcmjpeg\libijg8</Filter>
+    </None>
+    <None Include="dcmjpeg\libsrc\cmake_install.cmake">
+      <Filter>dcmjpeg\libsrc</Filter>
+    </None>
+    <None Include="dcmsign\cmake_install.cmake">
+      <Filter>dcmsign</Filter>
+    </None>
+    <None Include="dcmsign\apps\cmake_install.cmake">
+      <Filter>dcmsign\apps</Filter>
+    </None>
+    <None Include="dcmsign\include\dcmtk\dcmsign\cmake_install.cmake">
+      <Filter>dcmsign\include</Filter>
+    </None>
+    <None Include="dcmsign\libsrc\cmake_install.cmake">
+      <Filter>dcmsign\libsrc</Filter>
+    </None>
+    <None Include="dcmsr\cmake_install.cmake">
+      <Filter>dcmsr</Filter>
+    </None>
+    <None Include="dcmsr\apps\cmake_install.cmake">
+      <Filter>dcmsr\apps</Filter>
+    </None>
+    <None Include="dcmsr\include\dcmtk\dcmsr\cmake_install.cmake">
+      <Filter>dcmsr\include</Filter>
+    </None>
+    <None Include="dcmsr\libsrc\cmake_install.cmake">
+      <Filter>dcmsr\libsrc</Filter>
+    </None>
+    <None Include="dcmsr\tests\cmake_install.cmake">
+      <Filter>dcmsr\tests</Filter>
+    </None>
+    <None Include="dcmpstat\cmake_install.cmake">
+      <Filter>dcmpstat</Filter>
+    </None>
+    <None Include="dcmpstat\apps\cmake_install.cmake">
+      <Filter>dcmpstat\apps</Filter>
+    </None>
+    <None Include="dcmpstat\etc\cmake_install.cmake">
+      <Filter>dcmpstat\etc</Filter>
+    </None>
+    <None Include="dcmpstat\etc\dcmpstat.cfg">
+      <Filter>dcmpstat\etc</Filter>
+    </None>
+    <None Include="dcmpstat\etc\printers.cfg">
+      <Filter>dcmpstat\etc</Filter>
+    </None>
+    <None Include="dcmpstat\include\dcmtk\dcmpstat\cmake_install.cmake">
+      <Filter>dcmpstat\include</Filter>
+    </None>
+    <None Include="dcmpstat\libsrc\cmake_install.cmake">
+      <Filter>dcmpstat\libsrc</Filter>
+    </None>
+    <None Include="dcmpstat\tests\cmake_install.cmake">
+      <Filter>dcmpstat\tests</Filter>
+    </None>
+    <None Include="dcmpstat\tests\philips.lut">
+      <Filter>dcmpstat\tests</Filter>
+    </None>
+    <None Include="dcmwlm\cmake_install.cmake">
+      <Filter>dcmwlm</Filter>
+    </None>
+    <None Include="dcmwlm\apps\cmake_install.cmake">
+      <Filter>dcmwlm\apps</Filter>
+    </None>
+    <None Include="dcmwlm\docs\cmake_install.cmake">
+      <Filter>dcmwlm\docs</Filter>
+    </None>
+    <None Include="dcmwlm\docs\wwwapp.txt">
+      <Filter>dcmwlm\docs</Filter>
+    </None>
+    <None Include="dcmwlm\include\dcmtk\dcmwlm\cmake_install.cmake">
+      <Filter>dcmwlm\include</Filter>
+    </None>
+    <None Include="dcmwlm\libsrc\cmake_install.cmake">
+      <Filter>dcmwlm\libsrc</Filter>
+    </None>
+    <None Include="doxygen\cmake_install.cmake">
+      <Filter>doxygen</Filter>
+    </None>
+    <None Include="cmake_install.cmake" />
+    <None Include="COPYRIGHT" />
+    <None Include="FAQ" />
+    <None Include="HISTORY" />
+  </ItemGroup>
+  <ItemGroup>
+    <Xsd Include="dcmsr\apps\dsr2xml.xsd">
+      <Filter>dcmsr\apps</Filter>
+    </Xsd>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="CMakeFiles\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+</Project>

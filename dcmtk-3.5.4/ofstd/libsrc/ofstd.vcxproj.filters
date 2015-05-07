@@ -1,0 +1,150 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{33828446-dd31-4506-8dd3-f09c236da72b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{aaa8bf5c-cf2f-45a1-9ba9-fca88b2e87c4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ofcmdln.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ofconapp.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ofcond.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ofconfig.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ofconsol.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ofcrc32.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ofdate.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ofdatime.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="offname.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="oflist.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="oflogfil.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ofstd.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ofstring.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ofthread.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="oftime.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\config\include\dcmtk\config\cfwin32.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofalgo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofbmanip.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofcast.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofcmdln.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofconapp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofcond.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofconfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofconsol.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofcrc32.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofdate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofdatime.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\offname.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofglobal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\oflist.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\oflogfil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofoset.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofset.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofsetit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofstack.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofstd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofstdinc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofstream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofstring.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofthread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\oftime.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\oftimer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\oftypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\ofuoset.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\config\include\dcmtk\config\osconfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

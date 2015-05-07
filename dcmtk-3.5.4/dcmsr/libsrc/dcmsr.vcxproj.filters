@@ -1,0 +1,312 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{cc96b49f-3232-4225-8f65-8e2e7104856d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{579ffc30-f03c-4a82-a11a-1d4df2701bf3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dsrbascc.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrchecc.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrcitem.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrcodtn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrcodvl.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrcomcc.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrcomtn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrcomvl.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrcontn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrcsidl.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrdattn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrdoc.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrdoctn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrdoctr.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrdtitn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrenhcc.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrimgfr.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrimgtn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrimgvl.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsriodcc.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrkeycc.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrmamcc.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrnumtn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrnumvl.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrpnmtn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrprocc.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrreftn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrscogr.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrscotn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrscovl.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrsoprf.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrstrvl.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrtcodt.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrtcosp.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrtcotn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrtcoto.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrtcovl.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrtextn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrtimtn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrtncsr.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrtree.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrtypes.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsruidtn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrwavch.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrwavtn.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrwavvl.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrxmlc.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrxmld.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsrxrdcc.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrbascc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrchecc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrcitem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrcodtn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrcodvl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrcomcc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrcomtn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrcomvl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrcontn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrcsidl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrdattn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrdoc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrdoctn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrdoctr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrdtitn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrenhcc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrimgfr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrimgtn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrimgvl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsriodcc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrkeycc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrmamcc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrnumtn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrnumvl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrpnmtn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrprocc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrreftn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrscogr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrscotn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrscovl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrsoprf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrstrvl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrtcodt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrtcosp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrtcotn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrtcoto.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrtcovl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrtextn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrtimtn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrtlist.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrtncsr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrtree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrtypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsruidtn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrwavch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrwavtn.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrwavvl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrxmlc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrxmld.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmsr\dsrxrdcc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
