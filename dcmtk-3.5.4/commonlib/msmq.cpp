@@ -7,13 +7,16 @@ using namespace MSMQ;
 
 HRESULT QLetEveryoneFullControl(LPCWSTR wszFormatNameBuffer);
 
-COMMONLIB_API bool EnsureQueueExist(const char *queuePath)
+COMMONLIB_API bool EnsureQueueExist(const char *queueName)
 {
 	try
 	{
 		HRESULT hr = S_OK;
 		IMSMQQueueInfoPtr pInfo("MSMQ.MSMQQueueInfo");
-		pInfo->PathName = queuePath;
+		string qname(queueName);
+		if(qname.find(".\\private$\\") != 0)
+			qname.insert(0, ".\\private$\\");
+		pInfo->PathName = qname.c_str();
 		_variant_t vct = pInfo->GetCreateTime();
 		if(vct.date < 36526.5) // 2000/01/01 00:00:00
 		{
@@ -28,7 +31,7 @@ COMMONLIB_API bool EnsureQueueExist(const char *queuePath)
 	}
 	catch(_com_error &ce)
 	{
-		cerr << "EnsureQueueExist(" << queuePath << ") failed, caused by: " << ce.ErrorMessage() << endl;
+		cerr << "EnsureQueueExist(" << queueName << ") failed, caused by: " << (LPCSTR)ce.Description() << endl;
 		return false;
 	}
 }
