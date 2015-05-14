@@ -681,16 +681,37 @@ static void processMessage(IMSMQMessagePtr pMsg)
 						buffer[cmd.length()] = '\0';
 						buffer[pos] = '\0';
 						char *src = buffer + srcpos, *dest = buffer + pos + 1;
-						if(GetFileAttributes(dest) != INVALID_FILE_ATTRIBUTES)
+						prepareFileDir(dest);
+						int renresult = 0;
+						if(::rename(src, dest)) renresult = errno;
+						if(renresult)
 						{
-							if(remove(dest)) perror(dest);
+							if(renresult == EEXIST)
+							{
+								if(::remove(dest))
+								{
+									int en = errno;
+									const char *msg = _strerror(NULL);
+									cerr << "remove " << dest << " : " << msg << endl;
+								}
+								else
+								{
+									if(::rename(src, dest)) renresult = errno;
+									else renresult = 0;
+								}
+							}
+							else
+							{
+								int en = errno;
+								const char *msg = _strerror(NULL);
+								cerr << "unexcepted error " << en << ": " << msg << endl;
+							}
 						}
-						else
-							prepareFileDir(dest);
-						if( rename(src, dest) )
+
+						if(renresult)
 						{
 							buffer[pos] = '>';
-							perror(buffer);
+							cerr << buffer << " : " << strerror(renresult) << endl;
 						}
 						else
 						{
