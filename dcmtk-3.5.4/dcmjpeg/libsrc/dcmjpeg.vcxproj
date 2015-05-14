@@ -250,6 +250,7 @@
     <ClCompile Include="djrplol.cxx" />
     <ClCompile Include="djrploss.cxx" />
     <ClCompile Include="djutils.cxx" />
+    <ClCompile Include="mem_openstream.c" />
     <ClCompile Include="OPJSupport.cpp" />
   </ItemGroup>
   <ItemGroup>

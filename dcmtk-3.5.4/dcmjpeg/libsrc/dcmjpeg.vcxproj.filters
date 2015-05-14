@@ -108,6 +108,9 @@
     <ClCompile Include="djenc2k.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="mem_openstream.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcmtk\dcmjpeg\ddpiimpl.h">

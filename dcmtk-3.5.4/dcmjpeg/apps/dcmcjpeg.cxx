@@ -169,6 +169,8 @@ int main(int argc, char *argv[])
 	cmd.addOption("--encode-extended",         "+ee",       "encode extended sequential");
 	cmd.addOption("--encode-spectral",         "+es",       "encode spectral selection");
 	cmd.addOption("--encode-progressive",      "+ep",       "encode progressive");
+	cmd.addOption("--encode-jpeg2k-lossless",               "encode jpeg2000 lossless only");
+	cmd.addOption("--encode-jpeg2k",                        "encode jpeg2000 lossy");
 
 	cmd.addSubGroup("lossless JPEG codec selection:");
 	cmd.addOption("--true-lossless",           "+tl",       "true lossless codec (default)");
@@ -348,6 +350,7 @@ int main(int argc, char *argv[])
 		if (cmd.findOption("--encode-extended")) opt_oxfer = EXS_JPEGProcess2_4TransferSyntax;
 		if (cmd.findOption("--encode-spectral")) opt_oxfer = EXS_JPEGProcess6_8TransferSyntax;
 		if (cmd.findOption("--encode-progressive")) opt_oxfer = EXS_JPEGProcess10_12TransferSyntax;
+		if (cmd.findOption("--encode-jpeg2k-lossless")) opt_oxfer = EXS_JPEG2000LosslessOnly;
 		cmd.endOptionBlock();
 
 		cmd.beginOptionBlock();
@@ -752,7 +755,8 @@ int main(int argc, char *argv[])
 
 			const DcmRepresentationParameter *rp = &rp_lossy;
 			if ((opt_oxfer == EXS_JPEGProcess14SV1TransferSyntax)||
-				(opt_oxfer == EXS_JPEGProcess14TransferSyntax))
+				(opt_oxfer == EXS_JPEGProcess14TransferSyntax)||
+				(opt_oxfer == EXS_JPEG2000LosslessOnly))
 			{
 				if (opt_verbose) COUT << "Representation Parameter is lossless" << endl;
 				rp = &rp_lossless;
