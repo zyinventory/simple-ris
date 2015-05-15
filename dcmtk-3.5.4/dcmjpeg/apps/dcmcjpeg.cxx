@@ -351,6 +351,7 @@ int main(int argc, char *argv[])
 		if (cmd.findOption("--encode-spectral")) opt_oxfer = EXS_JPEGProcess6_8TransferSyntax;
 		if (cmd.findOption("--encode-progressive")) opt_oxfer = EXS_JPEGProcess10_12TransferSyntax;
 		if (cmd.findOption("--encode-jpeg2k-lossless")) opt_oxfer = EXS_JPEG2000LosslessOnly;
+		if (cmd.findOption("--encode-jpeg2k")) opt_oxfer = EXS_JPEG2000;
 		cmd.endOptionBlock();
 
 		cmd.beginOptionBlock();
