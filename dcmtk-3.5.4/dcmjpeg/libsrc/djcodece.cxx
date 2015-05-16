@@ -323,8 +323,8 @@ OFCondition DJCodecEncoder::encodeColorImage(
     }
   }
 
-  Uint8 pixelRepresentation = 0;
-  dataset->findAndGetUint8(DCM_PixelRepresentation, pixelRepresentation);
+  Uint16 pixelRepresentation = 0;
+  dataset->findAndGetUint16(DCM_PixelRepresentation, pixelRepresentation);
 
   // create codec instance
   if (result.good())
@@ -354,9 +354,9 @@ OFCondition DJCodecEncoder::encodeColorImage(
           jpegData = NULL;
           if (bytesPerSample == 1)
           {
-            result = jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint8 *)frame, jpegData, jpegLen, pixelRepresentation, 0.0, 0.0);
+            result = jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint8 *)frame, jpegData, jpegLen, (Uint8)pixelRepresentation, 0.0, 0.0);
           } else {
-            result = jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint16 *)frame, jpegData, jpegLen, pixelRepresentation, 0.0, 0.0);
+            result = jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint16 *)frame, jpegData, jpegLen, (Uint8)pixelRepresentation, 0.0, 0.0);
           }
 
           // store frame
@@ -534,8 +534,8 @@ OFCondition DJCodecEncoder::encodeTrueLossless(
     else    // Palette, HSV, ARGB, CMYK
       interpr = EPI_Unknown;
 
-	Uint8 pixelRepresentation = 0;
-	datsetItem->findAndGetUint8(DCM_PixelRepresentation, pixelRepresentation);
+	Uint16 pixelRepresentation = 0;
+	datsetItem->findAndGetUint16(DCM_PixelRepresentation, pixelRepresentation);
 
     // IJG libs need "color by pixel", transform if required
     if (result.good() && (samplesPerPixel > 1) )
@@ -593,6 +593,37 @@ OFCondition DJCodecEncoder::encodeTrueLossless(
     const Uint8 *framePointer = OFreinterpret_cast(const Uint8 *, pixelData);
     unsigned long compressedSize = 0;
 
+    // start getting minUsed/maxUsed for jpeg2000 encoder
+    double minUsed = 0.0, maxUsed = 0.0;
+    Uint16 minShort = 0, maxShort = 0;
+    if(result.good())
+    {
+      result = datsetItem->findAndGetUint16(DCM_SmallestImagePixelValue, minShort);
+      if(result.good()) result = datsetItem->findAndGetUint16(DCM_LargestImagePixelValue, maxShort);  
+      if(result.good())
+      {
+        minUsed = minShort;
+        maxUsed = maxShort;
+      }
+      else if(this->supportedTransferSyntax() == EXS_JPEG2000LosslessOnly)
+      {
+        DcmDataset *pds = dynamic_cast<DcmDataset*>(dataset);
+        // create DicomImage object. Will fail if dcmimage has not been activated in main().
+        // transfer syntax can be any uncompressed one.
+        DicomImage dimage(dataset, pds->getOriginalXfer(), 0); // read all frames
+        if (dimage.getStatus() != EIS_Normal) result = EC_CorruptedData; // should return dimage.getStatus()
+        else result = EC_Normal;
+        if (result.good())
+        {
+          if (! dimage.getMinMaxValues(minUsed, maxUsed, 0)) result = EC_CorruptedData;
+          if (maxUsed < minUsed) result = EC_CorruptedData;
+        }
+      }
+      else
+        result = EC_Normal;
+    }
+    //end getting minUsed/maxUsed for jpeg2000 encoder
+
     // create encoder corresponding to bit depth (8 or 16 bit)
     DJEncoder *jpeg = createEncoderInstance(toRepParam, djcp, OFstatic_cast(Uint8, bitsAllocated));
     if (jpeg)
@@ -602,11 +633,11 @@ OFCondition DJCodecEncoder::encodeTrueLossless(
       {
         if (bitsAllocated == 8)
         {
-          jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint8*)framePointer, jpegData, jpegLen, pixelRepresentation, 0.0, 0.0);
+          jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint8*)framePointer, jpegData, jpegLen, (Uint8)pixelRepresentation, minUsed, maxUsed);
         }
         else if (bitsAllocated == 16)
         {
-          jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint16*)framePointer, jpegData, jpegLen, pixelRepresentation, 0.0, 0.0);
+          jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint16*)framePointer, jpegData, jpegLen, (Uint8)pixelRepresentation, minUsed, maxUsed);
         }
         // update variables
         compressedSize+=jpegLen;
@@ -859,6 +890,7 @@ OFCondition DJCodecEncoder::encodeMonochromeImage(
   unsigned long compressedSize = 0;
   double uncompressedSize = 0.0;
   unsigned long flags = 0; // flags for initialization of DicomImage
+  Uint16 pixelRepresentation = 0;
 
   // variables needed if VOI mode is 0
   double minRange = 0.0;
@@ -1107,8 +1139,8 @@ OFCondition DJCodecEncoder::encodeMonochromeImage(
       // compute original image size in bytes, ignoring any padding bits.
       Uint16 samplesPerPixel = 0;
       if ((dataset->findAndGetUint16(DCM_SamplesPerPixel, samplesPerPixel)).bad()) samplesPerPixel = 1;
-	  Uint8 pixelRepresentation = 0;
-	  dataset->findAndGetUint8(DCM_PixelRepresentation, pixelRepresentation);
+	  //Uint16 pixelRepresentation = 0;
+	  dataset->findAndGetUint16(DCM_PixelRepresentation, pixelRepresentation);
 	  
 	  const char *GEIcon = NULL;
 	  OFBool isGEIcon = OFFalse;
@@ -1143,11 +1175,11 @@ OFCondition DJCodecEncoder::encodeMonochromeImage(
 				  jpegData = NULL;
 				  if (bytesPerSample == 1)
 				  {
-					result = jpeg->encode(columns, rows, EPI_Monochrome2, 1, (Uint8 *)frame, jpegData, jpegLen, pixelRepresentation, (minUsed-rescaleIntercept)/rescaleSlope, (maxUsed-rescaleIntercept)/rescaleSlope);
+					result = jpeg->encode(columns, rows, EPI_Monochrome2, 1, (Uint8 *)frame, jpegData, jpegLen, (Uint8)pixelRepresentation, (minUsed-rescaleIntercept)/rescaleSlope, (maxUsed-rescaleIntercept)/rescaleSlope);
 				  } 
 				  else
 				  {
-					result = jpeg->encode(columns, rows, EPI_Monochrome2, 1, (Uint16 *)frame, jpegData, jpegLen, pixelRepresentation, (minUsed-rescaleIntercept)/rescaleSlope, (maxUsed-rescaleIntercept)/rescaleSlope);
+					result = jpeg->encode(columns, rows, EPI_Monochrome2, 1, (Uint16 *)frame, jpegData, jpegLen, (Uint8)pixelRepresentation, (minUsed-rescaleIntercept)/rescaleSlope, (maxUsed-rescaleIntercept)/rescaleSlope);
 				  }
 				  
 				  // store frame
@@ -1195,7 +1227,7 @@ OFCondition DJCodecEncoder::encodeMonochromeImage(
     }
     if (result.good()) result = dataset->putAndInsertUint16(DCM_BitsStored, bitsPerSample);
     if (result.good()) result = dataset->putAndInsertUint16(DCM_HighBit, bitsPerSample-1);
-    if (result.good()) result = dataset->putAndInsertUint16(DCM_PixelRepresentation, 0);
+    if (result.good()) result = dataset->putAndInsertUint16(DCM_PixelRepresentation, pixelRepresentation);
     delete dataset->remove(DCM_PlanarConfiguration);
     delete dataset->remove(DCM_SmallestImagePixelValue);
     delete dataset->remove(DCM_LargestImagePixelValue);
