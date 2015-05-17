@@ -1080,7 +1080,7 @@ OFCondition DJCodecEncoder::encodeMonochromeImage(
         if (mode_usePixelValues)
         {
           double z = minUsed;
-          if (z >= 0) z = floor(z); else z = ceil(z-1023.0);
+          if (z >= 0) z = floor(z); else z = ceil(z);
           double rangeUsed = maxUsed - minUsed + 1; // range that must be covered by window
 
           // compute optimum window width
