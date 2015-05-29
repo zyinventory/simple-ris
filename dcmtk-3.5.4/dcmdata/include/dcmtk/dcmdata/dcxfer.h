@@ -115,6 +115,7 @@ typedef enum
 class DcmXfer {
     const char          *xferID;
     const char          *xferName;
+    const char          *xferShortName;
     E_TransferSyntax    xferSyn;
     E_ByteOrder         byteOrder;
     E_VRType            vrType;
@@ -135,6 +136,7 @@ public:
     inline E_TransferSyntax getXfer() const  { return xferSyn; }
     inline E_ByteOrder getByteOrder() const { return byteOrder; }
     inline const char* getXferName() const { return xferName; }
+    inline const char* getXferShortName() const { return xferShortName; }
     inline const char* getXferID() const { return xferID; }
     inline OFBool isLittleEndian() const
     {

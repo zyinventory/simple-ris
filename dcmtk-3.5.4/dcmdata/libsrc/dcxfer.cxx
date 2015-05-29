@@ -43,6 +43,7 @@ typedef struct
 {
     const char         *xferID;
     const char         *xferName;
+    const char         *xferShortName;
     E_TransferSyntax    xfer;
     E_ByteOrder         byteOrder;
     E_VRType            vrType;
@@ -54,12 +55,12 @@ typedef struct
 
 
 #define ERROR_XferName "UnknownTransferSyntax"
-
+#define ERROR_XferShortName "Unknown"
 
 const S_XferNames XferNames[] =
 {
     { UID_LittleEndianImplicitTransferSyntax,
-      "LittleEndianImplicit",
+      "LittleEndianImplicit", "LEImpLess",
       EXS_LittleEndianImplicit,
       EBO_LittleEndian,
       EVT_Implicit,
@@ -67,7 +68,7 @@ const S_XferNames XferNames[] =
       0L, 0L,
       ESC_none },
     { "",  // illegal type
-      "VirtualBigEndianImplicit",
+      "VirtualBigEndianImplicit", "BEImpLess",
       EXS_BigEndianImplicit,
       EBO_BigEndian,
       EVT_Implicit,
@@ -75,7 +76,7 @@ const S_XferNames XferNames[] =
       0L, 0L,
       ESC_none },
     { UID_LittleEndianExplicitTransferSyntax,
-      "LittleEndianExplicit",
+      "LittleEndianExplicit", "LEExpLess",
       EXS_LittleEndianExplicit,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -83,7 +84,7 @@ const S_XferNames XferNames[] =
       0L, 0L,
       ESC_none },
     { UID_BigEndianExplicitTransferSyntax,  // defined in dctypes.h
-      "BigEndianExplicit",
+      "BigEndianExplicit", "BEExpLess",
       EXS_BigEndianExplicit,
       EBO_BigEndian,
       EVT_Explicit,
@@ -91,7 +92,7 @@ const S_XferNames XferNames[] =
       0L, 0L,
       ESC_none },
     { UID_JPEGProcess1TransferSyntax,
-      "JPEG Baseline",
+      "JPEG Baseline", "JpegBase",
       EXS_JPEGProcess1TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -99,7 +100,7 @@ const S_XferNames XferNames[] =
       1L, 1L,
       ESC_none },
     { UID_JPEGProcess2_4TransferSyntax,
-      "JPEG Extended, Process 2+4",
+      "JPEG Extended, Process 2+4", "Jpeg24",
       EXS_JPEGProcess2_4TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -107,7 +108,7 @@ const S_XferNames XferNames[] =
       2L ,4L,
       ESC_none },
     { UID_JPEGProcess3_5TransferSyntax,
-      "JPEG Extended, Process 3+5",
+      "JPEG Extended, Process 3+5", "Jpeg35",
       EXS_JPEGProcess3_5TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -115,7 +116,7 @@ const S_XferNames XferNames[] =
       3L ,5L,
       ESC_none },
     { UID_JPEGProcess6_8TransferSyntax,
-      "JPEG Spectral Selection, Non-hierarchical, Process 6+8",
+      "JPEG Spectral Selection, Non-hierarchical, Process 6+8", "Jpeg68",
       EXS_JPEGProcess6_8TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -123,7 +124,7 @@ const S_XferNames XferNames[] =
       6L ,8L,
       ESC_none },
     { UID_JPEGProcess7_9TransferSyntax,
-      "JPEG Spectral Selection, Non-hierarchical, Process 7+9",
+      "JPEG Spectral Selection, Non-hierarchical, Process 7+9", "Jpeg79",
       EXS_JPEGProcess7_9TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -131,7 +132,7 @@ const S_XferNames XferNames[] =
       7L ,9L,
       ESC_none },
     { UID_JPEGProcess10_12TransferSyntax,
-      "JPEG Full Progression, Non-hierarchical, Process 10+12",
+      "JPEG Full Progression, Non-hierarchical, Process 10+12", "Jpeg1012",
       EXS_JPEGProcess10_12TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -139,7 +140,7 @@ const S_XferNames XferNames[] =
       10L ,12L,
       ESC_none },
     { UID_JPEGProcess11_13TransferSyntax,
-      "JPEG Full Progression, Non-hierarchical, Process 11+13",
+      "JPEG Full Progression, Non-hierarchical, Process 11+13", "Jpeg1113",
       EXS_JPEGProcess11_13TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -147,7 +148,7 @@ const S_XferNames XferNames[] =
       11L ,13L,
       ESC_none },
     { UID_JPEGProcess14TransferSyntax,
-      "JPEG Lossless, Non-hierarchical, Process 14",
+      "JPEG Lossless, Non-hierarchical, Process 14", "JpegLess14",
       EXS_JPEGProcess14TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -155,7 +156,7 @@ const S_XferNames XferNames[] =
       14L ,14L,
       ESC_none },
     { UID_JPEGProcess15TransferSyntax,
-      "JPEG Lossless, Non-hierarchical, Process 15",
+      "JPEG Lossless, Non-hierarchical, Process 15", "JpegLess15",
       EXS_JPEGProcess15TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -163,7 +164,7 @@ const S_XferNames XferNames[] =
       15L ,15L,
       ESC_none },
     { UID_JPEGProcess16_18TransferSyntax,
-      "JPEG Extended, Hierarchical, Process 16+18",
+      "JPEG Extended, Hierarchical, Process 16+18", "Jpeg1618",
       EXS_JPEGProcess16_18TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -171,7 +172,7 @@ const S_XferNames XferNames[] =
       16L ,18L,
       ESC_none },
     { UID_JPEGProcess17_19TransferSyntax,
-      "JPEG Extended, Hierarchical, Process 17+19",
+      "JPEG Extended, Hierarchical, Process 17+19", "Jpeg1719",
       EXS_JPEGProcess17_19TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -179,7 +180,7 @@ const S_XferNames XferNames[] =
       17L ,19L,
       ESC_none },
     { UID_JPEGProcess20_22TransferSyntax,
-      "JPEG Spectral Selection, Hierarchical, Process 20+22",
+      "JPEG Spectral Selection, Hierarchical, Process 20+22", "Jpeg2022",
       EXS_JPEGProcess20_22TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -187,7 +188,7 @@ const S_XferNames XferNames[] =
       20L ,22L,
       ESC_none },
     { UID_JPEGProcess21_23TransferSyntax,
-      "JPEG Spectral Selection, Hierarchical, Process 21+23",
+      "JPEG Spectral Selection, Hierarchical, Process 21+23", "Jpeg2123",
       EXS_JPEGProcess21_23TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -195,7 +196,7 @@ const S_XferNames XferNames[] =
       21L ,23L,
       ESC_none },
     { UID_JPEGProcess24_26TransferSyntax,
-      "JPEG Full Progression, Hierarchical, Process 24+26",
+      "JPEG Full Progression, Hierarchical, Process 24+26", "Jpeg2426",
       EXS_JPEGProcess24_26TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -203,7 +204,7 @@ const S_XferNames XferNames[] =
       24L ,26L,
       ESC_none },
     { UID_JPEGProcess25_27TransferSyntax,
-      "JPEG Full Progression, Hierarchical, Process 25+27",
+      "JPEG Full Progression, Hierarchical, Process 25+27", "Jpeg2527",
       EXS_JPEGProcess25_27TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -211,7 +212,7 @@ const S_XferNames XferNames[] =
       25L ,27L,
       ESC_none },
     { UID_JPEGProcess28TransferSyntax,
-      "JPEG Lossless, Hierarchical, Process 28",
+      "JPEG Lossless, Hierarchical, Process 28", "JpegLess28",
       EXS_JPEGProcess28TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -219,7 +220,7 @@ const S_XferNames XferNames[] =
       28L ,28L,
       ESC_none },
     { UID_JPEGProcess29TransferSyntax,
-      "JPEG Lossless, Hierarchical, Process 29",
+      "JPEG Lossless, Hierarchical, Process 29", "JpegLess29",
       EXS_JPEGProcess29TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -227,7 +228,7 @@ const S_XferNames XferNames[] =
       29L ,29L,
       ESC_none },
     { UID_JPEGProcess14SV1TransferSyntax,
-      "JPEG Lossless, Non-hierarchical, 1st Order Prediction",
+      "JPEG Lossless, Non-hierarchical, 1st Order Prediction", "JpegLess14SV1",
       EXS_JPEGProcess14SV1TransferSyntax,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -235,7 +236,7 @@ const S_XferNames XferNames[] =
       14L ,14L,
       ESC_none },
     { UID_RLELosslessTransferSyntax,
-      "RLE Lossless",
+      "RLE Lossless", "RLELess",
       EXS_RLELossless,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -243,7 +244,7 @@ const S_XferNames XferNames[] =
       0L, 0L,
       ESC_none },
     { UID_JPEGLSLosslessTransferSyntax,
-      "JPEG-LS Lossless",
+      "JPEG-LS Lossless", "LSLess",
       EXS_JPEGLSLossless,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -251,7 +252,7 @@ const S_XferNames XferNames[] =
       0L, 0L,
       ESC_none },
     { UID_JPEGLSLossyTransferSyntax,
-      "JPEG-LS Lossy (Near-lossless)",
+      "JPEG-LS Lossy (Near-lossless)", "LSLossy",
       EXS_JPEGLSLossy,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -259,7 +260,7 @@ const S_XferNames XferNames[] =
       0L, 0L,
       ESC_none },
     { UID_DeflatedExplicitVRLittleEndianTransferSyntax,
-      "Deflated Explicit VR Little Endian",
+      "Deflated Explicit VR Little Endian", "DefLEExpLess",
       EXS_DeflatedLittleEndianExplicit,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -272,7 +273,7 @@ const S_XferNames XferNames[] =
 #endif
     },
     { UID_JPEG2000LosslessOnlyTransferSyntax,
-      "JPEG 2000 (Lossless only)",
+      "JPEG 2000 (Lossless only)", "Jp2kLossy",
       EXS_JPEG2000LosslessOnly,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -280,7 +281,7 @@ const S_XferNames XferNames[] =
       0L, 0L,
       ESC_none },
     { UID_JPEG2000TransferSyntax,
-      "JPEG 2000 (Lossless or Lossy)",
+      "JPEG 2000 (Lossless or Lossy)", "Jp2kLess",
       EXS_JPEG2000,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -288,7 +289,7 @@ const S_XferNames XferNames[] =
       0L, 0L,
       ESC_none },
     { UID_MPEG2MainProfileAtMainLevelTransferSyntax,
-      "MPEG2 Main Profile @ Main Level",
+      "MPEG2 Main Profile @ Main Level", "Mpeg2",
       EXS_MPEG2MainProfileAtMainLevel,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -296,7 +297,7 @@ const S_XferNames XferNames[] =
       0L, 0L,
       ESC_none },
    { UID_JPEG2000Part2MulticomponentImageCompressionLosslessOnlyTransferSyntax,
-      "JPEG 2000 Part 2 Multicomponent Image Compression (Lossless only)",
+      "JPEG 2000 Part 2 Multicomponent Image Compression (Lossless only)", "Jp2kP2Lossy",
       EXS_JPEG2000MulticomponentLosslessOnly,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -304,7 +305,7 @@ const S_XferNames XferNames[] =
       0L, 0L,
       ESC_none },
    { UID_JPEG2000Part2MulticomponentImageCompressionTransferSyntax,
-      "JPEG 2000 Part 2 Multicomponent Image Compression (Lossless or Lossy)",
+      "JPEG 2000 Part 2 Multicomponent Image Compression (Lossless or Lossy)", "Jp2kP2Less",
       EXS_JPEG2000Multicomponent,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -324,6 +325,7 @@ const int DIM_OF_XferNames = (sizeof(XferNames) / sizeof(S_XferNames));
 DcmXfer::DcmXfer(E_TransferSyntax xfer)
   : xferID(""),
     xferName(ERROR_XferName),
+    xferShortName(ERROR_XferShortName),
     xferSyn(EXS_Unknown),
     byteOrder(EBO_unknown),
     vrType(EVT_Implicit),
@@ -340,6 +342,7 @@ DcmXfer::DcmXfer(E_TransferSyntax xfer)
         xferSyn           = XferNames[i].xfer;
         xferID            = XferNames[i].xferID;
         xferName          = XferNames[i].xferName;
+        xferShortName     = XferNames[i].xferShortName;
         byteOrder         = XferNames[i].byteOrder;
         vrType            = XferNames[i].vrType;
         encapsulated      = XferNames[i].encapsulated;
@@ -356,6 +359,7 @@ DcmXfer::DcmXfer(E_TransferSyntax xfer)
 DcmXfer::DcmXfer(const char* xferName_xferID)
   : xferID(""),
     xferName(ERROR_XferName),
+    xferShortName(ERROR_XferShortName),
     xferSyn(EXS_Unknown),
     byteOrder(EBO_unknown),
     vrType(EVT_Implicit),
@@ -375,6 +379,7 @@ DcmXfer::DcmXfer(const char* xferName_xferID)
             xferSyn           = XferNames[i].xfer;
             xferID            = XferNames[i].xferID;
             xferName          = XferNames[i].xferName;
+            xferShortName     = XferNames[i].xferShortName;
             byteOrder         = XferNames[i].byteOrder;
             vrType            = XferNames[i].vrType;
             encapsulated      = XferNames[i].encapsulated;
@@ -392,6 +397,7 @@ DcmXfer::DcmXfer(const char* xferName_xferID)
                 xferSyn           = XferNames[i].xfer;
                 xferID            = XferNames[i].xferID;
                 xferName          = XferNames[i].xferName;
+                xferShortName     = XferNames[i].xferShortName;
                 byteOrder         = XferNames[i].byteOrder;
                 vrType            = XferNames[i].vrType;
                 encapsulated      = XferNames[i].encapsulated;
@@ -410,6 +416,7 @@ DcmXfer::DcmXfer(const char* xferName_xferID)
 DcmXfer::DcmXfer(const DcmXfer &newXfer)
   : xferID(newXfer.xferID),
     xferName(newXfer.xferName),
+    xferShortName(newXfer.xferShortName),
     xferSyn(newXfer.xferSyn),
     byteOrder(newXfer.byteOrder),
     vrType(newXfer.vrType),
@@ -442,6 +449,7 @@ DcmXfer &DcmXfer::operator=(const E_TransferSyntax xfer)
         xferSyn           = XferNames[i].xfer;
         xferID            = XferNames[i].xferID;
         xferName          = XferNames[i].xferName;
+        xferShortName     = XferNames[i].xferShortName;
         byteOrder         = XferNames[i].byteOrder;
         vrType            = XferNames[i].vrType;
         encapsulated      = XferNames[i].encapsulated;
@@ -452,6 +460,7 @@ DcmXfer &DcmXfer::operator=(const E_TransferSyntax xfer)
         xferSyn           = EXS_Unknown;
         xferID            = "";
         xferName          = ERROR_XferName;
+        xferShortName     = ERROR_XferShortName;
         byteOrder         = EBO_unknown;
         vrType            = EVT_Implicit;
         encapsulated      = EJE_NotEncapsulated;
@@ -473,6 +482,7 @@ DcmXfer &DcmXfer::operator=(const DcmXfer &newXfer)
         xferSyn           = newXfer.xferSyn;
         xferID            = newXfer.xferID;
         xferName          = newXfer.xferName;
+        xferShortName     = newXfer.xferShortName;
         byteOrder         = newXfer.byteOrder;
         vrType            = newXfer.vrType;
         encapsulated      = newXfer.encapsulated;

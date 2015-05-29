@@ -184,7 +184,7 @@ OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getElement() << " " << studyUID << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getElement() << " " << seriesUID << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getElement() << " " << instanceUID << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() << " " << xfer.getXferID() << endl;
+    strmbuf << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() << " " << xfer.getXferShortName() << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getElement() << " " << accessionNumber << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_PatientID.getElement() << " " << patientID << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientsName.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_PatientsName.getElement() << " " << b32name << endl;
