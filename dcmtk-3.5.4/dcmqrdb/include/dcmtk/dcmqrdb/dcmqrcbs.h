@@ -34,6 +34,7 @@
 #ifndef DCMQRCBS_H
 #define DCMQRCBS_H
 
+#include <sys/timeb.h>
 #include "dcmtk/config/osconfig.h"    /* make sure OS specific configuration is included first */
 #include "dcmtk/dcmnet/dimse.h"
 #include "dcmtk/dcmdata/dcfilefo.h"
@@ -96,6 +97,14 @@ public:
      */
     void setFileName(const char *fn) { fileName = fn; }
 
+    const string& getAssociationId() const { return associationId; }
+    void setAssociationId(struct _timeb const *st)
+    {
+        stringstream strmbuf;
+        strmbuf << st->time << "." << setw(3) << setfill('0') << st->millitm;
+	    associationId = strmbuf.str();
+    }
+
     /** callback handler called by the DIMSE_storeProvider callback function.
      *  @param progress progress state (in)
      *  @param req original store request (in)
@@ -153,6 +162,8 @@ private:
     /// flag indicating whether space padded UIDs should be silently corrected
     OFBool correctUIDPadding;
     
+    /// time: [seconds].[milli]
+    OFString associationId;
 };
 
 #endif

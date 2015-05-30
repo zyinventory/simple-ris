@@ -30,7 +30,6 @@
  *  CVS/RCS Log at end of file
  *
  */
-
 #include "dcmtk/config/osconfig.h"    /* make sure OS specific configuration is included first */
 #include "dcmtk/dcmqrdb/dcmqrsrv.h"
 #include "dcmtk/dcmqrdb/dcmqropt.h"
@@ -105,6 +104,7 @@ static void storeCallback(
  * ============================================================================================================
  */
 
+struct _timeb DcmQueryRetrieveSCP::storeTimeLast = {0LL, 0, 8, 0};
 
 DcmQueryRetrieveSCP::DcmQueryRetrieveSCP(
   const DcmQueryRetrieveConfig& config,
@@ -117,6 +117,7 @@ DcmQueryRetrieveSCP::DcmQueryRetrieveSCP(
 , factory_(factory)
 , options_(options)
 , cbToDcmQueryRetrieveStoreContext(NULL)
+, storeResult(STORE_NONE)
 {
 }
 
@@ -232,14 +233,17 @@ OFCondition DcmQueryRetrieveSCP::handleAssociation(T_ASC_Association * assoc, OF
 
  /* clean up on association termination */
     if (cond == DUL_PEERREQUESTEDRELEASE) {
+        if(storeResult == STORE_BEGIN) storeResult = STORE_RELEASE;
         if (options_.verbose_)
             printf("Association Release\n");
         cond = ASC_acknowledgeRelease(assoc);
         ASC_dropSCPAssociation(assoc);
     } else if (cond == DUL_PEERABORTEDASSOCIATION) {
+        if(storeResult == STORE_BEGIN) storeResult = STORE_ABORT;
         if (options_.verbose_)
             printf("Association Aborted\n");
     } else {
+        if(storeResult == STORE_BEGIN) storeResult = STORE_ABORT;
         DcmQueryRetrieveOptions::errmsg("DIMSE Failure (aborting association):\n");
         DimseCondition::dump(cond);
     /* some kind of error so abort the association */
@@ -372,7 +376,14 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
     char imageFileName[MAXPATHLEN+1];
     DcmFileFormat dcmff;
 
+    if(storeResult == STORE_NONE)
+    {
+        storeResult = STORE_BEGIN;
+        setStoreTime();
+    }
+
     DcmQueryRetrieveStoreContext context(dbHandle, options_, STATUS_Success, &dcmff, correctUIDPadding);
+    context.setAssociationId(&storeTimeThis);
 	context.cbIndex = cbToDcmQueryRetrieveStoreContext;
 	strcpy_s(context.calledAPTitle, assoc->params->DULparams.calledAPTitle);
 	strcpy_s(context.callingAPTitle, assoc->params->DULparams.callingAPTitle);
@@ -393,7 +404,7 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
         dbcond = dbHandle.makeNewStoreFileName(
             request->AffectedSOPClassUID,
             request->AffectedSOPInstanceUID,
-            imageFileName);
+            imageFileName, context.getAssociationId().c_str());
         if (dbcond.bad()) {
             DcmQueryRetrieveOptions::errmsg("storeSCP: Database: makeNewStoreFileName Failed");
             // must still receive data
@@ -897,6 +908,7 @@ OFCondition DcmQueryRetrieveSCP::negotiateAssociation(T_ASC_Association * assoc)
 
 OFCondition DcmQueryRetrieveSCP::waitForAssociation(T_ASC_Network * theNet)
 {
+    storeResult = STORE_NONE;
     OFCondition cond = EC_Normal;
 #ifdef HAVE_FORK
     int                 pid;

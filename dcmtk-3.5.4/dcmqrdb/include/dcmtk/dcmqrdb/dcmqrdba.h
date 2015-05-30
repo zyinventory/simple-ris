@@ -78,7 +78,8 @@ public:
   virtual OFCondition makeNewStoreFileName(
       const char *SOPClassUID,
       const char *SOPInstanceUID,
-      char *newImageFileName) = 0;
+      char *newImageFileName,
+      const char *associationId = NULL) = 0;
 
   /** register the given DICOM object, which has been received through a C-STORE
    *  operation and stored in a file, in the database.

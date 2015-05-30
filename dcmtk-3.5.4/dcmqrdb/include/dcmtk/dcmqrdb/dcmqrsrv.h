@@ -34,6 +34,7 @@
 #ifndef DCMQRSRV_H
 #define DCMQRSRV_H
 
+#include <sys/timeb.h>
 #include "dcmtk/config/osconfig.h"    /* make sure OS specific configuration is included first */
 #include "dcmtk/ofstd/oftypes.h"
 #include "dcmtk/dcmnet/assoc.h"
@@ -60,6 +61,14 @@ enum CTN_RefuseReason
     CTN_BadAEService,
     /// other non-specific reason
     CTN_NoReason
+};
+
+enum STORE_PROCESSING
+{
+    STORE_NONE = 0,
+    STORE_BEGIN = 1,
+    STORE_RELEASE = 2,
+    STORE_ABORT = 3
 };
 
 /** main class for Query/Retrieve Service Class Provider
@@ -109,6 +118,8 @@ public:
    *  @param verbose verbose mode flag
    */
   void cleanChildren(OFBool verbose = OFFalse);
+
+  STORE_PROCESSING getStoreResult() { return storeResult; }
 
 private:
 
@@ -176,6 +187,29 @@ private:
 
   /// flag for database interface: debug mode
   OFBool dbDebug_;
+
+  /// result for STORE command result
+  STORE_PROCESSING storeResult;
+  struct _timeb storeTimeThis;
+  static struct _timeb storeTimeLast;
+
+  void setStoreTime()
+  {
+    _ftime_s(&storeTimeThis);
+    if(storeTimeThis.time < storeTimeLast.time || (storeTimeThis.time == storeTimeLast.time && storeTimeThis.millitm <= storeTimeLast.millitm))
+    {
+        if(storeTimeLast.millitm == 999)
+        {
+            ++storeTimeLast.time;
+            storeTimeLast.millitm = 0;
+        }
+        else
+            ++storeTimeLast.millitm;
+        storeTimeThis = storeTimeLast;
+    }
+    else
+        storeTimeLast = storeTimeThis;
+  }
 
   /// factory object used to create database handles
   const DcmQueryRetrieveDatabaseHandleFactory& factory_;

@@ -157,7 +157,8 @@ public:
   OFCondition makeNewStoreFileName(
       const char *SOPClassUID,
       const char *SOPInstanceUID,
-      char *newImageFileName);
+      char *newImageFileName,
+      const char *associationId = NULL);
   
   /** register the given DICOM object, which has been received through a C-STORE 
    *  operation and stored in a file, in the database.

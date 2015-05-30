@@ -3413,16 +3413,21 @@ size_t GenerateTime_internal(const char *format, char *timeBuffer, size_t buffer
 OFCondition DcmQueryRetrieveIndexDatabaseHandle::makeNewStoreFileName(
                 const char      *SOPClassUID,
                 const char      * /* SOPInstanceUID */ ,
-                char            *newImageFileName)
+                char            *newImageFileName,
+                const char *associationId)
 {
     OFString filename;
-    char prefix[64];
+    char prefix[MAX_PATH];
 	time_t now;
 	size_t time_len = GenerateTime_internal("%Y%m%d%H%M%S", prefix, sizeof(prefix), &now);
 
     const char *m = dcmSOPClassUIDToModality(SOPClassUID);
     if (m==NULL) m = "XX";
-	sprintf_s(prefix + time_len, sizeof(prefix) - time_len, "~%s~%s~%s~%s~", m, handle->callingAE, handle->calledAE, handle->autoPublish);
+    if(associationId)
+	    sprintf_s(prefix + time_len, sizeof(prefix) - time_len, "~%s~%s~%s~%s~%s~", associationId, m, handle->callingAE, handle->calledAE, handle->autoPublish);
+    else
+   	    sprintf_s(prefix + time_len, sizeof(prefix) - time_len, "~%s~%s~%s~%s~", m, handle->callingAE, handle->calledAE, handle->autoPublish);
+
     // unsigned int seed = fnamecreator.hashString(SOPInstanceUID);
     unsigned int seed = (unsigned int)now;
     newImageFileName[0]=0; // return empty string in case of error

@@ -153,7 +153,16 @@ static void exitHook()
 #endif
 }
 
-OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
+/// asso <asso_id> <command> <calling> <called> <auto_flag>
+static string associationLable;
+static void generateLabel(DcmQueryRetrieveStoreContext *pc)
+{
+	stringstream strmbuf;
+    strmbuf << "asso " << pc->getAssociationId() << " store " << pc->callingAPTitle << " " << pc->calledAPTitle << " " << configPtr->getAutoPublish(pc->calledAPTitle) << endl;
+	associationLable = strmbuf.str();
+}
+
+static OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 {
 	if(!com_is_init) com_is_init = SUCCEEDED(CoInitialize(NULL));
 
@@ -169,32 +178,29 @@ OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 	pds->findAndGetString(DCM_StudyDate, studyDate);
 	pds->findAndGetString(DCM_AccessionNumber, accessionNumber);
 
+	stringstream strmbuf;
+	strmbuf << pc->getFileName() << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getElement() << " " << studyUID << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getElement() << " " << seriesUID << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getElement() << " " << instanceUID << endl;
+    strmbuf << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() << " " << xfer.getXferID() << endl;
+    strmbuf << hex << setw(4) << setfill('0') << DCM_Modality.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_Modality.getElement() << " " << modality << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getElement() << " " << accessionNumber << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyDate.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_StudyDate.getElement() << " " << studyDate << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_PatientID.getElement() << " " << patientID << endl;
 	string patientsNameSrc((patientsName == NULL || *patientsName == '\0') ? "(NULL)" : patientsName);
 	STRING_TRIM(patientsNameSrc);
 	size_t bufsize = patientsNameSrc.length() * 4 + 1;
 	char *b32name = new char[bufsize];
 	encodeBase32(patientsNameSrc.c_str(), b32name, bufsize);
-
-	stringstream strmbuf;
-	strmbuf << "rec " << modality << " " << pc->callingAPTitle << " " << pc->calledAPTitle << " " << configPtr->getAutoPublish(pc->calledAPTitle) << endl;
-	string label = strmbuf.str();
-	strmbuf.str(string());
-	strmbuf.clear();
-	strmbuf << pc->getFileName() << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getElement() << " " << studyUID << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getElement() << " " << seriesUID << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getElement() << " " << instanceUID << endl;
-    strmbuf << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() << " " << xfer.getXferShortName() << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getElement() << " " << accessionNumber << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_PatientID.getElement() << " " << patientID << endl;
 	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientsName.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_PatientsName.getElement() << " " << b32name << endl;
 	delete b32name;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyDate.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_StudyDate.getElement() << " " << studyDate << endl;
 	string body = strmbuf.str();
-	if(!SendCommonMessageToQueue(label.c_str(), body.c_str(), MQ_PRIORITY_RECEIVED, NULL))
+    if(associationLable.empty()) generateLabel(pc);
+	if(!SendCommonMessageToQueue(associationLable.c_str(), body.c_str(), MQ_PRIORITY_RECEIVED, NULL))
 	{
 		cerr << "Send message to queue error:" << endl;
-		cerr << "label: " << label << endl;
+		cerr << "label: " << associationLable << endl;
 		cerr << "body:" << endl;
 		cerr << body << endl;
 	}
@@ -703,7 +709,6 @@ main(int argc, char *argv[])
 			SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, &protoInfo, 0, WSA_FLAG_OVERLAPPED);
 			dcmExternalSocketHandle.set((int)sock);
 			if(options.debug_) COUT << "external sock " << (int)sock << endl;
-			CloseHandle(hStdIn);
 		}
 		else
 		{
@@ -788,7 +793,26 @@ main(int argc, char *argv[])
     /* loop waiting for associations */
     while (cond.good())
     {
+        associationLable.clear();
 		cond = scp.waitForAssociation(options.net_);
+        if((options.singleProcess_ || options.forkedChild_) && scp.getStoreResult() != STORE_NONE)
+        {
+            string::size_type endOfId = associationLable.find(' ', 5);
+            if(endOfId != string::npos)
+            {
+                string assoCmdClose;
+                assoCmdClose.reserve(32);
+                assoCmdClose = associationLable.substr(0, endOfId);  // asso <asso id>
+                assoCmdClose += scp.getStoreResult() == STORE_RELEASE ? " release" : " abort";
+                if(!SendCommonMessageToQueue(assoCmdClose.c_str(), "", MQ_PRIORITY_RECEIVED, NULL))
+	            {
+		            cerr << "Send message to queue error:" << endl;
+		            cerr << "command: " << assoCmdClose << endl;
+	            }
+            }
+            else
+                cerr << "can't find association ID: " << associationLable << endl;
+        }
 		if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */
 		if (options.forkedChild_) break;
 		if (GetSignalInterruptValue()) break;
