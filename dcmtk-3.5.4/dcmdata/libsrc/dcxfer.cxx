@@ -29,7 +29,7 @@
  *  CVS/RCS Log at end of file
  *
  */
-
+#include <algorithm>
 #include "dcmtk/config/osconfig.h"    /* make sure OS specific configuration is included first */
 #include "dcmtk/dcmdata/dcxfer.h"
 #include "dcmtk/dcmdata/dcuid.h"
@@ -368,44 +368,28 @@ DcmXfer::DcmXfer(const char* xferName_xferID)
     JPEGProcess12(0L),
     streamCompression(ESC_none)
 {
-    const char* xname = xferName_xferID;
-    if (xname != NULL)
+    if (xferName_xferID == NULL) return;
+    const string xname(xferName_xferID);
+    bool isName = false,
+        isUID = all_of(xname.begin(), xname.end(), [](const char c){ return (c >= '0' && c <= '9') || c == '.'; });
+    if(!isUID) isName = any_of(xname.begin(), xname.end(), [](const char c){ return c == ' '; }); 
+    if(!isUID && !isName) isName = xname.length() > 13;
+    const S_XferNames *pxn = find_if(XferNames, XferNames + DIM_OF_XferNames, 
+        [isUID, isName, xferName_xferID](const S_XferNames &rXferName){
+            return 0 == strcmp(xferName_xferID, isUID ? rXferName.xferID : (isName ? rXferName.xferName : rXferName.xferShortName));
+        });
+    if (pxn < XferNames + DIM_OF_XferNames)
     {
-        int i = 0;
-        while ((i < DIM_OF_XferNames) && (strcmp(XferNames[i].xferID, xname) != 0))
-            i++;
-        if ((i < DIM_OF_XferNames) && (strcmp(XferNames[i].xferID, xname) == 0))
-        {
-            xferSyn           = XferNames[i].xfer;
-            xferID            = XferNames[i].xferID;
-            xferName          = XferNames[i].xferName;
-            xferShortName     = XferNames[i].xferShortName;
-            byteOrder         = XferNames[i].byteOrder;
-            vrType            = XferNames[i].vrType;
-            encapsulated      = XferNames[i].encapsulated;
-            JPEGProcess8      = XferNames[i].JPEGProcess8;
-            JPEGProcess12     = XferNames[i].JPEGProcess12;
-            streamCompression = XferNames[i].streamCompression;
-        }
-        else
-        {
-            i = 0;
-            while ((i < DIM_OF_XferNames) && (strcmp(XferNames[i].xferName, xname) != 0))
-                i++;
-            if ((i < DIM_OF_XferNames) && (strcmp(XferNames[i].xferName, xname) == 0))
-            {
-                xferSyn           = XferNames[i].xfer;
-                xferID            = XferNames[i].xferID;
-                xferName          = XferNames[i].xferName;
-                xferShortName     = XferNames[i].xferShortName;
-                byteOrder         = XferNames[i].byteOrder;
-                vrType            = XferNames[i].vrType;
-                encapsulated      = XferNames[i].encapsulated;
-                JPEGProcess8      = XferNames[i].JPEGProcess8;
-                JPEGProcess12     = XferNames[i].JPEGProcess12;
-                streamCompression = XferNames[i].streamCompression;
-            }
-        }
+        xferSyn           = pxn->xfer;
+        xferID            = pxn->xferID;
+        xferName          = pxn->xferName;
+        xferShortName     = pxn->xferShortName;
+        byteOrder         = pxn->byteOrder;
+        vrType            = pxn->vrType;
+        encapsulated      = pxn->encapsulated;
+        JPEGProcess8      = pxn->JPEGProcess8;
+        JPEGProcess12     = pxn->JPEGProcess12;
+        streamCompression = pxn->streamCompression;
     }
 }
 

@@ -74,6 +74,9 @@ struct DcmQueryRetrieveConfigAEEntry
 	/// publish mode
 	const char *AutoPublish;
 
+    /// transfer syntax name
+    const char *XferName;
+
     /// name of storage area  
     const char *StorageArea;
 
@@ -165,11 +168,19 @@ public:
    *  get AutoPublish for AETitle
    *  Input : AETitle
    *  Return : 
-   *    PATIENT: auto publish per patient.
    *    STUDY: auto publish per study.
    *    MANUAL: don't auto publish, response message to session queue.
    */
   const char* getAutoPublish(const char *AETitle) const;
+
+  /*
+   *  get transfer syntax name for AETitle
+   *  Input : AETitle
+   *  Return :
+   *    KEEP: don't change xfer syntax, keep original.
+   *    XferName: XferSyntax name.
+   */
+  const char* getXferName(const char *AETitle) const;
 
   /*
    *  get Storage Area for AETitle

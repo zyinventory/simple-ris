@@ -501,6 +501,7 @@ int DcmQueryRetrieveConfig::readAETable(FILE *cnffp, int *lineno)
 
       CNF_Config.AEEntries[noOfAEEntries - 1].ApplicationTitle = parsevalues(&lineptr);
 	  CNF_Config.AEEntries[noOfAEEntries - 1].AutoPublish = parsevalues(&lineptr);
+      CNF_Config.AEEntries[noOfAEEntries - 1].XferName = parsevalues(&lineptr);
       CNF_Config.AEEntries[noOfAEEntries - 1].StorageArea = parsevalues(&lineptr);
       CNF_Config.AEEntries[noOfAEEntries - 1].Access = parsevalues(&lineptr);
       CNF_Config.AEEntries[noOfAEEntries - 1].StorageQuota = parseQuota(&lineptr);
@@ -866,6 +867,15 @@ const char* DcmQueryRetrieveConfig::getAutoPublish(const char *AETitle) const
    for(int i = 0; i < CNF_Config.noOfAEEntries; i++) {
       if (!strcmp(AETitle, CNF_Config.AEEntries[i].ApplicationTitle))
 		  return CNF_Config.AEEntries[i].AutoPublish;
+   }
+   return NULL;
+}
+
+const char* DcmQueryRetrieveConfig::getXferName(const char *AETitle) const
+{
+   for(int i = 0; i < CNF_Config.noOfAEEntries; i++) {
+      if (!strcmp(AETitle, CNF_Config.AEEntries[i].ApplicationTitle))
+          return CNF_Config.AEEntries[i].XferName;
    }
    return NULL;
 }
