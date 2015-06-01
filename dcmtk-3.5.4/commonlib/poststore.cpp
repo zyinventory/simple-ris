@@ -477,9 +477,9 @@ COMMONLIB_API const char* detectMediaType(size_t *pSize)
 {
 	CSimpleIni ini(false, false, false);
 	SI_Error rc = SI_OK;
-	for(int i = 0; i < 50; ++i)
+	for(int i = 0; i < 500; ++i)
 	{
-		rc = ini.LoadFile("..\\orders\\TDBStatus.txt");
+		rc = ini.LoadFile(TDB_STATUS);
 		if(rc >= 0) break;
 		Sleep(10);
 	}
@@ -1026,7 +1026,13 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
     CSimpleIni ini(false, false, false);
     //std::ifstream instream;
     //instream.open("..\\orders\\TDBStatus.txt", std::ifstream::in | std::ifstream::binary, _SH_DENYNO);
-	SI_Error rc = ini.LoadFile(ini_path);
+	SI_Error rc = SI_OK;
+	for(int i = 0; i < 500; ++i)
+	{
+		rc = ini.LoadFile(ini_path);
+		if(rc >= 0) break;
+		Sleep(10);
+	}
 	//instream.close();
     if (rc < 0) {
 		valid_publisher = "error:没有任务";
