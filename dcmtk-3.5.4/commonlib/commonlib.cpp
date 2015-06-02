@@ -256,3 +256,31 @@ COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
 	}
 	return 0;
 }
+
+static struct _timeb storeTimeLast = {0, 0, 0, 0};
+COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t buf_size)
+{
+    struct _timeb storeTimeThis;
+    if(buf_size < 30) return -1;
+
+    _ftime_s(&storeTimeThis);
+    if(storeTimeThis.time < storeTimeLast.time || (storeTimeThis.time == storeTimeLast.time && storeTimeThis.millitm <= storeTimeLast.millitm))
+    {
+        if(storeTimeLast.millitm == 999)
+        {
+            ++storeTimeLast.time;
+            storeTimeLast.millitm = 0;
+        }
+        else
+            ++storeTimeLast.millitm;
+        storeTimeThis = storeTimeLast;
+    }
+    else
+        storeTimeLast = storeTimeThis;
+
+    std::stringstream strmbuf;
+    strmbuf << prefix << storeTimeThis.time << "." << std::setw(3) << std::setfill('0') << storeTimeThis.millitm;
+    string s = strmbuf.str();
+    strcpy_s(pbuf, buf_size, s.c_str());
+    return s.length();
+}

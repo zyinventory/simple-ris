@@ -31,6 +31,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
 #include <regex>
 
 #include <signal.h>
@@ -38,3 +39,4 @@
 #include <io.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/timeb.h>
