@@ -279,7 +279,7 @@ COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t b
         storeTimeLast = storeTimeThis;
 
     std::stringstream strmbuf;
-    strmbuf << prefix << storeTimeThis.time << "." << std::setw(3) << std::setfill('0') << storeTimeThis.millitm;
+    strmbuf << prefix << storeTimeThis.time << "-" << std::setw(3) << std::setfill('0') << storeTimeThis.millitm;
     string s = strmbuf.str();
     strcpy_s(pbuf, buf_size, s.c_str());
     return s.length();
