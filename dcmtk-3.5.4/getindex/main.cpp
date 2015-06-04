@@ -356,6 +356,7 @@ static bool generateJDF(Volume &vol, char *volbufNoSeq, const char *mediaType, c
 
 static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_t prefixLen, const char *mediaType, bool isPatient, char *jobPrefix)
 {
+#if (!defined _DEBUG) && (!defined SKIP_ENCRYPTION_KEY)
 	char rw_passwd[9] = "";
 	if(InitiateLock(0))
 	{
@@ -380,7 +381,7 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_
 		index_errlog << "init lock failed:" << hex << LYFGetLastErr() << endl;
 		return;
 	}
-
+#endif //(!defined _DEBUG) && (!defined SKIP_ENCRYPTION_KEY)
     char timeBuffer[36];
     GetNextUniqueNo("job_", timeBuffer, sizeof(timeBuffer));
 
@@ -442,11 +443,17 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_
 			const Volume &vol = *itv;
 			const char *timeString = timeBuffer;
 			if(!vol.valid) continue;
+#if (!defined _DEBUG) && (!defined SKIP_ENCRYPTION_KEY)
 			AuthenWrapper(index_errlog, rw_passwd, [&vol, &jdfpath, timeString](ostream &errlog)-> int{
+#endif //(!defined _DEBUG) && (!defined SKIP_ENCRYPTION_KEY)
 				char buffer[MAX_PATH];
 				sprintf_s(buffer, "..\\orders\\%s_%d.jdf", timeString, vol.sequence);
+#if (defined _DEBUG) || (defined SKIP_ENCRYPTION_KEY)
+                rename(jdfpath.c_str(), buffer);
+#else
 				return rename(jdfpath.c_str(), buffer);
 			});
+#endif //(defined _DEBUG) || (defined SKIP_ENCRYPTION_KEY)
 		}
 		else
 			index_errlog << "create JDF file " << jdfpath << " failure." << endl;
