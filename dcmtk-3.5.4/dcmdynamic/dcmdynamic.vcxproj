@@ -57,8 +57,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;netapi32.lib;$(SolutionDir)ofstd\libsrc\$(ConfigurationName)\ofstd.lib;$(SolutionDir)dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;libz.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\thirdparty-3.5.4\zlib-1.2.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;netapi32.lib;$(SolutionDir)ofstd\libsrc\$(ConfigurationName)\ofstd.lib;$(SolutionDir)dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;zlib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -77,8 +77,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;netapi32.lib;$(SolutionDir)ofstd\libsrc\$(ConfigurationName)\ofstd.lib;$(SolutionDir)dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;libz.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\thirdparty-3.5.4\zlib-1.2.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;netapi32.lib;$(SolutionDir)ofstd\libsrc\$(ConfigurationName)\ofstd.lib;$(SolutionDir)dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;zlib_o.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
