@@ -98,11 +98,9 @@ public:
     void setFileName(const char *fn) { fileName = fn; }
 
     const string& getAssociationId() const { return associationId; }
-    void setAssociationId(struct _timeb const *st)
+    void setAssociationId(const char *assoId)
     {
-        stringstream strmbuf;
-        strmbuf << st->time << "." << setw(3) << setfill('0') << st->millitm;
-	    associationId = strmbuf.str();
+	    associationId = assoId;
     }
 
     /** callback handler called by the DIMSE_storeProvider callback function.

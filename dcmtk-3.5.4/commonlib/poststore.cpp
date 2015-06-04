@@ -155,7 +155,7 @@ static HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDo
 	hr = pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 	if (FAILED(hr))
 	{
-		cerr << "Failed to CreateInstance on an XML DOM.\n";
+		cerr << "poststore.cpp, getStudyNode(): Failed to CreateInstance on an XML DOM.\n";
 		return hr;
 	}
 	pXMLDom->preserveWhiteSpace = VARIANT_FALSE;
@@ -477,9 +477,9 @@ COMMONLIB_API const char* detectMediaType(size_t *pSize)
 {
 	CSimpleIni ini(false, false, false);
 	SI_Error rc = SI_OK;
-	for(int i = 0; i < 50; ++i)
+	for(int i = 0; i < 500; ++i)
 	{
-		rc = ini.LoadFile("..\\orders\\TDBStatus.txt");
+		rc = ini.LoadFile(TDB_STATUS);
 		if(rc >= 0) break;
 		Sleep(10);
 	}
@@ -536,6 +536,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 	{
 		string pacsBase;
 		size_t requiredSize;
+        char jobIdBuf[41] = "";
 		getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
 		if(requiredSize > 0)
 		{
@@ -549,7 +550,9 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 		{
 			char hashBuf[9];
 			__int64 hashStudy = uidHash(tagValue, hashBuf, sizeof(hashBuf));
-			sprintf_s(buffer, BUFF_SIZE, "%s\\tdd\\%s.jdf", pacsBase.c_str(), tagValue);
+            GetNextUniqueNo("job_", jobIdBuf, sizeof(jobIdBuf));
+			sprintf_s(buffer, BUFF_SIZE, "%s\\tdd\\%s.jdf", pacsBase.c_str(), jobIdBuf);
+
 			string jdfPath(buffer);
 			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s.txt", pacsBase.c_str(), indexBase.c_str(), tag,
 				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tagValue);
@@ -571,6 +574,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 					bool valid_found = SelectValidPublisher(TDB_STATUS, valid_publisher);
 					if(valid_found || valid_publisher.find("error:", 0) == string::npos)
 						ofs << "PUBLISHER=" << valid_publisher << endl;
+                    ofs << "JOB_ID=" << jobIdBuf << endl;
 					ofs << "FORMAT=UDF102" << endl;
 					if(strcmp(MEDIA_AUTO, media))
 						ofs << "DISC_TYPE=" << media << endl;
@@ -599,9 +603,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 				errstrm << "write jdf error" << endl;
 				return -3;
 			}
-			char timeBuffer[16];
-			GenerateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
-			sprintf_s(buffer, BUFF_SIZE, "%s\\orders\\%s_%s.jdf", pacsBase.c_str(), timeBuffer, tagValue);
+			sprintf_s(buffer, BUFF_SIZE, "%s\\orders\\%s.jdf", pacsBase.c_str(), jobIdBuf);
 			if(!rename(jdfPath.c_str(), buffer))
 				return 0;
 			else
@@ -1026,7 +1028,13 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
     CSimpleIni ini(false, false, false);
     //std::ifstream instream;
     //instream.open("..\\orders\\TDBStatus.txt", std::ifstream::in | std::ifstream::binary, _SH_DENYNO);
-	SI_Error rc = ini.LoadFile(ini_path);
+	SI_Error rc = SI_OK;
+	for(int i = 0; i < 500; ++i)
+	{
+		rc = ini.LoadFile(ini_path);
+		if(rc >= 0) break;
+		Sleep(10);
+	}
 	//instream.close();
     if (rc < 0) {
 		valid_publisher = "error:没有任务";
@@ -1107,7 +1115,7 @@ COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int li
 	HRESULT hr = pXmlDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 	if (FAILED(hr))
 	{
-		outputbuf << "Failed to CreateInstance on an XML DOM." << endl;
+		outputbuf << "poststore.cpp, StatusXml(): Failed to CreateInstance on an XML DOM." << endl;
 		return -1;
 	}
 	pXmlDom->preserveWhiteSpace = VARIANT_FALSE;

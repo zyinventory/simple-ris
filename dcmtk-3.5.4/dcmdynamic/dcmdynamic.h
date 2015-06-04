@@ -10,5 +10,5 @@
 #define DCMDYNAMIC_API __declspec(dllimport)
 #endif
 
-DCMDYNAMIC_API int MergeDicomDir(std::list<std::string> &fileNames, const char *opt_output, const char *opt_fileset, std::ostream &errlog, bool verbose);
+DCMDYNAMIC_API int MergeDicomDir(const std::list<std::string> &fileNames, const char *opt_output, const char *opt_fileset, std::ostream &errlog, bool verbose);
 DCMDYNAMIC_API bool DicomDir2Xml(const char *dirfile, const char *xmlfile);

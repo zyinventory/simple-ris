@@ -992,6 +992,9 @@ typedef int(WINAPI *pSnmpUtilOidCpy) (
         OUT AsnObjectIdentifier *pOidDst,
         IN AsnObjectIdentifier *pOidSrc);
 
+typedef int(WINAPI *pSnmpUtilOidFree) (
+        IN OUT AsnObjectIdentifier *pOid);
+
 typedef int(WINAPI *pSnmpUtilOidNCmp) (
         IN AsnObjectIdentifier *pOid1,
         IN AsnObjectIdentifier *pOid2,
@@ -1074,6 +1077,7 @@ static unsigned char *getMACAddress(unsigned char buffer[6])
         if (m_hInst1 >= (HINSTANCE)HINSTANCE_ERROR)
         {
             pSnmpUtilOidCpy m_Copy = (pSnmpUtilOidCpy)GetProcAddress(m_hInst1, "SnmpUtilOidCpy");
+            pSnmpUtilOidFree m_Free = (pSnmpUtilOidFree)GetProcAddress(m_hInst1, "SnmpUtilOidFree");
             pSnmpUtilOidNCmp m_Compare = (pSnmpUtilOidNCmp)GetProcAddress(m_hInst1, "SnmpUtilOidNCmp");
             pSnmpUtilVarBindFree m_BindFree = (pSnmpUtilVarBindFree)GetProcAddress(m_hInst1, "SnmpUtilVarBindFree");
             /* load the "SNMP Internet MIB" dll and get the addresses of the functions necessary */
@@ -1109,6 +1113,8 @@ static unsigned char *getMACAddress(unsigned char buffer[6])
                 varBindList.len = 1;        /* only retrieving one item */
                 m_Copy(&varBind[0].name, &MIB_ifEntryNum);
                 ret = m_Query(SNMP_PDU_GETNEXT, &varBindList, &errorStatus, &errorIndex);
+                m_Free(&varBind[0].name);
+                varBind[0].name = MIB_NULL;
                 varBindList.len = 2;
                 /* copy in the OID of ifType, the type of interface */
                 m_Copy(&varBind[0].name, &MIB_ifEntryType);

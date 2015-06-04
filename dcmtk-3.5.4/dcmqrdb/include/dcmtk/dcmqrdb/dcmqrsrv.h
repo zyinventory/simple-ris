@@ -190,26 +190,7 @@ private:
 
   /// result for STORE command result
   STORE_PROCESSING storeResult;
-  struct _timeb storeTimeThis;
-  static struct _timeb storeTimeLast;
-
-  void setStoreTime()
-  {
-    _ftime_s(&storeTimeThis);
-    if(storeTimeThis.time < storeTimeLast.time || (storeTimeThis.time == storeTimeLast.time && storeTimeThis.millitm <= storeTimeLast.millitm))
-    {
-        if(storeTimeLast.millitm == 999)
-        {
-            ++storeTimeLast.time;
-            storeTimeLast.millitm = 0;
-        }
-        else
-            ++storeTimeLast.millitm;
-        storeTimeThis = storeTimeLast;
-    }
-    else
-        storeTimeLast = storeTimeThis;
-  }
+  char associationId[40];
 
   /// factory object used to create database handles
   const DcmQueryRetrieveDatabaseHandleFactory& factory_;

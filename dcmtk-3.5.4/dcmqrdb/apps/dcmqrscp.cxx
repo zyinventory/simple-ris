@@ -559,12 +559,12 @@ main(int argc, char *argv[])
       {
         app.checkConflict("--write-xfer-little", "--bit-preserving", options.bitPreserving_);
 #ifndef DISABLE_COMPRESSION_EXTENSION
-	app.checkConflict("--write-xfer-little", "--prefer-lossless", options.networkTransferSyntax_==EXS_JPEGProcess14SV1TransferSyntax);
-	app.checkConflict("--write-xfer-little", "--prefer-jpeg8", options.networkTransferSyntax_==EXS_JPEGProcess1TransferSyntax);
-	app.checkConflict("--write-xfer-little", "--prefer-jpeg12", options.networkTransferSyntax_==EXS_JPEGProcess2_4TransferSyntax);
-	app.checkConflict("--write-xfer-little", "--prefer-j2k-lossless", options.networkTransferSyntax_==EXS_JPEG2000LosslessOnly);
-	app.checkConflict("--write-xfer-little", "--prefer-j2k-lossy", options.networkTransferSyntax_==EXS_JPEG2000);
-	app.checkConflict("--write-xfer-little", "--prefer-rle", options.networkTransferSyntax_==EXS_RLELossless);
+	    app.checkConflict("--write-xfer-little", "--prefer-lossless", options.networkTransferSyntax_==EXS_JPEGProcess14SV1TransferSyntax);
+	    app.checkConflict("--write-xfer-little", "--prefer-jpeg8", options.networkTransferSyntax_==EXS_JPEGProcess1TransferSyntax);
+	    app.checkConflict("--write-xfer-little", "--prefer-jpeg12", options.networkTransferSyntax_==EXS_JPEGProcess2_4TransferSyntax);
+	    app.checkConflict("--write-xfer-little", "--prefer-j2k-lossless", options.networkTransferSyntax_==EXS_JPEG2000LosslessOnly);
+	    app.checkConflict("--write-xfer-little", "--prefer-j2k-lossy", options.networkTransferSyntax_==EXS_JPEG2000);
+	    app.checkConflict("--write-xfer-little", "--prefer-rle", options.networkTransferSyntax_==EXS_RLELossless);
         // we don't have to check a conflict for --prefer-deflated because we can always convert that to uncompressed.
 #endif
         options.writeTransferSyntax_ = EXS_LittleEndianExplicit;
@@ -573,12 +573,12 @@ main(int argc, char *argv[])
       {
         app.checkConflict("--write-xfer-big", "--bit-preserving", options.bitPreserving_);
 #ifndef DISABLE_COMPRESSION_EXTENSION
-	app.checkConflict("--write-xfer-big", "--prefer-lossless", options.networkTransferSyntax_==EXS_JPEGProcess14SV1TransferSyntax);
-	app.checkConflict("--write-xfer-big", "--prefer-jpeg8", options.networkTransferSyntax_==EXS_JPEGProcess1TransferSyntax);
-	app.checkConflict("--write-xfer-big", "--prefer-jpeg12", options.networkTransferSyntax_==EXS_JPEGProcess2_4TransferSyntax);
-	app.checkConflict("--write-xfer-big", "--prefer-j2k-lossless", options.networkTransferSyntax_==EXS_JPEG2000LosslessOnly);
-	app.checkConflict("--write-xfer-big", "--prefer-j2k-lossy", options.networkTransferSyntax_==EXS_JPEG2000);
-	app.checkConflict("--write-xfer-big", "--prefer-rle", options.networkTransferSyntax_==EXS_RLELossless);
+	    app.checkConflict("--write-xfer-big", "--prefer-lossless", options.networkTransferSyntax_==EXS_JPEGProcess14SV1TransferSyntax);
+	    app.checkConflict("--write-xfer-big", "--prefer-jpeg8", options.networkTransferSyntax_==EXS_JPEGProcess1TransferSyntax);
+	    app.checkConflict("--write-xfer-big", "--prefer-jpeg12", options.networkTransferSyntax_==EXS_JPEGProcess2_4TransferSyntax);
+	    app.checkConflict("--write-xfer-big", "--prefer-j2k-lossless", options.networkTransferSyntax_==EXS_JPEG2000LosslessOnly);
+	    app.checkConflict("--write-xfer-big", "--prefer-j2k-lossy", options.networkTransferSyntax_==EXS_JPEG2000);
+	    app.checkConflict("--write-xfer-big", "--prefer-rle", options.networkTransferSyntax_==EXS_RLELossless);
         // we don't have to check a conflict for --prefer-deflated because we can always convert that to uncompressed.
 #endif
         options.writeTransferSyntax_ = EXS_BigEndianExplicit;
@@ -587,12 +587,12 @@ main(int argc, char *argv[])
       {
         app.checkConflict("--write-xfer-implicit", "--bit-preserving", options.bitPreserving_);
 #ifndef DISABLE_COMPRESSION_EXTENSION
-	app.checkConflict("--write-xfer-implicit", "--prefer-lossless", options.networkTransferSyntax_==EXS_JPEGProcess14SV1TransferSyntax);
-	app.checkConflict("--write-xfer-implicit", "--prefer-jpeg8", options.networkTransferSyntax_==EXS_JPEGProcess1TransferSyntax);
-	app.checkConflict("--write-xfer-implicit", "--prefer-jpeg12", options.networkTransferSyntax_==EXS_JPEGProcess2_4TransferSyntax);
-	app.checkConflict("--write-xfer-implicit", "--prefer-j2k-lossless", options.networkTransferSyntax_==EXS_JPEG2000LosslessOnly);
-	app.checkConflict("--write-xfer-implicit", "--prefer-j2k-lossy", options.networkTransferSyntax_==EXS_JPEG2000);
-	app.checkConflict("--write-xfer-implicit", "--prefer-rle", options.networkTransferSyntax_==EXS_RLELossless);
+	    app.checkConflict("--write-xfer-implicit", "--prefer-lossless", options.networkTransferSyntax_==EXS_JPEGProcess14SV1TransferSyntax);
+	    app.checkConflict("--write-xfer-implicit", "--prefer-jpeg8", options.networkTransferSyntax_==EXS_JPEGProcess1TransferSyntax);
+	    app.checkConflict("--write-xfer-implicit", "--prefer-jpeg12", options.networkTransferSyntax_==EXS_JPEGProcess2_4TransferSyntax);
+	    app.checkConflict("--write-xfer-implicit", "--prefer-j2k-lossless", options.networkTransferSyntax_==EXS_JPEG2000LosslessOnly);
+	    app.checkConflict("--write-xfer-implicit", "--prefer-j2k-lossy", options.networkTransferSyntax_==EXS_JPEG2000);
+	    app.checkConflict("--write-xfer-implicit", "--prefer-rle", options.networkTransferSyntax_==EXS_RLELossless);
         // we don't have to check a conflict for --prefer-deflated because we can always convert that to uncompressed.
 #endif
         options.writeTransferSyntax_ = EXS_LittleEndianImplicit;

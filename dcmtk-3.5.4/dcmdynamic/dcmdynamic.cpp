@@ -155,7 +155,7 @@ static OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src
 	return EC_IllegalParameter;
 }
 
-DCMDYNAMIC_API int MergeDicomDir(list<string> &fileNames, const char *opt_output, const char *opt_fileset, ostream &errlog, bool verbose)
+DCMDYNAMIC_API int MergeDicomDir(const list<string> &fileNames, const char *opt_output, const char *opt_fileset, ostream &errlog, bool verbose)
 {
 	opt_verbose = verbose;
 	int errCount = 0;
@@ -176,53 +176,60 @@ DCMDYNAMIC_API int MergeDicomDir(list<string> &fileNames, const char *opt_output
 		errlog << "create or open output file " << opt_output << " error" << endl;
 		return -3;
 	}
+    try {
+	    DcmDirectoryRecord *destRoot = &(dest->getRootRecord());
 
-	DcmDirectoryRecord *destRoot = &(dest->getRootRecord());
+	    for(list<string>::const_iterator curr = fileNames.begin(); curr != fileNames.end(); ++curr)
+	    {
+		    DcmDicomDir *src = new DcmDicomDir(curr->c_str());
+		    if (src != NULL)
+		    {
+			    cond = src->error();
+			    if(cond.bad())
+			    {
+				    ++errCount;
+				    errlog << cond.text() << endl;
+			    }
+		    }
+		    else
+		    {
+			    errlog << "open input file " << *curr << " error" << endl;
+			    ++errCount;
+			    continue;
+		    }
+		    if(opt_verbose) errlog << "open input file " << *curr << endl;
 
-	for(list<string>::iterator curr = fileNames.begin(); curr != fileNames.end(); ++curr)
-	{
-		DcmDicomDir *src = new DcmDicomDir((*curr).c_str());
-		if (src != NULL)
-		{
-			cond = src->error();
-			if(cond.bad())
-			{
-				++errCount;
-				errlog << cond.text() << endl;
-			}
-		}
-		else
-		{
-			errlog << "open input file " << *curr << " error" << endl;
-			++errCount;
-			continue;
-		}
-		if(opt_verbose) errlog << "open input file " << *curr << endl;
+		    DcmDirectoryRecord *srcRoot = &(src->getRootRecord());
 
-		DcmDirectoryRecord *srcRoot = &(src->getRootRecord());
-
-		// find patientId in patient
-		DcmDirectoryRecord *patient = NULL;
-		while(patient = srcRoot->nextSub(patient))
-		{
-			cond = mergeToDest(destRoot, patient, errlog);
-			if(cond.bad())
-			{
-				++errCount;
-				errlog << cond.text() << endl;
-			}
-		}
-		delete src;
-	}
-	if(opt_verbose) errlog << "start writing " << dest->getDirFileName() << endl;
-	cond = dest->write(EXS_LittleEndianExplicit, EET_ExplicitLength, EGL_recalcGL);
-	if(opt_verbose) errlog << "write complete" << endl;
-	//printAllImageUID(destRoot, errlog);
-	delete dest;
-	if(cond.bad())
-	{
+		    // find patientId in patient
+		    DcmDirectoryRecord *patient = NULL;
+		    while(patient = srcRoot->nextSub(patient))
+		    {
+			    cond = mergeToDest(destRoot, patient, errlog);
+			    if(cond.bad())
+			    {
+				    ++errCount;
+				    errlog << cond.text() << endl;
+			    }
+		    }
+		    delete src;
+	    }
+	    if(opt_verbose) errlog << "start writing " << dest->getDirFileName() << endl;
+	    cond = dest->write(EXS_LittleEndianExplicit, EET_ExplicitLength, EGL_recalcGL);
+	    if(opt_verbose) errlog << "write complete" << endl;
+	    //printAllImageUID(destRoot, errlog);
+	    delete dest;
+	    if(cond.bad())
+	    {
+		    ++errCount;
+		    errlog << cond.text() << endl;
+	    }
+    } catch(exception &ex) {
+        errlog << "Failed to MergeDicomDir: " << ex.what() << endl;
 		++errCount;
-		errlog << cond.text() << endl;
-	}
+    } catch(...) {
+        errlog << "Failed to MergeDicomDir: unknown" << endl;
+		++errCount;
+    }
 	return errCount;
 }

@@ -104,8 +104,6 @@ static void storeCallback(
  * ============================================================================================================
  */
 
-struct _timeb DcmQueryRetrieveSCP::storeTimeLast = {0LL, 0, 8, 0};
-
 DcmQueryRetrieveSCP::DcmQueryRetrieveSCP(
   const DcmQueryRetrieveConfig& config,
   const DcmQueryRetrieveOptions& options,
@@ -365,6 +363,7 @@ OFCondition DcmQueryRetrieveSCP::moveSCP(T_ASC_Association * assoc, T_DIMSE_C_Mo
     return cond;
 }
 
+int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_size);
 
 OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_StoreRQ * request,
              T_ASC_PresentationContextID presId,
@@ -376,14 +375,10 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
     char imageFileName[MAXPATHLEN+1];
     DcmFileFormat dcmff;
 
-    if(storeResult == STORE_NONE)
-    {
-        storeResult = STORE_BEGIN;
-        setStoreTime();
-    }
-
+    if(storeResult == STORE_NONE) storeResult = STORE_BEGIN;
     DcmQueryRetrieveStoreContext context(dbHandle, options_, STATUS_Success, &dcmff, correctUIDPadding);
-    context.setAssociationId(&storeTimeThis);
+    GetNextUniqueNo_internal("asso_", associationId, sizeof(associationId));
+    context.setAssociationId(associationId);
 	context.cbIndex = cbToDcmQueryRetrieveStoreContext;
 	strcpy_s(context.calledAPTitle, assoc->params->DULparams.calledAPTitle);
 	strcpy_s(context.callingAPTitle, assoc->params->DULparams.callingAPTitle);
