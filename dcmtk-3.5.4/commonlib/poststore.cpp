@@ -155,7 +155,7 @@ static HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDo
 	hr = pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 	if (FAILED(hr))
 	{
-		cerr << "Failed to CreateInstance on an XML DOM.\n";
+		cerr << "poststore.cpp, getStudyNode(): Failed to CreateInstance on an XML DOM.\n";
 		return hr;
 	}
 	pXMLDom->preserveWhiteSpace = VARIANT_FALSE;
@@ -536,6 +536,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 	{
 		string pacsBase;
 		size_t requiredSize;
+        char jobIdBuf[41] = "";
 		getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
 		if(requiredSize > 0)
 		{
@@ -549,7 +550,9 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 		{
 			char hashBuf[9];
 			__int64 hashStudy = uidHash(tagValue, hashBuf, sizeof(hashBuf));
-			sprintf_s(buffer, BUFF_SIZE, "%s\\tdd\\%s.jdf", pacsBase.c_str(), tagValue);
+            GetNextUniqueNo("job_", jobIdBuf, sizeof(jobIdBuf));
+			sprintf_s(buffer, BUFF_SIZE, "%s\\tdd\\%s.jdf", pacsBase.c_str(), jobIdBuf);
+
 			string jdfPath(buffer);
 			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s.txt", pacsBase.c_str(), indexBase.c_str(), tag,
 				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tagValue);
@@ -571,6 +574,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 					bool valid_found = SelectValidPublisher(TDB_STATUS, valid_publisher);
 					if(valid_found || valid_publisher.find("error:", 0) == string::npos)
 						ofs << "PUBLISHER=" << valid_publisher << endl;
+                    ofs << "JOB_ID=" << jobIdBuf << endl;
 					ofs << "FORMAT=UDF102" << endl;
 					if(strcmp(MEDIA_AUTO, media))
 						ofs << "DISC_TYPE=" << media << endl;
@@ -599,9 +603,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 				errstrm << "write jdf error" << endl;
 				return -3;
 			}
-			char timeBuffer[16];
-			generateTime(DATE_FORMAT_COMPACT, timeBuffer, sizeof(timeBuffer));
-			sprintf_s(buffer, BUFF_SIZE, "%s\\orders\\%s_%s.jdf", pacsBase.c_str(), timeBuffer, tagValue);
+			sprintf_s(buffer, BUFF_SIZE, "%s\\orders\\%s.jdf", pacsBase.c_str(), jobIdBuf);
 			if(!rename(jdfPath.c_str(), buffer))
 				return 0;
 			else
@@ -1113,7 +1115,7 @@ COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int li
 	HRESULT hr = pXmlDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 	if (FAILED(hr))
 	{
-		outputbuf << "Failed to CreateInstance on an XML DOM." << endl;
+		outputbuf << "poststore.cpp, StatusXml(): Failed to CreateInstance on an XML DOM." << endl;
 		return -1;
 	}
 	pXmlDom->preserveWhiteSpace = VARIANT_FALSE;
