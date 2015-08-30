@@ -206,6 +206,7 @@ OFBool             opt_forkedChild = OFFalse;
 OFBool             opt_execSync = OFFalse;            // default: execute in background
 OFBool             opt_disableCompress = OFFalse;
 OFBool             opt_disableMSMQ = OFFalse;
+OFBool             opt_disableIntegritySignal = OFFalse;
 OFBool             opt_instanceUniquePath = OFFalse;
 #endif
 
@@ -457,7 +458,8 @@ int main(int argc, char *argv[])
 #ifdef _WIN32
     cmd.addOption(  "--exec-sync",              "-xs",       "execute command synchronously in foreground" );
 	cmd.addOption(  "--disable-compress",       "-dc",       "disable compress");
-    cmd.addOption(  "--disable-msmq",			"-dm",       "don't send message to queue, execute command directly" );
+    cmd.addOption(  "--disable-integrity-signal","-dig",     "always send \"not integrity\" signal, affect executeOnEndOfStudy.");
+    cmd.addOption(  "--disable-msmq",			"-dm",       "don't send message to queue, execute command directly, affect executeOnEndOfStudy and executeOnReception. --disable-msmq shall set --disable-integrity-signal true." );
     cmd.addOption(  "--instance-unique-path",	"-iu",       "instance path is unique" );
 #endif
 
@@ -875,7 +877,8 @@ int main(int argc, char *argv[])
 #ifdef _WIN32
     if (cmd.findOption("--exec-sync")) opt_execSync = OFTrue;
 	if (cmd.findOption("--disable-compress")) opt_disableCompress = OFTrue;
-	if (cmd.findOption("--disable-msmq")) opt_disableMSMQ = OFTrue;
+    if (cmd.findOption("--disable-integrity-signal")) opt_disableIntegritySignal = OFTrue;
+    if (cmd.findOption("--disable-msmq")) { opt_disableMSMQ = OFTrue; opt_disableIntegritySignal = OFTrue; }
 	if (cmd.findOption("--instance-unique-path")) opt_instanceUniquePath = OFTrue;
 #endif
   }
@@ -2559,7 +2562,7 @@ static void executeOnEndOfStudy()
 	executeCommand( cmd );
   else
   {
-	if(assoReleaseOK)
+	if(assoReleaseOK && ! opt_disableIntegritySignal)
 	{
 		SendArchiveMessageToQueue(ARCHIVE_STUDY, lastStudyXml.c_str(), cmd.c_str());
 		time_header_out(COUT) << "send message: " << ARCHIVE_STUDY << " : " << lastStudyXml.c_str() << ',' << cmd << endl;
