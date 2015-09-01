@@ -300,7 +300,7 @@ int statusCharge(const char *flag)
 int removeStudy(const char *flag)
 {
 	ostringstream errorMessageStream;
-	char studyUID[65], patientID[65], indexPath[MAX_PATH];
+	char studyUID[65], patientID[65], indexPath[MAX_PATH], datebuf[16];
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
 		char hashBuf[9];
@@ -330,14 +330,29 @@ int removeStudy(const char *flag)
 
 	if(cgiFormNotFound != cgiFormString("patientID", patientID, 65) && strlen(patientID) > 0)
 	{
-		if(!deleteStudyFromPatientIndex(patientID, studyUID))
+		if(!deleteStudyFromIndex("00100020", patientID, studyUID))
 			errorMessageStream << "»¼ÕßË÷ÒýÉ¾³ý´íÎó" << endl;
 	}
 	else
 		errorMessageStream << "»¼ÕßID´íÎó" << endl;
 
-	string errorMessage = errorMessageStream.str();
-	errorMessageStream.clear();
+    if(cgiFormNotFound != cgiFormString("receiveDate", datebuf, sizeof(datebuf)) && strlen(datebuf) > 0)
+    {
+		if(!deleteStudyFromIndex("receive", datebuf, studyUID))
+			errorMessageStream << "´«ÊäÈÕÆÚË÷ÒýÉ¾³ý´íÎó" << endl;
+	}
+	else
+		errorMessageStream << "´«ÊäÈÕÆÚ´íÎó" << endl;
+    
+    if(cgiFormNotFound != cgiFormString("studyDate", datebuf, sizeof(datebuf)) && strlen(datebuf) > 0)
+    {
+		if(!deleteStudyFromIndex("00080020", datebuf, studyUID))
+			errorMessageStream << "¼ì²éÈÕÆÚË÷ÒýÉ¾³ý´íÎó" << endl;
+	}
+	else
+		errorMessageStream << "¼ì²éÈÕÆÚ´íÎó" << endl;
+
+    string errorMessage = errorMessageStream.str();
 	fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", errorMessage.size());
 	fprintf(cgiOut, errorMessage.c_str());
 	return 0;

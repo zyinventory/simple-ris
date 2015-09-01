@@ -151,7 +151,9 @@
                 <xsl:value-of select="@PatientID" />
               </xsl:attribute>
             </input>
-            <input type="submit" value="É¾³ý" />
+			<input type="hidden" name="studyDate" />
+			<input type="hidden" name="receiveDate" />
+			<input type="submit" value="É¾³ý" />
           </form>
         </td>
 			</tr>

@@ -655,14 +655,22 @@ static HRESULT mergeStudy(MSXML2::IXMLDOMNodePtr src, MSXML2::IXMLDOMNodePtr des
 	return S_OK;
 }
 
-COMMONLIB_API bool deleteStudyFromPatientIndex(const char *patientID, const char *studyUid)
+COMMONLIB_API bool deleteStudyFromIndex(const char *mode, const char *modeValue, const char *studyUid)
 {
 	HANDLE fileMutex = NULL;
-	char buffer[1024], hashBuf[9];
-
-	__int64 hash = uidHash(patientID, hashBuf, sizeof(hashBuf));
-	sprintf_s(buffer, 1024, "indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml",
-		hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], patientID);
+	char buffer[1024];
+    if(strcmp(mode, "00100020") == 0)   // patient id
+    {
+        char hashBuf[9];
+	    __int64 hash = uidHash(modeValue, hashBuf, sizeof(hashBuf));
+	    sprintf_s(buffer, sizeof(buffer), "indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml",
+		    hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], modeValue);
+    }
+    else                                // transfer or study date
+    {
+        int buflen = sprintf_s(buffer, sizeof(buffer), "indexdir\\%s\\%s.xml", mode, modeValue);
+        replace(buffer, buffer + buflen, '/', '\\');
+    }
 	string indexPath(buffer);
 	if(_access_s(buffer, 0)) return true; // if xml file dose not exist, return true;
 	try
@@ -673,13 +681,22 @@ COMMONLIB_API bool deleteStudyFromPatientIndex(const char *patientID, const char
 		_variant_t xmlsrc(buffer);
 		oldIndex.CreateInstance(__uuidof(MSXML2::DOMDocument30));
 		oldIndex->load(xmlsrc);
-
-		sprintf_s(buffer, BUFF_SIZE, "/wado_query/Patient/Study[@StudyInstanceUID='%s']", studyUid);
-		MSXML2::IXMLDOMNodePtr existStudy = oldIndex->selectSingleNode(buffer);
-		if(existStudy)
+        if(strcmp(mode, "00100020") == 0)   // patient id
+		    sprintf_s(buffer, BUFF_SIZE, "/wado_query/Patient/Study[@StudyInstanceUID='%s']", studyUid);
+        else                                // transfer or study date
+            sprintf_s(buffer, BUFF_SIZE, "/Collection/Study[text()='%s']", studyUid);
+        MSXML2::IXMLDOMNodeListPtr studies = oldIndex->selectNodes(buffer);
+        if(studies && studies->Getlength() > 0)
 		{
-			oldIndex->lastChild->lastChild->removeChild(existStudy); // /wado_query/Patient ->removeChild(existStudy)
-			//oldIndex->firstChild->attributes->getNamedItem("encoding")->text = "gbk";
+            for(long i = 0; i < studies->Getlength(); ++i)
+            {
+                MSXML2::IXMLDOMNodePtr cur = studies->Getitem(i);
+                if(strcmp(mode, "00100020") == 0)   // patient id
+			        oldIndex->lastChild->lastChild->removeChild(cur); // /wado_query/Patient ->removeChild(cur)
+                else                                // transfer or study date
+                    oldIndex->lastChild->removeChild(cur); // /wado_query/Patient ->removeChild(cur)
+			    //oldIndex->firstChild->attributes->getNamedItem("encoding")->text = "gbk";
+            }
 			oldIndex->save(xmlsrc);
 		}
 		if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
