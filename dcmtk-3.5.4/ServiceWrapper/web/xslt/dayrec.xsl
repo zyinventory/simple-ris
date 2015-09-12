@@ -139,7 +139,7 @@
             </input>
             <input type="submit" value="¿ÌÂ¼" />
           </form>
-          <form target="ppstatus" style="display:inline" method="POST" action="cgi-bin/getindex.exe" class="confirmDelete">
+          <form style="display:inline" method="POST" action="cgi-bin/getindex.exe" class="confirmDelete">
             <input type="hidden" name="remove" value="1" />
             <input type="hidden" name="studyUID">
               <xsl:attribute name="value">
@@ -151,8 +151,13 @@
                 <xsl:value-of select="@PatientID" />
               </xsl:attribute>
             </input>
-			<input type="hidden" name="studyDate" />
+			<input type="hidden" name="studyDate">
+				<xsl:attribute name="value">
+					<xsl:value-of select="@StudyDate" />
+				</xsl:attribute>
+			</input>
 			<input type="hidden" name="receiveDate" />
+			<input type="hidden" name="mode" />
 			<input type="submit" value="É¾³ý" />
           </form>
         </td>
