@@ -300,7 +300,7 @@ int statusCharge(const char *flag)
 int removeStudy(const char *flag)
 {
 	ostringstream errorMessageStream;
-	char studyUID[65], patientID[65], indexPath[MAX_PATH];
+	char studyUID[65], patientID[65], indexPath[MAX_PATH], studyDateBuf[16], receiveDateBuf[16], mode[16];
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
 		char hashBuf[9];
@@ -319,28 +319,64 @@ int removeStudy(const char *flag)
 			if(rmTxt && errno == ENOENT) rmTxt = 0;
 			if(rmXml || rmTxt)
 				errorMessageStream << "¼ì²éÍ¼ÏñÉ¾³ý³É¹¦, ¼ì²éË÷ÒýÉ¾³ýÊ§°Ü" << endl;
-			else
-				errorMessageStream << "¼ì²éÉ¾³ý³É¹¦" << endl;
 		}
 		else
 			errorMessageStream << "¼ì²éÉ¾³ýÊ§°Ü" << endl;
 	}
 	else
+    {
 		errorMessageStream << "¼ì²éUID´íÎó" << endl;
+        goto remove_study_study_uid_error;
+    }
+
+    if(cgiFormNotFound == cgiFormString("mode", mode, sizeof(mode))) mode[0] = '\0';
 
 	if(cgiFormNotFound != cgiFormString("patientID", patientID, 65) && strlen(patientID) > 0)
 	{
-		if(!deleteStudyFromPatientIndex(patientID, studyUID))
+		if(!deleteStudyFromIndex("00100020", patientID, studyUID))
 			errorMessageStream << "»¼ÕßË÷ÒýÉ¾³ý´íÎó" << endl;
 	}
-	else
+	else if(strcmp(mode, "00100020") == 0)
 		errorMessageStream << "»¼ÕßID´íÎó" << endl;
 
-	string errorMessage = errorMessageStream.str();
-	errorMessageStream.clear();
+    if(cgiFormNotFound != cgiFormString("receiveDate", receiveDateBuf, sizeof(receiveDateBuf)) && strlen(receiveDateBuf) > 0)
+    {
+		if(!deleteStudyFromIndex("receive", receiveDateBuf, studyUID))
+			errorMessageStream << "´«ÊäÈÕÆÚË÷ÒýÉ¾³ý´íÎó" << endl;
+	}
+	else if(strcmp(mode, "receive") == 0)
+		errorMessageStream << "´«ÊäÈÕÆÚ´íÎó" << endl;
+    
+    if(cgiFormNotFound != cgiFormString("studyDate", studyDateBuf, sizeof(studyDateBuf)) && strlen(studyDateBuf) > 0)
+    {
+		if(!deleteStudyFromIndex("00080020", studyDateBuf, studyUID))
+			errorMessageStream << "¼ì²éÈÕÆÚË÷ÒýÉ¾³ý´íÎó" << endl;
+	}
+	else if(strcmp(mode, "00080020") == 0)
+		errorMessageStream << "¼ì²éÈÕÆÚ´íÎó" << endl;
+
+remove_study_study_uid_error:
+    string errorMessage = errorMessageStream.str();
+    if(errorMessage.empty()) goto remove_study_no_error;
+remove_study_error:
 	fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", errorMessage.size());
 	fprintf(cgiOut, errorMessage.c_str());
-	return 0;
+    return 0;
+remove_study_no_error:
+    if(strcmp(mode, "00100020") == 0)
+        sprintf_s(indexPath, "../index.htm?mode=00100020&patientID=%s", patientID);
+    else if(strcmp(mode, "00080020") == 0)
+        sprintf_s(indexPath, "../index.htm?mode=00080020&date=%s", studyDateBuf);
+    else if(strcmp(mode, "receive") == 0)
+        sprintf_s(indexPath, "../index.htm?mode=receive&date=%s", receiveDateBuf);
+    else
+    {
+        errorMessage = "mode´íÎó";
+        goto remove_study_error;
+    }
+    cgiHeaderLocation(indexPath);
+    cgiHeaderContentType("text/html");
+    return 0;
 }
 
 size_t collectionToFileNameList(const char *xmlpath, list<Study> &studies, bool isPatient)

@@ -144,7 +144,7 @@ int initSecurity(int lockNumber, string &lockString)
 	cerr << licenseFileName << " => RSA sign => " << licenseRSAEnc << endl;
 
 	unsigned char inBuf[KEY_SIZE / 8], midBuf[KEY_SIZE / 8], outBuf[KEY_SIZE / 8];
-	ifstream licenseRSAStream(licenseRSAEnc);
+	ifstream licenseRSAStream(licenseRSAEnc, ios_base::binary | ios_base::in);
 	licenseRSAStream.read((char*)inBuf, KEY_SIZE / 8);
 	if(licenseRSAStream.fail())
 	{

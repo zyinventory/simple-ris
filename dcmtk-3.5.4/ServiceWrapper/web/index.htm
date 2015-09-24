@@ -29,7 +29,7 @@
 	//<![CDATA[
 	    jQuery(document).ready(function () {
 	        $("a.button-style").button();
-	        var prefix = location.href.substr(0, location.href.lastIndexOf('/') + 1);
+	        var prefix = location.href.substr(0, location.href.lastIndexOf('/index.htm') + 1);
 
 	        $.ajaxSetup({ async: false, cache: false });
 	        var result = $.get(prefix + 'xslt/dayrec.xsl', {}, function (body, txt, ref) { xslDoc = body; }, 'xml');
@@ -61,7 +61,8 @@
 	            setColorBar('.stacker2', 'lime');
 	        }
 
-	        var today = $.datepicker.formatDate('yy/mm/dd', new Date());
+	        var today = getQueryString('date');
+            if(!today) today = $.datepicker.formatDate('yy/mm/dd', new Date());
 	        picker = $('#datepicker');
 	        picker.attr('readonly', true);
 	        picker.val(today);

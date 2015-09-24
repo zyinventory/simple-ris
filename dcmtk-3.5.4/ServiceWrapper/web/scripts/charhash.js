@@ -148,6 +148,8 @@ function displayContent(textValue, pickerWrapper) {
         if (getQueryString('debug') == '1') alertMessage(textValue + ' 没有检查, ' + result.statusText);
     }
     $('form.confirmDelete').submit(function () {
+        this.mode.value = mode;
+        if (mode == 'receive') this.receiveDate.value = textValue;
         return confirm('是否删除检查？');
     });
 }
