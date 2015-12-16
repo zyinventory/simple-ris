@@ -39,6 +39,7 @@
 #define INCLUDE_CSTDARG
 #define INCLUDE_CERRNO
 #include "dcmtk/ofstd/ofstdinc.h"
+#include <direct.h>
 
 #ifdef HAVE_GUSI_H
 #include <GUSI.h>
@@ -116,6 +117,7 @@ T_DIMSE_BlockingMode opt_blockMode = DIMSE_BLOCKING;
 int               opt_dimse_timeout = 0;
 int               opt_acse_timeout = 30;
 OFBool            opt_ignorePendingDatasets = OFTrue;
+OFString          opt_sessionId;
 
 static T_ASC_Network *net = NULL; /* the global DICOM network */
 static DcmDataset *overrideKeys = NULL;
@@ -292,6 +294,7 @@ main(int argc, char *argv[])
       opt5 += APPLICATIONTITLE;
       opt5 += ")";
       cmd.addOption("--move",                   "-aem",  1,  "aetitle: string", opt5.c_str());
+      cmd.addOption("--session",                "-se",   1,  "session id: string", "move session id");
     cmd.addSubGroup("preferred network transfer syntaxes (incoming associations):");
       cmd.addOption("--prefer-uncompr",         "+x=",       "prefer explicit VR local byte order (default)");
       cmd.addOption("--prefer-little",          "+xe",       "prefer explicit VR little endian TS");
@@ -423,6 +426,7 @@ main(int argc, char *argv[])
       if (cmd.findOption("--aetitle")) app.checkValue(cmd.getValue(opt_ourTitle));
       if (cmd.findOption("--call")) app.checkValue(cmd.getValue(opt_peerTitle));
       if (cmd.findOption("--move")) app.checkValue(cmd.getValue(opt_moveDestination));
+      if (cmd.findOption("--session")) app.checkValue(cmd.getValue(opt_sessionId));
       cmd.beginOptionBlock();
       if (cmd.findOption("--prefer-uncompr"))  opt_in_networkTransferSyntax = EXS_Unknown;
       if (cmd.findOption("--prefer-little"))   opt_in_networkTransferSyntax = EXS_LittleEndianExplicit;
@@ -630,6 +634,12 @@ main(int argc, char *argv[])
         }
     }
 #endif
+
+    if(!opt_sessionId.empty())
+    {
+        int mkdir_ret =_mkdir(opt_sessionId.c_str());
+        if(mkdir_ret == 0 || errno == EEXIST) _chdir(opt_sessionId.c_str());
+    }
 
     /* network for move request and responses */
     T_ASC_NetworkRole role = (opt_retrievePort > 0) ? NET_ACCEPTORREQUESTOR : NET_REQUESTOR;
