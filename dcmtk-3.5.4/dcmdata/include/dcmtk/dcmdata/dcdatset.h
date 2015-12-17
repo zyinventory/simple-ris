@@ -251,6 +251,10 @@ class DcmDataset
      */
     void removeAllButCurrentRepresentations();
 
+    /** write brief info to ostream, such as OriginalXfer, DCM_PatientID, 
+     *  DCM_SOPInstanceUID, DCM_Modality, DCM_StudyDate, etc.
+     */
+    OFBool briefToStream(ostream &strm);
 
   private:
 

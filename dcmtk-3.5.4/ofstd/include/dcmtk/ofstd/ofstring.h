@@ -43,9 +43,13 @@
 */
 
 #include <string>
+#include <algorithm>
 
 #define OFString std::string
 #define OFString_npos std::string::npos
+
+// must set locale correctly, otherwise isspace() will crash.
+#define STRING_TRIM(str) str.erase(find_if(str.rbegin(), str.rend(), std::not1(std::ptr_fun<int, int>(::isspace))).base(), str.end()); str.erase(str.begin(), find_if(str.begin(), str.end(), std::not1(std::ptr_fun<int, int>(::isspace))))
 
 #else /* not HAVE_STD_STRING */
 

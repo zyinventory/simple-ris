@@ -591,6 +591,34 @@ void DcmDataset::removeAllButOriginalRepresentations()
     }
 }
 
+OFBool DcmDataset::briefToStream(ostream &strmbuf)
+{
+	const char *patientID, *patientsName = NULL, *studyUID, *seriesUID, *instanceUID, *modality, *studyDate, *accessionNumber;
+	findAndGetString(DCM_PatientID, patientID);
+	findAndGetString(DCM_PatientsName, patientsName);
+	findAndGetString(DCM_StudyInstanceUID, studyUID);
+	findAndGetString(DCM_SeriesInstanceUID, seriesUID);
+	findAndGetString(DCM_SOPInstanceUID, instanceUID);
+	findAndGetString(DCM_Modality, modality);
+	findAndGetString(DCM_StudyDate, studyDate);
+	findAndGetString(DCM_AccessionNumber, accessionNumber);
+
+	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getGroup() << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getElement() << " " << studyUID << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getElement() << " " << seriesUID << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getElement() << " " << instanceUID << endl;
+    DcmXfer xfer(Xfer);
+    strmbuf << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() << " " << xfer.getXferID() << endl;
+    strmbuf << hex << setw(4) << setfill('0') << DCM_Modality.getGroup() << hex << setw(4) << setfill('0') << DCM_Modality.getElement() << " " << modality << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getGroup() << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getElement() << " " << accessionNumber << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyDate.getGroup() << hex << setw(4) << setfill('0') << DCM_StudyDate.getElement() << " " << studyDate << endl;
+	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientID.getGroup() << hex << setw(4) << setfill('0') << DCM_PatientID.getElement() << " " << patientID << endl;
+	string patientsNameSrc((patientsName == NULL || *patientsName == '\0') ? "(NULL)" : patientsName);
+	STRING_TRIM(patientsNameSrc);
+    OFString b64buf;
+    strmbuf << hex << setw(4) << setfill('0') << DCM_PatientsName.getGroup() << hex << setw(4) << setfill('0') << DCM_PatientsName.getElement() << " " 
+        << OFStandard::encodeBase64((const unsigned char *)patientsNameSrc.c_str(), patientsNameSrc.length(), b64buf).c_str() << endl;
+    return OFTrue;
+}
 
 /*
 ** CVS/RCS Log:

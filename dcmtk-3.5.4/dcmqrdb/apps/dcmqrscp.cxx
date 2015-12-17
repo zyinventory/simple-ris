@@ -166,35 +166,10 @@ static OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 {
 	if(!com_is_init) com_is_init = SUCCEEDED(CoInitialize(NULL));
 
-	DcmDataset *pds = pc->getDataset();
-	DcmXfer xfer(pds->getOriginalXfer());
-	const char *patientID, *patientsName = NULL, *studyUID, *seriesUID, *instanceUID, *modality, *studyDate, *accessionNumber;
-	pds->findAndGetString(DCM_PatientID, patientID);
-	pds->findAndGetString(DCM_PatientsName, patientsName);
-	pds->findAndGetString(DCM_StudyInstanceUID, studyUID);
-	pds->findAndGetString(DCM_SeriesInstanceUID, seriesUID);
-	pds->findAndGetString(DCM_SOPInstanceUID, instanceUID);
-	pds->findAndGetString(DCM_Modality, modality);
-	pds->findAndGetString(DCM_StudyDate, studyDate);
-	pds->findAndGetString(DCM_AccessionNumber, accessionNumber);
-
 	stringstream strmbuf;
 	strmbuf << pc->getFileName() << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getElement() << " " << studyUID << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getElement() << " " << seriesUID << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getElement() << " " << instanceUID << endl;
-    strmbuf << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() << " " << xfer.getXferID() << endl;
-    strmbuf << hex << setw(4) << setfill('0') << DCM_Modality.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_Modality.getElement() << " " << modality << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getElement() << " " << accessionNumber << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyDate.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_StudyDate.getElement() << " " << studyDate << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientID.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_PatientID.getElement() << " " << patientID << endl;
-	string patientsNameSrc((patientsName == NULL || *patientsName == '\0') ? "(NULL)" : patientsName);
-	STRING_TRIM(patientsNameSrc);
-	size_t bufsize = patientsNameSrc.length() * 4 + 1;
-	char *b32name = new char[bufsize];
-	encodeBase32(patientsNameSrc.c_str(), b32name, bufsize);
-	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientsName.getGroup() << " " << hex << setw(4) << setfill('0') << DCM_PatientsName.getElement() << " " << b32name << endl;
-	delete b32name;
+	DcmDataset *pds = pc->getDataset();
+    pds->briefToStream(strmbuf);
 	string body = strmbuf.str();
     if(associationLable.empty()) generateLabel(pc);
 	if(!SendCommonMessageToQueue(associationLable.c_str(), body.c_str(), MQ_PRIORITY_RECEIVED, NULL))

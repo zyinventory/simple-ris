@@ -1092,6 +1092,9 @@ storeSCPCallback(
        {
          StoreCallbackData *cbdata = (StoreCallbackData*) callbackData;
          const char* fileName = cbdata->imageFileName;
+         
+         COUT << fileName << endl;
+         (*imageDataSet)->briefToStream(COUT);
 
          E_TransferSyntax xfer = opt_writeTransferSyntax;
          if (xfer == EXS_Unknown) xfer = (*imageDataSet)->getOriginalXfer();
