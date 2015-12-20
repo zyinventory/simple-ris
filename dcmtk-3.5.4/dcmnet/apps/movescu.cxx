@@ -40,6 +40,7 @@
 #define INCLUDE_CERRNO
 #include "dcmtk/ofstd/ofstdinc.h"
 #include <direct.h>
+#include <fcntl.h>
 
 #ifdef HAVE_GUSI_H
 #include <GUSI.h>
@@ -57,6 +58,7 @@
 #include "dcmtk/dcmdata/dcuid.h"    /* for dcmtk version name */
 #include "dcmtk/ofstd/ofstd.h"
 #include "dcmtk/dcmdata/dcdicent.h"
+#include "dcmtk/dcmdata/dcdeftag.h"
 
 #ifdef WITH_ZLIB
 #include <zlib.h>     /* for zlibVersion() */
@@ -118,6 +120,7 @@ int               opt_dimse_timeout = 0;
 int               opt_acse_timeout = 30;
 OFBool            opt_ignorePendingDatasets = OFTrue;
 OFString          opt_sessionId;
+FILE              *fplog = NULL;
 
 static T_ASC_Network *net = NULL; /* the global DICOM network */
 static DcmDataset *overrideKeys = NULL;
@@ -141,6 +144,11 @@ errmsg(const char *msg,...)
     vfprintf(stderr, msg, args);
     va_end(args);
     fprintf(stderr, "\n");
+}
+
+static void exitHook()
+{
+    if(fplog != NULL) fclose(fplog);
 }
 
 static void
@@ -638,7 +646,34 @@ main(int argc, char *argv[])
     if(!opt_sessionId.empty())
     {
         int mkdir_ret =_mkdir(opt_sessionId.c_str());
-        if(mkdir_ret == 0 || errno == EEXIST) _chdir(opt_sessionId.c_str());
+        if(mkdir_ret == 0 || errno == EEXIST) mkdir_ret = _chdir(opt_sessionId.c_str());
+        if(mkdir_ret)
+        {
+            errmsg("cannot change working dir to %s", opt_sessionId.c_str());
+            return 1;
+        }
+        HANDLE hd = CreateFile("cmove.txt", FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if(hd == INVALID_HANDLE_VALUE)
+        {
+            DWORD dw = errno;
+            errmsg("cannot create log.txt: %d %s", dw, strerror(dw));
+            return 1;
+        }
+        int fd = _open_osfhandle((intptr_t)hd, _O_APPEND | _O_TEXT);
+        if(fd == -1)
+        {
+            DWORD dw = errno;
+            errmsg("cannot create log.txt: %d %s", dw, strerror(dw));
+            return 1;
+        }
+        fplog = _fdopen(fd, "a");
+        if(fplog == NULL)
+        {
+            DWORD dw = errno;
+            errmsg("cannot create log.txt: %d %s", dw, strerror(dw));
+            return 1;
+        }
+        atexit(exitHook);
     }
 
     /* network for move request and responses */
@@ -1093,8 +1128,9 @@ storeSCPCallback(
          StoreCallbackData *cbdata = (StoreCallbackData*) callbackData;
          const char* fileName = cbdata->imageFileName;
          
-         COUT << fileName << endl;
-         (*imageDataSet)->briefToStream(COUT);
+         fprintf(fplog, "F FFFF0010 %s\n", fileName); fflush(fplog);
+         (*imageDataSet)->briefToStream(fplog);
+         fprintf(fplog, "F FFFF10FF\n"); fflush(fplog);
 
          E_TransferSyntax xfer = opt_writeTransferSyntax;
          if (xfer == EXS_Unknown) xfer = (*imageDataSet)->getOriginalXfer();
@@ -1264,6 +1300,15 @@ subOpCallback(void * /*subOpCallbackData*/ ,
     if (*subAssoc == NULL) {
         /* negotiate association */
         acceptSubAssoc(aNet, subAssoc);
+        fprintf_s(fplog, "A %04X%04X %s %s\n", 
+            DCM_RequestingAE.getGroup(), DCM_RequestingAE.getElement(),
+            (*subAssoc)->params->DULparams.callingAPTitle, 
+            (*subAssoc)->params->DULparams.callingPresentationAddress);
+        fprintf_s(fplog, "A %04X%04X %s %d %s\n", 
+            DCM_ReceivingAE.getGroup(), DCM_ReceivingAE.getElement(),
+            (*subAssoc)->params->DULparams.calledAPTitle, aNet->acceptorPort, 
+            (*subAssoc)->params->DULparams.calledPresentationAddress);
+        fflush(fplog);
     } else {
         /* be a service class provider */
         subOpSCP(subAssoc);

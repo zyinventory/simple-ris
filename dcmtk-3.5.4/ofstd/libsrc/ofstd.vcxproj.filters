@@ -146,5 +146,8 @@
     <ClInclude Include="..\..\config\include\dcmtk\config\osconfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\dcmtk\ofstd\x_www_form_codec.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -41,6 +41,7 @@
 #include "dcmtk/ofstd/ofstream.h"
 #include "dcmtk/ofstd/ofstack.h"
 #include "dcmtk/ofstd/ofstd.h"
+#include "dcmtk/ofstd/x_www_form_codec.h"
 
 #include "dcmtk/dcmdata/dcdatset.h"
 #include "dcmtk/dcmdata/dcxfer.h"
@@ -591,33 +592,111 @@ void DcmDataset::removeAllButOriginalRepresentations()
     }
 }
 
-OFBool DcmDataset::briefToStream(ostream &strmbuf)
+OFBool DcmDataset::briefToStream(ostream &strmbuf, char level)
 {
-	const char *patientID, *patientsName = NULL, *studyUID, *seriesUID, *instanceUID, *modality, *studyDate, *accessionNumber;
-	findAndGetString(DCM_PatientID, patientID);
-	findAndGetString(DCM_PatientsName, patientsName);
-	findAndGetString(DCM_StudyInstanceUID, studyUID);
-	findAndGetString(DCM_SeriesInstanceUID, seriesUID);
-	findAndGetString(DCM_SOPInstanceUID, instanceUID);
-	findAndGetString(DCM_Modality, modality);
-	findAndGetString(DCM_StudyDate, studyDate);
-	findAndGetString(DCM_AccessionNumber, accessionNumber);
+	const char *patientID = NULL, *patientsName = NULL, *patientsBirthDate, 
+        *patientsSex, *patientsSize, *patientsWeight,
+        *studyUID, *studyDate, *studyTime, *accessionNumber, 
+        *seriesUID, *modality, *instanceUID;
 
-	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getGroup() << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getElement() << " " << studyUID << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getElement() << " " << seriesUID << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getElement() << " " << instanceUID << endl;
-    DcmXfer xfer(Xfer);
-    strmbuf << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() << " " << xfer.getXferID() << endl;
-    strmbuf << hex << setw(4) << setfill('0') << DCM_Modality.getGroup() << hex << setw(4) << setfill('0') << DCM_Modality.getElement() << " " << modality << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getGroup() << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getElement() << " " << accessionNumber << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_StudyDate.getGroup() << hex << setw(4) << setfill('0') << DCM_StudyDate.getElement() << " " << studyDate << endl;
-	strmbuf << hex << setw(4) << setfill('0') << DCM_PatientID.getGroup() << hex << setw(4) << setfill('0') << DCM_PatientID.getElement() << " " << patientID << endl;
-	string patientsNameSrc((patientsName == NULL || *patientsName == '\0') ? "(NULL)" : patientsName);
-	STRING_TRIM(patientsNameSrc);
-    OFString b64buf;
-    strmbuf << hex << setw(4) << setfill('0') << DCM_PatientsName.getGroup() << hex << setw(4) << setfill('0') << DCM_PatientsName.getElement() << " " 
-        << OFStandard::encodeBase64((const unsigned char *)patientsNameSrc.c_str(), patientsNameSrc.length(), b64buf).c_str() << endl;
+    int buff_len = 0;
+    if(level == 'P' || level == 'A')
+    {
+	    findAndGetString(DCM_PatientID, patientID);
+        findAndGetString(DCM_PatientsName, patientsName);
+        findAndGetString(DCM_PatientsBirthDate, patientsBirthDate);
+        findAndGetString(DCM_PatientsSex, patientsSex);
+        findAndGetString(DCM_PatientsSize, patientsSize);
+        findAndGetString(DCM_PatientsWeight, patientsWeight);
+
+        string patientIDSrc(patientID);
+        STRING_TRIM(patientIDSrc);
+        strmbuf << "P " << hex << setw(4) << setfill('0') << DCM_PatientID.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_PatientID.getElement() << " ";
+        x_www_form_codec<ostream>::encode(patientIDSrc.c_str(), &strmbuf);
+        strmbuf << endl;
+        string patientsNameSrc((patientsName == NULL || *patientsName == '\0') ? "(NULL)" : patientsName);
+        STRING_TRIM(patientsNameSrc);
+        strmbuf << "P " << hex << setw(4) << setfill('0') << DCM_PatientsName.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_PatientsName.getElement() << " ";
+        x_www_form_codec<ostream>::encode(patientsNameSrc.c_str(), &strmbuf);
+        strmbuf << endl;
+        strmbuf << "P " << hex << setw(4) << setfill('0') << DCM_PatientsBirthDate.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_PatientsBirthDate.getElement() 
+            << " " << ((patientsBirthDate == NULL || *patientsBirthDate == '\0') ? "" : patientsBirthDate) << endl;
+        strmbuf << "P " << hex << setw(4) << setfill('0') << DCM_PatientsSex.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_PatientsSex.getElement() 
+            << " " << ((patientsSex == NULL || *patientsSex == '\0') ? "" : patientsSex) << endl;
+        strmbuf << "P " << hex << setw(4) << setfill('0') << DCM_PatientsSize.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_PatientsSize.getElement() 
+            << " " << ((patientsSize == NULL || *patientsSize == '\0') ? "" : patientsSize) << endl;
+        strmbuf << "P " << hex << setw(4) << setfill('0') << DCM_PatientsWeight.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_PatientsWeight.getElement() 
+            << " " << ((patientsWeight == NULL || *patientsWeight == '\0') ? "" : patientsWeight) << endl;
+        strmbuf << "P FFFFFFFF" << endl;
+    }
+
+    if(level == 'S' || level == 'A')
+    {
+        findAndGetString(DCM_StudyInstanceUID, studyUID);
+        findAndGetString(DCM_StudyDate, studyDate);
+        findAndGetString(DCM_StudyTime, studyTime);
+        findAndGetString(DCM_AccessionNumber, accessionNumber);
+
+        strmbuf << "S " << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getElement() 
+            << " " << studyUID << endl;
+        strmbuf << "S " << hex << setw(4) << setfill('0') << DCM_StudyDate.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_StudyDate.getElement() 
+            << " " << studyDate << endl;
+        strmbuf << "S " << hex << setw(4) << setfill('0') << DCM_StudyTime.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_StudyTime.getElement() 
+            << " " << studyTime << endl;
+        strmbuf << "S " << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getElement() 
+            << " " << ((accessionNumber == NULL || *accessionNumber == '\0') ? "" : accessionNumber) << endl;
+        strmbuf << "S FFFFFFFF" << endl;
+    }
+
+    if(level == 'E' || level == 'A')
+    {
+        findAndGetString(DCM_SeriesInstanceUID, seriesUID);
+        findAndGetString(DCM_Modality, modality);
+
+        strmbuf << "E " << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getElement() 
+            << " " << seriesUID << endl;
+        strmbuf << "E " << hex << setw(4) << setfill('0') << DCM_Modality.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_Modality.getElement() 
+            << " " << modality << endl;
+        strmbuf << "E FFFFFFFF" << endl;
+    }
+
+    if(level == 'I' || level == 'A')
+    {
+        findAndGetString(DCM_SOPInstanceUID, instanceUID);
+        DcmXfer xfer(Xfer);
+
+        strmbuf << "I " << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getElement() 
+            << " " << instanceUID << endl;
+        strmbuf << "I " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() 
+            << " " << xfer.getXferID() << endl;
+        strmbuf << "I FFFFFFFF" << endl;
+    }
     return OFTrue;
+}
+
+OFBool DcmDataset::briefToStream(FILE *fp, char level)
+{
+    stringstream ss;
+    OFBool ret = briefToStream(ss, level);
+    if(!ret) return ret;
+    string sw = ss.str();
+    size_t wt = fwrite(sw.c_str(), 1, sw.length(), fp);
+    fflush(fp);
+    return wt == sw.length();
 }
 
 /*

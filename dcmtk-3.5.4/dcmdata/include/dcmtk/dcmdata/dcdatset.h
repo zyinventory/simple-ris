@@ -254,7 +254,8 @@ class DcmDataset
     /** write brief info to ostream, such as OriginalXfer, DCM_PatientID, 
      *  DCM_SOPInstanceUID, DCM_Modality, DCM_StudyDate, etc.
      */
-    OFBool briefToStream(ostream &strm);
+    OFBool briefToStream(ostream &strm, char level = 'A');
+    OFBool briefToStream(FILE *fp, char level = 'A');
 
   private:
 
