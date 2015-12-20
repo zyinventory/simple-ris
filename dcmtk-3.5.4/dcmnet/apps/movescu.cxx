@@ -122,6 +122,7 @@ OFBool            opt_ignorePendingDatasets = OFTrue;
 OFString          opt_sessionId;
 FILE              *fplog = NULL;
 OFList<OFString>  patients, studies, series;
+size_t            instances = 0x00011000;
 
 static T_ASC_Network *net = NULL; /* the global DICOM network */
 static DcmDataset *overrideKeys = NULL;
@@ -1131,7 +1132,7 @@ storeSCPCallback(
 
             OFString patientID, studyUID, seriesUID;
             std::stringstream strmbuf;
-            strmbuf << "F FFFF0010 " << fileName << endl;
+            strmbuf << "F " << hex << setw(8) << setfill('0') << uppercase << instances << " " << fileName << endl;
 
             (*imageDataSet)->findAndGetOFString(DCM_PatientID, patientID);
             if(patients.end() == find(patients.begin(), patients.end(), patientID))
@@ -1152,7 +1153,8 @@ storeSCPCallback(
                 series.push_back(seriesUID);
             }
             (*imageDataSet)->briefToStream(strmbuf, 'I');
-            strmbuf << "F FFFF10FF" << endl;
+            strmbuf << "F " << hex << setw(8) << setfill('0') << uppercase << instances << endl;
+            ++instances;
             OFString sw = strmbuf.str();
             fwrite(sw.c_str(), 1, sw.length(), fplog); fflush(fplog);
             sw.clear();
@@ -1326,12 +1328,9 @@ subOpCallback(void * /*subOpCallbackData*/ ,
     if (*subAssoc == NULL) {
         /* negotiate association */
         acceptSubAssoc(aNet, subAssoc);
-        fprintf_s(fplog, "T %04X%04X %s %s\n", 
-            DCM_RequestingAE.getGroup(), DCM_RequestingAE.getElement(),
+        fprintf_s(fplog, "T 00010010 %s %s %s %d %s\n", 
             (*subAssoc)->params->DULparams.callingAPTitle, 
-            (*subAssoc)->params->DULparams.callingPresentationAddress);
-        fprintf_s(fplog, "T %04X%04X %s %d %s\n", 
-            DCM_ReceivingAE.getGroup(), DCM_ReceivingAE.getElement(),
+            (*subAssoc)->params->DULparams.callingPresentationAddress,
             (*subAssoc)->params->DULparams.calledAPTitle, aNet->acceptorPort, 
             (*subAssoc)->params->DULparams.calledPresentationAddress);
         fflush(fplog);
