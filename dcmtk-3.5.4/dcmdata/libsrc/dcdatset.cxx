@@ -682,7 +682,7 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, char level)
             << " " << instanceUID << endl;
         strmbuf << "I " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() 
-            << " " << xfer.getXferID() << endl;
+            << " " << xfer.getXferShortName() << endl;
         strmbuf << "I FFFFFFFF" << endl;
     }
     return OFTrue;

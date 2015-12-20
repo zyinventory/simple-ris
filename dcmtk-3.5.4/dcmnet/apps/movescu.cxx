@@ -121,6 +121,7 @@ int               opt_acse_timeout = 30;
 OFBool            opt_ignorePendingDatasets = OFTrue;
 OFString          opt_sessionId;
 FILE              *fplog = NULL;
+OFList<OFString>  patients, studies, series;
 
 static T_ASC_Network *net = NULL; /* the global DICOM network */
 static DcmDataset *overrideKeys = NULL;
@@ -1113,58 +1114,83 @@ storeSCPCallback(
 
     if (progress->state == DIMSE_StoreEnd)
     {
-       *statusDetail = NULL;    /* no status detail */
+        *statusDetail = NULL;    /* no status detail */
 
-       /* could save the image somewhere else, put it in database, etc */
-       /*
-        * An appropriate status code is already set in the resp structure, it need not be success.
-        * For example, if the caller has already detected an out of resources problem then the
-        * status will reflect this.  The callback function is still called to allow cleanup.
-        */
-       // rsp->DimseStatus = STATUS_Success;
-
-       if ((imageDataSet)&&(*imageDataSet)&&(!opt_bitPreserving)&&(!opt_ignore))
-       {
-         StoreCallbackData *cbdata = (StoreCallbackData*) callbackData;
-         const char* fileName = cbdata->imageFileName;
-         
-         fprintf(fplog, "F FFFF0010 %s\n", fileName); fflush(fplog);
-         (*imageDataSet)->briefToStream(fplog);
-         fprintf(fplog, "F FFFF10FF\n"); fflush(fplog);
-
-         E_TransferSyntax xfer = opt_writeTransferSyntax;
-         if (xfer == EXS_Unknown) xfer = (*imageDataSet)->getOriginalXfer();
-
-         OFCondition cond = cbdata->dcmff->saveFile(fileName, xfer, opt_sequenceType, opt_groupLength,
-           opt_paddingType, (Uint32)opt_filepad, (Uint32)opt_itempad, !opt_useMetaheader);
-         if (cond.bad())
-         {
-           fprintf(stderr, "storescp: Cannot write image file: %s\n", fileName);
-           rsp->DimseStatus = STATUS_STORE_Refused_OutOfResources;
-         }
-
-        /* should really check the image to make sure it is consistent,
-         * that its sopClass and sopInstance correspond with those in
-         * the request.
+        /* could save the image somewhere else, put it in database, etc */
+        /*
+         * An appropriate status code is already set in the resp structure, it need not be success.
+         * For example, if the caller has already detected an out of resources problem then the
+         * status will reflect this.  The callback function is still called to allow cleanup.
          */
-        if ((rsp->DimseStatus == STATUS_Success)&&(!opt_ignore))
+        // rsp->DimseStatus = STATUS_Success;
+
+        if ((imageDataSet)&&(*imageDataSet)&&(!opt_bitPreserving)&&(!opt_ignore))
         {
-          /* which SOP class and SOP instance ? */
-          if (! DU_findSOPClassAndInstanceInDataSet(*imageDataSet, sopClass, sopInstance, opt_correctUIDPadding))
-          {
-             fprintf(stderr, "storescp: Bad image file: %s\n", imageFileName);
-             rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
-          }
-          else if (strcmp(sopClass, req->AffectedSOPClassUID) != 0)
-          {
-            rsp->DimseStatus = STATUS_STORE_Error_DataSetDoesNotMatchSOPClass;
-          }
-          else if (strcmp(sopInstance, req->AffectedSOPInstanceUID) != 0)
-          {
-            rsp->DimseStatus = STATUS_STORE_Error_DataSetDoesNotMatchSOPClass;
-          }
+            StoreCallbackData *cbdata = (StoreCallbackData*) callbackData;
+            const char* fileName = cbdata->imageFileName;
+
+            OFString patientID, studyUID, seriesUID;
+            std::stringstream strmbuf;
+            strmbuf << "F FFFF0010 " << fileName << endl;
+
+            (*imageDataSet)->findAndGetOFString(DCM_PatientID, patientID);
+            if(patients.end() == find(patients.begin(), patients.end(), patientID))
+            {
+                (*imageDataSet)->briefToStream(strmbuf, 'P');
+                patients.push_back(patientID);
+            }
+            (*imageDataSet)->findAndGetOFString(DCM_StudyInstanceUID, studyUID);
+            if(studies.end() == find(studies.begin(), studies.end(), studyUID))
+            {
+                (*imageDataSet)->briefToStream(strmbuf, 'S');
+                studies.push_back(studyUID);
+            }
+            (*imageDataSet)->findAndGetOFString(DCM_SeriesInstanceUID, seriesUID);
+            if(series.end() == find(series.begin(), series.end(), seriesUID))
+            {
+                (*imageDataSet)->briefToStream(strmbuf, 'E');
+                series.push_back(seriesUID);
+            }
+            (*imageDataSet)->briefToStream(strmbuf, 'I');
+            strmbuf << "F FFFF10FF" << endl;
+            OFString sw = strmbuf.str();
+            fwrite(sw.c_str(), 1, sw.length(), fplog); fflush(fplog);
+            sw.clear();
+            strmbuf.str(sw);
+
+            E_TransferSyntax xfer = opt_writeTransferSyntax;
+            if (xfer == EXS_Unknown) xfer = (*imageDataSet)->getOriginalXfer();
+
+            OFCondition cond = cbdata->dcmff->saveFile(fileName, xfer, opt_sequenceType, opt_groupLength,
+                opt_paddingType, (Uint32)opt_filepad, (Uint32)opt_itempad, !opt_useMetaheader);
+            if (cond.bad())
+            {
+                fprintf(stderr, "storescp: Cannot write image file: %s\n", fileName);
+                rsp->DimseStatus = STATUS_STORE_Refused_OutOfResources;
+            }
+
+            /* should really check the image to make sure it is consistent,
+             * that its sopClass and sopInstance correspond with those in
+             * the request.
+             */
+            if ((rsp->DimseStatus == STATUS_Success)&&(!opt_ignore))
+            {
+                /* which SOP class and SOP instance ? */
+                if (! DU_findSOPClassAndInstanceInDataSet(*imageDataSet, sopClass, sopInstance, opt_correctUIDPadding))
+                {
+                    fprintf(stderr, "storescp: Bad image file: %s\n", imageFileName);
+                    rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
+                }
+                else if (strcmp(sopClass, req->AffectedSOPClassUID) != 0)
+                {
+                    rsp->DimseStatus = STATUS_STORE_Error_DataSetDoesNotMatchSOPClass;
+                }
+                else if (strcmp(sopInstance, req->AffectedSOPInstanceUID) != 0)
+                {
+                    rsp->DimseStatus = STATUS_STORE_Error_DataSetDoesNotMatchSOPClass;
+                }
+            }
         }
-      }
     }
     return;
 }
@@ -1300,11 +1326,11 @@ subOpCallback(void * /*subOpCallbackData*/ ,
     if (*subAssoc == NULL) {
         /* negotiate association */
         acceptSubAssoc(aNet, subAssoc);
-        fprintf_s(fplog, "A %04X%04X %s %s\n", 
+        fprintf_s(fplog, "T %04X%04X %s %s\n", 
             DCM_RequestingAE.getGroup(), DCM_RequestingAE.getElement(),
             (*subAssoc)->params->DULparams.callingAPTitle, 
             (*subAssoc)->params->DULparams.callingPresentationAddress);
-        fprintf_s(fplog, "A %04X%04X %s %d %s\n", 
+        fprintf_s(fplog, "T %04X%04X %s %d %s\n", 
             DCM_ReceivingAE.getGroup(), DCM_ReceivingAE.getElement(),
             (*subAssoc)->params->DULparams.calledAPTitle, aNet->acceptorPort, 
             (*subAssoc)->params->DULparams.calledPresentationAddress);
