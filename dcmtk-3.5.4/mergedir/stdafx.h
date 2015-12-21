@@ -39,6 +39,16 @@
 #define ASSOC_ABORT 0xFFFFFFFD
 
 typedef struct {
-    std::string callingAE, callingAddr, calledAE, calledAddr;
+    char callingAE[65], callingAddr[40], calledAE[65], calledAddr[40];
     unsigned short port;
-} ASSOC_CONTEXT;
+} ASSOC_SECTION;
+
+typedef struct {
+    unsigned int tag;
+    char filename[MAX_PATH], patientID[65], studyUID[65], seriesUID[65], instanceUID[65], xfer[16];
+    bool inFile;
+} FILE_SECTION;
+
+typedef struct {
+    char patientID[65], patientsName[65], birthday[9], height[10], weight[10], sex;
+} PATIENT_SECTION;
