@@ -15,7 +15,8 @@ static int cmd_assoc(char type, istringstream &cmdstrm)
         cmdstrm >> assoc.callingAE >> assoc.callingAddr >> assoc.calledAE >> dec >> assoc.port >> assoc.calledAddr;
         cerr << " " << assoc.callingAE << " " << assoc.callingAddr<< " " << assoc.calledAE<< " " << dec << assoc.port << " " << assoc.calledAddr << endl;
         break;
-    case ITEM_TERM:
+    case ASSOC_TERM:
+    case ASSOC_ABORT:
         cerr << endl;
         return 0;
     default:

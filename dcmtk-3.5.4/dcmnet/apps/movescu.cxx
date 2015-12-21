@@ -1133,6 +1133,7 @@ storeSCPCallback(
             OFString patientID, studyUID, seriesUID;
             std::stringstream strmbuf;
             strmbuf << "F " << hex << setw(8) << setfill('0') << uppercase << instances << " " << fileName << endl;
+            (*imageDataSet)->briefToStream(strmbuf, 'I');
 
             (*imageDataSet)->findAndGetOFString(DCM_PatientID, patientID);
             if(patients.end() == find(patients.begin(), patients.end(), patientID))
@@ -1152,7 +1153,6 @@ storeSCPCallback(
                 (*imageDataSet)->briefToStream(strmbuf, 'E');
                 series.push_back(seriesUID);
             }
-            (*imageDataSet)->briefToStream(strmbuf, 'I');
             strmbuf << "F " << hex << setw(8) << setfill('0') << uppercase << instances << endl;
             ++instances;
             OFString sw = strmbuf.str();

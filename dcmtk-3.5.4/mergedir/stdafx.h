@@ -35,7 +35,8 @@
 
 #define ASSOC_ESTA  0x00010010
 #define FILE_START  0x00011000
-#define ITEM_TERM   0xFFFFFFFF
+#define ASSOC_TERM  0xFFFFFFFF
+#define ASSOC_ABORT 0xFFFFFFFD
 
 typedef struct {
     std::string callingAE, callingAddr, calledAE, calledAddr;
