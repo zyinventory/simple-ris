@@ -261,7 +261,7 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
             || strlen(lc.file.xfer) == 0) // error, print unexpected value
             print_error_file_section(tag, filename, lc.file);
         else // OK, commit file section
-            callback_process_log(&lc);
+            callback_process_log(&lc, cerr);
         lc.file.inFile = false;
     }
     else
@@ -309,9 +309,6 @@ static int cmd_assoc(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 static int process_cmd(const char *buf, size_t buf_len)
 {
     char type = '\0';
-    unsigned int tag;
-    string value;
-    
     istringstream cmdstrm(buf);
     cmdstrm >> type;
 
@@ -352,6 +349,7 @@ COMMONLIB_API void process_log(const char *sessionId, bool verbose, CALLBACK_CMO
     if(tail.fail())
     {
         cerr << "无法打开文件" << fn << endl;
+        cbfunc(NULL, cerr);
         return;
     }
 
@@ -389,4 +387,5 @@ COMMONLIB_API void process_log(const char *sessionId, bool verbose, CALLBACK_CMO
         }
     }
     tail.close();
+    cbfunc(NULL, cerr);
 }

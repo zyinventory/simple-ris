@@ -12,7 +12,7 @@
 #include "dcmtk/ofstd/ofcond.h"       /* for class OFCondition */
 #include "dcmdynamic.h"
 
-void call_process_log(const string &sessionId);
+void call_process_log(string &sessionId);
 
 #define OFFIS_CONSOLE_APPLICATION "mergedir"
 #define OFFIS_CONSOLE_DESCRIPTION "Merge DICOMDIR"

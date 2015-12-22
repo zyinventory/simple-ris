@@ -111,7 +111,7 @@ typedef struct {
     CMOVE_SERIES_SECTION series;
 } CMOVE_LOG_CONTEXT;
 
-typedef void (*CALLBACK_CMOVE_PROCESS_LOG)(const CMOVE_LOG_CONTEXT*);
+typedef void (*CALLBACK_CMOVE_PROCESS_LOG)(const CMOVE_LOG_CONTEXT*, std::ostream &dllcerr);
 
 COMMONLIB_API void process_log(const char *sessionId, bool verbose, CALLBACK_CMOVE_PROCESS_LOG cbfunc);
 #endif //CMOVE_DLL_STRUCT_TYPE
