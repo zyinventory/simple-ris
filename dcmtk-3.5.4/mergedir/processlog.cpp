@@ -4,9 +4,92 @@
 using namespace std;
 
 static bool opt_verbose = true;
-static ASSOC_SECTION assoc;
-static FILE_SECTION file;
-static PATIENT_SECTION patient;
+static ASSOC_SECTION assocBuff;
+static FILE_SECTION fileBuff;
+static PATIENT_SECTION patientBuff;
+static STUDY_SECTION studyBuff;
+static SERIES_SECTION seriesBuff;
+
+static void clear_series_section(SERIES_SECTION &ps)
+{
+    ps.seriesUID[0] = '\0';
+    ps.modality[0] = '\0';
+}
+
+static int cmd_series(char type, istringstream &cmdstrm, SERIES_SECTION &series)
+{
+    unsigned int tag = 0;
+    string temp;
+    bool dirty = false;
+
+    cmdstrm >> hex >> tag;
+    switch(tag)
+    {
+    case 0x00080060:
+        cmdstrm >> series.modality;
+        if(strlen(series.modality) == 0)
+            cerr << "Unexpected empty modality " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
+        else
+        {
+            dirty = true;
+            if(opt_verbose)
+                cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << series.modality << endl;
+        }
+        break;
+    default:
+        char otherbuf[1024] = "";
+        cmdstrm.getline(otherbuf, sizeof(otherbuf));
+        cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
+            << " " << otherbuf << ", encounter error" << endl;
+        break;
+    }
+    if(dirty && strlen(series.seriesUID) == 0) strcpy_s(series.seriesUID, fileBuff.seriesUID);
+    return 1;
+}
+
+static void clear_study_section(STUDY_SECTION &ps)
+{
+    ps.studyUID[0] = '\0';
+    ps.accessionNumber[0] = '\0';
+    ps.studyDate[0] = '\0';
+    ps.studyTime[0] = '\0';
+}
+
+static int cmd_study(char type, istringstream &cmdstrm, STUDY_SECTION &study)
+{
+    unsigned int tag = 0;
+    string temp;
+    bool dirty = false;
+
+    cmdstrm >> hex >> tag;
+    switch(tag)
+    {
+    case 0x00080020:
+        cmdstrm >> study.studyDate;
+        dirty = true;
+        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << study.studyDate << endl;
+        break;
+    case 0x00080030:
+        cmdstrm >> study.studyTime;
+        dirty = true;
+        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << study.studyTime << endl;
+        break;
+    case 0x00080050:
+        cmdstrm >> temp;
+        dirty = true;
+        x_www_form_codec<char>::decode(temp.c_str(), study.accessionNumber, sizeof(study.accessionNumber));
+        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp << endl;
+        break;
+    default:
+        char otherbuf[1024] = "";
+        cmdstrm.getline(otherbuf, sizeof(otherbuf));
+        cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
+            << " " << otherbuf << ", encounter error" << endl;
+        break;
+    }
+    if(dirty && strlen(study.studyUID) == 0) strcpy_s(study.studyUID, fileBuff.studyUID);
+    return 1;
+}
 
 static void clear_patient_section(PATIENT_SECTION &ps)
 {
@@ -18,17 +101,18 @@ static void clear_patient_section(PATIENT_SECTION &ps)
     ps.sex = ' ';
 }
 
-static int cmd_patient(char type, istringstream &cmdstrm)
+static int cmd_patient(char type, istringstream &cmdstrm, PATIENT_SECTION &patient)
 {
     unsigned int tag = 0;
     string temp_patients_name;
-    
+    bool dirty = false;
+
     cmdstrm >> hex >> tag;
     switch(tag)
     {
     case 0x00100010:
         cmdstrm >> temp_patients_name;
-        if(strlen(patient.patientID) == 0) strcpy_s(patient.patientID, file.patientID);
+        dirty = true;
         if(temp_patients_name.empty())
             cerr << "Unexpected empty patient's name " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
         else
@@ -39,31 +123,38 @@ static int cmd_patient(char type, istringstream &cmdstrm)
         break;
     case 0x00100030:
         cmdstrm >> patient.birthday;
-        if(strlen(patient.patientID) == 0) strcpy_s(patient.patientID, file.patientID);
+        dirty = true;
         if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << patient.birthday << endl;
         break;
     case 0x00100040:
         cmdstrm >> patient.sex;
         if(patient.sex != 'M' && patient.sex != 'F' && patient.sex != 'O') patient.sex = ' ';
-        else if(strlen(patient.patientID) == 0) strcpy_s(patient.patientID, file.patientID);
+        else if(strlen(patient.patientID) == 0) dirty = true;
         if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << patient.sex << endl;
         break;
     case 0x00101020:
         cmdstrm >> patient.height;
-        if(strlen(patient.patientID) == 0) strcpy_s(patient.patientID, file.patientID);
+        dirty = true;
         if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << patient.height << endl;
         break;
     case 0x00101030:
         cmdstrm >> patient.weight;
-        if(strlen(patient.patientID) == 0) strcpy_s(patient.patientID, file.patientID);
+        dirty = true;
         if(opt_verbose)
             cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << patient.weight << endl;
         break;
+    default:
+        char otherbuf[1024] = "";
+        cmdstrm.getline(otherbuf, sizeof(otherbuf));
+        cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
+            << " " << otherbuf << ", encounter error" << endl;
+        break;
     }
+    if(dirty && strlen(patient.patientID) == 0) strcpy_s(patient.patientID, fileBuff.patientID);
     return 1;
 }
 
-static int cmd_instance(char type, istringstream &cmdstrm)
+static int cmd_instance(char type, istringstream &cmdstrm, FILE_SECTION &file)
 {
     unsigned int tag = 0;
     string temp;
@@ -109,6 +200,12 @@ static int cmd_instance(char type, istringstream &cmdstrm)
         else if(opt_verbose)
             cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << file.xfer << endl;
         break;
+    default:
+        char otherbuf[1024] = "";
+        cmdstrm.getline(otherbuf, sizeof(otherbuf));
+        cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
+            << " " << otherbuf << ", encounter error" << endl;
+        break;
     }
     return 1;
 }
@@ -119,7 +216,7 @@ static void print_error_file_section(unsigned int tag, string &filename, FILE_SE
         cerr << "Unexpected commit F " << hex << uppercase << setw(8) << setfill('0') << tag << " " << filename << ", old value:" << endl;
     else
         cerr << "Unexpected new F " << hex << uppercase << setw(8) << setfill('0') << tag << " " << filename << ", old value:" << endl;
-    cerr << "\tinFile: " << file.inFile << endl;
+    cerr << "\tinFile: " << fs.inFile << endl;
     cerr << "\ttag: " << hex << uppercase << setw(8) << setfill('0') << fs.tag << endl;
     cerr << "\tfileName: " << fs.filename << endl;
     cerr << "\tpatientID: " << fs.patientID << endl;
@@ -141,24 +238,24 @@ static void clear_file_section(FILE_SECTION &fs)
     fs.inFile = false;
 }
 
-static int cmd_file(char type, istringstream &cmdstrm)
+static int cmd_file(char type, istringstream &cmdstrm, FILE_SECTION &file)
 {
     unsigned int tag = 0;
     string filename;
     cmdstrm >> hex >> tag >> filename;
     if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << filename << endl;
     if(filename.empty())
-    {   // commit file section 
+    {   // test before commit file section 
         if(!file.inFile || tag != file.tag || strlen(file.filename) == 0 || strlen(file.patientID) == 0
             || strlen(file.studyUID) == 0 || strlen(file.seriesUID) == 0 || strlen(file.instanceUID) == 0
             || strlen(file.xfer) == 0) // error, print unexpected value
             print_error_file_section(tag, filename, file);
         else
-        {   // commit file section
+        {   // OK, commit file section
             //save_file();
-            if(strcmp(file.patientID, patient.patientID) == 0)
-            {
-                //refresh_patient_info();
+            if(strcmp(file.patientID, patientBuff.patientID) == 0)
+            {   //refresh_patient_info();
+                cerr << "refresh patient info" << endl;
             }
         }
         file.inFile = false;
@@ -169,7 +266,10 @@ static int cmd_file(char type, istringstream &cmdstrm)
             print_error_file_section(tag, filename, file);
         // enter file section, clear all UID
         clear_file_section(file);
-        clear_patient_section(patient);
+        clear_patient_section(patientBuff);
+        clear_study_section(studyBuff);
+        clear_series_section(seriesBuff);
+
         filename._Copy_s(file.filename, sizeof(file.filename), filename.length());
         file.tag = tag;
         file.inFile = true;
@@ -177,7 +277,7 @@ static int cmd_file(char type, istringstream &cmdstrm)
     return 1;
 }
 
-static int cmd_assoc(char type, istringstream &cmdstrm)
+static int cmd_assoc(char type, istringstream &cmdstrm, ASSOC_SECTION &assoc)
 {
     unsigned int tag = 0;
     cmdstrm >> hex >> tag;
@@ -195,7 +295,8 @@ static int cmd_assoc(char type, istringstream &cmdstrm)
     default:
         char otherbuf[1024] = "";
         cmdstrm.getline(otherbuf, sizeof(otherbuf));
-        cerr << otherbuf << ": can't process" << endl;
+        if(!opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " ";
+        cerr << " " << otherbuf << ", encounter error" << endl;
         break;
     }
     return 1;
@@ -213,19 +314,21 @@ static int process_cmd(const char *buf, size_t buf_len)
     switch(type)
     {
     case TYPE_ASSOC:
-        return cmd_assoc(type, cmdstrm);
+        return cmd_assoc(type, cmdstrm, assocBuff);
     case TYPE_FILE:
-        cmd_file(type, cmdstrm);
+        cmd_file(type, cmdstrm, fileBuff);
         break;
     case TYPE_PATIENT:
-        if(file.inFile) cmd_patient(type, cmdstrm);
+        if(fileBuff.inFile) cmd_patient(type, cmdstrm, patientBuff);
+        break;
     case TYPE_STUDY:
+        if(fileBuff.inFile) cmd_study(type, cmdstrm, studyBuff);
+        break;
     case TYPE_SERIES:
-        cmdstrm >> hex >> tag >> value;
-        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << value << endl;
+        if(fileBuff.inFile) cmd_series(type, cmdstrm, seriesBuff);
         break;
     case TYPE_INSTANCE:
-        if(file.inFile) cmd_instance(type, cmdstrm);
+        if(fileBuff.inFile) cmd_instance(type, cmdstrm, fileBuff);
         break;
     default:
         cerr << "can't recognize command: " << buf << endl;
@@ -247,9 +350,11 @@ void process_log(const string &sessionId)
     }
 
     int ret = 1, waitTime = 0;
-    assoc.port = 0;
-    clear_file_section(file);
-    clear_patient_section(patient);
+    assocBuff.port = 0;
+    clear_file_section(fileBuff);
+    clear_patient_section(patientBuff);
+    clear_study_section(studyBuff);
+    clear_series_section(seriesBuff);
 
     while(ret && waitTime <= 10 * 1000)
     {

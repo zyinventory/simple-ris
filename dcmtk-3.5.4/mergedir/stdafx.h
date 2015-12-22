@@ -52,3 +52,11 @@ typedef struct {
 typedef struct {
     char patientID[65], patientsName[65], birthday[9], height[10], weight[10], sex;
 } PATIENT_SECTION;
+
+typedef struct {
+    char studyUID[65], studyDate[9], studyTime[15], accessionNumber[65];
+} STUDY_SECTION;
+
+typedef struct {
+    char seriesUID[65], modality[17];
+} SERIES_SECTION;

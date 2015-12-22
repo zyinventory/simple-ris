@@ -668,8 +668,10 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, char level)
             << hex << setw(4) << setfill('0') << DCM_StudyTime.getElement() 
             << " " << studyTime << endl;
         strmbuf << "S " << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getGroup() 
-            << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getElement() 
-            << " " << ((accessionNumber == NULL || *accessionNumber == '\0') ? "" : accessionNumber) << endl;
+            << hex << setw(4) << setfill('0') << DCM_AccessionNumber.getElement() << " ";
+        if(accessionNumber != NULL && *accessionNumber != '\0')
+            x_www_form_codec<ostream>::encode(accessionNumber, &strmbuf);
+        strmbuf << endl;
     }
 
     if(level == 'E' || level == 'A')
