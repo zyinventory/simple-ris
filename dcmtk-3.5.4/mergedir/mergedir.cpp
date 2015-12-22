@@ -12,7 +12,7 @@
 #include "dcmtk/ofstd/ofcond.h"       /* for class OFCondition */
 #include "dcmdynamic.h"
 
-void process_log(const string &sessionId);
+void call_process_log(const string &sessionId);
 
 #define OFFIS_CONSOLE_APPLICATION "mergedir"
 #define OFFIS_CONSOLE_DESCRIPTION "Merge DICOMDIR"
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
         return -2;  /* DcmDicomDir class dumps core when no data dictionary */
     }
 
-    for_each(fileNames.begin(), fileNames.end(), process_log);
+    for_each(fileNames.begin(), fileNames.end(), call_process_log);
 
     return 0;
 	//return MergeDicomDir(fileNames, opt_output, opt_fileset, CERR, opt_verbose);

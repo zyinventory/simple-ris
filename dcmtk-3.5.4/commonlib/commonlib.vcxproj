@@ -123,6 +123,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Template|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="poststore.cpp" />
+    <ClCompile Include="process_log.cpp" />
     <ClCompile Include="service.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

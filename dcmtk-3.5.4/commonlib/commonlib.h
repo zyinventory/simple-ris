@@ -77,3 +77,4 @@ COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int li
 COMMONLIB_API bool encodeBase32(const char *src, char *enc, size_t enc_buf_size);
 COMMONLIB_API bool decodeBase32(const char *src, char *dec, size_t dec_buf_size);
 COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t buf_size);
+COMMONLIB_API void process_log(const char *sessionId);
