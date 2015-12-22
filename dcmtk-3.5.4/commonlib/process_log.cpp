@@ -14,45 +14,19 @@
 #define ASSOC_TERM  0xFFFFFFFF
 #define ASSOC_ABORT 0xFFFFFFFD
 
-typedef struct {
-    char callingAE[65], callingAddr[40], calledAE[65], calledAddr[40];
-    unsigned short port;
-} ASSOC_SECTION;
-
-typedef struct {
-    unsigned int tag;
-    char filename[MAX_PATH], patientID[65], studyUID[65], seriesUID[65], instanceUID[65], xfer[16];
-    bool inFile;
-} FILE_SECTION;
-
-typedef struct {
-    char patientID[65], patientsName[65], birthday[9], height[10], weight[10], sex;
-} PATIENT_SECTION;
-
-typedef struct {
-    char studyUID[65], studyDate[9], studyTime[15], accessionNumber[65];
-} STUDY_SECTION;
-
-typedef struct {
-    char seriesUID[65], modality[17];
-} SERIES_SECTION;
-
 using namespace std;
 
-static bool opt_verbose = true;
-static ASSOC_SECTION assocBuff;
-static FILE_SECTION fileBuff;
-static PATIENT_SECTION patientBuff;
-static STUDY_SECTION studyBuff;
-static SERIES_SECTION seriesBuff;
+static bool opt_verbose = false;
+static CMOVE_LOG_CONTEXT  lc;
+static CALLBACK_CMOVE_PROCESS_LOG callback_process_log;
 
-static void clear_series_section(SERIES_SECTION &ps)
+static void clear_series_section(CMOVE_SERIES_SECTION &ps)
 {
     ps.seriesUID[0] = '\0';
     ps.modality[0] = '\0';
 }
 
-static int cmd_series(char type, istringstream &cmdstrm, SERIES_SECTION &series)
+static int cmd_series(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     string temp;
@@ -62,14 +36,14 @@ static int cmd_series(char type, istringstream &cmdstrm, SERIES_SECTION &series)
     switch(tag)
     {
     case 0x00080060:
-        cmdstrm >> series.modality;
-        if(strlen(series.modality) == 0)
+        cmdstrm >> lc.series.modality;
+        if(strlen(lc.series.modality) == 0)
             cerr << "Unexpected empty modality " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
         else
         {
             dirty = true;
             if(opt_verbose)
-                cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << series.modality << endl;
+                cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.series.modality << endl;
         }
         break;
     default:
@@ -79,11 +53,11 @@ static int cmd_series(char type, istringstream &cmdstrm, SERIES_SECTION &series)
             << " " << otherbuf << ", encounter error" << endl;
         break;
     }
-    if(dirty && strlen(series.seriesUID) == 0) strcpy_s(series.seriesUID, fileBuff.seriesUID);
+    if(dirty && strlen(lc.series.seriesUID) == 0) strcpy_s(lc.series.seriesUID, lc.file.seriesUID);
     return 1;
 }
 
-static void clear_study_section(STUDY_SECTION &ps)
+static void clear_study_section(CMOVE_STUDY_SECTION &ps)
 {
     ps.studyUID[0] = '\0';
     ps.accessionNumber[0] = '\0';
@@ -91,7 +65,7 @@ static void clear_study_section(STUDY_SECTION &ps)
     ps.studyTime[0] = '\0';
 }
 
-static int cmd_study(char type, istringstream &cmdstrm, STUDY_SECTION &study)
+static int cmd_study(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     string temp;
@@ -101,19 +75,19 @@ static int cmd_study(char type, istringstream &cmdstrm, STUDY_SECTION &study)
     switch(tag)
     {
     case 0x00080020:
-        cmdstrm >> study.studyDate;
+        cmdstrm >> lc.study.studyDate;
         dirty = true;
-        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << study.studyDate << endl;
+        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.study.studyDate << endl;
         break;
     case 0x00080030:
-        cmdstrm >> study.studyTime;
+        cmdstrm >> lc.study.studyTime;
         dirty = true;
-        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << study.studyTime << endl;
+        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.study.studyTime << endl;
         break;
     case 0x00080050:
         cmdstrm >> temp;
         dirty = true;
-        x_www_form_codec<char>::decode(temp.c_str(), study.accessionNumber, sizeof(study.accessionNumber));
+        x_www_form_codec<char>::decode(temp.c_str(), lc.study.accessionNumber, sizeof(lc.study.accessionNumber));
         if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp << endl;
         break;
     default:
@@ -123,11 +97,11 @@ static int cmd_study(char type, istringstream &cmdstrm, STUDY_SECTION &study)
             << " " << otherbuf << ", encounter error" << endl;
         break;
     }
-    if(dirty && strlen(study.studyUID) == 0) strcpy_s(study.studyUID, fileBuff.studyUID);
+    if(dirty && strlen(lc.study.studyUID) == 0) strcpy_s(lc.study.studyUID, lc.file.studyUID);
     return 1;
 }
 
-static void clear_patient_section(PATIENT_SECTION &ps)
+static void clear_patient_section(CMOVE_PATIENT_SECTION &ps)
 {
     ps.patientID[0] = '\0';
     ps.patientsName[0] = '\0';
@@ -137,7 +111,7 @@ static void clear_patient_section(PATIENT_SECTION &ps)
     ps.sex = ' ';
 }
 
-static int cmd_patient(char type, istringstream &cmdstrm, PATIENT_SECTION &patient)
+static int cmd_patient(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     string temp_patients_name;
@@ -153,31 +127,31 @@ static int cmd_patient(char type, istringstream &cmdstrm, PATIENT_SECTION &patie
             cerr << "Unexpected empty patient's name " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
         else
         {
-            x_www_form_codec<char>::decode(temp_patients_name.c_str(), patient.patientsName, sizeof(patient.patientsName));
+            x_www_form_codec<char>::decode(temp_patients_name.c_str(), lc.patient.patientsName, sizeof(lc.patient.patientsName));
             if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp_patients_name << endl;
         }
         break;
     case 0x00100030:
-        cmdstrm >> patient.birthday;
+        cmdstrm >> lc.patient.birthday;
         dirty = true;
-        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << patient.birthday << endl;
+        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.birthday << endl;
         break;
     case 0x00100040:
-        cmdstrm >> patient.sex;
-        if(patient.sex != 'M' && patient.sex != 'F' && patient.sex != 'O') patient.sex = ' ';
-        else if(strlen(patient.patientID) == 0) dirty = true;
-        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << patient.sex << endl;
+        cmdstrm >> lc.patient.sex;
+        if(lc.patient.sex != 'M' && lc.patient.sex != 'F' && lc.patient.sex != 'O') lc.patient.sex = ' ';
+        else if(strlen(lc.patient.patientID) == 0) dirty = true;
+        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.sex << endl;
         break;
     case 0x00101020:
-        cmdstrm >> patient.height;
+        cmdstrm >> lc.patient.height;
         dirty = true;
-        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << patient.height << endl;
+        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.height << endl;
         break;
     case 0x00101030:
-        cmdstrm >> patient.weight;
+        cmdstrm >> lc.patient.weight;
         dirty = true;
         if(opt_verbose)
-            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << patient.weight << endl;
+            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.weight << endl;
         break;
     default:
         char otherbuf[1024] = "";
@@ -186,11 +160,11 @@ static int cmd_patient(char type, istringstream &cmdstrm, PATIENT_SECTION &patie
             << " " << otherbuf << ", encounter error" << endl;
         break;
     }
-    if(dirty && strlen(patient.patientID) == 0) strcpy_s(patient.patientID, fileBuff.patientID);
+    if(dirty && strlen(lc.patient.patientID) == 0) strcpy_s(lc.patient.patientID, lc.file.patientID);
     return 1;
 }
 
-static int cmd_instance(char type, istringstream &cmdstrm, FILE_SECTION &file)
+static int cmd_instance(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     string temp;
@@ -205,36 +179,36 @@ static int cmd_instance(char type, istringstream &cmdstrm, FILE_SECTION &file)
         else
         {
             if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp << endl;
-            x_www_form_codec<char>::decode(temp.c_str(), file.patientID, sizeof(file.patientID));
+            x_www_form_codec<char>::decode(temp.c_str(), lc.file.patientID, sizeof(lc.file.patientID));
         }
         break;
     case 0x0020000D:
-        cmdstrm >> file.studyUID;
-        if(strlen(file.studyUID) == 0)
+        cmdstrm >> lc.file.studyUID;
+        if(strlen(lc.file.studyUID) == 0)
             cerr << "Unexpected empty studyUID " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
         else if(opt_verbose)
-            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << file.studyUID << endl;
+            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.studyUID << endl;
         break;
     case 0x0020000E:
-        cmdstrm >> file.seriesUID;
-        if(strlen(file.seriesUID) == 0)
+        cmdstrm >> lc.file.seriesUID;
+        if(strlen(lc.file.seriesUID) == 0)
             cerr << "Unexpected empty seriesUID " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
         else if(opt_verbose)
-            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << file.seriesUID << endl;
+            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.seriesUID << endl;
         break;
     case 0x00080018:
-        cmdstrm >> file.instanceUID;
-        if(strlen(file.instanceUID) == 0)
+        cmdstrm >> lc.file.instanceUID;
+        if(strlen(lc.file.instanceUID) == 0)
             cerr << "Unexpected empty instanceUID " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
         else if(opt_verbose)
-            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << file.instanceUID << endl;
+            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.instanceUID << endl;
         break;
     case 0x00020010:
-        cmdstrm >> file.xfer;
-        if(strlen(file.xfer) == 0)
+        cmdstrm >> lc.file.xfer;
+        if(strlen(lc.file.xfer) == 0)
             cerr << "Unexpected empty xfer " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
         else if(opt_verbose)
-            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << file.xfer << endl;
+            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.xfer << endl;
         break;
     default:
         char otherbuf[1024] = "";
@@ -246,7 +220,7 @@ static int cmd_instance(char type, istringstream &cmdstrm, FILE_SECTION &file)
     return 1;
 }
 
-static void print_error_file_section(unsigned int tag, string &filename, FILE_SECTION &fs)
+static void print_error_file_section(unsigned int tag, string &filename, CMOVE_FILE_SECTION &fs)
 {
     if(filename.empty())
         cerr << "Unexpected commit F " << hex << uppercase << setw(8) << setfill('0') << tag << " " << filename << ", old value:" << endl;
@@ -262,7 +236,7 @@ static void print_error_file_section(unsigned int tag, string &filename, FILE_SE
     cerr << "\txfer: " << fs.xfer << endl;
 }
 
-static void clear_file_section(FILE_SECTION &fs)
+static void clear_file_section(CMOVE_FILE_SECTION &fs)
 {
     fs.filename[0] = '\0';
     fs.tag = 0;
@@ -274,7 +248,7 @@ static void clear_file_section(FILE_SECTION &fs)
     fs.inFile = false;
 }
 
-static int cmd_file(char type, istringstream &cmdstrm, FILE_SECTION &file)
+static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     string filename;
@@ -282,38 +256,32 @@ static int cmd_file(char type, istringstream &cmdstrm, FILE_SECTION &file)
     if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << filename << endl;
     if(filename.empty())
     {   // test before commit file section 
-        if(!file.inFile || tag != file.tag || strlen(file.filename) == 0 || strlen(file.patientID) == 0
-            || strlen(file.studyUID) == 0 || strlen(file.seriesUID) == 0 || strlen(file.instanceUID) == 0
-            || strlen(file.xfer) == 0) // error, print unexpected value
-            print_error_file_section(tag, filename, file);
-        else
-        {   // OK, commit file section
-            //save_file();
-            if(strcmp(file.patientID, patientBuff.patientID) == 0)
-            {   //refresh_patient_info();
-                cerr << "refresh patient info" << endl;
-            }
-        }
-        file.inFile = false;
+        if(!lc.file.inFile || tag != lc.file.tag || strlen(lc.file.filename) == 0 || strlen(lc.file.patientID) == 0
+            || strlen(lc.file.studyUID) == 0 || strlen(lc.file.seriesUID) == 0 || strlen(lc.file.instanceUID) == 0
+            || strlen(lc.file.xfer) == 0) // error, print unexpected value
+            print_error_file_section(tag, filename, lc.file);
+        else // OK, commit file section
+            callback_process_log(&lc);
+        lc.file.inFile = false;
     }
     else
     {   // new filename
-        if(file.inFile) // error, print unexpected value
-            print_error_file_section(tag, filename, file);
+        if(lc.file.inFile) // error, print unexpected value
+            print_error_file_section(tag, filename, lc.file);
         // enter file section, clear all UID
-        clear_file_section(file);
-        clear_patient_section(patientBuff);
-        clear_study_section(studyBuff);
-        clear_series_section(seriesBuff);
+        clear_file_section(lc.file);
+        clear_patient_section(lc.patient);
+        clear_study_section(lc.study);
+        clear_series_section(lc.series);
 
-        filename._Copy_s(file.filename, sizeof(file.filename), filename.length());
-        file.tag = tag;
-        file.inFile = true;
+        filename._Copy_s(lc.file.filename, sizeof(lc.file.filename), filename.length());
+        lc.file.tag = tag;
+        lc.file.inFile = true;
     }
     return 1;
 }
 
-static int cmd_assoc(char type, istringstream &cmdstrm, ASSOC_SECTION &assoc)
+static int cmd_assoc(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     cmdstrm >> hex >> tag;
@@ -321,8 +289,8 @@ static int cmd_assoc(char type, istringstream &cmdstrm, ASSOC_SECTION &assoc)
     switch(tag)
     {
     case ASSOC_ESTA:
-        cmdstrm >> assoc.callingAE >> assoc.callingAddr >> assoc.calledAE >> dec >> assoc.port >> assoc.calledAddr;
-        if(opt_verbose) cerr << " " << assoc.callingAE << " " << assoc.callingAddr<< " " << assoc.calledAE<< " " << dec << assoc.port << " " << assoc.calledAddr << endl;
+        cmdstrm >> lc.assoc.callingAE >> lc.assoc.callingAddr >> lc.assoc.calledAE >> dec >> lc.assoc.port >> lc.assoc.calledAddr;
+        if(opt_verbose) cerr << " " << lc.assoc.callingAE << " " << lc.assoc.callingAddr<< " " << lc.assoc.calledAE<< " " << dec << lc.assoc.port << " " << lc.assoc.calledAddr << endl;
         break;
     case ASSOC_TERM:
     case ASSOC_ABORT:
@@ -350,21 +318,21 @@ static int process_cmd(const char *buf, size_t buf_len)
     switch(type)
     {
     case TYPE_ASSOC:
-        return cmd_assoc(type, cmdstrm, assocBuff);
+        return cmd_assoc(type, cmdstrm, lc);
     case TYPE_FILE:
-        cmd_file(type, cmdstrm, fileBuff);
+        cmd_file(type, cmdstrm, lc);
         break;
     case TYPE_PATIENT:
-        if(fileBuff.inFile) cmd_patient(type, cmdstrm, patientBuff);
+        if(lc.file.inFile) cmd_patient(type, cmdstrm, lc);
         break;
     case TYPE_STUDY:
-        if(fileBuff.inFile) cmd_study(type, cmdstrm, studyBuff);
+        if(lc.file.inFile) cmd_study(type, cmdstrm, lc);
         break;
     case TYPE_SERIES:
-        if(fileBuff.inFile) cmd_series(type, cmdstrm, seriesBuff);
+        if(lc.file.inFile) cmd_series(type, cmdstrm, lc);
         break;
     case TYPE_INSTANCE:
-        if(fileBuff.inFile) cmd_instance(type, cmdstrm, fileBuff);
+        if(lc.file.inFile) cmd_instance(type, cmdstrm, lc);
         break;
     default:
         cerr << "can't recognize command: " << buf << endl;
@@ -374,9 +342,10 @@ static int process_cmd(const char *buf, size_t buf_len)
 
 static char buff[1024];
 
-COMMONLIB_API void process_log(const char *sessionId)
+COMMONLIB_API void process_log(const char *sessionId, bool verbose, CALLBACK_CMOVE_PROCESS_LOG cbfunc)
 {
     size_t gpos = 0;
+    opt_verbose = verbose;
     string fn(sessionId);
     fn.append(1, '\\').append("cmove.txt");
     ifstream tail(fn, ios_base::in, _SH_DENYNO);
@@ -387,11 +356,13 @@ COMMONLIB_API void process_log(const char *sessionId)
     }
 
     int ret = 1, waitTime = 0;
-    assocBuff.port = 0;
-    clear_file_section(fileBuff);
-    clear_patient_section(patientBuff);
-    clear_study_section(studyBuff);
-    clear_series_section(seriesBuff);
+    lc.assoc.port = 0;
+    clear_file_section(lc.file);
+    clear_patient_section(lc.patient);
+    clear_study_section(lc.study);
+    clear_series_section(lc.series);
+
+    callback_process_log = cbfunc;
 
     while(ret && waitTime <= 10 * 1000)
     {

@@ -77,4 +77,41 @@ COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int li
 COMMONLIB_API bool encodeBase32(const char *src, char *enc, size_t enc_buf_size);
 COMMONLIB_API bool decodeBase32(const char *src, char *dec, size_t dec_buf_size);
 COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t buf_size);
-COMMONLIB_API void process_log(const char *sessionId);
+
+#ifndef CMOVE_DLL_STRUCT_TYPE
+#define CMOVE_DLL_STRUCT_TYPE
+typedef struct {
+    char callingAE[65], callingAddr[40], calledAE[65], calledAddr[40];
+    unsigned short port;
+} CMOVE_ASSOC_SECTION;
+
+typedef struct {
+    unsigned int tag;
+    char filename[MAX_PATH], patientID[65], studyUID[65], seriesUID[65], instanceUID[65], xfer[16];
+    bool inFile;
+} CMOVE_FILE_SECTION;
+
+typedef struct {
+    char patientID[65], patientsName[65], birthday[9], height[10], weight[10], sex;
+} CMOVE_PATIENT_SECTION;
+
+typedef struct {
+    char studyUID[65], studyDate[9], studyTime[15], accessionNumber[65];
+} CMOVE_STUDY_SECTION;
+
+typedef struct {
+    char seriesUID[65], modality[17];
+} CMOVE_SERIES_SECTION;
+
+typedef struct {
+    CMOVE_ASSOC_SECTION assoc;
+    CMOVE_FILE_SECTION file;
+    CMOVE_PATIENT_SECTION patient;
+    CMOVE_STUDY_SECTION study;
+    CMOVE_SERIES_SECTION series;
+} CMOVE_LOG_CONTEXT;
+
+typedef void (*CALLBACK_CMOVE_PROCESS_LOG)(const CMOVE_LOG_CONTEXT*);
+
+COMMONLIB_API void process_log(const char *sessionId, bool verbose, CALLBACK_CMOVE_PROCESS_LOG cbfunc);
+#endif //CMOVE_DLL_STRUCT_TYPE
