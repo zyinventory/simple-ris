@@ -218,31 +218,39 @@ COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
 		}
 		// else get working dir from PACS_BASE in env
 	}
+    return GetPacsBase(pPacsBase, MAX_PATH);
+}
 
-	char* workingDirBuffer;
-	size_t requiredSize;
-	getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
+#define ENV_PACS_BASE "PACS_BASE"
+COMMONLIB_API int GetPacsBase(char *pPacsBase, size_t buff_size, const char *subdir)
+{
+	size_t requiredSize = 0, total_size = 0;
+    errno_t chdirFail = -1;
+	char basedir[] = "C:\\usr\\local\\dicom", pacsdir[] = "\\pacs", *temp = NULL;
+	getenv_s( &requiredSize, NULL, 0, ENV_PACS_BASE);
 	if(requiredSize > 0)
 	{
-		char pacsdir[] = "\\pacs";
-		workingDirBuffer = new char[requiredSize + sizeof(pacsdir)];
-		getenv_s( &requiredSize, workingDirBuffer, requiredSize, "PACS_BASE");
-		if(pPacsBase)
-			strcpy_s(pPacsBase, MAX_PATH, workingDirBuffer);
-		strcpy_s(workingDirBuffer + requiredSize - 1, sizeof(pacsdir), pacsdir);
-		int chdirFail = _chdir(workingDirBuffer);
-		delete workingDirBuffer;
-		if(chdirFail) return -1;
+        total_size = requiredSize + sizeof(pacsdir) + (subdir ? strlen(subdir) : 0);
+        temp = new char[total_size];
+        getenv_s(&requiredSize, temp, requiredSize, ENV_PACS_BASE);
+        strcat_s(temp, total_size, pacsdir);
+        if(subdir) strcat_s(temp, total_size, subdir);
 	}
 	else
 	{
-		if(!_chdir("C:\\usr\\local\\dicom\\pacs"))
-			return -3;
-		if(pPacsBase)
-		{
-			char base[] = "C:\\usr\\local\\dicom";
-			strcpy_s(pPacsBase, sizeof(base), base);
-		}
+        total_size = sizeof(basedir) + sizeof(pacsdir) + (subdir ? strlen(subdir) : 0);
+        temp = new char[total_size];
+        requiredSize = sizeof(basedir);
+        strcpy_s(temp, total_size, basedir);
+        strcat_s(temp, total_size, pacsdir);
+        if(subdir) strcat_s(temp, total_size, subdir);
 	}
-	return 0;
+    chdirFail = _chdir(temp);
+    temp[requiredSize - 1] = '\0';
+    if(pPacsBase) strcpy_s(pPacsBase, buff_size, temp);
+    if(temp) delete temp;
+    if(chdirFail)
+        return chdirFail;
+    else
+        return 0;
 }

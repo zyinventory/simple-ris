@@ -63,6 +63,7 @@ COMMONLIB_API bool EnsureQueueExist(const char *queuePath);
 COMMONLIB_API bool DeleteQueue(const char *queueName);
 COMMONLIB_API errno_t setEnvParentPID();
 COMMONLIB_API size_t GenerateTime(const char *format, char *timeBuffer, size_t bufferSize, time_t *time_now = NULL);
+COMMONLIB_API int GetPacsBase(char *pPacsBase, size_t buff_size, const char *subdir = NULL);
 COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase = NULL);
 COMMONLIB_API __int64 uidHashW(const wchar_t *s, char *buffer = NULL, size_t buffer_size = 0);
 COMMONLIB_API __int64 uidHash(const char *s, char *buffer = NULL, size_t buffer_size = 0);
@@ -111,7 +112,5 @@ typedef struct {
     CMOVE_SERIES_SECTION series;
 } CMOVE_LOG_CONTEXT;
 
-typedef void (*CALLBACK_CMOVE_PROCESS_LOG)(const CMOVE_LOG_CONTEXT*, std::ostream &dllcerr);
-
-COMMONLIB_API void process_log(const char *sessionId, bool verbose, CALLBACK_CMOVE_PROCESS_LOG cbfunc);
+COMMONLIB_API void process_log(const char *sessionId, bool verbose);
 #endif //CMOVE_DLL_STRUCT_TYPE

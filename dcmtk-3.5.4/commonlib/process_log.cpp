@@ -17,8 +17,8 @@
 using namespace std;
 
 static bool opt_verbose = false;
+static const char *sessionId;
 static CMOVE_LOG_CONTEXT  lc;
-static CALLBACK_CMOVE_PROCESS_LOG callback_process_log;
 
 static void clear_series_section(CMOVE_SERIES_SECTION &ps)
 {
@@ -261,7 +261,9 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
             || strlen(lc.file.xfer) == 0) // error, print unexpected value
             print_error_file_section(tag, filename, lc.file);
         else // OK, commit file section
-            callback_process_log(&lc, cerr);
+        {
+            cerr << "commit file" << endl;
+        }
         lc.file.inFile = false;
     }
     else
@@ -337,19 +339,24 @@ static int process_cmd(const char *buf, size_t buf_len)
     return 1;
 }
 
-static char buff[1024];
+static char buff[1024], pacs_base[MAX_PATH];
 
-COMMONLIB_API void process_log(const char *sessionId, bool verbose, CALLBACK_CMOVE_PROCESS_LOG cbfunc)
+COMMONLIB_API void process_log(const char *sessId, bool verbose)
 {
     size_t gpos = 0;
     opt_verbose = verbose;
-    string fn(sessionId);
-    fn.append(1, '\\').append("cmove.txt");
-    ifstream tail(fn, ios_base::in, _SH_DENYNO);
+    sessionId = sessId;
+    string fn("\\storedir\\");
+    fn.append(sessionId);
+    if(GetPacsBase(pacs_base, MAX_PATH, fn.c_str()))
+    {
+        cerr << "无法切换工作目录" << endl;
+        return;
+    }
+    ifstream tail("cmove.txt", ios_base::in, _SH_DENYNO);
     if(tail.fail())
     {
         cerr << "无法打开文件" << fn << endl;
-        cbfunc(NULL, cerr);
         return;
     }
 
@@ -359,8 +366,6 @@ COMMONLIB_API void process_log(const char *sessionId, bool verbose, CALLBACK_CMO
     clear_patient_section(lc.patient);
     clear_study_section(lc.study);
     clear_series_section(lc.series);
-
-    callback_process_log = cbfunc;
 
     while(ret && waitTime <= 10 * 1000)
     {
@@ -387,5 +392,4 @@ COMMONLIB_API void process_log(const char *sessionId, bool verbose, CALLBACK_CMO
         }
     }
     tail.close();
-    cbfunc(NULL, cerr);
 }
