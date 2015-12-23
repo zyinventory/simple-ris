@@ -51,6 +51,9 @@
     <ClCompile Include="process_log.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="compress_file.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />

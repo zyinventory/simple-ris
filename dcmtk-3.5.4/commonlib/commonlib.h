@@ -89,7 +89,8 @@ typedef struct {
 typedef struct {
     unsigned int tag;
     char filename[MAX_PATH], patientID[65], studyUID[65], seriesUID[65], instanceUID[65], xfer[16];
-    bool inFile;
+    bool inFile, isEncapsulated;
+    bool StorePath(char *buf, size_t buf_size);
 } CMOVE_FILE_SECTION;
 
 typedef struct {

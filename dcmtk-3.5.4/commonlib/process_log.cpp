@@ -16,7 +16,8 @@
 
 using namespace std;
 
-static bool opt_verbose = false;
+bool opt_verbose = false;
+
 static const char *sessionId;
 static CMOVE_LOG_CONTEXT  lc;
 
@@ -204,11 +205,11 @@ static int cmd_instance(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc
             cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.instanceUID << endl;
         break;
     case 0x00020010:
-        cmdstrm >> lc.file.xfer;
+        cmdstrm >> lc.file.xfer >> lc.file.isEncapsulated;
         if(strlen(lc.file.xfer) == 0)
             cerr << "Unexpected empty xfer " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
         else if(opt_verbose)
-            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.xfer << endl;
+            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.xfer << " " << lc.file.isEncapsulated << endl;
         break;
     default:
         char otherbuf[1024] = "";
@@ -248,6 +249,8 @@ static void clear_file_section(CMOVE_FILE_SECTION &fs)
     fs.inFile = false;
 }
 
+bool commit_file_to_queue(CMOVE_LOG_CONTEXT &lc);
+
 static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
@@ -261,9 +264,7 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
             || strlen(lc.file.xfer) == 0) // error, print unexpected value
             print_error_file_section(tag, filename, lc.file);
         else // OK, commit file section
-        {
-            cerr << "commit file" << endl;
-        }
+            commit_file_to_queue(lc);
         lc.file.inFile = false;
     }
     else
@@ -341,9 +342,15 @@ static int process_cmd(const char *buf, size_t buf_len)
 
 static char buff[1024], pacs_base[MAX_PATH];
 
+extern CRITICAL_SECTION  cs_queue;
+void thread_read_queue(void *p);
+size_t file_queue_length();
+volatile bool end_of_input_queue = false;
+
 COMMONLIB_API void process_log(const char *sessId, bool verbose)
 {
     size_t gpos = 0;
+    end_of_input_queue = false;
     opt_verbose = verbose;
     sessionId = sessId;
     string fn("\\storedir\\");
@@ -359,6 +366,12 @@ COMMONLIB_API void process_log(const char *sessId, bool verbose)
         cerr << "无法打开文件" << fn << endl;
         return;
     }
+    try {
+        InitializeCriticalSection(&cs_queue);
+    } catch(...) {
+        cerr << "无法创建临界区，内存不足？" << endl;
+        return;
+    }
 
     int ret = 1, waitTime = 0;
     lc.assoc.port = 0;
@@ -366,6 +379,8 @@ COMMONLIB_API void process_log(const char *sessId, bool verbose)
     clear_patient_section(lc.patient);
     clear_study_section(lc.study);
     clear_series_section(lc.series);
+
+    HANDLE ht_queue = (HANDLE)_beginthread(thread_read_queue, 0, NULL);
 
     while(ret && waitTime <= 10 * 1000)
     {
@@ -392,4 +407,17 @@ COMMONLIB_API void process_log(const char *sessId, bool verbose)
         }
     }
     tail.close();
+    end_of_input_queue = true;
+    
+    // waiting worker process
+
+    DWORD sw = WaitForSingleObject(ht_queue, 10 * 1000);
+    if(sw == WAIT_TIMEOUT)
+    {
+        size_t queue_len = file_queue_length();
+        cerr << "queue remain " << queue_len << endl;
+        cerr << "TerminateThread forcely: " << hex << uppercase << setw(8) << setfill('0') << sw << endl;
+        TerminateThread(ht_queue, -1);
+    }
+    DeleteCriticalSection(&cs_queue);
 }

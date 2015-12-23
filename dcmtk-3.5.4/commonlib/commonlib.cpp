@@ -254,3 +254,21 @@ COMMONLIB_API int GetPacsBase(char *pPacsBase, size_t buff_size, const char *sub
     else
         return 0;
 }
+
+DWORD sys_core_num = 4;
+BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved )
+{
+	switch (ul_reason_for_call)
+	{
+	case DLL_PROCESS_ATTACH:
+        SYSTEM_INFO sysInfo;
+		GetSystemInfo(&sysInfo);
+        sys_core_num = sysInfo.dwNumberOfProcessors;
+        break;
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+	case DLL_PROCESS_DETACH:
+		break;
+	}
+	return TRUE;
+}

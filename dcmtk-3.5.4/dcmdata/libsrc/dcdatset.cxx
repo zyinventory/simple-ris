@@ -624,7 +624,7 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, char level)
             << " " << instanceUID << endl;
         strmbuf << "I " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() 
-            << " " << xfer.getXferShortName() << endl;
+            << " " << xfer.getXferShortName() << " " << xfer.isEncapsulated() << endl;
     }
 
     if(level == 'P' || level == 'A')
