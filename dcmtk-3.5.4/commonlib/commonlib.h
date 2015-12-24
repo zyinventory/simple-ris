@@ -106,6 +106,7 @@ typedef struct {
 } CMOVE_SERIES_SECTION;
 
 typedef struct {
+    HANDLE hprocess, hthread, log;
     CMOVE_ASSOC_SECTION assoc;
     CMOVE_FILE_SECTION file;
     CMOVE_PATIENT_SECTION patient;

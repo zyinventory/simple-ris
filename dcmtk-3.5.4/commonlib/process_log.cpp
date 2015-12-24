@@ -21,10 +21,13 @@ bool opt_verbose = false;
 static const char *sessionId;
 static CMOVE_LOG_CONTEXT  lc;
 
-static void clear_series_section(CMOVE_SERIES_SECTION &ps)
+static void clear_log_context(CMOVE_LOG_CONTEXT &lc)
 {
-    ps.seriesUID[0] = '\0';
-    ps.modality[0] = '\0';
+    memset(&lc, 0, sizeof(CMOVE_LOG_CONTEXT));
+    lc.hprocess = INVALID_HANDLE_VALUE;
+    lc.hthread = INVALID_HANDLE_VALUE;
+    lc.log = INVALID_HANDLE_VALUE;
+    lc.patient.sex = ' ';
 }
 
 static int cmd_series(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
@@ -56,14 +59,6 @@ static int cmd_series(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     }
     if(dirty && strlen(lc.series.seriesUID) == 0) strcpy_s(lc.series.seriesUID, lc.file.seriesUID);
     return 1;
-}
-
-static void clear_study_section(CMOVE_STUDY_SECTION &ps)
-{
-    ps.studyUID[0] = '\0';
-    ps.accessionNumber[0] = '\0';
-    ps.studyDate[0] = '\0';
-    ps.studyTime[0] = '\0';
 }
 
 static int cmd_study(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
@@ -100,16 +95,6 @@ static int cmd_study(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     }
     if(dirty && strlen(lc.study.studyUID) == 0) strcpy_s(lc.study.studyUID, lc.file.studyUID);
     return 1;
-}
-
-static void clear_patient_section(CMOVE_PATIENT_SECTION &ps)
-{
-    ps.patientID[0] = '\0';
-    ps.patientsName[0] = '\0';
-    ps.birthday[0] = '\0';
-    ps.height[0] = '\0';
-    ps.weight[0] = '\0';
-    ps.sex = ' ';
 }
 
 static int cmd_patient(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
@@ -237,19 +222,7 @@ static void print_error_file_section(unsigned int tag, string &filename, CMOVE_F
     cerr << "\txfer: " << fs.xfer << endl;
 }
 
-static void clear_file_section(CMOVE_FILE_SECTION &fs)
-{
-    fs.filename[0] = '\0';
-    fs.tag = 0;
-    fs.patientID[0] = '\0';
-    fs.studyUID[0] = '\0';
-    fs.seriesUID[0] = '\0';
-    fs.instanceUID[0] = '\0';
-    fs.xfer[0] = '\0';
-    fs.inFile = false;
-}
-
-bool commit_file_to_queue(CMOVE_LOG_CONTEXT &lc);
+bool commit_file_to_workers(CMOVE_LOG_CONTEXT *lc);
 
 static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
@@ -264,7 +237,7 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
             || strlen(lc.file.xfer) == 0) // error, print unexpected value
             print_error_file_section(tag, filename, lc.file);
         else // OK, commit file section
-            commit_file_to_queue(lc);
+            commit_file_to_workers(&lc);
         lc.file.inFile = false;
     }
     else
@@ -272,12 +245,9 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
         if(lc.file.inFile) // error, print unexpected value
             print_error_file_section(tag, filename, lc.file);
         // enter file section, clear all UID
-        clear_file_section(lc.file);
-        clear_patient_section(lc.patient);
-        clear_study_section(lc.study);
-        clear_series_section(lc.series);
-
+        clear_log_context(lc);
         filename._Copy_s(lc.file.filename, sizeof(lc.file.filename), filename.length());
+        lc.file.filename[filename.length()] = '\0';
         lc.file.tag = tag;
         lc.file.inFile = true;
     }
@@ -340,17 +310,13 @@ static int process_cmd(const char *buf, size_t buf_len)
     return 1;
 }
 
-static char buff[1024], pacs_base[MAX_PATH];
-
-extern CRITICAL_SECTION  cs_queue;
-void thread_read_queue(void *p);
-size_t file_queue_length();
-volatile bool end_of_input_queue = false;
+bool run_index();
+char pacs_base[MAX_PATH];
+static char buff[1024];
 
 COMMONLIB_API void process_log(const char *sessId, bool verbose)
 {
     size_t gpos = 0;
-    end_of_input_queue = false;
     opt_verbose = verbose;
     sessionId = sessId;
     string fn("\\storedir\\");
@@ -366,21 +332,9 @@ COMMONLIB_API void process_log(const char *sessId, bool verbose)
         cerr << "无法打开文件" << fn << endl;
         return;
     }
-    try {
-        InitializeCriticalSection(&cs_queue);
-    } catch(...) {
-        cerr << "无法创建临界区，内存不足？" << endl;
-        return;
-    }
 
     int ret = 1, waitTime = 0;
-    lc.assoc.port = 0;
-    clear_file_section(lc.file);
-    clear_patient_section(lc.patient);
-    clear_study_section(lc.study);
-    clear_series_section(lc.series);
-
-    HANDLE ht_queue = (HANDLE)_beginthread(thread_read_queue, 0, NULL);
+    clear_log_context(lc);
 
     while(ret && waitTime <= 10 * 1000)
     {
@@ -407,17 +361,6 @@ COMMONLIB_API void process_log(const char *sessId, bool verbose)
         }
     }
     tail.close();
-    end_of_input_queue = true;
-    
-    // waiting worker process
-
-    DWORD sw = WaitForSingleObject(ht_queue, 10 * 1000);
-    if(sw == WAIT_TIMEOUT)
-    {
-        size_t queue_len = file_queue_length();
-        cerr << "queue remain " << queue_len << endl;
-        cerr << "TerminateThread forcely: " << hex << uppercase << setw(8) << setfill('0') << sw << endl;
-        TerminateThread(ht_queue, -1);
-    }
-    DeleteCriticalSection(&cs_queue);
+    while(commit_file_to_workers(NULL));
+    while(run_index());
 }

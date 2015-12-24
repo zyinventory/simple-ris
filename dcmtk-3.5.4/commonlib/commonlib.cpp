@@ -255,7 +255,7 @@ COMMONLIB_API int GetPacsBase(char *pPacsBase, size_t buff_size, const char *sub
         return 0;
 }
 
-DWORD sys_core_num = 4;
+int sys_core_num = 4, worker_core_num = 2;
 BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved )
 {
 	switch (ul_reason_for_call)
@@ -264,6 +264,7 @@ BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpRese
         SYSTEM_INFO sysInfo;
 		GetSystemInfo(&sysInfo);
         sys_core_num = sysInfo.dwNumberOfProcessors;
+        worker_core_num = max(2, sys_core_num - 2);
         break;
 	case DLL_THREAD_ATTACH:
 	case DLL_THREAD_DETACH:
