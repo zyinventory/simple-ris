@@ -73,14 +73,9 @@
 #include "dcmtk/dcmjpeg/ddpiimpl.h"     /* for class DicomDirImageImplementation */
 #endif
 
-#include <iterator>
-#include <direct.h>
-#include <atlbase.h>
-#include <atlcom.h>
-#include <lock.h>
-#include <liblock.h>
+#include "dcmtk/ofstd/oftimer.h"        /* for windows.h */
+#include <process.h>
 #include "commonlib.h"
-#import <mqoa.dll>
 
 #ifdef WITH_ZLIB
 #include <zlib.h>         /* for zlibVersion() */
@@ -109,12 +104,6 @@ static char timeBuffer[32];
 #define GE_MediaStorageSOPInstanceUID "1.2.840.113619.6.286.%Y%m%d.%H%M%S."
 
 // ********************************************
-using namespace MSMQ;
-
-static void exitHook()
-{
-	TerminateLock(0);
-}
 
 static std::ostream& time_header_out(ostream &os)
 {
@@ -185,8 +174,6 @@ int main(int argc, char *argv[])
 	OFBool opt_write = OFTrue;
 	OFBool opt_append = OFFalse;
 	OFBool opt_recurse = OFFalse;
-	OFBool opt_deleteSourceCSV = OFFalse;
-	OFBool opt_instanceUniquePath = OFFalse;
 	E_EncodingType opt_enctype = EET_ExplicitLength;
 	E_GrpLenEncoding opt_glenc = EGL_withoutGL;
 	const char *opt_output = DEFAULT_DICOMDIR_NAME;
@@ -195,12 +182,7 @@ int main(int argc, char *argv[])
 	const char *opt_charset = DEFAULT_DESCRIPTOR_CHARSET;
 	const char *opt_directory = NULL;
 	const char *opt_pattern = NULL;
-	const char *opt_queueName = NULL;
-	const char *opt_index = "indexdir";
-	const char *opt_csv = NULL;
-	const char *opt_weburl = "http://localhost/pacs/";
 	const char *opt_viewer = "eFilm";
-	OFCmdUnsignedInt opt_queueTimeout = 15;
 	DicomDirInterface::E_ApplicationProfile opt_profile = DicomDirInterface::AP_GeneralPurpose;
 
 	//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
@@ -310,14 +292,7 @@ int main(int argc, char *argv[])
 	cmd.addOption("--length-explicit",       "+e",     "write with explicit lengths (default)");
 	cmd.addOption("--length-undefined",      "-e",     "write with undefined lengths");
 	cmd.addSubGroup("index:");
-	cmd.addOption("--queue-name",            "-qn", 1, "queue name : string", "msmq queue name");
-	cmd.addOption("--index-directory",       "-ix", 1, "directory : string", "write index file, default : indexdir");
-	cmd.addOption("--input-csv",             "-ic", 1, "filename : string", "read index information from csv file");
-	cmd.addOption("--delete-source-csv",     "-ds",    "if indexing is successful, delete source csv file");
-	cmd.addOption("--web-url",               "-wu", 1, "web url : string", "add a web url to index file, default : http://localhost/pacs/");
 	cmd.addOption("--viewer",						1, "viewer : string", "which viewer will append to DVD, default : eFilm");
-	cmd.addOption("--queue-timeout",         "-qt", 1, "queue timeout : integer(1..300)", "queue receive message timeout, default : 15(second)");
-	cmd.addOption("--instance-unique-path",  "-iu",    "instance path is unique" );
 
 	/* evaluate command line */
 	prepareCmdLineArgs(argc, argv, OFFIS_CONSOLE_APPLICATION);
@@ -545,27 +520,8 @@ int main(int argc, char *argv[])
 		{
 			app.checkConflict("--icon-image-size", "--basic-cardiac, --xray-angiographic or --ct-and-mr", cmd.findOption("--icon-image-size"));
 		}
-
-		if (cmd.findOption("--queue-name"))
-			app.checkValue(cmd.getValue(opt_queueName));
-		if (cmd.findOption("--index-directory"))
-			app.checkValue(cmd.getValue(opt_index));
-		if (cmd.findOption("--input-csv"))
-			app.checkValue(cmd.getValue(opt_csv));
-		if (cmd.findOption("--web-url"))
-			app.checkValue(cmd.getValue(opt_weburl));
 		if (cmd.findOption("--viewer"))
 			app.checkValue(cmd.getValue(opt_viewer));
-		if (cmd.findOption("--delete-source-csv"))
-			opt_deleteSourceCSV = OFTrue;
-		if (cmd.findOption("--queue-timeout"))
-		{
-			OFCmdUnsignedInt qt = 0;
-			app.checkValue(cmd.getValueAndCheckMinMax(qt, 1, 300));
-			opt_queueTimeout = qt;
-		}
-		if (cmd.findOption("--instance-unique-path")) opt_instanceUniquePath = OFTrue;
-		if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: queue timeout is " << opt_queueTimeout << endl;
 	}
 
 	/* set debug mode and stream for log messages */
@@ -604,10 +560,10 @@ int main(int argc, char *argv[])
 		for (int i = 1; i <= count; i++)
 		{
 			cmd.getParam(i, param);
-			if(*param == '@' && opt_queueName)
+			if(*param == '-')
 			{
-				//time_header_out(COUT) << "read file path from input stream" << endl;
 				readQueue = true;
+				if(ddir.verboseMode()) time_header_out(COUT) << "read file path from stdin" << endl;
 				break;
 			}
 			/* add input directory */
@@ -650,11 +606,11 @@ int main(int argc, char *argv[])
 	else
 		result = ddir.createNewDicomDir(opt_profile, opt_output, opt_fileset);
 
+	if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: begin to add files" << endl;
+
 	// If scu split study into series and one association per series,
 	// dcmmkdir must collect csv files as fileNameList, otherwise xml index will be incorrect.
 	OFList<OFString> fileNameList;
-	bool isIntegrity = false;
-
 	if (result.good())
 	{
 		/* set fileset descriptor and character set */
@@ -666,134 +622,32 @@ int main(int argc, char *argv[])
 			/* collect 'bad' files */
 			OFList<OFString> badFiles;
 			unsigned int goodFiles = 0;
+			char fnbuf[1024];
 			if(readQueue)
 			{
-				HRESULT hr;
-				string label;
-				CoInitialize(NULL);
-				try
+				while(!(cin.getline(fnbuf, sizeof(fnbuf)).fail()))
 				{
-					IMSMQQueueInfoPtr pInfo;
-					hr = pInfo.CreateInstance(OLESTR("MSMQ.MSMQQueueInfo"));
-					if(FAILED(hr)) throw _com_error(hr, NULL);
-					string qname(opt_queueName);
-					if(qname.find(".\\private$\\") != 0)
-						qname.insert(0, ".\\private$\\");
-					pInfo->PathName = qname.c_str();
-					IMSMQQueuePtr pQueue;
-					try
+					char *pfn = strchr(fnbuf, '|');
+					char *dir = NULL;
+					if(pfn)
 					{
-						pQueue = pInfo->Open(MQ_RECEIVE_ACCESS, MQ_DENY_NONE);
+						*pfn++ = '\0';
+						dir = fnbuf;
 					}
-					catch(_com_error &openerr)
+					else pfn = fnbuf;
+					/* add files to the DICOMDIR */
+					result = ddir.addDicomFile(pfn, dir && *dir != '\0' ? dir : opt_directory);
+					if (result.bad())
 					{
-						if(openerr.Error() == MQ_ERROR_QUEUE_NOT_FOUND)
+						badFiles.push_back(pfn);
+						if (!ddir.abortMode())
 						{
-							hr = pInfo->Create();
-							if(FAILED(hr)) throw _com_error(hr);
-							pQueue = pInfo->Open(MQ_RECEIVE_ACCESS, MQ_DENY_NONE);
+							/* ignore inconsistent file, just warn (already done inside "ddir") */
+							result = EC_Normal;
 						}
-						else
-						{
-							throw;
-						}
-					}
-
-					IMSMQMessagePtr pMsg;
-					VARIANT timeout = { (WORD)VT_I4, (WORD)0, (WORD)0, (WORD)0, opt_queueTimeout * 1000L }, 
-						vtFalse = { (WORD)VT_BOOL, (WORD)0, (WORD)0, (WORD)0, VARIANT_FALSE };
-traversal_restart:
-					try
-					{
-						while(pMsg = pQueue->PeekCurrent(&vtMissing, &vtFalse, &timeout))
-						{
-							isIntegrity = false;
-							label = pMsg->Label;
-							if(label.find(NOTIFY_COMPRESSED) == 0)
-							{
-								pMsg = pQueue->ReceiveCurrent();
-								string strbody(_bstr_t(pMsg->Body.bstrVal));
-								string::size_type archpos = strbody.find(opt_directory);
-								if(archpos != string::npos)
-								{
-									size_t dirlen = strlen(opt_directory);
-									if(strbody[archpos + dirlen] == '\\') ++dirlen;
-									strbody.erase(archpos, dirlen);
-								}
-								/* add files to the DICOMDIR */
-								result = ddir.addDicomFile(strbody.c_str(), opt_directory);
-								if (result.bad())
-								{
-									badFiles.push_back(strbody.c_str());
-									if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: bad file " << strbody << endl;
-									if (!ddir.abortMode())
-									{
-										/* ignore inconsistent file, just warn (already done inside "ddir") */
-										result = EC_Normal;
-									}
-								} else
-								{
-									++goodFiles;
-									if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: add file " << strbody << endl;
-								}
-							}
-							else if(label.find(NOTIFY_END_OF_STUDY) == 0)
-							{
-								pMsg = pQueue->ReceiveCurrent();
-								OFString strbody(_bstr_t(pMsg->Body.bstrVal));
-								if(label == NOTIFY_END_OF_STUDY) isIntegrity = true;
-
-								OFListIterator(OFString) iter = fileNameList.begin();
-								for(; iter != fileNameList.end(); ++iter)
-								{
-									if(strbody == *iter) break;
-								}
-								// collect each csv file
-								if(iter == fileNameList.end()) fileNameList.push_back(strbody);
-								if(ddir.verboseMode())
-								{
-									time_header_out(COUT) << "dicomdir maker get";
-									if(iter == fileNameList.end())
-										COUT << " a csv message add to list";
-									else
-										COUT << " a duplicated csv message";
-									if(isIntegrity)
-										COUT << ", ready for publish: ";
-									else
-										COUT << ", study is not integrity: ";
-									COUT  << strbody << endl;
-								}
-								pQueue->Reset();
-							}
-							else
-							{
-								time_header_out(CERR) << "make dicomdir: unknown message: " << label << endl;
-							}
-						}
-						//if(!pMsg) time_header_out(CERR) << "no more message in queue " << opt_queueName << endl;
-					}
-					catch(_com_error &comErr)
-					{
-						if(comErr.Error() == MQ_ERROR_MESSAGE_ALREADY_RECEIVED)
-						{
-							pQueue->Reset();
-							time_header_out(CERR) << "make dicomdir: concurrence of receiving message, restart" << endl;
-							goto traversal_restart;
-						}
-					}
-					hr = pQueue->Close();
-					if(FAILED(hr)) throw _com_error(hr, NULL);
+					} else
+						++goodFiles;
 				}
-				catch(_com_error &comErr)
-				{
-					time_header_out(CERR) << "make dicomdir error: " << comErr.ErrorMessage() << endl;
-				}
-				catch(...)
-				{
-					_com_error ce(AtlHresultFromLastError());
-					time_header_out(CERR) << "make dicomdir unknown error: " << ce.ErrorMessage() << endl;
-				}
-				CoUninitialize();
 			}
 			else
 			{
@@ -814,10 +668,9 @@ traversal_restart:
 						++goodFiles;
 					++iter;
 				}
-				fileNameList.push_back(opt_csv);
 			}
 
-			if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: leave queue, begin to write DICOMDIR" << endl;
+			if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: leave adding files, begin to write DICOMDIR" << endl;
 
 			/* evaluate result of file checking/adding procedure */
 			if (goodFiles == 0)
@@ -858,83 +711,6 @@ traversal_restart:
 		}
 	}
 
-	size_t listSize = fileNameList.size();
-	bool validLock = false;
-	char rw_passwd[9] = "";
-	if(listSize > 0)
-	{
-		char filename[64] = "..\\etc\\*.key";
-		int lockNumber = -1;
-		SEED_SIV siv;
-		if(InitiateLock(0))
-		{
-			atexit(exitHook);
-			lockNumber = getLockNumber(filename, FALSE, filename + 7, 64 - 7); // 7 == strlen("..\etc\")
-		}
-		else
-		{
-			time_header_out(CERR) << "init lock failed:" << hex << LYFGetLastErr() << endl;
-		}
-
-		if(lockNumber != -1 && 0 == loadPublicKeyContentRW(filename, &siv, lockNumber, rw_passwd))
-		{
-			for(int i = 0; i < 3 && !validLock; ++i)
-			{
-				int validResult = invalidLock("..\\etc\\license.key", filename, &siv);
-				if(validResult == 0)
-					validLock = currentCount(rw_passwd) > 0;
-				else
-					time_header_out(CERR) << "invalid lock: " << lockNumber << ", validate license failed " << validResult << endl;
-			}
-		}
-		if(!validLock) time_header_out(CERR) << "invalid lock: " << lockNumber << ", validate license failed" << endl;
-	}
-	else
-	{
-		if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: file name list size is 0, no file to burn." << endl;
-	}
-
-	// combine all csv files, but burn once
-	for(size_t i = 0; i < listSize; ++i)
-	{
-		char buffer[MAX_PATH];
-		strcpy_s(buffer, MAX_PATH, fileNameList.front().c_str());
-		fileNameList.pop_front();
-		//time_header_out(CERR) << "dicomdir OK, create index from " << buffer << endl;
-		if(i == listSize - 1 && validLock && isIntegrity) CommonlibBurnOnce = true; // burn once
-		bool readyToBurn = CommonlibBurnOnce;
-		if(ddir.verboseMode())
-		{
-			time_header_out(COUT) << "burning study: ";
-			if(readyToBurn)
-				COUT << buffer << endl;
-			else
-				COUT << "study is not integrity, skip burning" << endl;
-		}
-
-		CommonlibInstanceUniquePath = opt_instanceUniquePath;
-		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
-		if(readyToBurn && !CommonlibBurnOnce) decreaseCount(rw_passwd);
-	}
-/*
-	PROCESS_INFORMATION procinfo;
-	STARTUPINFO sinfo;
-	memset(&procinfo, 0, sizeof(procinfo));
-	memset(&sinfo, 0, sizeof(sinfo));
-	sinfo.cb = sizeof(sinfo);
-	char cmdbuff[MAX_PATH];
-	sprintf_s(cmdbuff, "..\\bin\\burning cd 0 ..\\viewer %s", opt_directory);
-	if( !CreateProcess(NULL, cmdbuff, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
-	{
-		fprintf( stderr, "burning cd: Error while executing command '%s'.\n" , cmdbuff );
-	}
-	else
-	{
-		// Close process and thread handles to avoid resource leak
-		CloseHandle(procinfo.hProcess);
-		CloseHandle(procinfo.hThread);
-	}
-*/
 #ifdef BUILD_DCMGPDIR_AS_DCMMKDIR
 	// deregister global decompression codecs
 	DcmRLEDecoderRegistration::cleanup();
