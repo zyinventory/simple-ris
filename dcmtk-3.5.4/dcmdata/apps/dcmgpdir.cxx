@@ -627,16 +627,16 @@ int main(int argc, char *argv[])
 			{
 				while(!(cin.getline(fnbuf, sizeof(fnbuf)).fail()))
 				{
-					char *pfn = strchr(fnbuf, '|');
-					char *dir = NULL;
+					char *dir = NULL, *pfn = strchr(fnbuf, '|');
 					if(pfn)
 					{
 						*pfn++ = '\0';
 						dir = fnbuf;
 					}
 					else pfn = fnbuf;
+					dir = trim(dir);
 					/* add files to the DICOMDIR */
-					result = ddir.addDicomFile(pfn, dir && *dir != '\0' ? dir : opt_directory);
+					result = ddir.addDicomFile(trim(pfn), dir && *dir != '\0' ? dir : opt_directory);
 					if (result.bad())
 					{
 						badFiles.push_back(pfn);
@@ -648,6 +648,7 @@ int main(int argc, char *argv[])
 					} else
 						++goodFiles;
 				}
+				if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: no more files, stop waiting for stdin" << endl;
 			}
 			else
 			{

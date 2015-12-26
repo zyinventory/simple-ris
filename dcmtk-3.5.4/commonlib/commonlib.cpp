@@ -44,27 +44,58 @@ COMMONLIB_API bool IsASCII(const char *str)
   return isAscii;
 }
 
-/* param:
-  s:	  input string
-  maxLen: max length of string s
- */
-COMMONLIB_API char *rtrim(char *s, int maxLen)
+COMMONLIB_API const char *trim_const(const char *s, int maxStrLen, const char **ptail)
 {
-  if(s == NULL) return 0;
-  if(maxLen == -1)
-	maxLen = strlen(s) - 1;
-  else
-	maxLen = min(maxLen, static_cast<int>(strlen(s))) - 1;
-  int i;
-  for(i = maxLen; i >= 0; --i)
-  {
-	if(s[i]==' ' || s[i]=='\n' || s[i] == '\r' || s[i]=='\t')
-	  s[i]='\0';
-	else
-	  break;
-  }
-  // new size = i + 1
-  return s;
+	const char *head = NULL, *tail = NULL;
+	int i = 0;
+	if(s == NULL) return s;
+	for(i = 0; s[i] && i < maxStrLen; ++i)
+	{
+		bool issp = isspace(s[i]);
+		if(head == NULL)
+		{
+			if(!issp)
+			{
+				head = &s[i];
+				if(ptail == NULL) break;
+			}
+		}
+		else
+		{
+			if(issp && tail == NULL) tail = &s[i];
+			else if(!issp && tail != NULL) tail = NULL;
+		}
+	}
+	if(head == NULL)
+	{
+		head = &s[i];
+		// s[i] == '\0' ::=> i <= maxStrLen
+		if(ptail && s[i] == '\0') *ptail = head;
+		// else do nothing, keep *ptail 's value unmodified
+	}
+	else if(ptail && s[i] == '\0') // s[i] == '\0' ::=> i <= maxStrLen
+	{
+		if(tail) *ptail = tail;
+		else *ptail = &s[i];
+	}
+	// else do nothing, keep *ptail 's value unmodified
+	return head;
+}
+
+COMMONLIB_API char *rtrim(char *s, int maxStrLen)
+{
+	const char *tail = NULL;
+	trim_const(s, maxStrLen, &tail);
+	if(tail) *const_cast<char*>(tail) = '\0';
+	return s;
+}
+
+COMMONLIB_API char *trim(char *s, int maxStrLen)
+{
+	const char *tail = NULL;
+	char *head = const_cast<char*>(trim_const(s, maxStrLen, &tail));
+	if(tail) *const_cast<char*>(tail) = '\0';
+	return head;
 }
 
 static int signalInterruptFlag = 0;
