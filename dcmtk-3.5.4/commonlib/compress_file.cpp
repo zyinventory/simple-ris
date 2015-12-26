@@ -23,8 +23,11 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     lc.hprocess = INVALID_HANDLE_VALUE;
     lc.hthread = INVALID_HANDLE_VALUE;
     char cmd[1024];
-    //int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe --encode-jpeg2k-lossless --uid-never %s ", pacs_base, lc.file.filename);
+#ifdef _DEBUG
     int mkdir_pos = sprintf_s(cmd, "D:\\zy\\docs\\GitHub\\simple-ris\\dcmtk-3.5.4\\Debug\\dcmcjpeg.exe --encode-jpeg2k-lossless --uid-never %s ", lc.file.filename);
+#else
+	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe --encode-jpeg2k-lossless --uid-never %s ", pacs_base, lc.file.filename);
+#endif
     char *mkdir_ptr = cmd + mkdir_pos;
     int ctn = mkdir_pos;
     ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "archdir\\%s\\", lc.file.studyUID);
