@@ -24,7 +24,7 @@ size_t GenerateTime_internal(const char *format, char *timeBuffer, size_t buffer
 		return 0;
 }
 
-static struct _timeb storeTimeLast = {0, 0, 0, 0};
+static struct _timeb storeTimeHistory = {0, 0, 0, 0};
 #ifdef COMMONLIB_EXPORTS
 COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t buf_size)
 #else
@@ -32,25 +32,28 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
 #endif
 {
     struct _timeb storeTimeThis;
+    __time64_t diff = 0;
     if(buf_size < 40) return -1;
 
     _ftime_s(&storeTimeThis);
-    if(storeTimeThis.time < storeTimeLast.time || (storeTimeThis.time == storeTimeLast.time && storeTimeThis.millitm <= storeTimeLast.millitm))
+    if(storeTimeThis.time < storeTimeHistory.time || (storeTimeThis.time == storeTimeHistory.time && storeTimeThis.millitm <= storeTimeHistory.millitm))
     {
-        if(storeTimeLast.millitm == 999)
+        if(storeTimeHistory.millitm == 999)
         {
-            ++storeTimeLast.time;
-            storeTimeLast.millitm = 0;
+            ++storeTimeHistory.time;
+            storeTimeHistory.millitm = 0;
         }
         else
-            ++storeTimeLast.millitm;
-        storeTimeThis = storeTimeLast;
+            ++storeTimeHistory.millitm;
+
+        diff = (storeTimeHistory.time - storeTimeThis.time) * 1000 + storeTimeHistory.millitm - storeTimeThis.millitm;
+        storeTimeThis = storeTimeHistory;
     }
     else
-        storeTimeLast = storeTimeThis;
+        storeTimeHistory = storeTimeThis;
 
     std::stringstream strmbuf;
-    strmbuf << prefix << storeTimeThis.time << "-" << std::setw(3) << std::setfill('0') << storeTimeThis.millitm;
+    strmbuf << prefix << storeTimeThis.time << std::setw(3) << std::setfill('0') << storeTimeThis.millitm << "-" << diff;
     std::string s(strmbuf.str());
     strcpy_s(pbuf, buf_size, s.c_str());
     return s.length();
