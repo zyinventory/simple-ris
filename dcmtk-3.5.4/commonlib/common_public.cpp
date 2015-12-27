@@ -7,6 +7,7 @@
 #include <direct.h>
 #include <string.h>
 #include <errno.h>
+#include <windows.h>
 
 #ifdef COMMONLIB_EXPORTS
 #define COMMONLIB_API __declspec(dllexport)
@@ -30,7 +31,7 @@ size_t GenerateTime_internal(const char *format, char *timeBuffer, size_t buffer
 }
 
 #define ENV_PACS_BASE "PACS_BASE"
-static char PACS_BASE_CACHE[260] = "";
+static char PACS_BASE_CACHE[MAX_PATH] = "";
 
 #ifdef COMMONLIB_EXPORTS
 COMMONLIB_API char* GetPacsBase()
@@ -50,65 +51,56 @@ static char* GetPacsBase_internal()
     return PACS_BASE_CACHE;
 }
 
+#define SEQ_MUTEX_NAME "Global\\DCM_GetNextUniqueNo"
+static FILE *fpseq = NULL;
+static HANDLE mutex_seq = NULL;
+static struct _timeb storeTimeHistory = {0, 0, 0, 0};
+
 #ifdef COMMONLIB_EXPORTS
 COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t buf_size)
 #else
 int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_size)
 #endif
 {
-    struct _timeb storeTimeThis, storeTimeHistory = {0, 0, 0, 0};
+    struct _timeb storeTimeThis;
     __time64_t diff = 0;
-    char temp_path[260], *basedir = NULL;
-    FILE *fpseq = NULL;
+    char temp_path[MAX_PATH], *basedir = NULL;
     if(buf_size < 40) return -1;
-#ifdef COMMONLIB_EXPORTS
     basedir = GetPacsBase();
-#else
-    basedir = GetPacsBase_internal();
-#endif
     strcpy_s(temp_path, basedir);
     strcat_s(temp_path, "\\temp\\sequence.dat");
 
-    int try_open = 100;
-    while(try_open)
+    bool owner_mutex = false;
+    if(mutex_seq == NULL)
     {
-        errno_t fe = 0;
-        if(fpseq == NULL) fe = _access_s(temp_path, 06);
-        switch(fe)
+        mutex_seq = CreateMutex(NULL, FALSE, SEQ_MUTEX_NAME);
+        if(mutex_seq == NULL && GetLastError() == ERROR_ALREADY_EXISTS)
+            mutex_seq = OpenMutex(SYNCHRONIZE, FALSE, SEQ_MUTEX_NAME);
+    }
+    if(mutex_seq && WAIT_FAILED != WaitForSingleObject(mutex_seq, INFINITE))
+    {
+        owner_mutex = true;
+        if(fpseq == NULL)
         {
-        case 0:
-            if(fpseq == NULL) fpseq = _fsopen(temp_path, "r+b", _SH_DENYRW);
-            if(fpseq && sizeof(_timeb) == fread(&storeTimeHistory, 1, sizeof(_timeb), fpseq))
+            fpseq = _fsopen(temp_path, "r+b", _SH_DENYNO);
+            if(fpseq == NULL && errno == ENOENT)
             {
-                fseek(fpseq, 0, SEEK_SET);
-                try_open = 0;
+                fpseq = _fsopen(temp_path, "w+b", _SH_DENYNO);
             }
-            else
-            {
-                size_t pos = strlen(temp_path);
-                strcat_s(temp_path, " _fsopen(r+b) fail");
-                perror(temp_path);
-                temp_path[pos] = '\0';
-                _sleep(1);
-            }
-            --try_open;
-            break;
-        case ENOENT:
-            fpseq = _fsopen(temp_path, "w+b", _SH_DENYRW);
-            if(fpseq) try_open = 0;
-            break;
-        default: // EACCES EINVAL
-            try_open = 0;
-            break;
         }
     }
     if(fpseq == NULL)
     {
-        size_t pos = strlen(temp_path);
-        strcat_s(temp_path, " open fail");
         perror(temp_path);
-        temp_path[pos] = '\0';
-        _sleep(1);
+    }
+    else if(owner_mutex)
+    {
+        fseek(fpseq, 0, SEEK_SET);
+        if(sizeof(_timeb) != fread(&storeTimeHistory, 1, sizeof(_timeb), fpseq))
+        {
+            memset(&storeTimeHistory, 0, sizeof(_timeb));
+            fputs("time history read error", stderr);
+        }
     }
 
     _ftime_s(&storeTimeThis);
@@ -130,8 +122,29 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
 
     if(fpseq)
     {
+        fseek(fpseq, 0, SEEK_SET);
         fwrite(&storeTimeThis, sizeof(_timeb), 1, fpseq);
-        fclose(fpseq);
+        fflush(fpseq);
     }
-    return sprintf_s(pbuf, buf_size, "%s%lld%03hd-%lld", prefix, storeTimeThis.time, storeTimeThis.millitm, diff);
+    if(owner_mutex) ReleaseMutex(mutex_seq);
+    return sprintf_s(pbuf, buf_size, "%s%lld%03hd-%lld_", prefix, storeTimeThis.time, storeTimeThis.millitm, diff);
+}
+
+#ifdef COMMONLIB_EXPORTS
+COMMONLIB_API void ReleaseUniqueNoResource()
+#else
+void ReleaseUniqueNoResource_internal()
+#endif
+{
+    if(fpseq)
+    {
+        fclose(fpseq);
+        fpseq = NULL;
+    }
+    if(mutex_seq)
+    {
+        ReleaseMutex(mutex_seq);
+        CloseHandle(mutex_seq);
+        mutex_seq = NULL;
+    }
 }
