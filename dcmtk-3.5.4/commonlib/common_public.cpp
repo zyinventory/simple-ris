@@ -84,7 +84,13 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
                 try_open = 0;
             }
             else
+            {
+                size_t pos = strlen(temp_path);
+                strcat_s(temp_path, " _fsopen(r+b) fail");
+                perror(temp_path);
+                temp_path[pos] = '\0';
                 _sleep(1);
+            }
             --try_open;
             break;
         case ENOENT:
@@ -96,7 +102,14 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
             break;
         }
     }
-    if(fpseq == NULL) perror(temp_path);
+    if(fpseq == NULL)
+    {
+        size_t pos = strlen(temp_path);
+        strcat_s(temp_path, " open fail");
+        perror(temp_path);
+        temp_path[pos] = '\0';
+        _sleep(1);
+    }
 
     _ftime_s(&storeTimeThis);
     if(storeTimeThis.time < storeTimeHistory.time || (storeTimeThis.time == storeTimeHistory.time && storeTimeThis.millitm <= storeTimeHistory.millitm))
