@@ -321,7 +321,7 @@ COMMONLIB_API void process_log(const char *sessId, bool verbose)
     sessionId = sessId;
     string fn("\\storedir\\");
     fn.append(sessionId);
-    if(GetPacsBase(pacs_base, MAX_PATH, fn.c_str()))
+    if(ChangeToPacsWebSub(pacs_base, MAX_PATH, fn.c_str()))
     {
         cerr << "无法切换工作目录" << endl;
         return;

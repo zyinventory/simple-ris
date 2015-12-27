@@ -230,6 +230,18 @@ COMMONLIB_API time_t dcmdate2tm(int dcmdate)
   return mktime(&timeBirth);
 }
 
+COMMONLIB_API int ChangeToPacsWebSub(char *pPacsBase, size_t buff_size, const char *subdir)
+{
+    char *static_buf = GetPacsBase();
+    size_t requiredSize = strlen(static_buf) + 1;
+    strcat_s(static_buf, MAX_PATH, "\\pacs"); // PACS_BASE + <web_dir>
+    if(subdir) strcat_s(static_buf, MAX_PATH, subdir); // PACS_BASE + <web_dir> + <sub_dir>
+    errno_t en = _chdir(pPacsBase);
+    static_buf[requiredSize - 1] = '\0';
+    if(en) return en;
+    return strcpy_s(pPacsBase, buff_size, static_buf);
+}
+
 COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
 {
 	if(argc > 0)
@@ -249,41 +261,7 @@ COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
 		}
 		// else get working dir from PACS_BASE in env
 	}
-    return GetPacsBase(pPacsBase, MAX_PATH);
-}
-
-#define ENV_PACS_BASE "PACS_BASE"
-COMMONLIB_API int GetPacsBase(char *pPacsBase, size_t buff_size, const char *subdir)
-{
-	size_t requiredSize = 0, total_size = 0;
-    errno_t chdirFail = -1;
-	char basedir[] = "C:\\usr\\local\\dicom", pacsdir[] = "\\pacs", *temp = NULL;
-	getenv_s( &requiredSize, NULL, 0, ENV_PACS_BASE);
-	if(requiredSize > 0)
-	{
-        total_size = requiredSize + sizeof(pacsdir) + (subdir ? strlen(subdir) : 0);
-        temp = new char[total_size];
-        getenv_s(&requiredSize, temp, requiredSize, ENV_PACS_BASE);
-        strcat_s(temp, total_size, pacsdir);
-        if(subdir) strcat_s(temp, total_size, subdir);
-	}
-	else
-	{
-        total_size = sizeof(basedir) + sizeof(pacsdir) + (subdir ? strlen(subdir) : 0);
-        temp = new char[total_size];
-        requiredSize = sizeof(basedir);
-        strcpy_s(temp, total_size, basedir);
-        strcat_s(temp, total_size, pacsdir);
-        if(subdir) strcat_s(temp, total_size, subdir);
-	}
-    chdirFail = _chdir(temp);
-    temp[requiredSize - 1] = '\0';
-    if(pPacsBase) strcpy_s(pPacsBase, buff_size, temp);
-    if(temp) delete temp;
-    if(chdirFail)
-        return chdirFail;
-    else
-        return 0;
+    return ChangeToPacsWebSub(pPacsBase, MAX_PATH);
 }
 
 int sys_core_num = 4, worker_core_num = 2;
