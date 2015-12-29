@@ -312,11 +312,30 @@ static int process_cmd(const char *buf, size_t buf_len)
 
 bool run_index();
 char pacs_base[MAX_PATH];
+
 static char buff[1024];
+static size_t gpos = 0;
+
+static bool try_read_line(ifstream &tail)
+{
+    tail.getline(buff + gpos, sizeof(buff) - gpos);
+    streamsize gcnt = tail.gcount();
+    if(gcnt > 0) gpos += static_cast<size_t>(gcnt);
+    if(tail.fail() || tail.eof())
+    {
+        cerr << "read " << setw(2) << setfill(' ') << gcnt << " bytes";
+        if(tail.eof()) cerr << ", encouter eof";
+        cerr << endl;
+        tail.clear();
+        return false;
+    }
+    else
+        return true;
+}
 
 COMMONLIB_API void process_log(const char *sessId, bool verbose)
 {
-    size_t gpos = 0;
+    
     opt_verbose = verbose;
     sessionId = sessId;
     string fn("\\storedir\\");
@@ -338,24 +357,13 @@ COMMONLIB_API void process_log(const char *sessId, bool verbose)
 
     while(ret && waitTime <= 10 * 1000)
     {
-        tail.getline(buff + gpos, sizeof(buff) - gpos);
-        streamsize gcnt = tail.gcount();
-        if(gcnt > 0)
+        if(try_read_line(tail))
         {
-            waitTime = 0;
-            gpos += static_cast<size_t>(gcnt);
-            if(!tail.fail()) 
-            {
-                ret = process_cmd(buff, gpos);
-                gpos = 0;
-            }
+            ret = process_cmd(buff, gpos);
+            gpos = 0;
         }
-        if(tail.fail() || tail.eof())
+        else
         {
-            if(tail.fail()) cerr << " fail";
-            if(tail.eof()) cerr << " eof";
-            cerr << endl;
-            tail.clear();
             waitTime += 100;
             Sleep(100);
         }

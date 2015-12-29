@@ -111,7 +111,7 @@ static int find_complete_worker(CMOVE_LOG_CONTEXT &lc)
         delete[] objs;
         lc = *it;
         workers.erase(it);
-        cerr << lc.file.filename << " compress complete" << endl;
+        if(opt_verbose) cerr << lc.file.filename << " compress complete" << endl;
         return workers.size();
     }
     else
@@ -155,7 +155,7 @@ wait_worker_again:
         }
         if(find_result >= worker_core_num)
         {
-            cerr << "full of workers, run index or Sleep 100 ms" << endl;
+            if(opt_verbose) cerr << "full of workers, run index or Sleep 100 ms" << endl;
             if(!run_index()) Sleep(100);
             goto wait_worker_again;
         }
