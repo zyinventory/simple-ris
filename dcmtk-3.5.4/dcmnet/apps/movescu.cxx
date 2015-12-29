@@ -150,7 +150,12 @@ errmsg(const char *msg,...)
 
 static void exitHook()
 {
-    if(fplog != NULL) fclose(fplog);
+    if(fplog != NULL)
+    {
+        char term[] = "T FFFFFFFF\n";
+        fwrite(term, sizeof(term) -1, 1, fplog);
+        fclose(fplog);
+    }
 }
 
 static void
