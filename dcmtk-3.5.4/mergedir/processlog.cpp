@@ -35,35 +35,10 @@ static void test_sim_slow_log_writer(void *seid)
     fclose(fpsrc);
 }
 
-static char buff[1024];
-static size_t gpos = 0;
-
-static bool try_read_line(ifstream &tail)
+static void consume_log(const char *sid)
 {
-    tail.getline(buff + gpos, sizeof(buff) - gpos);
-    streamsize gcnt = tail.gcount();
-    if(gcnt > 0) gpos += static_cast<size_t>(gcnt);
-    if(tail.fail() || tail.eof())
-    {
-        cerr << "read " << setw(2) << setfill(' ') << gcnt << " bytes";
-        if(tail.eof()) cerr << ", encouter eof";
-        cerr << endl;
-        tail.clear();
-        return false;
-    }
-    else
-        return true;
-}
-
-void call_process_log(std::string &sessionId)
-{
-    //test_sim_slow_log_writer((void*)sessionId.c_str());
-    _beginthread(test_sim_slow_log_writer, 0, (void*)sessionId.c_str());
-    while(!start_write_log) Sleep(10);
-    process_log(sessionId.c_str(), false);
-    /*
     char log_name[MAX_PATH];
-    sprintf_s(log_name, "%s\\cmove.txt", sessionId.c_str());
+    sprintf_s(log_name, "%s\\cmove.txt", sid);
 
     ifstream tail(log_name, ios_base::in, _SH_DENYNO);
     if(tail.fail())
@@ -74,17 +49,24 @@ void call_process_log(std::string &sessionId)
 
     while(true)
     {
-        if(try_read_line(tail))
+        if(const char *buff = try_read_line(tail))
         {
             cout << buff << endl;
-            gpos = 0;
             if(strcmp("T FFFFFFFF", buff) == 0) break;
         }
         else
-        {
             Sleep(1);
-        }
     }
     tail.close();
-    */
+}
+
+void call_process_log(std::string &sessionId)
+{
+    HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, (void*)sessionId.c_str());
+    while(!start_write_log) Sleep(10);
+
+    process_log(sessionId.c_str(), false);
+    //consume_log(sessionId.c_str());
+
+    WaitForSingleObject(ht, INFINITE);
 }

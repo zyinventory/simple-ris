@@ -46,8 +46,7 @@ static int cmd_series(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
         else
         {
             dirty = true;
-            if(opt_verbose)
-                cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.series.modality << endl;
+            if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.series.modality << endl;
         }
         break;
     default:
@@ -136,8 +135,7 @@ static int cmd_patient(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     case 0x00101030:
         cmdstrm >> lc.patient.weight;
         dirty = true;
-        if(opt_verbose)
-            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.weight << endl;
+        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.weight << endl;
         break;
     default:
         char otherbuf[1024] = "";
@@ -279,7 +277,7 @@ static int cmd_assoc(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     return 1;
 }
 
-static int process_cmd(const char *buf, size_t buf_len)
+static int process_cmd(const char *buf)
 {
     char type = '\0';
     istringstream cmdstrm(buf);
@@ -316,21 +314,22 @@ char pacs_base[MAX_PATH];
 static char buff[1024];
 static size_t gpos = 0;
 
-static bool try_read_line(ifstream &tail)
+COMMONLIB_API char *try_read_line(ifstream &tail)
 {
     tail.getline(buff + gpos, sizeof(buff) - gpos);
     streamsize gcnt = tail.gcount();
     if(gcnt > 0) gpos += static_cast<size_t>(gcnt);
     if(tail.fail() || tail.eof())
     {
-        cerr << "read " << setw(2) << setfill(' ') << gcnt << " bytes";
-        if(tail.eof()) cerr << ", encouter eof";
-        cerr << endl;
+        /* if(opt_verbose) */cerr << "<";
         tail.clear();
-        return false;
+        return NULL;
     }
     else
-        return true;
+    {
+        gpos = 0;
+        return buff;
+    }
 }
 
 COMMONLIB_API void process_log(const char *sessId, bool verbose)
@@ -357,10 +356,10 @@ COMMONLIB_API void process_log(const char *sessId, bool verbose)
 
     while(ret && waitTime <= 10 * 1000)
     {
-        if(try_read_line(tail))
+        if(const char * line = try_read_line(tail))
         {
-            ret = process_cmd(buff, gpos);
-            gpos = 0;
+            waitTime = 0;
+            ret = process_cmd(line);
         }
         else
         {
@@ -369,6 +368,6 @@ COMMONLIB_API void process_log(const char *sessId, bool verbose)
         }
     }
     tail.close();
-    while(commit_file_to_workers(NULL));
+    while(commit_file_to_workers(NULL)) Sleep(100);
     while(run_index());
 }

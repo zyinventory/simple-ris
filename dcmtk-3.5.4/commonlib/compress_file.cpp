@@ -67,7 +67,7 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     lc.hthread = pi.hThread;
     lc.log = log;
     workers.push_back(lc);
-
+    cerr << "trigger compress "  << lc.file.filename << endl;
     return 0;
 }
 
@@ -86,7 +86,7 @@ static void close_log(const CMOVE_LOG_CONTEXT &lc)
             {
                 CloseHandle(lc.log);
                 if(! DeleteFile(filename)) displayErrorToCerr("close_log_context() ", GetLastError());
-                else cerr << "delete " << filename << " OK" << endl;
+                else if(opt_verbose) cerr << "delete " << filename << " OK" << endl;
             }
         }
     }
@@ -111,7 +111,7 @@ static int find_complete_worker(CMOVE_LOG_CONTEXT &lc)
         delete[] objs;
         lc = *it;
         workers.erase(it);
-        if(opt_verbose) cerr << lc.file.filename << " compress complete" << endl;
+        cerr << "trigger complete " << lc.file.filename << endl;
         return workers.size();
     }
     else
@@ -155,8 +155,8 @@ wait_worker_again:
         }
         if(find_result >= worker_core_num)
         {
-            if(opt_verbose) cerr << "full of workers, run index or Sleep 100 ms" << endl;
-            if(!run_index()) Sleep(100);
+            /* if(opt_verbose) */cerr << "*"; // full of jobs
+            if(!run_index()) Sleep(300);
             goto wait_worker_again;
         }
         else if(find_result < 0)
@@ -166,9 +166,9 @@ wait_worker_again:
     if(plc)compr_result = (0 == create_worker_process(*plc));
     else compr_result = (workers.size() > 0);
 
-    if(workers.size() < worker_core_num) // any core idle
+    if(workers.size() < worker_core_num)
     {
-        cerr << "some worker idle" << endl;
+        /* if(opt_verbose) */cerr << "."; // any core idle
         run_index();
     }
     return compr_result;

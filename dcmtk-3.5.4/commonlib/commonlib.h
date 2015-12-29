@@ -120,4 +120,5 @@ typedef struct {
 } CMOVE_LOG_CONTEXT;
 
 COMMONLIB_API void process_log(const char *sessionId, bool verbose);
+COMMONLIB_API char *try_read_line(std::ifstream &tail);
 #endif //CMOVE_DLL_STRUCT_TYPE
