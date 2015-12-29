@@ -219,7 +219,7 @@ COMMONLIB_API int ChangeToPacsWebSub(char *pPacsBase, size_t buff_size, const ch
     size_t requiredSize = strlen(static_buf) + 1;
     strcat_s(static_buf, MAX_PATH, "\\pacs"); // PACS_BASE + <web_dir>
     if(subdir) strcat_s(static_buf, MAX_PATH, subdir); // PACS_BASE + <web_dir> + <sub_dir>
-    errno_t en = _chdir(pPacsBase);
+    errno_t en = _chdir(static_buf);
     static_buf[requiredSize - 1] = '\0';
     if(en) return en;
     return strcpy_s(pPacsBase, buff_size, static_buf);
