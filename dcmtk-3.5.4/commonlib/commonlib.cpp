@@ -4,23 +4,6 @@
 
 using namespace std;
 
-COMMONLIB_API void displayErrorToCerr(TCHAR *lpszFunction)
-{
-	TCHAR *lpMsgBuf;
-	TCHAR *lpDisplayBuf;
-	DWORD dw = GetLastError();
-
-	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) &lpMsgBuf, 0, NULL );
-	// Display the error message
-	lpDisplayBuf = (TCHAR *)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
-	sprintf_s(lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error %d: %s"), lpszFunction, dw, lpMsgBuf); 
-	//StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error %d: %s"), lpszFunction, dw, lpMsgBuf); 
-	cerr << lpDisplayBuf << endl;
-	LocalFree(lpMsgBuf);
-	LocalFree(lpDisplayBuf);
-}
-
 COMMONLIB_API errno_t setEnvParentPID()
 {
   char pidString[16];

@@ -679,7 +679,7 @@ int main(int argc, char *argv[])
 		//DWORD timerbase = GetTickCount();
 		//COUT << "start timing..." << endl;
 		if(mutexIdle && mutexRec)
-			if(WAIT_OBJECT_0 != SignalObjectAndWait(mutexIdle, mutexRec, INFINITE, FALSE)) displayErrorToCerr("enter idle");
+			if(WAIT_OBJECT_0 != SignalObjectAndWait(mutexIdle, mutexRec, INFINITE, FALSE)) displayErrorToCerr("enter idle", GetLastError());
 		if (opt_verbose) COUT << "waiting input..." << endl;
 		if(readcmd || (cin.getline(ifile, MAX_PATH, ' ').good() && cin.getline(ofile, MAX_PATH, '\n').good()))
 		{
@@ -702,7 +702,7 @@ int main(int argc, char *argv[])
 		}
 
 		if(mutexIdle && mutexRec)
-			if(WAIT_OBJECT_0 != SignalObjectAndWait(mutexRec, mutexIdle, INFINITE, FALSE)) displayErrorToCerr("confirm command");
+			if(WAIT_OBJECT_0 != SignalObjectAndWait(mutexRec, mutexIdle, INFINITE, FALSE)) displayErrorToCerr("confirm command", GetLastError());
 
 		opt_oxfer = opt_oxferBak;
 		needMove = OFFalse;

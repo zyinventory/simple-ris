@@ -113,7 +113,7 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>user32.lib;netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;libz.lib</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;netapi32.lib;ws2_32.lib;Advapi32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;libz.lib</AdditionalDependencies>
       <OutputFile>Debug\dcmqrti.exe</OutputFile>
       <Version>0.0</Version>
       <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
@@ -160,7 +160,7 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>user32.lib;netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;libz.lib</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;netapi32.lib;ws2_32.lib;Advapi32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;libz.lib</AdditionalDependencies>
       <OutputFile>Release\dcmqrti.exe</OutputFile>
       <Version>0.0</Version>
       <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
@@ -206,7 +206,7 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>user32.lib;netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;libz.lib</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;netapi32.lib;ws2_32.lib;Advapi32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;libz.lib</AdditionalDependencies>
       <OutputFile>MinSizeRel\dcmqrti.exe</OutputFile>
       <Version>0.0</Version>
       <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
@@ -253,7 +253,7 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>user32.lib;netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;libz.lib</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;netapi32.lib;ws2_32.lib;Advapi32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;libz.lib</AdditionalDependencies>
       <OutputFile>RelWithDebInfo\dcmqrti.exe</OutputFile>
       <Version>0.0</Version>
       <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>

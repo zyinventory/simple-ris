@@ -213,7 +213,7 @@ static list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 		iter = --(dirmakers.end());
 	}
 	else
-		displayErrorToCerr(commandLine);
+		displayErrorToCerr(commandLine, GetLastError());
 
 	if(wp.hLogFile)
 		SetHandleInformation(wp.hLogFile, HANDLE_FLAG_INHERIT, 0);
@@ -537,7 +537,7 @@ static void runArchiveInstance(string &cmd, const int index, string &studyUid)
 		}
 		else
 		{
-			displayErrorToCerr("CreateProcess");
+			displayErrorToCerr("CreateProcess", GetLastError());
 			CloseHandle(workers[index].hChildStdInWrite);
 			workers[index].hChildStdInWrite = NULL;
 		}
@@ -569,7 +569,7 @@ static void runArchiveInstance(string &cmd, const int index, string &studyUid)
 			}
 			else
 			{
-				displayErrorToCerr("wait confirm");
+				displayErrorToCerr("wait confirm", GetLastError());
 				time_header_out(cerr) << "get mutex failed, close process: " << commandLine << endl;
 				closeProcHandle(workers[index]);
 			}

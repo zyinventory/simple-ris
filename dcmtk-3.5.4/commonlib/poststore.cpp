@@ -358,7 +358,7 @@ static HRESULT createOrOpenFile(string &filePath, HANDLE &fh, MSXML2::IXMLDOMDoc
 	{
 		if(fh != INVALID_HANDLE_VALUE) ::CloseHandle(fh);
 		cerr << message << indexFilePath << '\n';
-		displayErrorToCerr("createOrOpenFile");
+		displayErrorToCerr("createOrOpenFile", GetLastError());
 		return E_FAIL;
 	}
 	return S_OK;

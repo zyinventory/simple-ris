@@ -42,7 +42,7 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     HANDLE log = CreateFile(logfile.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if(log == INVALID_HANDLE_VALUE)
     {
-        displayErrorToCerr("create_worker_process() ");
+        displayErrorToCerr("create_worker_process() ", GetLastError());
         return -2;
     }
     PROCESS_INFORMATION pi;
@@ -56,7 +56,7 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
     if(0 == CreateProcess(NULL, cmd, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &si, &pi))
     {
-        displayErrorToCerr("create_worker_process() ");
+        displayErrorToCerr("create_worker_process() ", GetLastError());
         CloseHandle(si.hStdOutput);
         CloseHandle(si.hStdError);
         return -3;
@@ -85,7 +85,7 @@ static void close_log(const CMOVE_LOG_CONTEXT &lc)
             if(fnlen > 0 || fnlen <= MAX_PATH)
             {
                 CloseHandle(lc.log);
-                if(! DeleteFile(filename)) displayErrorToCerr("close_log_context() ");
+                if(! DeleteFile(filename)) displayErrorToCerr("close_log_context() ", GetLastError());
                 else cerr << "delete " << filename << " OK" << endl;
             }
         }
@@ -116,7 +116,7 @@ static int find_complete_worker(CMOVE_LOG_CONTEXT &lc)
     }
     else
     {   // shall not reach here ...
-        displayErrorToCerr("WaitForMultipleObjects() ");
+        displayErrorToCerr("WaitForMultipleObjects() ", GetLastError());
         delete[] objs;
         return -1;
     }
