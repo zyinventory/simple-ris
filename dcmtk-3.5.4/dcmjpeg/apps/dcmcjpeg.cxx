@@ -74,8 +74,6 @@ OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 #define SHORTCOL 4
 #define LONGCOL 21
 
-static HANDLE mutexIdle = NULL, mutexRec = NULL;
-
 int main(int argc, char *argv[])
 {
 
@@ -144,7 +142,7 @@ int main(int argc, char *argv[])
 	cmd.addOption("--debug",                     "-d",        "debug mode, print debug information");
 	cmd.addOption("--delete-source-file",        "-ds",       "if conversion is successful, delete source file.");
 	cmd.addOption("--skip-compressed",           "-sc",       "if source file is compressed, skip compressing, save directly");
-	cmd.addOption("--process-number",            "-pn",    1, "[pn]: integer (default: 0)", "process number");
+	cmd.addOption("--process-number",            "-pn",    1, "[pn]: integer (default: 0)", "parent process id");
 
 	cmd.addGroup("input options:");
 	cmd.addSubGroup("input file format:");
@@ -658,69 +656,124 @@ int main(int argc, char *argv[])
 	}
 
 	E_TransferSyntax opt_oxferBak = opt_oxfer;
-	char ifile[MAX_PATH], ofile[MAX_PATH];
-	OFBool readcmd = OFTrue;
-	if(*opt_ifname == '@')
+
+    char vMessage[MAX_PATH * 2] = PIPE_READY_MESSAGE;
+	OFBool readpipe = OFFalse;
+    HANDLE hPipe = INVALID_HANDLE_VALUE;
+    DWORD clientId = GetCurrentProcessId();
+    if(*opt_ifname == '#')
 	{
-		readcmd = OFFalse;
-		opt_ifname = ifile;
-		opt_ofname = ofile;
-		char buffer[32];
-		sprintf_s(buffer, 32, "Global\\dcmcjpeg%d", opt_processNumber);
-		mutexIdle = CreateMutex(NULL, TRUE, buffer);
-		if(mutexIdle && ERROR_ALREADY_EXISTS == GetLastError())
-			WaitForSingleObject(mutexIdle, INFINITE);
-		sprintf_s(buffer, 32, "Global\\receive%d", opt_processNumber);
-		mutexRec = CreateMutex(NULL, FALSE, buffer);
+		char pipeName[32];
+		sprintf_s(pipeName, "\\\\.\\pipe\\dcmcjpeg%d", opt_processNumber);
+        hPipe = CreateFile(pipeName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+        if (hPipe == INVALID_HANDLE_VALUE)
+        {
+            char msg[1024];
+            DWORD gle = GetLastError();
+            sprintf_s(msg, "Client %d: OpenPipe(%s)", clientId, pipeName);
+            displayErrorToCerr(msg, gle);
+        }
+        else
+        {
+            if(opt_verbose) CERR << "Client " << clientId << ": pipe " << pipeName << " opened." << endl;
+            if(WaitNamedPipe(pipeName, NMPWAIT_WAIT_FOREVER))
+            {
+                if(opt_verbose) CERR << "Client " << clientId << ": pipe " << pipeName << " connected." << endl;
+                DWORD dwMode = PIPE_READMODE_MESSAGE;
+                if(SetNamedPipeHandleState(hPipe, &dwMode, NULL, NULL))
+                {
+                    if(opt_verbose) CERR << "Client " << clientId << ": pipe set message mode." << endl;
+		            readpipe = OFTrue;
+                }
+                else
+                {
+                    char msg[1024];
+                    DWORD gle = GetLastError();
+                    sprintf_s(msg, "Client %d: SetNamedPipeHandleState failed", clientId);
+                    displayErrorToCerr(msg, gle);
+                }
+            }
+            else
+            {
+                char msg[1024];
+                DWORD gle = GetLastError();
+                sprintf_s(msg, "Client %d: WaitNamedPipe(%s)", clientId, pipeName);
+                displayErrorToCerr(msg, gle);
+            }
+        }
 	}
 
 	while(true)
 	{
-		//DWORD timerbase = GetTickCount();
-		//COUT << "start timing..." << endl;
-		if(mutexIdle && mutexRec)
-			if(WAIT_OBJECT_0 != SignalObjectAndWait(mutexIdle, mutexRec, INFINITE, FALSE)) displayErrorToCerr("enter idle", GetLastError());
-		if (opt_verbose) COUT << "waiting input..." << endl;
-		if(readcmd || (cin.getline(ifile, MAX_PATH, ' ').good() && cin.getline(ofile, MAX_PATH, '\n').good()))
-		{
-			if (opt_verbose)
-			{
-				COUT << "input: " << opt_ifname << endl;
-				COUT << "output: " << opt_ofname << endl;
-			}
-		}
-		else
-		{
-			if (opt_verbose) COUT << "stdin readline failed, exit..." << endl;
-			break;
+        if(readpipe)
+        {
+            DWORD gle, cbWritten = 0, cbToWrite = strlen(vMessage) + 1;
+            opt_ifname = NULL;
+            opt_ofname = NULL;
+            if(opt_verbose) CERR << "Client " << clientId << ": Send " << vMessage << endl;
+            if(WriteFile(hPipe, vMessage, cbToWrite, &cbWritten, NULL))
+            {
+                BOOL fRead = FALSE;
+                DWORD cbRead = 0;
+                do
+                {   // Read from the pipe.
+                    fRead = ReadFile(hPipe, vMessage, sizeof(vMessage), &cbRead, NULL);
+                    gle = GetLastError();
+                } while (!fRead && gle != ERROR_MORE_DATA && gle != ERROR_BROKEN_PIPE);
+                if(fRead)
+                {
+                    opt_ifname = vMessage;
+                    char *sp = strchr(vMessage, '|');
+                    if(sp)
+                    {
+                        *sp = '\0';
+                        opt_ofname = sp + 1;
+                    }
+			        if (opt_verbose)
+			        {
+				        CERR << "Client " << clientId << ": input file is " << opt_ifname << endl;
+				        CERR << "Client " << clientId << ": output file is " << opt_ofname << endl;
+			        }
+                }
+                else
+                {
+                    if(gle != ERROR_BROKEN_PIPE)
+                    {
+                        sprintf_s(vMessage, "Client %d: ReadFromPipe()", clientId);
+                        displayErrorToCerr(vMessage, gle);
+                    }
+                }
+            }
+            else
+            {
+                DWORD gle = GetLastError();
+                sprintf_s(vMessage, "Client %d: WriteToPipe()", clientId);
+                displayErrorToCerr(vMessage, gle);
+            }
 		}
 
-		if(*opt_ifname == '\0' || *opt_ofname == '\0')
+        if(opt_ifname == NULL || strlen(opt_ifname) == 0 || opt_ofname == NULL || strlen(opt_ofname) == 0)
 		{
-			if (opt_verbose) COUT << "stdin in_file or out_file empty, exit..." << endl;
+			if (opt_verbose) CERR << "Client " << clientId << ": no more in_file or out_file, exit..." << endl;
 			break;
 		}
-
-		if(mutexIdle && mutexRec)
-			if(WAIT_OBJECT_0 != SignalObjectAndWait(mutexRec, mutexIdle, INFINITE, FALSE)) displayErrorToCerr("confirm command", GetLastError());
 
 		opt_oxfer = opt_oxferBak;
 		needMove = OFFalse;
 
-		if (opt_verbose)
-			COUT << "reading input file " << opt_ifname << endl;
+		if (opt_verbose) CERR << "Client " << clientId << ": reading input file " << opt_ifname << endl;
 
 		DcmFileFormat fileformat;
 		//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
-		//COUT << "before load file " << GetTickCount() - timerbase << endl;
+		//CERR << "before load file " << GetTickCount() - timerbase << endl;
 		OFCondition error = fileformat.loadFile(opt_ifname, opt_ixfer, EGL_noChange, DCM_MaxReadLength, opt_readMode);
-		//COUT << "after load file " << GetTickCount() - timerbase << endl;
+		//CERR << "after load file " << GetTickCount() - timerbase << endl;
 		//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END) ) displayErrorToCerr("SetPriorityClass");
 
 		if (error.bad())
 		{
-			CERR << "Error: " << error.text() << ": reading file: " <<  opt_ifname << endl;
-			if(readcmd) return 1; else continue;
+			CERR << "Client " << clientId << ": " << error.text() << ": reading file: " <<  opt_ifname << endl;
+			if(readpipe) continue; else return 1;
 		}
 		DcmDataset *dataset = fileformat.getDataset();
 
@@ -728,25 +781,25 @@ int main(int argc, char *argv[])
 		if (original_xfer.isEncapsulated() && ( ! opt_skipCompressed ))
 		{
 			if (opt_verbose)
-				COUT << "DICOM file is already compressed, convert to uncompressed xfer syntax first\n";
+				CERR << "DICOM file is already compressed, convert to uncompressed xfer syntax first\n";
 			if (EC_Normal != dataset->chooseRepresentation(EXS_LittleEndianExplicit, NULL))
 			{
 				CERR << "No conversion from compressed original to uncompressed xfer syntax possible!\n";
-				if(readcmd) return 1; else continue;
+				if(readpipe) continue; else return 1;
 			}
 		}
 
 		if( original_xfer.isEncapsulated()  && opt_skipCompressed )
 		{
 			if (opt_verbose)
-				COUT << "Convert DICOM file is already compressed, skip compressing, move original\n";
+				CERR << "Convert DICOM file is already compressed, skip compressing, move original\n";
 			opt_oxfer = original_xfer.getXfer();
 			needMove = OFTrue;
 		}
 		else
 		{
 			if (opt_verbose)
-				COUT << "Convert DICOM file to compressed transfer syntax\n";
+				CERR << "Convert DICOM file to compressed transfer syntax\n";
 
 			DcmXfer opt_oxferSyn(opt_oxfer);
 
@@ -759,12 +812,12 @@ int main(int argc, char *argv[])
 				(opt_oxfer == EXS_JPEGProcess14TransferSyntax)||
 				(opt_oxfer == EXS_JPEG2000LosslessOnly))
 			{
-				if (opt_verbose) COUT << "Representation Parameter is lossless" << endl;
+				if (opt_verbose) CERR << "Representation Parameter is lossless" << endl;
 				rp = &rp_lossless;
 			}
 			else
 			{
-				if (opt_verbose) COUT << "Representation Parameter is lossy" << endl;
+				if (opt_verbose) CERR << "Representation Parameter is lossy" << endl;
 			}
 
 			error = dataset->chooseRepresentation(opt_oxfer, rp);
@@ -773,10 +826,10 @@ int main(int argc, char *argv[])
 				if (dataset->canWriteXfer(opt_oxfer))
 				{
 					if (opt_verbose)
-						COUT << "Output transfer syntax " << opt_oxferSyn.getXferName() << " can be written\n";
+						CERR << "Output transfer syntax " << opt_oxferSyn.getXferName() << " can be written\n";
 				} else {
 					CERR << "No conversion to transfer syntax " << opt_oxferSyn.getXferName() << " possible!\n";
-					if(readcmd) return 1; else continue;
+					if(readpipe) continue; else return 1;
 				}
 			}
 			else
@@ -788,7 +841,7 @@ int main(int argc, char *argv[])
 
 		if(needMove)
 		{
-			if (opt_verbose) COUT << "move " << opt_ifname << " to " << opt_ofname << endl;
+			if (opt_verbose) CERR << "move " << opt_ifname << " to " << opt_ofname << endl;
 			if(OFStandard::fileExists(opt_ofname))
 			{
 				char backupName[MAX_PATH];
@@ -826,16 +879,16 @@ int main(int argc, char *argv[])
 			}
 
 			if (opt_verbose)
-				COUT << "creating output file " << opt_ofname << endl;
+				CERR << "creating output file " << opt_ofname << endl;
 			prepareFileDir(opt_ofname);
 
 			//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
-			//COUT << "before load into mem " << GetTickCount() - timerbase << endl;
+			//CERR << "before load into mem " << GetTickCount() - timerbase << endl;
 			fileformat.loadAllDataIntoMemory();
-			//COUT << "after load into mem " << GetTickCount() - timerbase << endl;
+			//CERR << "after load into mem " << GetTickCount() - timerbase << endl;
 			error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
 				opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
-			//COUT << "after save " << GetTickCount() - timerbase << endl;
+			//CERR << "after save " << GetTickCount() - timerbase << endl;
 			//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END) ) displayErrorToCerr("SetPriorityClass");
 
 			if (error.bad())
@@ -843,15 +896,15 @@ int main(int argc, char *argv[])
 				CERR << "Error: "
 					<< error.text()
 					<< ": writing file: " <<  opt_ofname << endl;
-				if(readcmd) return 1; else continue;
+				if(readpipe) continue; else return 1;
 			}
 
 			if (opt_verbose)
-				COUT << "conversion successful\n";
+				CERR << "conversion successful\n";
 
 			if(opt_deleteSourceFile)
 			{
-				if (opt_verbose) COUT << "delete source file: " << opt_ifname << endl;
+				if (opt_verbose) CERR << "delete source file: " << opt_ifname << endl;
 				if( remove(opt_ifname) )
 				{
 					int errnoRmdir = 0;
@@ -861,11 +914,10 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		if(readcmd) break;
+		if(!readpipe) break;
 	}
 
-	if(mutexIdle) { ReleaseMutex(mutexIdle); CloseHandle(mutexIdle); }
-	if(mutexRec) { ReleaseMutex(mutexRec); CloseHandle(mutexRec); }
+	if(hPipe != INVALID_HANDLE_VALUE) CloseHandle(hPipe);
 
 	// deregister global codecs
 	DJDecoderRegistration::cleanup();
