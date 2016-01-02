@@ -34,7 +34,7 @@ static void test_sim_slow_log_writer(void *seid)
     fclose(fplog);
     fclose(fpsrc);
 }
-
+/*
 static void test_consume_log(const char *sid)
 {
     char log_name[MAX_PATH];
@@ -59,7 +59,7 @@ static void test_consume_log(const char *sid)
     }
     tail.close();
 }
-
+*/
 void call_process_log(std::string &sessionId)
 {
     HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, (void*)sessionId.c_str());

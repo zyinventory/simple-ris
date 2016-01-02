@@ -3,37 +3,60 @@
 #include "commonlib_internal.h"
 
 using namespace std;
+static int is_cr_lf(int c) { return (c == '\r' || c == '\n') ? 1 : 0; }
+#define STRING_LTRIM(str) str.erase(str.begin(), find_if(str.begin(), str.end(), std::not1(std::ptr_fun<int, int>(is_cr_lf))))
 
 bool opt_verbose = false;
 char pacs_base[MAX_PATH];
 
 static const char *sessionId;
-static char buff[1024];
-static size_t gpos = 0;
+static FILE_OLP_INST file_read;
+static string cmd_buf;
+static list<string> queued_cmd;
+static size_t waitMilliSec = 0;
+static int last_run_apc_func = APC_FUNC_ALL;
 
-COMMONLIB_API char *try_read_line(ifstream &tail)
+static void CALLBACK CompletedReadRoutine(DWORD dwErr, DWORD cbRead, LPOVERLAPPED polp)
 {
-    tail.getline(buff + gpos, sizeof(buff) - gpos);
-    streamsize gcnt = tail.gcount();
-    if(gcnt > 0) gpos += static_cast<size_t>(gcnt);
-    if(tail.fail() || tail.eof())
+    LPFILE_OLP_INST foi = (LPFILE_OLP_INST)polp;
+    if ((dwErr == 0) && polp->InternalHigh)
     {
-        /* if(opt_verbose) */cerr << "<";
-        tail.clear();
-        return NULL;
+        polp->Offset += polp->InternalHigh;
+        cmd_buf.append(foi->chBuff, polp->InternalHigh);
+        string::iterator it;
+        do
+        {
+            STRING_LTRIM(cmd_buf);
+            it = find_if(cmd_buf.begin(), cmd_buf.end(), std::ptr_fun<int, int>(is_cr_lf));
+            if(it != cmd_buf.end())
+            {
+                queued_cmd.push_back(cmd_buf.substr(0, it - cmd_buf.begin()));
+                cmd_buf.erase(cmd_buf.begin(), it);
+            }
+        } while(it != cmd_buf.end());
     }
-    else
+    else if(dwErr != ERROR_HANDLE_EOF)
+        displayErrorToCerr("CompletedReadRoutine", polp->Internal);
+    else // dwErr == ERROR_HANDLE_EOF
+        last_run_apc_func &= ~APC_FUNC_ReadCommand;
+}
+
+static void start_apc_func()
+{
+    if((last_run_apc_func & APC_FUNC_ReadCommand) && !file_read.eof)
     {
-        gpos = 0;
-        return buff;
+        file_read.oOverlap.InternalHigh = 0;
+        file_read.oOverlap.Internal = 0;
+        ReadFileEx(file_read.hFileHandle, file_read.chBuff, FILE_ASYN_BUF_SIZE, &file_read.oOverlap, CompletedReadRoutine);
+    }
+    else if(last_run_apc_func & APC_FUNC_RunIndex)
+    {
+        QueueUserAPC(run_index, GetCurrentThread(), (ULONG_PTR)&last_run_apc_func);
     }
 }
 
-bool run_index();
-
-COMMONLIB_API void scp_store_main_loop(const char *sessId, bool verbose)
+COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 {
-    
     opt_verbose = verbose;
     sessionId = sessId;
     string fn("\\storedir\\");
@@ -41,32 +64,80 @@ COMMONLIB_API void scp_store_main_loop(const char *sessId, bool verbose)
     if(ChangeToPacsWebSub(pacs_base, MAX_PATH, fn.c_str()))
     {
         cerr << "无法切换工作目录" << endl;
-        return;
+        return -1;
     }
-    ifstream tail("cmove.txt", ios_base::in, _SH_DENYNO);
-    if(tail.fail())
+    HANDLE tail = CreateFile("cmove.txt", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, 
+        OPEN_EXISTING, FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL, NULL);
+    if(tail == INVALID_HANDLE_VALUE)
     {
-        cerr << "无法打开文件" << fn << endl;
-        return;
+        displayErrorToCerr("cmove.txt", GetLastError());
+        return -2;
     }
-
     int ret = 1, waitTime = 0;
     clear_log_context();
+    cmd_buf.clear();
+    cmd_buf.reserve(256);
 
-    while(ret && waitTime <= 10 * 1000)
+    memset(&file_read, 0, sizeof(FILE_OLP_INST));
+    file_read.hFileHandle = tail;
+    if(!ReadFileEx(tail, file_read.chBuff, FILE_ASYN_BUF_SIZE, (OVERLAPPED*)&file_read, CompletedReadRoutine))
     {
-        if(const char * line = try_read_line(tail))
-        {
-            waitTime = 0;
-            ret = process_cmd(line);
-        }
+        displayErrorToCerr("ReadFileEx", GetLastError());
+        return -3;
+    }
+    size_t worker_num = 0, queue_size = 0;
+    HANDLE *objs = NULL;
+    while(!file_read.eof || (worker_num + queue_size))
+    {
+        DWORD wr = WAIT_FAILED;
+        if(objs) wr = WaitForMultipleObjectsEx(worker_num, objs, FALSE, waitMilliSec, TRUE);
         else
         {
-            waitTime += 100;
-            Sleep(100);
+            wr = SleepEx(waitMilliSec, TRUE);
+            if(wr == 0) wr = WAIT_TIMEOUT;
         }
+        // switch(wr)
+        if(wr == WAIT_TIMEOUT)
+            last_run_apc_func = APC_FUNC_ALL;
+        else if(wr == WAIT_IO_COMPLETION)
+            ;
+        else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + worker_num)
+        {
+            if(complete_worker(wr, objs, worker_num))
+                last_run_apc_func |= APC_FUNC_RunIndex;
+        }
+        else
+        {   // shall not reach here ...
+            displayErrorToCerr("WaitForMultipleObjectsEx() ", GetLastError());
+            if(objs) delete[] objs;
+            return -1;
+        }
+
+        // push command to compress queue
+        while(!queued_cmd.empty())
+        {
+            const string &cmd = queued_cmd.front();
+            if(process_cmd(cmd.c_str()))
+                queued_cmd.pop_front();
+            else
+            {
+                file_read.eof = true;
+                queued_cmd.pop_front();
+                break;
+            }
+        }
+        // if no command, try to push the rest of work to queue
+        commit_file_to_workers(NULL);
+        if(objs) delete[] objs;
+        objs = get_worker_handles(&worker_num, &queue_size);
+
+        // read command, index ...
+        start_apc_func();
     }
-    tail.close();
-    while(commit_file_to_workers(NULL)) Sleep(100);
-    while(run_index());
+    if(objs) delete[] objs;
+    CloseHandle(tail);
+    do {
+        run_index((ULONG_PTR)&last_run_apc_func);
+    } while(last_run_apc_func & APC_FUNC_RunIndex);
+    return 0;
 }

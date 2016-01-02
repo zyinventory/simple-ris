@@ -13,7 +13,7 @@ bool CMOVE_FILE_SECTION::StorePath(char *buf, size_t buf_size)
     return true;
 }
 
-static list<CMOVE_LOG_CONTEXT> workers, index_queue;
+static list<CMOVE_LOG_CONTEXT> workers, queue_compress, queue_index;
 
 static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
 {
@@ -89,84 +89,63 @@ static void close_log(const CMOVE_LOG_CONTEXT &lc)
     }
 }
 
-static int find_complete_worker(CMOVE_LOG_CONTEXT &lc)
+void commit_file_to_workers(CMOVE_LOG_CONTEXT *plc)
 {
-    size_t worker_num = workers.size();
-    HANDLE *objs = new HANDLE[workers.size()];
-    transform(workers.begin(), workers.end(), objs, [](const CMOVE_LOG_CONTEXT &clc) { return clc.hprocess; });
-    DWORD wr = WaitForMultipleObjects(worker_num, objs, FALSE, 0);
-    if(wr == WAIT_TIMEOUT)
+    if(plc)
     {
-        delete[] objs;
-        return worker_num;
+        queue_compress.push_back(*plc);
+        cerr << "trigger que_compr "  << plc->file.filename << endl;
     }
-    else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + worker_num)
+    while(workers.size() < worker_core_num && queue_compress.size() > 0)
     {
-        wr -= WAIT_OBJECT_0;
-        list<CMOVE_LOG_CONTEXT>::iterator it = find_if(workers.begin(), workers.end(), 
-            [objs, wr](CMOVE_LOG_CONTEXT &clc) { return clc.hprocess == objs[wr]; });
-        delete[] objs;
-        lc = *it;
-        workers.erase(it);
-        cerr << "trigger complete " << lc.file.filename << endl;
-        return workers.size();
-    }
-    else
-    {   // shall not reach here ...
-        displayErrorToCerr("WaitForMultipleObjects() ", GetLastError());
-        delete[] objs;
-        return -1;
+        create_worker_process(queue_compress.front());
+        queue_compress.pop_front();
     }
 }
 
-bool run_index()
+void CALLBACK run_index(ULONG_PTR ptr_last_run_apc)
 {
-    if(index_queue.size() > 0)
+    if(queue_index.size() > 0)
     {
-        CMOVE_LOG_CONTEXT lc = index_queue.front();
-        index_queue.pop_front();
+        CMOVE_LOG_CONTEXT lc = queue_index.front();
+        queue_index.pop_front();
         // do index
         Sleep(0);
         close_log(lc);
-        return true;
     }
-    return false;
+    else if(ptr_last_run_apc) *(int*)ptr_last_run_apc &= ~APC_FUNC_RunIndex;
 }
 
-bool commit_file_to_workers(CMOVE_LOG_CONTEXT *plc)
+bool complete_worker(DWORD wr, HANDLE *objs, size_t worker_num)
 {
     CMOVE_LOG_CONTEXT over_lc;
-    int find_result;
-    over_lc.hprocess = INVALID_HANDLE_VALUE;
-    if(workers.size() > 0)
+    wr -= WAIT_OBJECT_0;
+    list<CMOVE_LOG_CONTEXT>::iterator it = find_if(workers.begin(), workers.end(), 
+        [objs, wr](CMOVE_LOG_CONTEXT &clc) { return clc.hprocess == objs[wr]; });
+    over_lc = *it;
+    workers.erase(it);
+    cerr << "trigger complete " << over_lc.file.filename << endl;
+    if(over_lc.hprocess != INVALID_HANDLE_VALUE)
     {
-wait_worker_again:
-        find_result = find_complete_worker(over_lc);
-        if(over_lc.hprocess != INVALID_HANDLE_VALUE)
-        {
-            CloseHandle(over_lc.hthread);
-            over_lc.hthread = INVALID_HANDLE_VALUE;
-            CloseHandle(over_lc.hprocess);
-            over_lc.hprocess = INVALID_HANDLE_VALUE;
-            index_queue.push_back(over_lc);
-        }
-        if(find_result >= worker_core_num)
-        {
-            /* if(opt_verbose) */cerr << "*"; // full of jobs
-            if(!run_index()) Sleep(300);
-            goto wait_worker_again;
-        }
-        else if(find_result < 0)
-            return false;
+        CloseHandle(over_lc.hthread);
+        over_lc.hthread = INVALID_HANDLE_VALUE;
+        CloseHandle(over_lc.hprocess);
+        over_lc.hprocess = INVALID_HANDLE_VALUE;
+        queue_index.push_back(over_lc);
     }
-    bool compr_result = true;
-    if(plc)compr_result = (0 == create_worker_process(*plc));
-    else compr_result = (workers.size() > 0);
+    commit_file_to_workers(NULL);
+    return !queue_index.empty();
+}
 
-    if(workers.size() < worker_core_num)
+HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size)
+{
+    if(queue_size) *queue_size = queue_compress.size();
+    if(worker_num) *worker_num = workers.size();
+    if(worker_num && *worker_num > 0)
     {
-        /* if(opt_verbose) */cerr << "."; // any core idle
-        run_index();
+        HANDLE *objs = new HANDLE[workers.size()];
+        transform(workers.begin(), workers.end(), objs, [](const CMOVE_LOG_CONTEXT &clc) { return clc.hprocess; });
+        return objs;
     }
-    return compr_result;
+    else return NULL;
 }

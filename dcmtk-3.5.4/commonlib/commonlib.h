@@ -84,5 +84,4 @@ COMMONLIB_API bool decodeBase32(const char *src, char *dec, size_t dec_buf_size)
 COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t buf_size);
 COMMONLIB_API void ReleaseUniqueNoResource();
 
-COMMONLIB_API void scp_store_main_loop(const char *sessionId, bool verbose);
-COMMONLIB_API char *try_read_line(std::ifstream &tail);
+COMMONLIB_API int scp_store_main_loop(const char *sessionId, bool verbose);
