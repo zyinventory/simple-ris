@@ -35,7 +35,7 @@ static void test_sim_slow_log_writer(void *seid)
     fclose(fpsrc);
 }
 
-static void consume_log(const char *sid)
+static void test_consume_log(const char *sid)
 {
     char log_name[MAX_PATH];
     sprintf_s(log_name, "%s\\cmove.txt", sid);
@@ -52,7 +52,7 @@ static void consume_log(const char *sid)
         if(const char *buff = try_read_line(tail))
         {
             cout << buff << endl;
-            if(strcmp("T FFFFFFFF", buff) == 0) break;
+            if(buff[0] == 'M') break;
         }
         else
             Sleep(1);
@@ -65,8 +65,8 @@ void call_process_log(std::string &sessionId)
     HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, (void*)sessionId.c_str());
     while(!start_write_log) Sleep(10);
 
-    process_log(sessionId.c_str(), false);
-    //consume_log(sessionId.c_str());
+    scp_store_main_loop(sessionId.c_str(), false);
+    //test_consume_log(sessionId.c_str());
 
     WaitForSingleObject(ht, INFINITE);
 }

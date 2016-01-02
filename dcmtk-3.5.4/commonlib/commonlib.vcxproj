@@ -125,6 +125,7 @@
     </ClCompile>
     <ClCompile Include="poststore.cpp" />
     <ClCompile Include="process_log.cpp" />
+    <ClCompile Include="scp_store_loop.cpp" />
     <ClCompile Include="service.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -138,6 +139,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="commonlib.h" />
+    <ClInclude Include="commonlib_internal.h" />
     <ClInclude Include="mini-gmp.h" />
     <ClInclude Include="poststore.h" />
     <ClInclude Include="service.h" />

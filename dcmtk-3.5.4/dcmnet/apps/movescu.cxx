@@ -1469,6 +1469,7 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
         &rsp, &statusDetail, &rspIds, opt_ignorePendingDatasets);
 
     if (cond == EC_Normal) {
+        fputs("T FFFFFFFF\n", fplog);  // assoc normal term
         if (opt_verbose) {
             DIMSE_printCMoveRSP(stdout, &rsp);
             if (rspIds != NULL) {
@@ -1477,6 +1478,7 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
             }
         }
     } else {
+        fputs("T FFFFFFFD\n", fplog);  // assoc abort
         errmsg("Move Failed:");
         DimseCondition::dump(cond);
     }

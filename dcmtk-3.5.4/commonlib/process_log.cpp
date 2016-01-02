@@ -1,7 +1,9 @@
 #include "stdafx.h"
 #include "../ofstd/include/dcmtk/ofstd/x_www_form_codec.h"
 #include "commonlib.h"
+#include "commonlib_internal.h"
 
+#define TYPE_MOVE       'M'
 #define TYPE_ASSOC      'T'
 #define TYPE_FILE       'F'
 #define TYPE_PATIENT    'P'
@@ -16,18 +18,16 @@
 
 using namespace std;
 
-bool opt_verbose = false;
-
-static const char *sessionId;
 static CMOVE_LOG_CONTEXT  lc;
 
-static void clear_log_context(CMOVE_LOG_CONTEXT &lc)
+void clear_log_context(CMOVE_LOG_CONTEXT *plc)
 {
-    memset(&lc, 0, sizeof(CMOVE_LOG_CONTEXT));
-    lc.hprocess = INVALID_HANDLE_VALUE;
-    lc.hthread = INVALID_HANDLE_VALUE;
-    lc.log = INVALID_HANDLE_VALUE;
-    lc.patient.sex = ' ';
+    if(plc == NULL) plc = &lc;
+    memset(plc, 0, sizeof(CMOVE_LOG_CONTEXT));
+    plc->hprocess = INVALID_HANDLE_VALUE;
+    plc->hthread = INVALID_HANDLE_VALUE;
+    plc->log = INVALID_HANDLE_VALUE;
+    plc->patient.sex = ' ';
 }
 
 static int cmd_series(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
@@ -220,8 +220,6 @@ static void print_error_file_section(unsigned int tag, string &filename, CMOVE_F
     cerr << "\txfer: " << fs.xfer << endl;
 }
 
-bool commit_file_to_workers(CMOVE_LOG_CONTEXT *lc);
-
 static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
@@ -243,7 +241,7 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
         if(lc.file.inFile) // error, print unexpected value
             print_error_file_section(tag, filename, lc.file);
         // enter file section, clear all UID
-        clear_log_context(lc);
+        clear_log_context();
         filename._Copy_s(lc.file.filename, sizeof(lc.file.filename), filename.length());
         lc.file.filename[filename.length()] = '\0';
         lc.file.tag = tag;
@@ -266,7 +264,7 @@ static int cmd_assoc(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     case ASSOC_TERM:
     case ASSOC_ABORT:
         if(opt_verbose) cerr << endl;
-        return 0;
+        break;
     default:
         char otherbuf[1024] = "";
         cmdstrm.getline(otherbuf, sizeof(otherbuf));
@@ -277,7 +275,15 @@ static int cmd_assoc(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     return 1;
 }
 
-static int process_cmd(const char *buf)
+static int cmd_move(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
+{
+    unsigned int tag = 0;
+    cmdstrm >> hex >> tag;
+    if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag;
+    return 0;
+}
+
+int process_cmd(const char *buf)
 {
     char type = '\0';
     istringstream cmdstrm(buf);
@@ -286,7 +292,8 @@ static int process_cmd(const char *buf)
     switch(type)
     {
     case TYPE_ASSOC:
-        return cmd_assoc(type, cmdstrm, lc);
+        cmd_assoc(type, cmdstrm, lc);
+        break;
     case TYPE_FILE:
         cmd_file(type, cmdstrm, lc);
         break;
@@ -302,72 +309,10 @@ static int process_cmd(const char *buf)
     case TYPE_INSTANCE:
         if(lc.file.inFile) cmd_instance(type, cmdstrm, lc);
         break;
+    case TYPE_MOVE:
+        return cmd_move(type, cmdstrm, lc);
     default:
         cerr << "can't recognize command: " << buf << endl;
     }
     return 1;
-}
-
-bool run_index();
-char pacs_base[MAX_PATH];
-
-static char buff[1024];
-static size_t gpos = 0;
-
-COMMONLIB_API char *try_read_line(ifstream &tail)
-{
-    tail.getline(buff + gpos, sizeof(buff) - gpos);
-    streamsize gcnt = tail.gcount();
-    if(gcnt > 0) gpos += static_cast<size_t>(gcnt);
-    if(tail.fail() || tail.eof())
-    {
-        /* if(opt_verbose) */cerr << "<";
-        tail.clear();
-        return NULL;
-    }
-    else
-    {
-        gpos = 0;
-        return buff;
-    }
-}
-
-COMMONLIB_API void process_log(const char *sessId, bool verbose)
-{
-    
-    opt_verbose = verbose;
-    sessionId = sessId;
-    string fn("\\storedir\\");
-    fn.append(sessionId);
-    if(ChangeToPacsWebSub(pacs_base, MAX_PATH, fn.c_str()))
-    {
-        cerr << "无法切换工作目录" << endl;
-        return;
-    }
-    ifstream tail("cmove.txt", ios_base::in, _SH_DENYNO);
-    if(tail.fail())
-    {
-        cerr << "无法打开文件" << fn << endl;
-        return;
-    }
-
-    int ret = 1, waitTime = 0;
-    clear_log_context(lc);
-
-    while(ret && waitTime <= 10 * 1000)
-    {
-        if(const char * line = try_read_line(tail))
-        {
-            waitTime = 0;
-            ret = process_cmd(line);
-        }
-        else
-        {
-            waitTime += 100;
-            Sleep(100);
-        }
-    }
-    tail.close();
-    while(commit_file_to_workers(NULL)) Sleep(100);
-    while(run_index());
 }

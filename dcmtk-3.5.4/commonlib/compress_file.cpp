@@ -1,11 +1,8 @@
 #include "stdafx.h"
 #include "commonlib.h"
+#include "commonlib_internal.h"
 
 using namespace std;
-
-extern bool opt_verbose;
-extern int worker_core_num;
-extern char pacs_base[MAX_PATH];
 
 bool CMOVE_FILE_SECTION::StorePath(char *buf, size_t buf_size)
 {

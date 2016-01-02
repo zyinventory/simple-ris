@@ -54,6 +54,9 @@
     <ClCompile Include="compress_file.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="scp_store_loop.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
@@ -84,6 +87,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="UIDBase36.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="commonlib_internal.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
