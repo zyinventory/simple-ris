@@ -31,6 +31,8 @@ typedef struct {
     CMOVE_PATIENT_SECTION patient;
     CMOVE_STUDY_SECTION study;
     CMOVE_SERIES_SECTION series;
+    char command[256];
+    bool WrittenToPipe;
 } CMOVE_LOG_CONTEXT;
 
 #define FILE_ASYN_BUF_SIZE 1024
@@ -45,18 +47,41 @@ typedef struct
 extern bool opt_verbose;
 extern int worker_core_num;
 extern char pacs_base[MAX_PATH];
+extern const char *sessionId;
 
 int process_cmd(const char *buf);
 void clear_log_context(CMOVE_LOG_CONTEXT *lc = NULL);
 
 #define APC_FUNC_NONE 0
 #define APC_FUNC_ReadCommand 1
-#define APC_FUNC_RunIndex 2
-#define APC_FUNC_ALL APC_FUNC_ReadCommand | APC_FUNC_RunIndex
+#define APC_FUNC_Dicomdir 2
+#define APC_FUNC_ALL APC_FUNC_ReadCommand | APC_FUNC_Dicomdir
 
-void CALLBACK run_index(ULONG_PTR ptr_last_run_apc);
+void CALLBACK MakeDicomdir(ULONG_PTR ptr_last_run_apc);
 void commit_file_to_workers(CMOVE_LOG_CONTEXT *lc);
 bool complete_worker(DWORD wr, HANDLE *objs, size_t worker_num);
 HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size);
+
+// ------------ Named Pipe ------------
+
+typedef struct {
+    HANDLE hProcess, hThread, log;
+    char studyUID[65];
+} DCMMKDIR_CONTEXT;
+
+typedef struct
+{
+	OVERLAPPED oOverlap;
+	HANDLE hPipeInst;
+	TCHAR chRequest[FILE_ASYN_BUF_SIZE];
+	DWORD cbRead;
+	//TCHAR chReply[FILE_ASYN_BUF_SIZE];
+	//DWORD cbToWrite;
+    DCMMKDIR_CONTEXT dir_context;
+} PIPEINST, *LPPIPEINST;
+
+bool CreateNamedPipeToStaticHandle();
+void CloseNamedPipeHandle();
+int CreateClientProc(const char *studyUID);
 
 #endif //COMMONLIB_INTERNAL

@@ -43,6 +43,7 @@ const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
 extern COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
 COMMONLIB_API void displayErrorToCerr(TCHAR *lpszFunction, DWORD gle);
+COMMONLIB_API void DisplayErrorToFileHandle(TCHAR *lpszFunction, DWORD dw, HANDLE fh);
 COMMONLIB_API int GetSignalInterruptValue();
 COMMONLIB_API void SignalInterruptHandler(int signal);
 COMMONLIB_API void Capture_Ctrl_C();

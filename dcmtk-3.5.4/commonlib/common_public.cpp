@@ -74,6 +74,28 @@ static void displayErrorToCerr_internal(TCHAR *lpszFunction, DWORD dw)
 	//LocalFree(lpDisplayBuf);
 }
 
+#ifdef COMMONLIB_EXPORTS
+#define DisplayErrorToFileHandle_public DisplayErrorToFileHandle
+COMMONLIB_API void DisplayErrorToFileHandle(TCHAR *lpszFunction, DWORD dw, HANDLE fh)
+#else
+#define DisplayErrorToFileHandle_public DisplayErrorToFileHandle_internal
+static void DisplayErrorToFileHandle_internal(TCHAR *lpszFunction, DWORD dw, HANDLE fh)
+#endif
+{
+	TCHAR *lpMsgBuf;
+	TCHAR *lpDisplayBuf;
+
+	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) &lpMsgBuf, 0, NULL );
+	// Display the error message
+	lpDisplayBuf = (TCHAR *)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
+	sprintf_s(lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error %d: %s\r\n"), lpszFunction, dw, lpMsgBuf);
+    DWORD written = 0;
+    WriteFile(fh, lpDisplayBuf, strlen(lpDisplayBuf), &written, NULL);
+	LocalFree(lpMsgBuf);
+	LocalFree(lpDisplayBuf);
+}
+
 static BOOL SetPrivilege(LPCTSTR lpszPrivilege, BOOL bEnablePrivilege)
 {
     HANDLE hToken;

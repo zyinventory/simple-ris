@@ -8,8 +8,8 @@ static int is_cr_lf(int c) { return (c == '\r' || c == '\n') ? 1 : 0; }
 
 bool opt_verbose = false;
 char pacs_base[MAX_PATH];
+const char *sessionId;
 
-static const char *sessionId;
 static FILE_OLP_INST file_read;
 static string cmd_buf;
 static list<string> queued_cmd;
@@ -49,9 +49,9 @@ static void start_apc_func()
         file_read.oOverlap.Internal = 0;
         ReadFileEx(file_read.hFileHandle, file_read.chBuff, FILE_ASYN_BUF_SIZE, &file_read.oOverlap, CompletedReadRoutine);
     }
-    else if(last_run_apc_func & APC_FUNC_RunIndex)
+    else if(last_run_apc_func & APC_FUNC_Dicomdir)
     {
-        QueueUserAPC(run_index, GetCurrentThread(), (ULONG_PTR)&last_run_apc_func);
+        QueueUserAPC(MakeDicomdir, GetCurrentThread(), (ULONG_PTR)&last_run_apc_func);
     }
 }
 
@@ -73,6 +73,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         displayErrorToCerr("cmove.txt", GetLastError());
         return -2;
     }
+
     int ret = 1, waitTime = 0;
     clear_log_context();
     cmd_buf.clear();
@@ -85,8 +86,22 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         displayErrorToCerr("ReadFileEx", GetLastError());
         return -3;
     }
+    
+    if(!CreateNamedPipeToStaticHandle())
+    {
+        CloseHandle(tail);
+        return -4;
+    }
+    if(!CreateClientProc(".")) // session level dicomdir
+    {
+        CloseHandle(tail);
+        CloseNamedPipeHandle();
+        return -5;
+    }
+
     size_t worker_num = 0, queue_size = 0;
     HANDLE *objs = NULL;
+    objs = get_worker_handles(&worker_num, &queue_size);
     while(!file_read.eof || (worker_num + queue_size))
     {
         DWORD wr = WAIT_FAILED;
@@ -104,7 +119,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + worker_num)
         {
             if(complete_worker(wr, objs, worker_num))
-                last_run_apc_func |= APC_FUNC_RunIndex;
+                last_run_apc_func |= APC_FUNC_Dicomdir;
         }
         else
         {   // shall not reach here ...
@@ -137,7 +152,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     if(objs) delete[] objs;
     CloseHandle(tail);
     do {
-        run_index((ULONG_PTR)&last_run_apc_func);
-    } while(last_run_apc_func & APC_FUNC_RunIndex);
+        MakeDicomdir((ULONG_PTR)&last_run_apc_func);
+    } while(last_run_apc_func & APC_FUNC_Dicomdir);
     return 0;
 }
