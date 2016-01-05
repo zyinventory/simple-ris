@@ -51,19 +51,31 @@ static void CALLBACK read_cmd_and_process(DWORD dwErr, DWORD cbRead, LPOVERLAPPE
         if(hDirNotify && hDirNotify != INVALID_HANDLE_VALUE)
         {
             FindCloseChangeNotification(hDirNotify);
-            hDirNotify = INVALID_HANDLE_VALUE;
+            hDirNotify = NULL;
+        }
+        if(foi->hFileHandle && foi->hFileHandle != INVALID_HANDLE_VALUE)
+        {
+            CloseHandle(foi->hFileHandle);
+            foi->hFileHandle = NULL;
         }
     }
     else
     {
         if(dwErr == ERROR_HANDLE_EOF)
         {
-            apc_func_state |= APC_FUNC_ReadCommand;
+            FindNextChangeNotification(hDirNotify);
         }
         else if(dwErr != 0)
         {
             displayErrorToCerr("read_cmd_and_process()", dwErr);
             CloseHandle(foi->hFileHandle);
+            foi->hFileHandle = NULL;
+            foi->fail = true;
+            if(hDirNotify && hDirNotify != INVALID_HANDLE_VALUE)
+            {
+                FindCloseChangeNotification(hDirNotify);
+                hDirNotify = NULL;
+            }
         }
     }
 }
@@ -72,7 +84,6 @@ bool read_cmd_continous()
 {
     if(!file_read.fail && !ReadFileEx(file_read.hFileHandle, file_read.chBuff, FILE_ASYN_BUF_SIZE, &file_read.oOverlap, read_cmd_and_process))
         displayErrorToCerr("read_cmd_continous()", GetLastError());
-    FindNextChangeNotification(hDirNotify);
     return true;
 }
 
@@ -99,10 +110,11 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         cerr << "mkdir archdir faile: " << strerror(en) << endl;
         return -1;
     }
-
-    HANDLE tail = CreateFile("cmove.txt", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, 
+    
+    memset(&file_read, 0, sizeof(FILE_OLP_INST));
+    file_read.hFileHandle = CreateFile("cmove.txt", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, 
         OPEN_EXISTING, FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL, NULL);
-    if(tail == INVALID_HANDLE_VALUE)
+    if(file_read.hFileHandle == INVALID_HANDLE_VALUE)
     {
         displayErrorToCerr("cmove.txt", GetLastError());
         return -2;
@@ -120,13 +132,6 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     cmd_buf.clear();
     cmd_buf.reserve(256);
 
-    memset(&file_read, 0, sizeof(FILE_OLP_INST));
-    file_read.hFileHandle = tail;
-    if(!ReadFileEx(tail, file_read.chBuff, FILE_ASYN_BUF_SIZE, (OVERLAPPED*)&file_read, read_cmd_and_process))
-    {
-        displayErrorToCerr("ReadFileEx()", GetLastError());
-        return -3;
-    }
 /*
     if(!CreateNamedPipeToStaticHandle())
     {
@@ -178,6 +183,10 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     }
     if(objs) delete[] objs;
     if(cbs) delete[] cbs;
-    CloseHandle(tail);
+    if(file_read.hFileHandle && file_read.hFileHandle != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(file_read.hFileHandle);
+        file_read.hFileHandle = NULL;
+    }
     return 0;
 }
