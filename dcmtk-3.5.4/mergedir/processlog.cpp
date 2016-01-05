@@ -9,7 +9,7 @@ static void test_sim_slow_log_writer(void *seid)
     sprintf_s(src_name, "%s\\cmove.src.txt", (const char*)seid);
     sprintf_s(log_name, "%s\\cmove.txt", (const char*)seid);
 
-    FILE *fplog =fopen(log_name, "w+b"), *fpsrc = fopen(src_name, "rb");
+    FILE *fplog =fopen(log_name, "w+bc"), *fpsrc = fopen(src_name, "rb");
     if(fpsrc == NULL)
     {
         if(fplog != NULL) fclose(fplog);

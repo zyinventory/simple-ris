@@ -233,7 +233,7 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
             || strlen(lc.file.xfer) == 0) // error, print unexpected value
             print_error_file_section(tag, filename, lc.file);
         else // OK, commit file section
-            commit_file_to_workers(&lc);
+            compress_queue_to_workers(&lc);
         lc.file.inFile = false;
     }
     else
@@ -283,7 +283,7 @@ static int cmd_move(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     return 0;
 }
 
-int process_cmd(const char *buf)
+int process_cmd(const string &buf)
 {
     char type = '\0';
     istringstream cmdstrm(buf);

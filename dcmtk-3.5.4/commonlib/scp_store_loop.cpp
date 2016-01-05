@@ -14,15 +14,16 @@ static FILE_OLP_INST file_read;
 static string cmd_buf;
 static list<string> queued_cmd;
 static size_t waitMilliSec = 0;
-static int last_run_apc_func = APC_FUNC_ALL;
+static int apc_func_state = APC_FUNC_NONE;
+static HANDLE hDirNotify;
 
-static void CALLBACK CompletedReadRoutine(DWORD dwErr, DWORD cbRead, LPOVERLAPPED polp)
+static void CALLBACK read_cmd_and_process(DWORD dwErr, DWORD cbRead, LPOVERLAPPED polp)
 {
     LPFILE_OLP_INST foi = (LPFILE_OLP_INST)polp;
-    if ((dwErr == 0) && polp->InternalHigh)
+    if ((dwErr == 0) && cbRead)
     {
-        polp->Offset += polp->InternalHigh;
-        cmd_buf.append(foi->chBuff, polp->InternalHigh);
+        polp->Offset += cbRead;
+        cmd_buf.append(foi->chBuff, cbRead);
         string::iterator it;
         do
         {
@@ -34,25 +35,45 @@ static void CALLBACK CompletedReadRoutine(DWORD dwErr, DWORD cbRead, LPOVERLAPPE
                 cmd_buf.erase(cmd_buf.begin(), it);
             }
         } while(it != cmd_buf.end());
+
+        while(!queued_cmd.empty())
+        {
+            foi->fail = (process_cmd(queued_cmd.front()) == 0);
+            queued_cmd.pop_front();
+        }
+
+        if(!foi->fail && !ReadFileEx(foi->hFileHandle, foi->chBuff, FILE_ASYN_BUF_SIZE, polp, read_cmd_and_process))
+            dwErr = GetLastError();
     }
-    else if(dwErr != ERROR_HANDLE_EOF)
-        displayErrorToCerr("CompletedReadRoutine", polp->Internal);
-    else // dwErr == ERROR_HANDLE_EOF
-        last_run_apc_func &= ~APC_FUNC_ReadCommand;
+    
+    if(foi->fail)
+    {
+        if(hDirNotify && hDirNotify != INVALID_HANDLE_VALUE)
+        {
+            FindCloseChangeNotification(hDirNotify);
+            hDirNotify = INVALID_HANDLE_VALUE;
+        }
+    }
+    else
+    {
+        if(dwErr == ERROR_HANDLE_EOF)
+        {
+            apc_func_state |= APC_FUNC_ReadCommand;
+        }
+        else if(dwErr != 0)
+        {
+            displayErrorToCerr("read_cmd_and_process()", dwErr);
+            CloseHandle(foi->hFileHandle);
+        }
+    }
 }
 
-static void start_apc_func()
+bool read_cmd_continous()
 {
-    if((last_run_apc_func & APC_FUNC_ReadCommand) && !file_read.eof)
-    {
-        file_read.oOverlap.InternalHigh = 0;
-        file_read.oOverlap.Internal = 0;
-        ReadFileEx(file_read.hFileHandle, file_read.chBuff, FILE_ASYN_BUF_SIZE, &file_read.oOverlap, CompletedReadRoutine);
-    }
-    else if(last_run_apc_func & APC_FUNC_Dicomdir)
-    {
-        QueueUserAPC(MakeDicomdir, GetCurrentThread(), (ULONG_PTR)&last_run_apc_func);
-    }
+    if(!file_read.fail && !ReadFileEx(file_read.hFileHandle, file_read.chBuff, FILE_ASYN_BUF_SIZE, &file_read.oOverlap, read_cmd_and_process))
+        displayErrorToCerr("read_cmd_continous()", GetLastError());
+    FindNextChangeNotification(hDirNotify);
+    return true;
 }
 
 COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
@@ -66,11 +87,31 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         cerr << "无法切换工作目录" << endl;
         return -1;
     }
+    if(_mkdir("log") && errno != EEXIST)
+    {
+        int en = errno;
+        cerr << "mkdir log faile: " << strerror(en) << endl;
+        return -1;
+    }
+    if(_mkdir("archdir") && errno != EEXIST)
+    {
+        int en = errno;
+        cerr << "mkdir archdir faile: " << strerror(en) << endl;
+        return -1;
+    }
+
     HANDLE tail = CreateFile("cmove.txt", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, 
         OPEN_EXISTING, FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL, NULL);
     if(tail == INVALID_HANDLE_VALUE)
     {
         displayErrorToCerr("cmove.txt", GetLastError());
+        return -2;
+    }
+
+    hDirNotify = FindFirstChangeNotification(_getcwd(NULL, 0), FALSE, FILE_NOTIFY_CHANGE_SIZE);
+    if(hDirNotify == INVALID_HANDLE_VALUE)
+    {
+        displayErrorToCerr("FindFirstChangeNotification()", GetLastError());
         return -2;
     }
 
@@ -81,12 +122,12 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 
     memset(&file_read, 0, sizeof(FILE_OLP_INST));
     file_read.hFileHandle = tail;
-    if(!ReadFileEx(tail, file_read.chBuff, FILE_ASYN_BUF_SIZE, (OVERLAPPED*)&file_read, CompletedReadRoutine))
+    if(!ReadFileEx(tail, file_read.chBuff, FILE_ASYN_BUF_SIZE, (OVERLAPPED*)&file_read, read_cmd_and_process))
     {
-        displayErrorToCerr("ReadFileEx", GetLastError());
+        displayErrorToCerr("ReadFileEx()", GetLastError());
         return -3;
     }
-    
+/*
     if(!CreateNamedPipeToStaticHandle())
     {
         CloseHandle(tail);
@@ -98,11 +139,12 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         CloseNamedPipeHandle();
         return -5;
     }
-
+*/
     size_t worker_num = 0, queue_size = 0;
     HANDLE *objs = NULL;
-    objs = get_worker_handles(&worker_num, &queue_size);
-    while(!file_read.eof || (worker_num + queue_size))
+    WORKER_CALLBACK *cbs = NULL;
+    objs = get_worker_handles(&worker_num, &queue_size, &cbs, hDirNotify);
+    while(!file_read.fail || (worker_num + queue_size))
     {
         DWORD wr = WAIT_FAILED;
         if(objs) wr = WaitForMultipleObjectsEx(worker_num, objs, FALSE, waitMilliSec, TRUE);
@@ -113,13 +155,15 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         }
         // switch(wr)
         if(wr == WAIT_TIMEOUT)
-            last_run_apc_func = APC_FUNC_ALL;
+        {
+            
+        }
         else if(wr == WAIT_IO_COMPLETION)
             ;
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + worker_num)
         {
-            if(complete_worker(wr, objs, worker_num))
-                last_run_apc_func |= APC_FUNC_Dicomdir;
+            if(complete_worker(wr, objs, cbs, worker_num))
+                apc_func_state |= APC_FUNC_Dicomdir;
         }
         else
         {   // shall not reach here ...
@@ -128,31 +172,12 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
             return -1;
         }
 
-        // push command to compress queue
-        while(!queued_cmd.empty())
-        {
-            const string &cmd = queued_cmd.front();
-            if(process_cmd(cmd.c_str()))
-                queued_cmd.pop_front();
-            else
-            {
-                file_read.eof = true;
-                queued_cmd.pop_front();
-                break;
-            }
-        }
-        // if no command, try to push the rest of work to queue
-        commit_file_to_workers(NULL);
         if(objs) delete[] objs;
-        objs = get_worker_handles(&worker_num, &queue_size);
-
-        // read command, index ...
-        start_apc_func();
+        if(cbs) delete[] cbs;
+        objs = get_worker_handles(&worker_num, &queue_size, &cbs, hDirNotify);
     }
     if(objs) delete[] objs;
+    if(cbs) delete[] cbs;
     CloseHandle(tail);
-    do {
-        MakeDicomdir((ULONG_PTR)&last_run_apc_func);
-    } while(last_run_apc_func & APC_FUNC_Dicomdir);
     return 0;
 }

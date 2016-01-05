@@ -41,7 +41,7 @@ typedef struct
 	OVERLAPPED oOverlap;
 	HANDLE hFileHandle;
 	TCHAR chBuff[FILE_ASYN_BUF_SIZE];
-    bool eof;
+    bool fail;
 } FILE_OLP_INST, *LPFILE_OLP_INST;
 
 extern bool opt_verbose;
@@ -49,7 +49,7 @@ extern int worker_core_num;
 extern char pacs_base[MAX_PATH];
 extern const char *sessionId;
 
-int process_cmd(const char *buf);
+int process_cmd(const std::string &buf);
 void clear_log_context(CMOVE_LOG_CONTEXT *lc = NULL);
 
 #define APC_FUNC_NONE 0
@@ -58,9 +58,12 @@ void clear_log_context(CMOVE_LOG_CONTEXT *lc = NULL);
 #define APC_FUNC_ALL APC_FUNC_ReadCommand | APC_FUNC_Dicomdir
 
 void CALLBACK MakeDicomdir(ULONG_PTR ptr_last_run_apc);
-void commit_file_to_workers(CMOVE_LOG_CONTEXT *lc);
-bool complete_worker(DWORD wr, HANDLE *objs, size_t worker_num);
-HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size);
+int compress_queue_to_workers(CMOVE_LOG_CONTEXT *lc);
+
+typedef bool (*WORKER_CALLBACK)(void);
+bool read_cmd_continous();
+bool complete_worker(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker_num);
+HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size, WORKER_CALLBACK ** ppCBs = NULL, HANDLE hDir = NULL);
 
 // ------------ Named Pipe ------------
 

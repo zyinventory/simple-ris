@@ -183,6 +183,7 @@ int main(int argc, char *argv[])
 	const char *opt_directory = NULL;
 	const char *opt_pattern = NULL;
 	const char *opt_viewer = "eFilm";
+    const char *opt_pipename = NULL;
 	DicomDirInterface::E_ApplicationProfile opt_profile = DicomDirInterface::AP_GeneralPurpose;
 
 	//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
@@ -293,6 +294,7 @@ int main(int argc, char *argv[])
 	cmd.addOption("--length-undefined",      "-e",     "write with undefined lengths");
 	cmd.addSubGroup("index:");
 	cmd.addOption("--viewer",						1, "viewer : string", "which viewer will append to DVD, default : eFilm");
+    cmd.addOption("--pipe-name",             "-pn", 1, "pipe name : string", "named pipe name, receive file name");
 
 	/* evaluate command line */
 	prepareCmdLineArgs(argc, argv, OFFIS_CONSOLE_APPLICATION);
@@ -522,6 +524,8 @@ int main(int argc, char *argv[])
 		}
 		if (cmd.findOption("--viewer"))
 			app.checkValue(cmd.getValue(opt_viewer));
+        if (cmd.findOption("--pipe-name"))
+			app.checkValue(cmd.getValue(opt_pipename));
 	}
 
 	/* set debug mode and stream for log messages */
@@ -545,9 +549,9 @@ int main(int argc, char *argv[])
 	OFList<OFString> fileNames;
 	OFString pathname;
 	const char *param = NULL;
-	bool readQueue = false;
+	bool readStdin = false, readPipe = false;
 	const int count = cmd.getParamCount();
-	if (opt_recurse && ddir.verboseMode()) time_header_out(COUT) << "determining input files ..." << endl;
+	if (opt_recurse && ddir.verboseMode()) time_header_out(CERR) << "determining input files ..." << endl;
 	/* no parameters? */
 	if (count == 0)
 	{
@@ -562,8 +566,15 @@ int main(int argc, char *argv[])
 			cmd.getParam(i, param);
 			if(*param == '-')
 			{
-				readQueue = true;
-				if(ddir.verboseMode()) time_header_out(COUT) << "read file path from stdin" << endl;
+				readStdin = true;
+				if(ddir.verboseMode()) time_header_out(CERR) << "read file path from stdin" << endl;
+				break;
+			}
+            if(*param == '#' && opt_pipename)
+			{
+				readPipe = true;
+				//if(ddir.verboseMode())
+                    time_header_out(CERR) << "read file path from pipe " << opt_pipename << endl;
 				break;
 			}
 			/* add input directory */
@@ -579,7 +590,12 @@ int main(int argc, char *argv[])
 	// remove DICOMDIR for avoiding warning message.
 	// algorithm copied from OFList<T>::remove
 	OFListIterator(OFString) first = fileNames.begin();
-	if(!readQueue)
+	
+    if(readPipe)
+    {
+        time_header_out(CERR) << "read from pipe is not implemented" << endl;
+    }
+    else if(!readStdin)
 	{
 		while(first != fileNames.end())
 		{
@@ -606,7 +622,7 @@ int main(int argc, char *argv[])
 	else
 		result = ddir.createNewDicomDir(opt_profile, opt_output, opt_fileset);
 
-	if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: begin to add files" << endl;
+	if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: begin to add files" << endl;
 
 	// If scu split study into series and one association per series,
 	// dcmmkdir must collect csv files as fileNameList, otherwise xml index will be incorrect.
@@ -623,7 +639,7 @@ int main(int argc, char *argv[])
 			OFList<OFString> badFiles;
 			unsigned int goodFiles = 0;
 			char fnbuf[1024];
-			if(readQueue)
+			if(readStdin)
 			{
 				while(!(cin.getline(fnbuf, sizeof(fnbuf)).fail()))
 				{
@@ -648,7 +664,7 @@ int main(int argc, char *argv[])
 					} else
 						++goodFiles;
 				}
-				if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: no more files, stop waiting for stdin" << endl;
+				if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: no more files, stop waiting for stdin" << endl;
 			}
 			else
 			{
@@ -671,7 +687,7 @@ int main(int argc, char *argv[])
 				}
 			}
 
-			if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: leave adding files, begin to write DICOMDIR" << endl;
+			if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: leave adding files, begin to write DICOMDIR" << endl;
 
 			/* evaluate result of file checking/adding procedure */
 			if (goodFiles == 0)
@@ -708,7 +724,7 @@ int main(int argc, char *argv[])
 			if (result.good() && opt_write)
 				result = ddir.writeDicomDir(opt_enctype, opt_glenc);
 			
-			if(ddir.verboseMode()) time_header_out(COUT) << "dicomdir maker: DICOMDIR is written" << endl;
+			if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: DICOMDIR is written" << endl;
 		}
 	}
 

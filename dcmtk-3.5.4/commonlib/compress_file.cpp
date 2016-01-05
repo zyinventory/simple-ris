@@ -32,15 +32,15 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     if(!prepareFileDir(mkdir_ptr))
     {
         strerror(errno);
-        return -1;
+        return 0;
     }
-    string logfile(lc.file.instanceUID);
-    logfile.append(".txt");
+    string logfile("log\\");
+    logfile.append(lc.file.instanceUID).append(".txt");
     HANDLE log = CreateFile(logfile.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if(log == INVALID_HANDLE_VALUE)
     {
         displayErrorToCerr("create_worker_process() ", GetLastError());
-        return -2;
+        return 0;
     }
     PROCESS_INFORMATION pi;
     STARTUPINFO si;
@@ -56,7 +56,7 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
         displayErrorToCerr("create_worker_process() ", GetLastError());
         CloseHandle(si.hStdOutput);
         CloseHandle(si.hStdError);
-        return -3;
+        return 0;
     }
     CloseHandle(si.hStdOutput);
     CloseHandle(si.hStdError);
@@ -65,7 +65,7 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     lc.log = log;
     workers.push_back(lc);
     cerr << "trigger compress "  << lc.file.filename << endl;
-    return 0;
+    return 1;
 }
 
 static void close_log(const CMOVE_LOG_CONTEXT &lc)
@@ -143,24 +143,9 @@ static list<CMOVE_LOG_CONTEXT>& create_or_open_dicomdir_queue(const char *studyU
 
 int CreateClientProc(const char *studyUID)
 {
-    if(_mkdir("archdir") && errno != EEXIST)
-    {
-        int en = errno;
-        cerr << "mkdir archdir faile: " << strerror(en) << endl;
-        return -1;
-    }
-    
-    HANDLE hPipeDup = INVALID_HANDLE_VALUE;
-    if(FALSE == DuplicateHandle(GetCurrentProcess(), hPipe, GetCurrentProcess(), &hPipeDup, NULL, TRUE, DUPLICATE_SAME_ACCESS))
-    {
-        DWORD gle = GetLastError();
-        displayErrorToCerr("DuplicateHandle() ", gle);
-        return gle;
-    }
-
     DCMMKDIR_CONTEXT dc;
     memset(&dc, 0, sizeof(DCMMKDIR_CONTEXT));
-    if(!studyUID) studyUID = ".";
+    if(!studyUID) studyUID = sessionId;
     strcpy_s(dc.studyUID, studyUID);
     
     create_or_open_dicomdir_queue(studyUID);
@@ -172,10 +157,10 @@ int CreateClientProc(const char *studyUID)
     char cmd[1024];
 	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd -A ", pacs_base);
 #endif
-    if(strcmp(".", studyUID))
-        sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "+id %s +D %s.dir --viewer GE 0x%X", dc.studyUID, dc.studyUID, (DWORD)hPipeDup);
+    if(strcmp(sessionId, studyUID))
+        sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "+id %s +D %s.dir --viewer GE -pn %s #", dc.studyUID, dc.studyUID, sessionId);
     else
-        sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "+D DICOMDIR --viewer GE 0x%X", (DWORD)hPipeDup);
+        sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "+D DICOMDIR --viewer GE -pn %s #", sessionId);
 
     string logfile(studyUID ? studyUID : "dicomdir");
     logfile.append(".txt");
@@ -201,13 +186,11 @@ int CreateClientProc(const char *studyUID)
         DisplayErrorToFileHandle("CreateClientProc()", gle, dc.log);
         CloseHandle(si.hStdOutput);
         CloseHandle(si.hStdError);
-        if(hPipeDup && hPipeDup != INVALID_HANDLE_VALUE) CloseHandle(hPipeDup);
         CloseHandle(log);
         return gle;
     }
     CloseHandle(si.hStdOutput);
     CloseHandle(si.hStdError);
-    if(hPipeDup && hPipeDup != INVALID_HANDLE_VALUE) CloseHandle(hPipeDup);
 
     dc.hProcess = pi.hProcess;
     dc.hThread = pi.hThread;
@@ -246,18 +229,20 @@ int CreateClientProc(const char *studyUID)
     return 0;
 }
 
-void commit_file_to_workers(CMOVE_LOG_CONTEXT *plc)
+int compress_queue_to_workers(CMOVE_LOG_CONTEXT *plc)
 {
     if(plc)
     {
         queue_compress.push_back(*plc);
         cerr << "trigger que_compr "  << plc->file.filename << endl;
     }
+    int step = 0;
     while(workers.size() < worker_core_num && queue_compress.size() > 0)
     {
-        create_worker_process(queue_compress.front());
+        step += create_worker_process(queue_compress.front());
         queue_compress.pop_front();
     }
+    return step;
 }
 
 static void DisconnectAndClose(LPPIPEINST lpPipeInst)
@@ -405,7 +390,11 @@ static void CALLBACK FirstReadBindPipe(DWORD dwErr, DWORD cbBytesRead, LPOVERLAP
             goto pipe_bind_complete_test;
 
         map<string, DCMMKDIR_CONTEXT>::iterator itTemp = DirUnboundMap.find(studyUID);
-        if(itTemp == DirUnboundMap.end()) goto pipe_bind_complete_test;
+        if(itTemp == DirUnboundMap.end())
+        {
+            cerr << "can't bind incoming request from unbound queue: " << studyUID.c_str() << endl;
+            goto pipe_bind_complete_test;
+        }
         bindOK = true;
         lpPipeInst->dir_context = itTemp->second;
         map<string, DWORD>::iterator itPipe = DirUID2PipeInstances.find(studyUID);
@@ -462,13 +451,13 @@ static bool PipeConnected()
     return result;
 }
 
-bool complete_worker(DWORD wr, HANDLE *objs, size_t worker_num)
+bool complete_worker(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker_num)
 {
-    if(hPipeEvent && hPipeEvent != INVALID_HANDLE_VALUE && wr == WAIT_OBJECT_0)
-        return PipeConnected();
-    // is not hPipeEvent
     CMOVE_LOG_CONTEXT over_lc;
     wr -= WAIT_OBJECT_0;
+
+    if(cbs && cbs[wr]) return cbs[wr]();
+
     HANDLE over_hProcess = objs[wr];
     list<CMOVE_LOG_CONTEXT>::iterator it = find_if(workers.begin(), workers.end(), 
         [over_hProcess](CMOVE_LOG_CONTEXT &clc) { return clc.hprocess == over_hProcess; });
@@ -489,21 +478,34 @@ bool complete_worker(DWORD wr, HANDLE *objs, size_t worker_num)
         create_or_open_dicomdir_queue(".").push_back(over_lc);
         create_or_open_dicomdir_queue(over_lc.study.studyUID).push_back(over_lc);
     }
-    commit_file_to_workers(NULL);
+    compress_queue_to_workers(NULL);
     return result;
 }
 
-HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size)
+HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size, WORKER_CALLBACK ** ppCBs, HANDLE hDir)
 {
     if(queue_size) *queue_size = queue_compress.size();
     size_t wk_num = workers.size();
     bool hasPipeEvent = (hPipeEvent && hPipeEvent != INVALID_HANDLE_VALUE);
     if(hasPipeEvent) ++wk_num;
+    if(hDir && hDir != INVALID_HANDLE_VALUE) ++wk_num;
     if(wk_num > 0)
     {
         HANDLE *objs = new HANDLE[wk_num];
-        if(hasPipeEvent) objs[0] = hPipeEvent;
-        transform(workers.begin(), workers.end(), (hasPipeEvent ? objs + 1 : objs), 
+        if(ppCBs) *ppCBs = new WORKER_CALLBACK[wk_num];
+        memset(*ppCBs, 0, sizeof(WORKER_CALLBACK) * wk_num);
+        int i = 0;
+        if(hasPipeEvent)
+        {
+            objs[i] = hPipeEvent;
+            *ppCBs[i++] = PipeConnected;
+        }
+        if(hDir && hDir != INVALID_HANDLE_VALUE)
+        {
+            objs[i] = hDir;
+            *ppCBs[i++] = read_cmd_continous;
+        }
+        transform(workers.begin(), workers.end(), objs + i, 
             [](const CMOVE_LOG_CONTEXT &clc) { return clc.hprocess; });
         if(worker_num) *worker_num = wk_num;
         return objs;
@@ -511,6 +513,7 @@ HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size)
     else
     {
         if(worker_num) *worker_num = 0;
+        if(ppCBs) *ppCBs = NULL;
         return NULL;
     }
 }
