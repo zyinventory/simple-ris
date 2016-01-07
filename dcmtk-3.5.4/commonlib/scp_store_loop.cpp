@@ -11,14 +11,17 @@ char pacs_base[MAX_PATH];
 const char *sessionId;
 
 static HANDLE hDirNotify;
-static ofstream strmdup;
 static string last_dfc;
+static bool close_too_late = false;
 
-static bool read_cmd_continous()
+static bool refresh_files(bool timeout)
 {
     WIN32_FIND_DATA wfd;
     char fileFilter[MAX_PATH] = "log\\*.dfc";
     int pathLen = 4;
+
+    if(timeout && hDirNotify == NULL) return false;
+
     HANDLE hDiskSearch = FindFirstFile(fileFilter, &wfd);
     list<string> dfc_files;
     do
@@ -33,33 +36,50 @@ static bool read_cmd_continous()
 
     dfc_files.sort();
     bool end_of_move = false;
-    if(dfc_files.empty())
-        cerr << "######################" << endl;
-    for(list<string>::iterator it = dfc_files.begin(); it != dfc_files.end(); ++it)
+    list<string>::iterator it = dfc_files.end();
+    for(it = dfc_files.begin(); it != dfc_files.end(); ++it)
     {
         fileFilter[4] = '\0';
         strcat_s(fileFilter, it->c_str());
         ifstream ifcmd(fileFilter, ios_base::in, _SH_DENYRW);
         if(ifcmd.fail())
         {
-            cerr << "open file " << fileFilter << " failed" << endl;
+            if(opt_verbose) cerr << "open file " << fileFilter << " failed, OS close file delay." << endl;
+            close_too_late = true;
             break;
         }
         char cmd[1024];
         ifcmd.getline(cmd, sizeof(cmd));
         while(!ifcmd.fail())
         {
-            if(strlen(cmd) == 0)
+            if(strlen(cmd))
             {
-                continue;
+                if(end_of_move)
+                {
+                    HANDLE herr = CreateFile("cmove_error.txt",  FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+                    if(herr == INVALID_HANDLE_VALUE)
+                        displayErrorToCerr("CreateFile(cmove_error.txt)", GetLastError());
+                    else
+                    {
+                        DWORD written = 0;
+                        char *tip = new char[1024];
+                        size_t tiplen = sprintf_s(tip, 1024, "Commands is after end-of-move: %s\r\n", cmd);
+                        if(!WriteFile(herr, tip, tiplen, &written, NULL))
+                            displayErrorToCerr("WriteFile() to cmove_error.txt", GetLastError());
+                        delete[] tip;
+                        CloseHandle(herr);
+                    }
+                }
+                else if(0 == process_cmd(cmd)) end_of_move = true;
             }
-            strmdup << cmd << endl;
-            if(!end_of_move && 0 == process_cmd(cmd)) end_of_move = true;
             ifcmd.getline(cmd, sizeof(cmd));
         }
         ifcmd.close();
         last_dfc = *it;
     }
+    if(it == dfc_files.end() && !dfc_files.empty()) close_too_late = false;
+
+    if(timeout) return !dfc_files.empty();
 
     if(end_of_move)
     {
@@ -72,6 +92,11 @@ static bool read_cmd_continous()
         FindNextChangeNotification(hDirNotify);
         return true;
     }
+}
+
+static bool read_cmd_continous()
+{
+    return refresh_files(false);
 }
 
 COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
@@ -87,18 +112,19 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     }
     if(_mkdir("log") && errno != EEXIST)
     {
-        int en = errno;
-        cerr << "mkdir log faile: " << strerror(en) << endl;
+        char msg[1024];
+        strerror_s(msg, errno);
+        cerr << "mkdir log faile: " << msg << endl;
         return -1;
     }
     if(_mkdir("archdir") && errno != EEXIST)
     {
-        int en = errno;
-        cerr << "mkdir archdir faile: " << strerror(en) << endl;
+        char msg[1024];
+        strerror_s(msg, errno);
+        cerr << "mkdir archdir faile: " << msg << endl;
         return -1;
     }
     
-    strmdup.open("cmove_dup.txt", ios_base::trunc);
     fn = _getcwd(NULL, 0);
     fn.append("\\log");
     hDirNotify = FindFirstChangeNotification(fn.c_str(), FALSE, FILE_NOTIFY_CHANGE_SIZE);
@@ -145,7 +171,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         // switch(wr)
         if(wr == WAIT_TIMEOUT)
         {
-            
+            if(hDirNotify) refresh_files(true);
         }
         else if(wr == WAIT_IO_COMPLETION)
             ;
@@ -171,6 +197,5 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     }
     if(objs) delete[] objs;
     if(cbs) delete[] cbs;
-    if(strmdup.is_open()) strmdup.close();
     return 0;
 }

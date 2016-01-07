@@ -101,7 +101,7 @@ int x_www_form_codec<T>::decode(const char *in, T *toAppend, int out_limit, int 
 {
     int cnt = 0;
     bool notTerm = true;
-    for (size_t i = 0; i < in_len && notTerm && cnt < out_limit; ++i)
+    for (int i = 0; i < in_len && notTerm && cnt < out_limit; ++i)
     {
         switch(in[i])
         {

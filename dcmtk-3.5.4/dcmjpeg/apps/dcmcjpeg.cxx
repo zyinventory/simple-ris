@@ -893,18 +893,17 @@ int main(int argc, char *argv[])
 
 			if (error.bad())
 			{
-				CERR << "Error: "
+				CERR << "Client " << clientId << " Error: "
 					<< error.text()
 					<< ": writing file: " <<  opt_ofname << endl;
 				if(readpipe) continue; else return 1;
 			}
-
-			if (opt_verbose)
-				CERR << "conversion successful\n";
+            else if (opt_verbose)
+				CERR << "Client " << clientId << ": conversion successful" << endl;
 
 			if(opt_deleteSourceFile)
 			{
-				if (opt_verbose) CERR << "delete source file: " << opt_ifname << endl;
+				if (opt_verbose) CERR << "Client " << clientId << ": delete source file: " << opt_ifname << endl;
 				if( remove(opt_ifname) )
 				{
 					int errnoRmdir = 0;
@@ -922,6 +921,7 @@ int main(int argc, char *argv[])
 	// deregister global codecs
 	DJDecoderRegistration::cleanup();
 	DJEncoderRegistration::cleanup();
+    if(opt_verbose || opt_debugMode) CERR << endl;
 	return 0;
 }
 

@@ -34,7 +34,7 @@ COMMONLIB_API const char *trim_const(const char *s, int maxStrLen, const char **
 	if(s == NULL) return s;
 	for(i = 0; s[i] && i < maxStrLen; ++i)
 	{
-		bool issp = isspace(s[i]);
+		bool issp = (0 != isspace(s[i]));
 		if(head == NULL)
 		{
 			if(!issp)
@@ -247,7 +247,7 @@ COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
     return ChangeToPacsWebSub(pPacsBase, MAX_PATH);
 }
 
-int sys_core_num = 4, worker_core_num = 2;
+size_t sys_core_num = 4, worker_core_num = 2;
 BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved )
 {
 	switch (ul_reason_for_call)

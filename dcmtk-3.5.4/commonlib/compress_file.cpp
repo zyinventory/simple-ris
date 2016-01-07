@@ -19,11 +19,12 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
 {
     lc.hprocess = INVALID_HANDLE_VALUE;
     lc.hthread = INVALID_HANDLE_VALUE;
+    const char *verbose_flag = opt_verbose ? "-v" : "";
     char cmd[1024];
 #ifdef _DEBUG
-    int mkdir_pos = sprintf_s(cmd, "D:\\zy\\docs\\GitHub\\simple-ris\\dcmtk-3.5.4\\Debug\\dcmcjpeg.exe --encode-jpeg2k-lossless --uid-never %s ", lc.file.filename);
+    int mkdir_pos = sprintf_s(cmd, "D:\\zy\\docs\\GitHub\\simple-ris\\dcmtk-3.5.4\\Debug\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", verbose_flag, lc.file.filename);
 #else
-	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe --encode-jpeg2k-lossless --uid-never %s ", pacs_base, lc.file.filename);
+	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", pacs_base, verbose_flag, lc.file.filename);
 #endif
     char *mkdir_ptr = cmd + mkdir_pos;
     int ctn = mkdir_pos;
@@ -31,12 +32,14 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     lc.file.StorePath(cmd + ctn, sizeof(cmd) - ctn);
     if(!prepareFileDir(mkdir_ptr))
     {
-        strerror(errno);
+        char msg[1024];
+        strerror_s(msg, errno);
+        cerr << "create_worker_process(): " << msg << endl;
         return 0;
     }
     string logfile(lc.file.instanceUID);
     logfile.append(".txt");
-    HANDLE log = CreateFile(logfile.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE log = CreateFile(logfile.c_str(), GENERIC_READ | FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_FLAG_DELETE_ON_CLOSE | FILE_ATTRIBUTE_NORMAL, NULL);
     if(log == INVALID_HANDLE_VALUE)
     {
         displayErrorToCerr("create_worker_process() ", GetLastError());
@@ -74,24 +77,41 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     return 1;
 }
 
-static void close_log(const CMOVE_LOG_CONTEXT &lc)
+static void close_log(CMOVE_LOG_CONTEXT &lc)
 {
     if(lc.log && lc.log != INVALID_HANDLE_VALUE)
 	{
-        ULARGE_INTEGER file_size;
-        file_size.QuadPart = 0LL;
-        file_size.LowPart = GetFileSize(lc.log, &file_size.HighPart);
-        if(file_size.QuadPart == 0LL)
+        DWORD cbRead = 0;
+        char *buff = new char[4096];
+        HANDLE herr = INVALID_HANDLE_VALUE;
+        DWORD gle = 0;
+        if(0 == SetFilePointer(lc.log, 0, NULL, FILE_BEGIN))
         {
-            char filename[MAX_PATH];
-            DWORD fnlen = GetFinalPathNameByHandle(lc.log, filename, MAX_PATH, FILE_NAME_NORMALIZED);
-            if(fnlen > 0 || fnlen <= MAX_PATH)
+            while(ReadFile(lc.log, buff, 4096, &cbRead, NULL) && cbRead)
             {
-                CloseHandle(lc.log);
-                if(! DeleteFile(filename)) displayErrorToCerr("close_log() ", GetLastError());
-                else if(opt_verbose) cerr << "delete " << filename << " OK" << endl;
+                if(herr == INVALID_HANDLE_VALUE)
+                {
+                    herr = CreateFile("cmove_error.txt",  FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+                    if(herr == INVALID_HANDLE_VALUE)
+                    {
+                        gle = GetLastError();
+                        break;
+                    }
+                }
+                DWORD written = 0;
+                if(!WriteFile(herr, buff, cbRead, &written, NULL))
+                {
+                    gle = GetLastError();
+                    break;
+                }
             }
         }
+        else gle = GetLastError();
+        delete[] buff;
+        if(gle) displayErrorToCerr("close_log()", gle);
+        if(herr != INVALID_HANDLE_VALUE) CloseHandle(herr);
+        CloseHandle(lc.log);
+        lc.log = INVALID_HANDLE_VALUE;
     }
 }
 
@@ -408,11 +428,10 @@ static void CALLBACK FirstReadBindPipe(DWORD dwErr, DWORD cbBytesRead, LPOVERLAP
             DirUID2PipeInstances[studyUID] = (DWORD)lpPipeInst;
         DirUnboundMap.erase(itTemp);
 
-        bool result = ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chRequest,
+        if(!ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chRequest,
             FILE_ASYN_BUF_SIZE * sizeof(TCHAR), (LPOVERLAPPED) lpPipeInst,
-            (LPOVERLAPPED_COMPLETION_ROUTINE)ReadPipeComplete);
-    
-        if (!result) DisconnectAndClose(lpPipeInst);
+            (LPOVERLAPPED_COMPLETION_ROUTINE)ReadPipeComplete))
+            DisconnectAndClose(lpPipeInst);
 
         // create new pipe server
         bool createOK = false;
@@ -426,7 +445,7 @@ static void CALLBACK FirstReadBindPipe(DWORD dwErr, DWORD cbBytesRead, LPOVERLAP
                 if(lpPipeInst == NULL) // no corresponding pipe instance, create new
                 {
                     createOK = CreateNamedPipeToStaticHandle();
-                    if(createOK) createOK = CreateClientProc(studyUID.c_str());
+                    if(createOK) createOK = (0 != CreateClientProc(studyUID.c_str()));
                     if(createOK) break;
                     else CloseNamedPipeHandle();
                 }
@@ -439,7 +458,7 @@ pipe_bind_complete_test:
 
 static bool PipeConnected()
 {
-    DWORD dwWait, cbRet;
+    DWORD cbRet;
     if(!GetOverlappedResult(hPipe, &olPipeConnectOnly, &cbRet, FALSE))
     {
         DWORD gle = GetLastError();
@@ -449,12 +468,15 @@ static bool PipeConnected()
     LPPIPEINST lpPipeInst = new PIPEINST;
     memset(lpPipeInst, 0, sizeof(PIPEINST));
     lpPipeInst->hPipeInst = hPipe;
-    bool result = ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chRequest,
+    if(ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chRequest,
             FILE_ASYN_BUF_SIZE * sizeof(TCHAR), (LPOVERLAPPED) lpPipeInst,
-            (LPOVERLAPPED_COMPLETION_ROUTINE)FirstReadBindPipe);
-    
-    if (!result) DisconnectAndClose(lpPipeInst);
-    return result;
+            (LPOVERLAPPED_COMPLETION_ROUTINE)FirstReadBindPipe))
+            return true;
+    else
+    {
+        DisconnectAndClose(lpPipeInst);
+        return false;
+    }
 }
 
 bool complete_worker(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker_num)
@@ -477,8 +499,6 @@ bool complete_worker(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker
         over_lc.hthread = INVALID_HANDLE_VALUE;
         CloseHandle(over_lc.hprocess);
         over_lc.hprocess = INVALID_HANDLE_VALUE;
-
-        // todo: shall close it after index
         close_log(over_lc);
 
         create_or_open_dicomdir_queue(".").push_back(over_lc);

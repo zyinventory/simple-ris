@@ -101,6 +101,15 @@ static void test_consume_log(const char *sid)
 */
 void call_process_log(std::string &sessionId)
 {
+    char src_name[MAX_PATH];
+    sprintf_s(src_name, "%s\\%s\\log", _getcwd(NULL, 0), sessionId.c_str());
+    if(_mkdir(src_name) && errno != EEXIST)
+    {
+        char msg[1024];
+        strerror_s(msg, errno);
+        cerr << "mkdir log faile: " << msg << endl;
+        return;
+    }
     HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, (void*)sessionId.c_str());
     //test_sim_slow_log_writer((void*)sessionId.c_str());
     int i = 10;

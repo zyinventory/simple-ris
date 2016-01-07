@@ -45,7 +45,7 @@ typedef struct
 } FILE_OLP_INST, *LPFILE_OLP_INST;
 
 extern bool opt_verbose;
-extern int worker_core_num;
+extern size_t worker_core_num;
 extern char pacs_base[MAX_PATH];
 extern const char *sessionId;
 
