@@ -34,8 +34,8 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
         strerror(errno);
         return 0;
     }
-    string logfile("log\\");
-    logfile.append(lc.file.instanceUID).append(".txt");
+    string logfile(lc.file.instanceUID);
+    logfile.append(".txt");
     HANDLE log = CreateFile(logfile.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if(log == INVALID_HANDLE_VALUE)
     {
@@ -51,6 +51,12 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     DuplicateHandle(GetCurrentProcess(), log, GetCurrentProcess(), &si.hStdOutput, NULL, TRUE, DUPLICATE_SAME_ACCESS);
     DuplicateHandle(GetCurrentProcess(), log, GetCurrentProcess(), &si.hStdError, NULL, TRUE, DUPLICATE_SAME_ACCESS);
     si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    /*
+    DWORD creationFlags = IDLE_PRIORITY_CLASS;
+#ifdef _DEBUG
+    creationFlags |= DEBUG_PROCESS;
+#endif
+    */
     if(0 == CreateProcess(NULL, cmd, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &si, &pi))
     {
         displayErrorToCerr("create_worker_process() ", GetLastError());
@@ -482,28 +488,24 @@ bool complete_worker(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker
     return result;
 }
 
-HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size, WORKER_CALLBACK ** ppCBs, HANDLE hDir)
+HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size, WORKER_CALLBACK ** ppCBs, size_t reserve)
 {
     if(queue_size) *queue_size = queue_compress.size();
     size_t wk_num = workers.size();
     bool hasPipeEvent = (hPipeEvent && hPipeEvent != INVALID_HANDLE_VALUE);
     if(hasPipeEvent) ++wk_num;
-    if(hDir && hDir != INVALID_HANDLE_VALUE) ++wk_num;
+    if(reserve) wk_num += reserve;
     if(wk_num > 0)
     {
         HANDLE *objs = new HANDLE[wk_num];
+        memset(objs, 0, sizeof(HANDLE) * wk_num);
         if(ppCBs) *ppCBs = new WORKER_CALLBACK[wk_num];
         memset(*ppCBs, 0, sizeof(WORKER_CALLBACK) * wk_num);
-        int i = 0;
+        size_t i = reserve;
         if(hasPipeEvent)
         {
             objs[i] = hPipeEvent;
             *ppCBs[i++] = PipeConnected;
-        }
-        if(hDir && hDir != INVALID_HANDLE_VALUE)
-        {
-            objs[i] = hDir;
-            *ppCBs[i++] = read_cmd_continous;
         }
         transform(workers.begin(), workers.end(), objs + i, 
             [](const CMOVE_LOG_CONTEXT &clc) { return clc.hprocess; });

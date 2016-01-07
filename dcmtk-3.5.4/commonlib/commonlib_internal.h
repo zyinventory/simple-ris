@@ -61,9 +61,8 @@ void CALLBACK MakeDicomdir(ULONG_PTR ptr_last_run_apc);
 int compress_queue_to_workers(CMOVE_LOG_CONTEXT *lc);
 
 typedef bool (*WORKER_CALLBACK)(void);
-bool read_cmd_continous();
 bool complete_worker(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker_num);
-HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size, WORKER_CALLBACK ** ppCBs = NULL, HANDLE hDir = NULL);
+HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size, WORKER_CALLBACK ** ppCBs = NULL, size_t reserve = 0);
 
 // ------------ Named Pipe ------------
 

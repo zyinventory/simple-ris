@@ -18,4 +18,5 @@
 #include <fstream>
 #include <iomanip>
 #include <process.h>
+#include <direct.h>
 #include "../commonlib/commonlib.h"

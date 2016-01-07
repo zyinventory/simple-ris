@@ -10,81 +10,68 @@ bool opt_verbose = false;
 char pacs_base[MAX_PATH];
 const char *sessionId;
 
-static FILE_OLP_INST file_read;
-static string cmd_buf;
-static list<string> queued_cmd;
-static size_t waitMilliSec = 0;
-static int apc_func_state = APC_FUNC_NONE;
 static HANDLE hDirNotify;
+static ofstream strmdup;
+static string last_dfc;
 
-static void CALLBACK read_cmd_and_process(DWORD dwErr, DWORD cbRead, LPOVERLAPPED polp)
+static bool read_cmd_continous()
 {
-    LPFILE_OLP_INST foi = (LPFILE_OLP_INST)polp;
-    if ((dwErr == 0) && cbRead)
+    WIN32_FIND_DATA wfd;
+    char fileFilter[MAX_PATH] = "log\\*.dfc";
+    int pathLen = 4;
+    HANDLE hDiskSearch = FindFirstFile(fileFilter, &wfd);
+    list<string> dfc_files;
+    do
+	{
+        string dfc(wfd.cFileName);
+        if (dfc.compare(".") == 0 || dfc.compare("..") == 0) 
+			continue; // skip . ..
+        if(0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && dfc.compare(last_dfc) > 0)
+            dfc_files.push_back(dfc);
+	} while (FindNextFile(hDiskSearch, &wfd));
+	FindClose(hDiskSearch); // ¹Ø±Õ²éÕÒ¾ä±ú
+
+    dfc_files.sort();
+    bool end_of_move = false;
+    if(dfc_files.empty())
+        cerr << "######################" << endl;
+    for(list<string>::iterator it = dfc_files.begin(); it != dfc_files.end(); ++it)
     {
-        polp->Offset += cbRead;
-        cmd_buf.append(foi->chBuff, cbRead);
-        string::iterator it;
-        do
+        fileFilter[4] = '\0';
+        strcat_s(fileFilter, it->c_str());
+        ifstream ifcmd(fileFilter, ios_base::in, _SH_DENYRW);
+        if(ifcmd.fail())
         {
-            STRING_LTRIM(cmd_buf);
-            it = find_if(cmd_buf.begin(), cmd_buf.end(), std::ptr_fun<int, int>(is_cr_lf));
-            if(it != cmd_buf.end())
+            cerr << "open file " << fileFilter << " failed" << endl;
+            break;
+        }
+        char cmd[1024];
+        ifcmd.getline(cmd, sizeof(cmd));
+        while(!ifcmd.fail())
+        {
+            if(strlen(cmd) == 0)
             {
-                queued_cmd.push_back(cmd_buf.substr(0, it - cmd_buf.begin()));
-                cmd_buf.erase(cmd_buf.begin(), it);
+                continue;
             }
-        } while(it != cmd_buf.end());
-
-        while(!queued_cmd.empty())
-        {
-            foi->fail = (process_cmd(queued_cmd.front()) == 0);
-            queued_cmd.pop_front();
+            strmdup << cmd << endl;
+            if(!end_of_move && 0 == process_cmd(cmd)) end_of_move = true;
+            ifcmd.getline(cmd, sizeof(cmd));
         }
-
-        if(!foi->fail && !ReadFileEx(foi->hFileHandle, foi->chBuff, FILE_ASYN_BUF_SIZE, polp, read_cmd_and_process))
-            dwErr = GetLastError();
+        ifcmd.close();
+        last_dfc = *it;
     }
-    
-    if(foi->fail)
+
+    if(end_of_move)
     {
-        if(hDirNotify && hDirNotify != INVALID_HANDLE_VALUE)
-        {
-            FindCloseChangeNotification(hDirNotify);
-            hDirNotify = NULL;
-        }
-        if(foi->hFileHandle && foi->hFileHandle != INVALID_HANDLE_VALUE)
-        {
-            CloseHandle(foi->hFileHandle);
-            foi->hFileHandle = NULL;
-        }
+        FindCloseChangeNotification(hDirNotify);
+        hDirNotify = NULL;
+        return false;
     }
     else
     {
-        if(dwErr == ERROR_HANDLE_EOF)
-        {
-            FindNextChangeNotification(hDirNotify);
-        }
-        else if(dwErr != 0)
-        {
-            displayErrorToCerr("read_cmd_and_process()", dwErr);
-            CloseHandle(foi->hFileHandle);
-            foi->hFileHandle = NULL;
-            foi->fail = true;
-            if(hDirNotify && hDirNotify != INVALID_HANDLE_VALUE)
-            {
-                FindCloseChangeNotification(hDirNotify);
-                hDirNotify = NULL;
-            }
-        }
+        FindNextChangeNotification(hDirNotify);
+        return true;
     }
-}
-
-bool read_cmd_continous()
-{
-    if(!file_read.fail && !ReadFileEx(file_read.hFileHandle, file_read.chBuff, FILE_ASYN_BUF_SIZE, &file_read.oOverlap, read_cmd_and_process))
-        displayErrorToCerr("read_cmd_continous()", GetLastError());
-    return true;
 }
 
 COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
@@ -111,16 +98,10 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         return -1;
     }
     
-    memset(&file_read, 0, sizeof(FILE_OLP_INST));
-    file_read.hFileHandle = CreateFile("cmove.txt", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, 
-        OPEN_EXISTING, FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL, NULL);
-    if(file_read.hFileHandle == INVALID_HANDLE_VALUE)
-    {
-        displayErrorToCerr("cmove.txt", GetLastError());
-        return -2;
-    }
-
-    hDirNotify = FindFirstChangeNotification(_getcwd(NULL, 0), FALSE, FILE_NOTIFY_CHANGE_SIZE);
+    strmdup.open("cmove_dup.txt", ios_base::trunc);
+    fn = _getcwd(NULL, 0);
+    fn.append("\\log");
+    hDirNotify = FindFirstChangeNotification(fn.c_str(), FALSE, FILE_NOTIFY_CHANGE_SIZE);
     if(hDirNotify == INVALID_HANDLE_VALUE)
     {
         displayErrorToCerr("FindFirstChangeNotification()", GetLastError());
@@ -129,9 +110,6 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 
     int ret = 1, waitTime = 0;
     clear_log_context();
-    cmd_buf.clear();
-    cmd_buf.reserve(256);
-
 /*
     if(!CreateNamedPipeToStaticHandle())
     {
@@ -148,14 +126,20 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     size_t worker_num = 0, queue_size = 0;
     HANDLE *objs = NULL;
     WORKER_CALLBACK *cbs = NULL;
-    objs = get_worker_handles(&worker_num, &queue_size, &cbs, hDirNotify);
-    while(!file_read.fail || (worker_num + queue_size))
+    objs = get_worker_handles(&worker_num, &queue_size, &cbs, hDirNotify ? 1 : 0);
+    if(hDirNotify)
+    {
+        objs[0] = hDirNotify;
+        cbs[0] = read_cmd_continous;
+    }
+
+    while(worker_num + queue_size)
     {
         DWORD wr = WAIT_FAILED;
-        if(objs) wr = WaitForMultipleObjectsEx(worker_num, objs, FALSE, waitMilliSec, TRUE);
+        if(objs) wr = WaitForMultipleObjectsEx(worker_num, objs, FALSE, 100, TRUE);
         else
         {
-            wr = SleepEx(waitMilliSec, TRUE);
+            wr = SleepEx(100, TRUE);
             if(wr == 0) wr = WAIT_TIMEOUT;
         }
         // switch(wr)
@@ -167,8 +151,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
             ;
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + worker_num)
         {
-            if(complete_worker(wr, objs, cbs, worker_num))
-                apc_func_state |= APC_FUNC_Dicomdir;
+            complete_worker(wr, objs, cbs, worker_num);
         }
         else
         {   // shall not reach here ...
@@ -179,14 +162,15 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 
         if(objs) delete[] objs;
         if(cbs) delete[] cbs;
-        objs = get_worker_handles(&worker_num, &queue_size, &cbs, hDirNotify);
+        objs = get_worker_handles(&worker_num, &queue_size, &cbs, hDirNotify ? 1 : 0);
+        if(hDirNotify)
+        {
+            objs[0] = hDirNotify;
+            cbs[0] = read_cmd_continous;
+        }
     }
     if(objs) delete[] objs;
     if(cbs) delete[] cbs;
-    if(file_read.hFileHandle && file_read.hFileHandle != INVALID_HANDLE_VALUE)
-    {
-        CloseHandle(file_read.hFileHandle);
-        file_read.hFileHandle = NULL;
-    }
+    if(strmdup.is_open()) strmdup.close();
     return 0;
 }

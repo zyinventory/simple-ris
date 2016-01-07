@@ -13,6 +13,7 @@
 #include "dcmdynamic.h"
 
 void call_process_log(string &sessionId);
+void clear_resource();
 
 #define OFFIS_CONSOLE_APPLICATION "mergedir"
 #define OFFIS_CONSOLE_DESCRIPTION "Merge DICOMDIR"
@@ -96,7 +97,8 @@ int main(int argc, char *argv[])
     }
 
     for_each(fileNames.begin(), fileNames.end(), call_process_log);
-
+    
+    clear_resource();
     return 0;
 	//return MergeDicomDir(fileNames, opt_output, opt_fileset, CERR, opt_verbose);
 	//return DicomDir2Xml(fileNames.front().c_str(), opt_output) ? 0 : -1;

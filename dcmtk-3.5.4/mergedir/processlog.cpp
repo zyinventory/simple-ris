@@ -1,38 +1,77 @@
 #include "stdafx.h"
 using namespace std;
 
-bool start_write_log =false;
+static int start_write_log = 0;
+static bool inFile = false;
+
+static void close_cmdfile(ofstream &cmdfile)
+{
+    cmdfile.close();
+    inFile = false;
+    ++start_write_log;
+    Sleep(rand() % 30);
+}
 
 static void test_sim_slow_log_writer(void *seid)
 {
-    char src_name[MAX_PATH], log_name[MAX_PATH];
-    sprintf_s(src_name, "%s\\cmove.src.txt", (const char*)seid);
-    sprintf_s(log_name, "%s\\cmove.txt", (const char*)seid);
+    char src_name[MAX_PATH];
+    sprintf_s(src_name, "%s\\cmove.txt", (const char*)seid);
 
-    FILE *fplog =fopen(log_name, "w+bc"), *fpsrc = fopen(src_name, "rb");
-    if(fpsrc == NULL)
+    ifstream strmlog(src_name, ios_base::in, _SH_DENYNO);
+    if(strmlog.fail())
     {
-        if(fplog != NULL) fclose(fplog);
-        start_write_log = true;
+        start_write_log = -1;
+        displayErrorToCerr("test_sim_slow_log_writer()", GetLastError());
         return;
     }
-    else if(fplog == NULL)
-    {
-        fclose(fpsrc);
-        start_write_log = true;
-        return;
-    }
-    char buf[16];
-    size_t readNum = 0;
-    start_write_log = true;
+    sprintf_s(src_name, "%s\\%s\\log\\", _getcwd(NULL, 0), seid);
+    char buf[1024];
+    int fnpos = 0;
+    ofstream cmdfile;
     do {
-        readNum = fread(buf, 1, sizeof(buf), fpsrc);
-        fwrite(buf, 1, readNum, fplog);
-        fflush(fplog);
-        Sleep(rand() % 30);
-    } while(readNum);
-    fclose(fplog);
-    fclose(fpsrc);
+        char fn[MAX_PATH];
+        strmlog.getline(buf, sizeof(buf));
+        if(strmlog.eof()) break;
+        switch(buf[0])
+        {
+        case 'M':
+        case 'T':
+            fnpos = GetNextUniqueNo(src_name, fn, sizeof(fn));
+            sprintf_s(fn + fnpos, sizeof(fn) - fnpos, "_%c.dfc", buf[0]);
+            if(inFile) close_cmdfile(cmdfile);
+            cmdfile.open(fn, ios_base::out | ios_base::trunc, _SH_DENYRW);
+            inFile = !cmdfile.fail();
+            if(inFile)
+            {
+                cmdfile << buf << endl;
+                close_cmdfile(cmdfile);
+            }
+            else cerr << "can't write " << buf << " to file " << fn << endl;
+            break;
+        case 'F': // F tag must be coupled !!!
+            if(inFile)
+            {
+                cmdfile << buf << endl;
+                close_cmdfile(cmdfile);
+            }
+            else
+            {
+                int fnpos = GetNextUniqueNo(src_name, fn, sizeof(fn));
+                sprintf_s(fn + fnpos, sizeof(fn) - fnpos, "_%c.dfc", buf[0]);
+                if(inFile) close_cmdfile(cmdfile);
+                cmdfile.open(fn, ios_base::out | ios_base::trunc, _SH_DENYRW);
+                inFile = !cmdfile.fail();
+                if(inFile) cmdfile << buf << endl;
+                else cerr << "can't write " << buf << " to file " << fn << endl;
+            }
+            break;
+        default:
+            if(inFile) cmdfile << buf << endl;
+            else cerr << "can't write " << buf << " to file " << fn << endl;
+        }
+    } while(!strmlog.eof());
+    if(inFile) cmdfile.close();
+    strmlog.close();
 }
 /*
 static void test_consume_log(const char *sid)
@@ -63,10 +102,22 @@ static void test_consume_log(const char *sid)
 void call_process_log(std::string &sessionId)
 {
     HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, (void*)sessionId.c_str());
-    while(!start_write_log) Sleep(10);
-
-    scp_store_main_loop(sessionId.c_str(), false);
-    //test_consume_log(sessionId.c_str());
-
+    //test_sim_slow_log_writer((void*)sessionId.c_str());
+    int i = 10;
+    while(start_write_log == 0 && i < 1000)
+    {
+        Sleep(i);
+        i += 10;
+    }
+    if(start_write_log > 0)
+    {
+        scp_store_main_loop(sessionId.c_str(), false);
+        //test_consume_log(sessionId.c_str());
+    }
     WaitForSingleObject(ht, INFINITE);
+}
+
+void clear_resource()
+{
+    ReleaseUniqueNoResource();
 }

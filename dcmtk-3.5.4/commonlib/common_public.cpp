@@ -139,7 +139,7 @@ static BOOL SetPrivilege(LPCTSTR lpszPrivilege, BOOL bEnablePrivilege)
 
     if (GetLastError() == ERROR_NOT_ALL_ASSIGNED)
     {
-        fprintf(stderr, "The token does not have the specified privilege. \n");
+        //fprintf(stderr, "The token does not have the specified privilege. \n");
         CloseHandle(hToken);
         return FALSE;
     }
@@ -202,9 +202,9 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
         mutex_seq = OpenMutex(SYNCHRONIZE, FALSE, SEQ_MUTEX_NAME);
         if(mutex_seq == NULL && GetLastError() == ERROR_FILE_NOT_FOUND)
         {
-            displayErrorToCerr_public("OpenMutex()", ERROR_FILE_NOT_FOUND);
+            //displayErrorToCerr_public("OpenMutex()", ERROR_FILE_NOT_FOUND);
             mutex_seq = CreateMutex(NULL, FALSE, SEQ_MUTEX_NAME);
-            displayErrorToCerr_public("CreateMutex()", GetLastError());
+            if(mutex_seq == NULL) displayErrorToCerr_public("CreateMutex()", GetLastError());
         }
     }
 
@@ -221,7 +221,6 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
         if(hmap == NULL)
         {
             hmap = CreateFileMapping(hfile, NULL, PAGE_READWRITE | SEC_COMMIT, 0, sysinfo.dwAllocationGranularity, mappingName);
-            displayErrorToCerr_public("child create mapping", GetLastError());
             if(hmap)
             {
                 if(pMapHistory) delete pMapHistory;
