@@ -9,8 +9,8 @@ static int is_cr_lf(int c) { return (c == '\r' || c == '\n') ? 1 : 0; }
 bool opt_verbose = false;
 char pacs_base[MAX_PATH];
 const char *sessionId;
+HANDLE hDirNotify;
 
-static HANDLE hDirNotify;
 static string last_dfc;
 static bool close_too_late = false;
 
@@ -94,7 +94,7 @@ static bool refresh_files(bool timeout)
     }
 }
 
-static bool read_cmd_continous()
+static bool read_cmd_continous(HANDLE)
 {
     return refresh_files(false);
 }
@@ -136,19 +136,22 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 
     int ret = 1, waitTime = 0;
     clear_log_context();
-/*
-    if(!CreateNamedPipeToStaticHandle())
+    
+    DWORD gle = NamedPipe_CreateListening();
+    if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
     {
-        CloseHandle(tail);
+        NamedPipe_CloseHandle(true);
+        CloseHandle(hDirNotify);
         return -4;
     }
-    if(!CreateClientProc(".")) // session level dicomdir
+    gle = NamedPipe_CreateClientProc(".");
+    if(gle)
     {
-        CloseHandle(tail);
-        CloseNamedPipeHandle();
+        NamedPipe_CloseHandle(true);
+        CloseHandle(hDirNotify);
         return -5;
     }
-*/
+
     size_t worker_num = 0, queue_size = 0;
     HANDLE *objs = NULL;
     WORKER_CALLBACK *cbs = NULL;
@@ -159,31 +162,37 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         cbs[0] = read_cmd_continous;
     }
 
-    while(worker_num + queue_size)
-    {
-        DWORD wr = WAIT_FAILED;
-        if(objs) wr = WaitForMultipleObjectsEx(worker_num, objs, FALSE, 100, TRUE);
-        else
-        {
-            wr = SleepEx(100, TRUE);
-            if(wr == 0) wr = WAIT_TIMEOUT;
-        }
+    while(worker_num + queue_size > 1) //hEventPipe must be alive, hDirNotify is the first exit signal
+    {   // WaitForMultipleObjectsEx() timeout must be short time,
+        // dcmmkdir_sleep_time / dcmmkdir_proc_num > WaitForMultipleObjectsEx(timeout)
+        // otherwise dcmmkdir 's again will always trigger WAIT_IO_COMPLETION.
+        DWORD wr = WaitForMultipleObjectsEx(worker_num, objs, FALSE, 200, TRUE);
         // switch(wr)
         if(wr == WAIT_TIMEOUT)
         {
-            if(hDirNotify) refresh_files(true);
+            if(hDirNotify)
+                refresh_files(true);
+            else if(!ready_to_close_dcmmkdir_workers)
+            {
+                if(is_idle()) // no more work
+                {
+                    ready_to_close_dcmmkdir_workers = true;
+                    cerr << "trigger ready_close" << endl;
+                }
+            }
+            else if(0 == dcmmkdir_workers_num())
+                break;
         }
         else if(wr == WAIT_IO_COMPLETION)
             ;
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + worker_num)
         {
-            complete_worker(wr, objs, cbs, worker_num);
+            worker_complete(wr, objs, cbs, worker_num);
         }
         else
         {   // shall not reach here ...
             displayErrorToCerr("WaitForMultipleObjectsEx() ", GetLastError());
-            if(objs) delete[] objs;
-            return -1;
+            break;
         }
 
         if(objs) delete[] objs;
@@ -197,5 +206,6 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     }
     if(objs) delete[] objs;
     if(cbs) delete[] cbs;
+    NamedPipe_CloseHandle(true);
     return 0;
 }

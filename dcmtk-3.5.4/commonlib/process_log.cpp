@@ -92,7 +92,8 @@ static int cmd_study(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
             << " " << otherbuf << ", encounter error" << endl;
         break;
     }
-    if(dirty && strlen(lc.study.studyUID) == 0) strcpy_s(lc.study.studyUID, lc.file.studyUID);
+    if(dirty && strlen(lc.study.studyUID) == 0)
+        strcpy_s(lc.study.studyUID, lc.file.studyUID);
     return 1;
 }
 

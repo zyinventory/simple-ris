@@ -96,7 +96,7 @@
 static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v"
 OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 
-static char timeBuffer[32];
+static char timeBuffer[32], fnbuf[1024], last_file_name[MAX_PATH] = "";
 
 #define SHORTCOL 4
 #define LONGCOL 23
@@ -573,8 +573,8 @@ int main(int argc, char *argv[])
             if(*param == '#' && opt_pipename)
 			{
 				readPipe = true;
-				//if(ddir.verboseMode())
-                    time_header_out(CERR) << "read file path from pipe " << opt_pipename << endl;
+				if(ddir.verboseMode()) time_header_out(CERR) << "read file path from pipe " << opt_pipename << endl;
+                if(!opt_directory) opt_directory = ".";
 				break;
 			}
 			/* add input directory */
@@ -590,10 +590,44 @@ int main(int argc, char *argv[])
 	// remove DICOMDIR for avoiding warning message.
 	// algorithm copied from OFList<T>::remove
 	OFListIterator(OFString) first = fileNames.begin();
-	
+	int clientId = _getpid();
+    HANDLE hPipe = INVALID_HANDLE_VALUE;
+
     if(readPipe)
     {
-        time_header_out(CERR) << "read from pipe is not implemented" << endl;
+        bool pipeStandby = false;
+        char pipe_name[MAX_PATH] = "\\\\.\\pipe\\";
+        strcat_s(pipe_name, opt_pipename);
+#ifdef NDEBUG
+        if(ddir.verboseMode())
+#endif
+            time_header_out(CERR) << "dcmmkdir " << clientId << ": StudyUID is " << opt_directory << endl;
+
+        for(int i = 0; i < 100; ++i)
+        {
+            if(WaitNamedPipe(pipe_name, NMPWAIT_USE_DEFAULT_WAIT))
+                pipeStandby = true;
+            if(pipeStandby)
+            {
+                hPipe = CreateFile(pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+                if(hPipe != INVALID_HANDLE_VALUE) break;
+            }
+        }
+        if(hPipe == INVALID_HANDLE_VALUE)
+        {
+            time_header_out(CERR) << "dcmmkdir " << clientId << ": can't WaitNamedPipe(" << pipe_name << ")" << endl;
+            return -1;
+        }
+        DWORD dwMode = PIPE_READMODE_MESSAGE;
+        BOOL fSuccess = SetNamedPipeHandleState(hPipe, &dwMode, NULL, NULL);
+        if(!fSuccess)
+        {
+            char msg[32];
+            DWORD gle = GetLastError();
+            sprintf_s(msg, "dcmmkdir %d", clientId);
+            displayErrorToCerr(msg, gle);
+            return -2;
+        }
     }
     else if(!readStdin)
 	{
@@ -638,8 +672,93 @@ int main(int argc, char *argv[])
 			/* collect 'bad' files */
 			OFList<OFString> badFiles;
 			unsigned int goodFiles = 0;
-			char fnbuf[1024];
-			if(readStdin)
+            if(readPipe)
+            {
+                fnbuf[0] = '\0';
+                char *dir = NULL, *pfn = NULL;
+                sprintf_s(last_file_name, "dcmmkdir pid %d", clientId);
+                while(true)
+                {
+                    DWORD cbRead = 0, cbWritten = 0, cbToWrite = 0, gle = 0;
+
+                    cbToWrite = sprintf_s(fnbuf, "%s|%s", opt_directory, last_file_name);
+
+                    if(!WriteFile(hPipe, fnbuf, cbToWrite, &cbWritten, NULL))
+                    {
+                        char msg[32];
+                        gle = GetLastError();
+                        sprintf_s(msg, "dcmmkdir %d WriteFile()", clientId);
+                        displayErrorToCerr(msg, gle);
+                        break;
+                    }
+                    if(fnbuf[0] != 'a' && ddir.verboseMode()) // fnbuf is not "again"
+                        time_header_out(CERR) << "dcmmkdir WriteFile(): " << fnbuf << endl;
+block_read_mode:
+                    gle = 0;
+                    do
+                    {
+                        if(ReadFile(hPipe, fnbuf, sizeof(fnbuf), &cbRead, NULL))
+                            gle = 0;
+                        else
+                            gle = GetLastError();
+                    } while(gle == ERROR_MORE_DATA);
+                    if(gle)
+                    {
+                        if(gle == ERROR_PIPE_NOT_CONNECTED)
+                        {
+                            if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": named pipe closed" << endl;
+                        }
+                        else
+                        {
+                            char msg[32];
+                            sprintf_s(msg, "dcmmkdir %d ReadFile()", clientId);
+                            displayErrorToCerr(msg, gle);
+                        }
+                        break;
+                    }
+                    fnbuf[cbRead] = '\0';
+                    if(fnbuf[0] != 'w' && ddir.verboseMode()) // fnbuf is not "wait xxx"
+                        time_header_out(CERR) << "dcmmkdir ReadFile(): " << fnbuf << endl;
+
+                    pfn = strchr(fnbuf, '|');
+					if(pfn)
+					{
+						*pfn++ = '\0';
+						dir = fnbuf;
+					}
+					else pfn = fnbuf;
+                    if(dir) dir = trim(dir);
+
+                    if(pfn[0] == 'w' && pfn[1] == 'a' && pfn[2] == 'i' && pfn[3] == 't')
+                    {
+                        Sleep(atoi(&pfn[5]));
+                        strcpy_s(last_file_name, "again");
+                        continue;
+                        //goto block_read_mode;
+                    }
+                    else
+                        strcpy_s(last_file_name, pfn);
+                    
+                    /* add files to the DICOMDIR */
+					result = ddir.addDicomFile(pfn, dir && *dir != '\0' ? dir : opt_directory);
+					if (result.bad())
+					{
+						badFiles.push_back(pfn);
+						if (!ddir.abortMode())
+						{
+							/* ignore inconsistent file, just warn (already done inside "ddir") */
+							result = EC_Normal;
+						}
+                        time_header_out(CERR) << "dicomdir maker: add bad file " << pfn << endl;
+					} else
+                    {
+						++goodFiles;
+                        if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: add good file " << pfn << endl;
+                    }
+                }
+                CloseHandle(hPipe);
+            }
+            else if(readStdin)
 			{
 				while(!(cin.getline(fnbuf, sizeof(fnbuf)).fail()))
 				{
@@ -650,7 +769,7 @@ int main(int argc, char *argv[])
 						dir = fnbuf;
 					}
 					else pfn = fnbuf;
-					dir = trim(dir);
+					if(dir) dir = trim(dir);
 					/* add files to the DICOMDIR */
 					result = ddir.addDicomFile(trim(pfn), dir && *dir != '\0' ? dir : opt_directory);
 					if (result.bad())
