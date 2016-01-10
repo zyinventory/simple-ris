@@ -44,8 +44,8 @@ extern HANDLE hDirNotify;
 int process_cmd(const std::string &buf);
 void clear_log_context(CMOVE_LOG_CONTEXT *lc = NULL);
 int compress_queue_to_workers(CMOVE_LOG_CONTEXT *lc);
-bool is_idle();
-int dcmmkdir_workers_num();
+bool is_idle(const char *studyUID = NULL);
+void close_all_blocked_pipe_instances();
 
 typedef bool (*WORKER_CALLBACK)(HANDLE);
 bool worker_complete(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker_num);
@@ -55,6 +55,7 @@ HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size, WORKER_CALLBA
 
 typedef struct {
     HANDLE hProcess, hThread, log;
+    bool detachPipeInstance;
     char dot_or_study_uid[65];
 } DCMMKDIR_CONTEXT;
 
@@ -63,9 +64,7 @@ typedef struct
 	OVERLAPPED oOverlap;
 	HANDLE hPipeInst;
 	TCHAR chBuffer[FILE_ASYN_BUF_SIZE];
-	DWORD cbTrans;
-	//TCHAR chReply[FILE_ASYN_BUF_SIZE];
-	//DWORD cbToWrite;
+	DWORD cbShouldWrite;
     char dot_or_study_uid[65];
 } PIPEINST, *LPPIPEINST;
 

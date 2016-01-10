@@ -117,6 +117,7 @@ static void close_log(HANDLE log)
 
 static map<string, list<CMOVE_LOG_CONTEXT> > map_dir_queue_list;
 static list<DCMMKDIR_CONTEXT> list_dir_workers;
+static list<LPPIPEINST> list_blocked_pipe_instances;
 
 static bool close_dcmmkdir_worker(HANDLE hProc)
 {
@@ -231,7 +232,7 @@ DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid)
     int mkdir_pos = strlen(cmd);
 #else
     char cmd[1024];
-	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd +A ", pacs_base);
+	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd -A ", pacs_base);
 #endif
     if(dot_or_study_uid == NULL || strlen(dot_or_study_uid) == 0)
     {
@@ -345,8 +346,60 @@ static bool check_reading_message(LPPIPEINST lpPipeInst, DWORD cbBytesRead, stri
 }
 
 bool ready_to_close_dcmmkdir_workers = false;
-bool is_idle() { return hDirNotify == NULL && 0 == workers.size() && 0 == queue_compress.size(); }
-int dcmmkdir_workers_num() { return list_dir_workers.size(); }
+bool is_idle(const char *studyUID)
+{
+    if(hDirNotify == NULL && 0 == workers.size() && 0 == queue_compress.size())
+    {
+        size_t dir_que_size = 0;
+
+        if(studyUID)
+            dir_que_size = map_dir_queue_list[studyUID].size();
+        else
+            dir_que_size = accumulate(map_dir_queue_list.begin(), map_dir_queue_list.end(), 0,
+                [](size_t accumulator, pair<string, list<CMOVE_LOG_CONTEXT> > p) {
+                    return accumulator + p.second.size(); });
+
+        if(dir_que_size > 0) return false;
+
+        if(studyUID)
+            return (list_blocked_pipe_instances.end() != 
+                find_if(list_blocked_pipe_instances.begin(), list_blocked_pipe_instances.end(),
+                    [studyUID](LPPIPEINST ppi) { return 0 == strcmp(studyUID, ppi->dot_or_study_uid); }));
+        else
+            return (0 >= (list_dir_workers.size() - list_blocked_pipe_instances.size()));
+    }
+    else
+        return false;
+}
+
+void close_all_blocked_pipe_instances()
+{
+    for(list<DCMMKDIR_CONTEXT>::iterator it_dc = list_dir_workers.begin(); it_dc != list_dir_workers.end(); ++it_dc)
+    {
+        if(it_dc->detachPipeInstance) continue;
+
+        DCMMKDIR_CONTEXT &dc = *it_dc;
+        list<LPPIPEINST>::iterator it_ppi = find_if(list_blocked_pipe_instances.begin(), list_blocked_pipe_instances.end(),
+            [&dc](LPPIPEINST ppi) { return 0 == strcmp(dc.dot_or_study_uid, ppi->dot_or_study_uid); });
+        if(it_ppi == list_blocked_pipe_instances.end())
+        {
+            cerr << "close_all_blocked_pipe_instances(): not matching pipe instance " << dc.dot_or_study_uid << endl;
+        }
+        else
+        {
+            DisconnectAndClose(*it_ppi);
+            list_blocked_pipe_instances.erase(it_ppi);
+            it_dc->detachPipeInstance = true;
+        }
+    }
+    if(!list_blocked_pipe_instances.empty())
+    {
+        for_each(list_blocked_pipe_instances.begin(), list_blocked_pipe_instances.end(),
+            [](LPPIPEINST ppi) {
+                cerr << "close_all_blocked_pipe_instances(): standalone pipe instance " << ppi->dot_or_study_uid << endl;
+            });
+    }
+}
 
 static void CALLBACK NamedPipe_WritePipeComplete(DWORD dwErr, DWORD cbBytesWrite, LPOVERLAPPED lpOverLap);
 
@@ -379,9 +432,9 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
         list<CMOVE_LOG_CONTEXT> &queue_clc = it->second;
 
         list<CMOVE_LOG_CONTEXT>::iterator it_clc = queue_clc.end();
-        string prefix(filename.substr(0, 5));
-        if(prefix.compare("again") && prefix.compare("dcmmk"))
-        {
+        string prefix(filename.substr(0, 7));
+        if(prefix.compare("restart") && prefix.compare("dcmmkdi"))
+        {   // restart: leave block. dcmmkdi: dcmmkdir pid xxxx, dcmmkdir first bind.
             it_clc = find_if(queue_clc.begin(), queue_clc.end(),
                 [&filename](CMOVE_LOG_CONTEXT &lc){ return filename.compare(lc.file.unique_filename) == 0; });
             if(it_clc != queue_clc.end())
@@ -396,34 +449,27 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
 
         if(queue_clc.empty())
         {
-            if(is_idle() && ready_to_close_dcmmkdir_workers)
+            // tell dcmmkdir to block read.
+            const char wait_some_time[] = "wait";
+            strcpy_s(lpPipeInst->chBuffer, wait_some_time);
+            lpPipeInst->cbShouldWrite = sizeof(wait_some_time) - 1;
+            if(!WriteFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer, lpPipeInst->cbShouldWrite, 
+                (LPOVERLAPPED) lpPipeInst, (LPOVERLAPPED_COMPLETION_ROUTINE) NamedPipe_WritePipeComplete))
             {
-                cerr << "dcmmkdir complete: " << lpPipeInst->dot_or_study_uid << endl;
-                DisconnectAndClose(lpPipeInst);
-            }
-            else
-            {   // tell dcmmkdir to block read.
-                char wait_some_time[] = "wait 1000";
-                strcpy_s(lpPipeInst->chBuffer, wait_some_time);
-                lpPipeInst->cbTrans = sizeof(wait_some_time) - 1;
-                if(!WriteFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer, lpPipeInst->cbTrans, 
-                    (LPOVERLAPPED) lpPipeInst, (LPOVERLAPPED_COMPLETION_ROUTINE) NamedPipe_WritePipeComplete))
+                DWORD gle = GetLastError();
+                if(gle != ERROR_INVALID_USER_BUFFER && gle != ERROR_NOT_ENOUGH_MEMORY)
                 {
-                    DWORD gle = GetLastError();
-                    if(gle != ERROR_INVALID_USER_BUFFER && gle != ERROR_NOT_ENOUGH_MEMORY)
-                    {
-                        displayErrorToCerr("NamedPipe_ReadPipeComplete() WriteFileEx()", gle);
-                        DisconnectAndClose(lpPipeInst);
-                    }
+                    displayErrorToCerr("NamedPipe_ReadPipeComplete() WriteFileEx()", gle);
+                    DisconnectAndClose(lpPipeInst);
                 }
             }
         }
         else
         {
             it_clc = queue_clc.begin();
-            lpPipeInst->cbTrans = sprintf_s(lpPipeInst->chBuffer, "%s|%s", it_clc->file.studyUID, it_clc->file.unique_filename);
+            lpPipeInst->cbShouldWrite = sprintf_s(lpPipeInst->chBuffer, "%s|%s", it_clc->file.studyUID, it_clc->file.unique_filename);
 
-            if(!WriteFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer, lpPipeInst->cbTrans, 
+            if(!WriteFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer, lpPipeInst->cbShouldWrite, 
                 (LPOVERLAPPED) lpPipeInst, (LPOVERLAPPED_COMPLETION_ROUTINE) NamedPipe_WritePipeComplete))
             {
                 DWORD gle = GetLastError();
@@ -447,12 +493,23 @@ static void CALLBACK NamedPipe_WritePipeComplete(DWORD dwErr, DWORD cbBytesWrite
     LPPIPEINST lpPipeInst = (LPPIPEINST) lpOverLap;
     BOOL fRead = FALSE;
     // The read operation has finished, so write a response (if no error occurred).
-    if ((dwErr == 0) && (cbBytesWrite != 0))
+    if ((dwErr == 0) && (cbBytesWrite == lpPipeInst->cbShouldWrite))
     {
-        // next read loop, until dcmmkdir close pipe
-        fRead = ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer,
-            FILE_ASYN_BUF_SIZE * sizeof(TCHAR), (LPOVERLAPPED) lpPipeInst,
-            (LPOVERLAPPED_COMPLETION_ROUTINE)NamedPipe_ReadPipeComplete);
+        if(lpPipeInst->chBuffer[0] == 'w' && lpPipeInst->chBuffer[1] == 'a' && lpPipeInst->chBuffer[2] == 'i' && lpPipeInst->chBuffer[3] == 't')
+        {
+            list<LPPIPEINST>::iterator it = find_if(list_blocked_pipe_instances.begin(), list_blocked_pipe_instances.end(), 
+                [lpPipeInst](LPPIPEINST ppi) { return 0 == strcmp(ppi->dot_or_study_uid, lpPipeInst->dot_or_study_uid); });
+            if(it == list_blocked_pipe_instances.end())
+                list_blocked_pipe_instances.push_back(lpPipeInst);
+            fRead = TRUE;
+        }
+        else
+        {
+            // next read loop, until dcmmkdir close pipe
+            fRead = ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer,
+                FILE_ASYN_BUF_SIZE * sizeof(TCHAR), (LPOVERLAPPED) lpPipeInst,
+                (LPOVERLAPPED_COMPLETION_ROUTINE)NamedPipe_ReadPipeComplete);
+        }
     }
     // Disconnect if an error occurred.
     if (! fRead) DisconnectAndClose(lpPipeInst);
@@ -554,8 +611,38 @@ bool worker_complete(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker
         over_lc.log = INVALID_HANDLE_VALUE;
 
         create_or_open_dicomdir_queue(".")->second.push_back(over_lc);
+        list<LPPIPEINST>::iterator it = find_if(list_blocked_pipe_instances.begin(), list_blocked_pipe_instances.end(), 
+                [](LPPIPEINST ppi) { return 0 == strcmp(ppi->dot_or_study_uid, "."); });
+        if(it != list_blocked_pipe_instances.end())
+        {
+            const char read_message[] = ".|restart";
+            LPPIPEINST ppi = *it;
+            list_blocked_pipe_instances.erase(it);
+            strcpy_s(ppi->chBuffer, read_message);
+            ppi->oOverlap.InternalHigh = sizeof(read_message) - 1;
+            ppi->cbShouldWrite = ppi->oOverlap.InternalHigh;
+            ppi->oOverlap.Internal = 0; // error code
+            
+            NamedPipe_ReadPipeComplete(0, ppi->oOverlap.InternalHigh, (LPOVERLAPPED)ppi);
+        }
+
         if(strlen(over_lc.file.studyUID))
+        {
             create_or_open_dicomdir_queue(over_lc.file.studyUID)->second.push_back(over_lc);
+
+            it = find_if(list_blocked_pipe_instances.begin(), list_blocked_pipe_instances.end(), 
+                [&over_lc](LPPIPEINST ppi) { return 0 == strcmp(ppi->dot_or_study_uid, over_lc.file.studyUID); });
+            if(it != list_blocked_pipe_instances.end())
+            {
+                LPPIPEINST ppi = *it;
+                list_blocked_pipe_instances.erase(it);
+                ppi->oOverlap.InternalHigh = sprintf_s(ppi->chBuffer, "%s|restart", over_lc.file.studyUID);
+                ppi->cbShouldWrite = ppi->oOverlap.InternalHigh;
+                ppi->oOverlap.Internal = 0; // error code
+            
+                NamedPipe_ReadPipeComplete(0, ppi->oOverlap.InternalHigh, (LPOVERLAPPED)ppi);
+            }
+        }
         else
             cerr << "worker_complete(): CMOVE_LOG_CONTEXT.file.studyUID is empty." << endl;
     }

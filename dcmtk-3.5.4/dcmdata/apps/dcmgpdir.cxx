@@ -598,9 +598,8 @@ int main(int argc, char *argv[])
         bool pipeStandby = false;
         char pipe_name[MAX_PATH] = "\\\\.\\pipe\\";
         strcat_s(pipe_name, opt_pipename);
-#ifdef NDEBUG
+
         if(ddir.verboseMode())
-#endif
             time_header_out(CERR) << "dcmmkdir " << clientId << ": StudyUID is " << opt_directory << endl;
 
         for(int i = 0; i < 100; ++i)
@@ -691,7 +690,7 @@ int main(int argc, char *argv[])
                         displayErrorToCerr(msg, gle);
                         break;
                     }
-                    if(fnbuf[0] != 'a' && ddir.verboseMode()) // fnbuf is not "again"
+                    if(ddir.verboseMode())
                         time_header_out(CERR) << "dcmmkdir WriteFile(): " << fnbuf << endl;
 block_read_mode:
                     gle = 0;
@@ -717,7 +716,7 @@ block_read_mode:
                         break;
                     }
                     fnbuf[cbRead] = '\0';
-                    if(fnbuf[0] != 'w' && ddir.verboseMode()) // fnbuf is not "wait xxx"
+                    if(ddir.verboseMode()) // fnbuf is not "wait xxx"
                         time_header_out(CERR) << "dcmmkdir ReadFile(): " << fnbuf << endl;
 
                     pfn = strchr(fnbuf, '|');
@@ -727,15 +726,9 @@ block_read_mode:
 						dir = fnbuf;
 					}
 					else pfn = fnbuf;
-                    if(dir) dir = trim(dir);
 
                     if(pfn[0] == 'w' && pfn[1] == 'a' && pfn[2] == 'i' && pfn[3] == 't')
-                    {
-                        Sleep(atoi(&pfn[5]));
-                        strcpy_s(last_file_name, "again");
-                        continue;
-                        //goto block_read_mode;
-                    }
+                        goto block_read_mode;
                     else
                         strcpy_s(last_file_name, pfn);
                     

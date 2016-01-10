@@ -180,8 +180,11 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
                     cerr << "trigger ready_close" << endl;
                 }
             }
-            else if(0 == dcmmkdir_workers_num())
-                break;
+            else
+            {
+                // active all blocked dcmmkdir, then they will term.
+                close_all_blocked_pipe_instances();
+            }
         }
         else if(wr == WAIT_IO_COMPLETION)
             ;

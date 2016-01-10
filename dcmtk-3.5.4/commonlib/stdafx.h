@@ -31,6 +31,7 @@
 #include <fstream>
 #include <sstream>
 #include <regex>
+#include <numeric> 
 
 #include <signal.h>
 #include <direct.h>        /* for _mkdir() */
