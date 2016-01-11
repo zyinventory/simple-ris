@@ -55,10 +55,10 @@ static char* GetPacsBase_internal()
 
 #ifdef COMMONLIB_EXPORTS
 #define displayErrorToCerr_public displayErrorToCerr
-COMMONLIB_API void displayErrorToCerr(TCHAR *lpszFunction, DWORD dw)
+COMMONLIB_API DWORD displayErrorToCerr(TCHAR *lpszFunction, DWORD dw)
 #else
 #define displayErrorToCerr_public displayErrorToCerr_internal
-static void displayErrorToCerr_internal(TCHAR *lpszFunction, DWORD dw)
+static DWORD displayErrorToCerr_internal(TCHAR *lpszFunction, DWORD dw)
 #endif
 {
 	TCHAR *lpMsgBuf;
@@ -72,14 +72,15 @@ static void displayErrorToCerr_internal(TCHAR *lpszFunction, DWORD dw)
 	fprintf(stderr, TEXT("%s failed with error %d: %s\n"), lpszFunction, dw, lpMsgBuf); 
 	LocalFree(lpMsgBuf);
 	//LocalFree(lpDisplayBuf);
+    return dw;
 }
 
 #ifdef COMMONLIB_EXPORTS
 #define DisplayErrorToFileHandle_public DisplayErrorToFileHandle
-COMMONLIB_API void DisplayErrorToFileHandle(TCHAR *lpszFunction, DWORD dw, HANDLE fh)
+COMMONLIB_API DWORD DisplayErrorToFileHandle(TCHAR *lpszFunction, DWORD dw, HANDLE fh)
 #else
 #define DisplayErrorToFileHandle_public DisplayErrorToFileHandle_internal
-static void DisplayErrorToFileHandle_internal(TCHAR *lpszFunction, DWORD dw, HANDLE fh)
+static DWORD DisplayErrorToFileHandle_internal(TCHAR *lpszFunction, DWORD dw, HANDLE fh)
 #endif
 {
 	TCHAR *lpMsgBuf;
@@ -94,6 +95,7 @@ static void DisplayErrorToFileHandle_internal(TCHAR *lpszFunction, DWORD dw, HAN
     WriteFile(fh, lpDisplayBuf, strlen(lpDisplayBuf), &written, NULL);
 	LocalFree(lpMsgBuf);
 	LocalFree(lpDisplayBuf);
+    return dw;
 }
 
 static BOOL SetPrivilege(LPCTSTR lpszPrivilege, BOOL bEnablePrivilege)

@@ -47,8 +47,8 @@ int compress_queue_to_workers(CMOVE_LOG_CONTEXT *lc);
 bool is_idle(const char *studyUID = NULL);
 void close_all_blocked_pipe_instances();
 
-typedef bool (*WORKER_CALLBACK)(HANDLE);
-bool worker_complete(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker_num);
+typedef DWORD (*WORKER_CALLBACK)(HANDLE);
+DWORD worker_complete(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker_num);
 HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size, WORKER_CALLBACK ** ppCBs = NULL, size_t reserve = 0);
 
 // ------------ Named Pipe ------------
@@ -68,7 +68,7 @@ typedef struct
     char dot_or_study_uid[65];
 } PIPEINST, *LPPIPEINST;
 
-DWORD NamedPipe_CreateListening();
+DWORD NamedPipe_CreateListening(const char *pipe_name = NULL, bool wait = false);
 void  NamedPipe_CloseHandle(bool close_event = false);
 DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid);
 

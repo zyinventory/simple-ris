@@ -50,10 +50,12 @@ static int cmd_series(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
         }
         break;
     default:
-        char otherbuf[1024] = "";
-        cmdstrm.getline(otherbuf, sizeof(otherbuf));
-        cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
-            << " " << otherbuf << ", encounter error" << endl;
+        {
+            char otherbuf[1024] = "";
+            cmdstrm.getline(otherbuf, sizeof(otherbuf));
+            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
+                << " " << otherbuf << ", encounter error" << endl;
+        }
         break;
     }
     if(dirty && strlen(lc.series.seriesUID) == 0) strcpy_s(lc.series.seriesUID, lc.file.seriesUID);
@@ -86,10 +88,12 @@ static int cmd_study(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
         if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp << endl;
         break;
     default:
-        char otherbuf[1024] = "";
-        cmdstrm.getline(otherbuf, sizeof(otherbuf));
-        cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
-            << " " << otherbuf << ", encounter error" << endl;
+        {
+            char otherbuf[1024] = "";
+            cmdstrm.getline(otherbuf, sizeof(otherbuf));
+            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
+                << " " << otherbuf << ", encounter error" << endl;
+        }
         break;
     }
     if(dirty && strlen(lc.study.studyUID) == 0)
@@ -139,10 +143,12 @@ static int cmd_patient(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
         if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.weight << endl;
         break;
     default:
-        char otherbuf[1024] = "";
-        cmdstrm.getline(otherbuf, sizeof(otherbuf));
-        cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
-            << " " << otherbuf << ", encounter error" << endl;
+        {
+            char otherbuf[1024] = "";
+            cmdstrm.getline(otherbuf, sizeof(otherbuf));
+            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
+                << " " << otherbuf << ", encounter error" << endl;
+        }
         break;
     }
     if(dirty && strlen(lc.patient.patientID) == 0) strcpy_s(lc.patient.patientID, lc.file.patientID);
@@ -196,10 +202,12 @@ static int cmd_instance(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc
             cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.xfer << " " << lc.file.isEncapsulated << endl;
         break;
     default:
-        char otherbuf[1024] = "";
-        cmdstrm.getline(otherbuf, sizeof(otherbuf));
-        cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
-            << " " << otherbuf << ", encounter error" << endl;
+        {
+            char otherbuf[1024] = "";
+            cmdstrm.getline(otherbuf, sizeof(otherbuf));
+            cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
+                << " " << otherbuf << ", encounter error" << endl;
+        }
         break;
     }
     return 1;
@@ -221,6 +229,7 @@ static void print_error_file_section(unsigned int tag, string &filename, CMOVE_F
     cerr << "\txfer: " << fs.xfer << endl;
 }
 
+//static int line_num = 0;
 static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
@@ -234,7 +243,14 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
             || strlen(lc.file.xfer) == 0) // error, print unexpected value
             print_error_file_section(tag, filename, lc.file);
         else // OK, commit file section
+        {
             compress_queue_to_workers(&lc);
+            /* test for index
+            CMOVE_FILE_SECTION &fs = lc.file;
+            cerr << line_num++ << " " << fs.patientID << " " << fs.studyUID << " " << fs.seriesUID 
+                << " " << fs.instanceUID << " " << fs.xfer << " " << fs.filename << endl;
+            */
+        }
         lc.file.inFile = false;
     }
     else
@@ -267,10 +283,12 @@ static int cmd_assoc(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
         if(opt_verbose) cerr << endl;
         break;
     default:
-        char otherbuf[1024] = "";
-        cmdstrm.getline(otherbuf, sizeof(otherbuf));
-        if(!opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " ";
-        cerr << " " << otherbuf << ", encounter error" << endl;
+        {
+            char otherbuf[1024] = "";
+            cmdstrm.getline(otherbuf, sizeof(otherbuf));
+            if(!opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " ";
+            cerr << " " << otherbuf << ", encounter error" << endl;
+        }
         break;
     }
     return 1;

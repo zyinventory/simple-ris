@@ -14,13 +14,13 @@ HANDLE hDirNotify;
 static string last_dfc;
 static bool close_too_late = false;
 
-static bool refresh_files(bool timeout)
+static DWORD refresh_files(bool timeout)
 {
     WIN32_FIND_DATA wfd;
     char fileFilter[MAX_PATH] = "log\\*.dfc";
     int pathLen = 4;
 
-    if(timeout && hDirNotify == NULL) return false;
+    if(timeout && hDirNotify == NULL) return ERROR_SUCCESS;;
 
     HANDLE hDiskSearch = FindFirstFile(fileFilter, &wfd);
     list<string> dfc_files;
@@ -79,22 +79,22 @@ static bool refresh_files(bool timeout)
     }
     if(it == dfc_files.end() && !dfc_files.empty()) close_too_late = false;
 
-    if(timeout) return !dfc_files.empty();
+    if(timeout) return ERROR_SUCCESS;
 
     if(end_of_move)
     {
         FindCloseChangeNotification(hDirNotify);
         hDirNotify = NULL;
-        return false;
     }
     else
     {
-        FindNextChangeNotification(hDirNotify);
-        return true;
+        if(!FindNextChangeNotification(hDirNotify))
+            return displayErrorToCerr("refresh_files() FindNextChangeNotification()", GetLastError());
     }
+    return ERROR_SUCCESS;
 }
 
-static bool read_cmd_continous(HANDLE)
+static DWORD read_cmd_continous(HANDLE)
 {
     return refresh_files(false);
 }
@@ -138,7 +138,8 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     int ret = 1, waitTime = 0;
     clear_log_context();
     
-    DWORD gle = NamedPipe_CreateListening();
+    DWORD gle = 0;
+    gle = NamedPipe_CreateListening(sessionId, false);
     if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
     {
         NamedPipe_CloseHandle(true);
@@ -152,13 +153,13 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         CloseHandle(hDirNotify);
         return -5;
     }
-
+    
     size_t worker_num = 0, all_queue_size = 0;
     HANDLE *objs = NULL;
     WORKER_CALLBACK *cbs = NULL;
     // worker_num is number_of_compress_workers + number_of_dcmmkdir_workers + reserve
     // worker_num is elements of objs
-    // queue_size is size_of_compress_queue + size_of_dir_queue
+    // all_queue_size is size_of_compress_queue + size_of_dir_queue
     objs = get_worker_handles(&worker_num, &all_queue_size, &cbs, hDirNotify ? 1 : 0);
     if(hDirNotify)
     {
@@ -167,7 +168,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     }
 
     // hEventPipe must be alive, hDirNotify is the first exit signal.
-    // so worker_num must be 1, queue_size must be 0.
+    // so worker_num must be 1, all_queue_size must be 0.
     while(worker_num + all_queue_size > 1)
     {
         DWORD wr = WaitForMultipleObjectsEx(worker_num, objs, FALSE, 200, TRUE);
@@ -194,7 +195,12 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
             ;
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + worker_num)
         {
-            worker_complete(wr, objs, cbs, worker_num);
+            gle = worker_complete(wr, objs, cbs, worker_num);
+            if(gle)
+            {
+                cerr << "fatal error at worker_complete()" << endl;
+                break;
+            }
         }
         else
         {   // shall not reach here ...
@@ -214,5 +220,5 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     if(objs) delete[] objs;
     if(cbs) delete[] cbs;
     NamedPipe_CloseHandle(true);
-    return 0;
+    return gle;
 }

@@ -119,7 +119,7 @@ static map<string, list<CMOVE_LOG_CONTEXT> > map_dir_queue_list;
 static list<DCMMKDIR_CONTEXT> list_dir_workers;
 static list<LPPIPEINST> list_blocked_pipe_instances;
 
-static bool close_dcmmkdir_worker(HANDLE hProc)
+static DWORD close_dcmmkdir_worker(HANDLE hProc)
 {
     list<DCMMKDIR_CONTEXT>::iterator it = find_if(list_dir_workers.begin(), list_dir_workers.end(),
         [hProc](DCMMKDIR_CONTEXT &dc) { return hProc == dc.hProcess; });
@@ -130,10 +130,10 @@ static bool close_dcmmkdir_worker(HANDLE hProc)
         CloseHandle(it->hProcess);
         close_log(it->log);
         list_dir_workers.erase(it);
-        return true;
     }
     else
-        return false;
+        cerr << "close_dcmmkdir_worker(): dcmmkdir process " << it->hProcess << " not found, study uid " << it->dot_or_study_uid << endl;
+    return ERROR_SUCCESS;
 }
 
 static map<string, list<CMOVE_LOG_CONTEXT> >::iterator create_or_open_dicomdir_queue(const char *dot_or_study_uid)
@@ -160,7 +160,6 @@ static map<string, list<CMOVE_LOG_CONTEXT> >::iterator create_or_open_dicomdir_q
 static char pipeName[128] = "";
 static HANDLE hPipeEvent = NULL, hPipe = NULL;
 static OVERLAPPED olPipeConnectOnly;
-static int shortageNamedPipe = 0;
 
 void NamedPipe_CloseHandle(bool close_event)
 {
@@ -173,7 +172,7 @@ void NamedPipe_CloseHandle(bool close_event)
     }
 }
 
-DWORD NamedPipe_CreateListening()
+DWORD NamedPipe_CreateListening(const char *pipe_name, bool wait)
 {   // manual reset, init signaled, unnamed event object
     DWORD gle = 0;
     if(!hPipeEvent) hPipeEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
@@ -185,8 +184,8 @@ DWORD NamedPipe_CreateListening()
     }
     memset(&olPipeConnectOnly, 0, sizeof(OVERLAPPED));
     olPipeConnectOnly.hEvent = hPipeEvent;
-    if(strlen(pipeName) == 0) sprintf_s(pipeName, "\\\\.\\pipe\\%s", sessionId);
-    hPipe = CreateNamedPipe(pipeName, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+    if(strlen(pipeName) == 0) sprintf_s(pipeName, "\\\\.\\pipe\\%s", pipe_name ? pipe_name : sessionId);
+    hPipe = CreateNamedPipe(pipeName, PIPE_ACCESS_DUPLEX | (wait ? 0 : FILE_FLAG_OVERLAPPED),
         PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, // message-type pipe, message read mode, blocking mode
         PIPE_UNLIMITED_INSTANCES, FILE_ASYN_BUF_SIZE, FILE_ASYN_BUF_SIZE, // output, input buffer size 
         0, NULL); // time-out for client run WaitNamedPipe(NMPWAIT_USE_DEFAULT_WAIT), 0 means default(50 ms)
@@ -197,14 +196,37 @@ DWORD NamedPipe_CreateListening()
         return gle;
     }
 
-    BOOL fConnected = ConnectNamedPipe(hPipe, &olPipeConnectOnly);
+    BOOL fConnected = ConnectNamedPipe(hPipe, (wait ? NULL : &olPipeConnectOnly));
     gle = GetLastError();
-    if(fConnected)
+    if(wait)  // synchronous
     {
-        displayErrorToCerr("ConnectNamedPipe()", gle);
+        if(fConnected)
+        {
+            if(SetEvent(olPipeConnectOnly.hEvent))
+                return ERROR_PIPE_CONNECTED;
+            else
+            {
+                gle = GetLastError();
+                displayErrorToCerr("ConnectNamedPipe(synchronous)", gle);
+                NamedPipe_CloseHandle();
+                return gle;
+            }
+        }
+        else
+        {
+            displayErrorToCerr("ConnectNamedPipe(synchronous)", gle);
+            NamedPipe_CloseHandle();
+            return gle;
+        }
+    }
+    else if(fConnected)  // asynchronous faild
+    {
+        displayErrorToCerr("ConnectNamedPipe(asynchronous)", gle);
         NamedPipe_CloseHandle();
         return gle;
     }
+    // else asynchronous succeed
+
     switch(gle)
     {
     case ERROR_IO_PENDING:
@@ -549,7 +571,7 @@ static void CALLBACK NamedPipe_FirstReadBindPipe(DWORD dwErr, DWORD cbBytesRead,
     }
 }
 
-static bool NamedPipe_PipeConnected(HANDLE)
+static DWORD NamedPipe_PipeConnected(HANDLE)
 {
     DWORD gle = 0, cbRet = 0;
     if(GetOverlappedResult(hPipe, &olPipeConnectOnly, &cbRet, FALSE))
@@ -574,18 +596,17 @@ static bool NamedPipe_PipeConnected(HANDLE)
     if(gle) NamedPipe_CloseHandle();
 
     // start a listening named pipe
-    gle = NamedPipe_CreateListening();
+    gle = NamedPipe_CreateListening(sessionId, false);
     if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
     {
         displayErrorToCerr("NamedPipe_CreateListening() NamedPipe_CreateListening()", gle);
         NamedPipe_CloseHandle();
-        ++shortageNamedPipe;
-        return false;
+        return gle;
     }
-    return true;
+    return ERROR_SUCCESS;
 }
 
-bool worker_complete(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker_num)
+DWORD worker_complete(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker_num)
 {
     CMOVE_LOG_CONTEXT over_lc;
     wr -= WAIT_OBJECT_0;
@@ -646,7 +667,8 @@ bool worker_complete(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker
         else
             cerr << "worker_complete(): CMOVE_LOG_CONTEXT.file.studyUID is empty." << endl;
     }
-    return (0 != compress_queue_to_workers(NULL));
+    compress_queue_to_workers(NULL);
+    return 0;
 }
 
 HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size, WORKER_CALLBACK ** ppCBs, size_t reserve)
