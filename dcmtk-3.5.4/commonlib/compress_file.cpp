@@ -651,7 +651,10 @@ bool worker_complete(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker
 
 HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size, WORKER_CALLBACK ** ppCBs, size_t reserve)
 {
-    if(queue_size) *queue_size = queue_compress.size();
+    if(queue_size) *queue_size = queue_compress.size() +
+        accumulate(map_dir_queue_list.begin(), map_dir_queue_list.end(), 0,
+            [](size_t accumulator, pair<string, list<CMOVE_LOG_CONTEXT> > p) {
+                return accumulator + p.second.size(); });
     size_t wk_num = workers.size();
     
     bool hasPipeEvent = (hPipeEvent && hPipeEvent != INVALID_HANDLE_VALUE);
@@ -691,6 +694,7 @@ HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size, WORKER_CALLBA
     else
     {
         if(worker_num) *worker_num = 0;
+        if(queue_size) *queue_size = 0;
         if(ppCBs) *ppCBs = NULL;
         return NULL;
     }

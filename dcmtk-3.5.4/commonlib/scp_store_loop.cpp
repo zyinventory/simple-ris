@@ -99,6 +99,18 @@ static bool read_cmd_continous(HANDLE)
     return refresh_files(false);
 }
 
+static bool make_relate_dir(const char *dir_name)
+{
+    if(_mkdir(dir_name) && errno != EEXIST)
+    {
+        char msg[1024];
+        strerror_s(msg, errno);
+        cerr << "mkdir " << dir_name << " faile: " << msg << endl;
+        return false;
+    }
+    return true;
+}
+
 COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 {
     opt_verbose = verbose;
@@ -110,20 +122,9 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         cerr << "无法切换工作目录" << endl;
         return -1;
     }
-    if(_mkdir("log") && errno != EEXIST)
-    {
-        char msg[1024];
-        strerror_s(msg, errno);
-        cerr << "mkdir log faile: " << msg << endl;
-        return -1;
-    }
-    if(_mkdir("archdir") && errno != EEXIST)
-    {
-        char msg[1024];
-        strerror_s(msg, errno);
-        cerr << "mkdir archdir faile: " << msg << endl;
-        return -1;
-    }
+    if(!make_relate_dir("log")) return -1;
+    if(!make_relate_dir("archdir")) return -1;
+    if(!make_relate_dir("indexdir")) return -1;
     
     fn = _getcwd(NULL, 0);
     fn.append("\\log");
@@ -152,20 +153,23 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         return -5;
     }
 
-    size_t worker_num = 0, queue_size = 0;
+    size_t worker_num = 0, all_queue_size = 0;
     HANDLE *objs = NULL;
     WORKER_CALLBACK *cbs = NULL;
-    objs = get_worker_handles(&worker_num, &queue_size, &cbs, hDirNotify ? 1 : 0);
+    // worker_num is number_of_compress_workers + number_of_dcmmkdir_workers + reserve
+    // worker_num is elements of objs
+    // queue_size is size_of_compress_queue + size_of_dir_queue
+    objs = get_worker_handles(&worker_num, &all_queue_size, &cbs, hDirNotify ? 1 : 0);
     if(hDirNotify)
     {
         objs[0] = hDirNotify;
         cbs[0] = read_cmd_continous;
     }
 
-    while(worker_num + queue_size > 1) //hEventPipe must be alive, hDirNotify is the first exit signal
-    {   // WaitForMultipleObjectsEx() timeout must be short time,
-        // dcmmkdir_sleep_time / dcmmkdir_proc_num > WaitForMultipleObjectsEx(timeout)
-        // otherwise dcmmkdir 's again will always trigger WAIT_IO_COMPLETION.
+    // hEventPipe must be alive, hDirNotify is the first exit signal.
+    // so worker_num must be 1, queue_size must be 0.
+    while(worker_num + all_queue_size > 1)
+    {
         DWORD wr = WaitForMultipleObjectsEx(worker_num, objs, FALSE, 200, TRUE);
         // switch(wr)
         if(wr == WAIT_TIMEOUT)
@@ -200,7 +204,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 
         if(objs) delete[] objs;
         if(cbs) delete[] cbs;
-        objs = get_worker_handles(&worker_num, &queue_size, &cbs, hDirNotify ? 1 : 0);
+        objs = get_worker_handles(&worker_num, &all_queue_size, &cbs, hDirNotify ? 1 : 0);
         if(hDirNotify)
         {
             objs[0] = hDirNotify;
