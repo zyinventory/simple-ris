@@ -8,6 +8,7 @@
 #include <string.h>
 #include <errno.h>
 #include <windows.h>
+#include <Aclapi.h>
 
 #ifdef COMMONLIB_EXPORTS
 #define COMMONLIB_API __declspec(dllexport)
@@ -55,10 +56,10 @@ static char* GetPacsBase_internal()
 
 #ifdef COMMONLIB_EXPORTS
 #define displayErrorToCerr_public displayErrorToCerr
-COMMONLIB_API DWORD displayErrorToCerr(TCHAR *lpszFunction, DWORD dw)
+COMMONLIB_API DWORD displayErrorToCerr(const TCHAR *lpszFunction, DWORD dw)
 #else
 #define displayErrorToCerr_public displayErrorToCerr_internal
-static DWORD displayErrorToCerr_internal(TCHAR *lpszFunction, DWORD dw)
+static DWORD displayErrorToCerr_internal(const TCHAR *lpszFunction, DWORD dw)
 #endif
 {
 	TCHAR *lpMsgBuf;
@@ -112,7 +113,7 @@ static BOOL SetPrivilege(LPCTSTR lpszPrivilege, BOOL bEnablePrivilege)
         lpszPrivilege,   // privilege to lookup
         &luid ) )        // receives LUID of privilege
     {
-        fprintf(stderr, "LookupPrivilegeValue error: %u\n", GetLastError() );
+        //fprintf(stderr, "LookupPrivilegeValue error: %u\n", GetLastError() );
         CloseHandle(hToken);
         return FALSE;
     }
@@ -134,7 +135,7 @@ static BOOL SetPrivilege(LPCTSTR lpszPrivilege, BOOL bEnablePrivilege)
         (PTOKEN_PRIVILEGES) NULL,
         (PDWORD) NULL) )
     {
-        fprintf(stderr, "AdjustTokenPrivileges error: %u\n", GetLastError() );
+        //fprintf(stderr, "AdjustTokenPrivileges error: %u\n", GetLastError() );
         CloseHandle(hToken);
         return FALSE;
     }
@@ -172,7 +173,7 @@ typedef struct
 #define SEQ_MUTEX_NAME "Global\\DCM_GetNextUniqueNo"
 #define SEQ_MAPPING_NAME_G "Global\\DCM_MappingUniqueNo"
 #define SEQ_MAPPING_NAME_L "Local\\DCM_MappingUniqueNo"
-static const char *mappingName = SEQ_MAPPING_NAME_L;
+static const char *mappingName = SEQ_MAPPING_NAME_G;
 static char sequence_path[MAX_PATH] = "";
 static HANDLE mutex_seq = NULL, hfile = INVALID_HANDLE_VALUE, hmap = NULL;
 static MapHistory *pMapHistory = NULL;
@@ -187,62 +188,130 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
 {
     struct _timeb storeTimeThis;
     if(buf_size < 40) return -1;
-    if(sequence_path[0] == '\0')
-    {
-        char *basedir = GetPacsBase_public();
-        mappingName = SetPrivilege(SE_CREATE_GLOBAL_NAME, TRUE) ? SEQ_MAPPING_NAME_G : SEQ_MAPPING_NAME_L;
-        sessionId = WTSGetActiveConsoleSessionId();
-        strcpy_s(sequence_path, basedir);
-        size_t baselen = strlen(sequence_path);
-        sprintf_s(sequence_path + baselen, sizeof(sequence_path) - baselen, "\\temp\\sequence-%03d.dat", sessionId);
-    }
     if(sysinfo.dwPageSize == 0) GetSystemInfo(&sysinfo);
 
     bool owner_mutex = false;
+    DWORD dw = 0;
     if(mutex_seq == NULL)
     {
         mutex_seq = OpenMutex(SYNCHRONIZE, FALSE, SEQ_MUTEX_NAME);
-        if(mutex_seq == NULL && GetLastError() == ERROR_FILE_NOT_FOUND)
+        dw = GetLastError();
+        if(mutex_seq == NULL && dw == ERROR_FILE_NOT_FOUND)
         {
-            //displayErrorToCerr_public("OpenMutex()", ERROR_FILE_NOT_FOUND);
             mutex_seq = CreateMutex(NULL, FALSE, SEQ_MUTEX_NAME);
-            if(mutex_seq == NULL) displayErrorToCerr_public("CreateMutex()", GetLastError());
+            dw = GetLastError();
         }
+        if(mutex_seq == NULL)
+            displayErrorToCerr_public("OpenMutex()", dw);
     }
 
     if(mutex_seq && WAIT_FAILED != WaitForSingleObject(mutex_seq, INFINITE))
     {
         owner_mutex = true;
-        if(hfile == INVALID_HANDLE_VALUE)
-        {
-            hfile = CreateFile(sequence_path, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            if(hfile == INVALID_HANDLE_VALUE)
-                displayErrorToCerr_public("CreateFile()", GetLastError());
-        }
         if(hmap == NULL)
         {
+            BOOL ownerPrivilege = SetPrivilege(SE_CREATE_GLOBAL_NAME, TRUE);
+            //try to open global mapping
+            hmap = OpenFileMapping(FILE_MAP_WRITE, FALSE, SEQ_MAPPING_NAME_G);
+            dw = GetLastError();
+            if(hmap == NULL && !ownerPrivilege)
+            {   // global mapping does not exist, try to open local mapping
+                SetLastError(0);
+                dw = 0;
+                hmap = OpenFileMapping(FILE_MAP_WRITE, FALSE, SEQ_MAPPING_NAME_L);
+                dw = GetLastError();
+            }
+            if(hmap) goto hmap_OK;
+
+            size_t baselen = 0;
+            if(sequence_path[0] == '\0')
+            {
+                char *basedir = GetPacsBase_public();
+                strcpy_s(sequence_path, basedir);
+                baselen = strlen(sequence_path);
+                if(ownerPrivilege)
+                {
+                    strcpy_s(sequence_path + baselen, sizeof(sequence_path) - baselen, "\\temp\\sequence-000.dat");
+                    mappingName =  SEQ_MAPPING_NAME_G;
+                }
+                else
+                {
+                    sessionId = WTSGetActiveConsoleSessionId();
+                    sprintf_s(sequence_path + baselen, sizeof(sequence_path) - baselen, "\\temp\\sequence-%03d.dat", sessionId);
+                    mappingName = SEQ_MAPPING_NAME_L;
+                }
+            }
+
+            if(hfile == INVALID_HANDLE_VALUE)
+            {
+                hfile = CreateFile(sequence_path, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+                dw = GetLastError();
+                if(hfile == INVALID_HANDLE_VALUE)
+                {
+                    char prefix[MAX_PATH];
+                    sprintf_s(prefix, "CreateFile(%s)", sequence_path);
+                    displayErrorToCerr_public(prefix, dw);
+                }
+            }
             hmap = CreateFileMapping(hfile, NULL, PAGE_READWRITE | SEC_COMMIT, 0, sysinfo.dwAllocationGranularity, mappingName);
+            dw = GetLastError();
+            if(hmap == NULL && dw != ERROR_ALREADY_EXISTS)
+            {
+                char msg[MAX_PATH];
+                sprintf_s(msg, "create mapping %s", mappingName);
+                displayErrorToCerr_public(msg, dw);
+            }
+            if(hmap && ownerPrivilege)
+            {
+                PACL pDacl=NULL;
+                PACL pNewDacl=NULL;
+                PSECURITY_DESCRIPTOR pSD=NULL;
+                EXPLICIT_ACCESS ea;
+                dw = GetSecurityInfo(hmap,SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION,NULL,NULL,&pDacl,NULL,&pSD);
+                ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
+                ea.grfAccessPermissions = GENERIC_WRITE;
+                ea.grfAccessMode = GRANT_ACCESS;
+                ea.grfInheritance= NO_INHERITANCE;
+                ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
+                ea.Trustee.TrusteeType = TRUSTEE_IS_GROUP;
+                ea.Trustee.ptstrName = "Users";
+                if(pDacl)
+                {
+                    dw = SetEntriesInAcl(1,&ea,pDacl,&pNewDacl);
+                    if(dw == ERROR_SUCCESS)
+                        dw = SetSecurityInfo(hmap, SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDacl, NULL);
+                }
+                if(pSD) LocalFree(pSD);
+                if(pNewDacl) LocalFree(pNewDacl);
+                if(dw != ERROR_SUCCESS)
+                    displayErrorToCerr_public("SetSecurityInfo()", dw);
+            }
+hmap_OK:
             if(hmap)
             {
                 if(pMapHistory) delete pMapHistory;
-                pMapHistory = static_cast<MapHistory*>(MapViewOfFile(hmap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(MapHistory)));
+                pMapHistory = static_cast<MapHistory*>(MapViewOfFile(hmap, FILE_MAP_WRITE, 0, 0, sizeof(MapHistory)));
+                dw = GetLastError();
                 if(pMapHistory == NULL)
                 {
-                    displayErrorToCerr_public("MapViewOfFile()", GetLastError());
+                    displayErrorToCerr_public("MapViewOfFile()", dw);
                     CloseHandle(hmap);
                     hmap = NULL;
                 }
                 else if(! pMapHistory->verify())
+                {
+                    fputs("pMapHistory is damaged\n", stderr);
                     memset(pMapHistory, 0, sizeof(MapHistory));
+                }
             }
             else
-                displayErrorToCerr_public("CreateFileMapping()", GetLastError());
+                displayErrorToCerr_public("OpenFileMapping() or CreateFileMapping()", dw);
         }
     }
     if(pMapHistory == NULL)
     {
-        fprintf(stderr, "can't asso share memory to %s, new MapHistory instead.\n", sequence_path);
+        fprintf(stderr, "can't asso share memory to %s, heap memory instead.\n", sequence_path);
         pMapHistory = new MapHistory;
         memset(pMapHistory, 0, sizeof(MapHistory));
     }
@@ -266,9 +335,15 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
         pMapHistory->tb = storeTimeThis;
         pMapHistory->diff = 0;
     }
-
+    pMapHistory->checksum = pMapHistory->get_checksum();
     if(owner_mutex) ReleaseMutex(mutex_seq);
-    return sprintf_s(pbuf, buf_size, "%s%lld%03hd-%lld_%03d", prefix, storeTimeThis.time, storeTimeThis.millitm, pMapHistory->diff, sessionId);
+    
+    struct tm localtime;
+    localtime_s(&localtime, &storeTimeThis.time);
+    int buf_pos = sprintf_s(pbuf, buf_size, "%s", prefix);
+    buf_pos += strftime(pbuf + buf_pos, buf_size - buf_pos, "%Y%m%d%H%M%S", &localtime);
+    buf_pos += sprintf_s(pbuf + buf_pos, buf_size - buf_pos, ".%03hdT%+04d-%lld_%03d", storeTimeThis.millitm, -storeTimeThis.timezone, pMapHistory->diff, sessionId);
+    return buf_pos;
 }
 
 #ifdef COMMONLIB_EXPORTS
