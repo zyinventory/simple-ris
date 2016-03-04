@@ -1,7 +1,7 @@
 #ifndef COMMONLIB_INTERNAL
 #define COMMONLIB_INTERNAL
 typedef struct {
-    char callingAE[65], callingAddr[40], calledAE[65], calledAddr[40];
+    char id[32], callingAE[65], callingAddr[65], calledAE[65], calledAddr[65];
     unsigned short port;
 } CMOVE_ASSOC_SECTION;
 
@@ -13,7 +13,7 @@ typedef struct {
 } CMOVE_FILE_SECTION;
 
 typedef struct {
-    char patientID[65], patientsName[65], birthday[9], height[10], weight[10], sex;
+    char patientID[65], patientsName[65], birthday[9], height[10], weight[10], sex[3];
 } CMOVE_PATIENT_SECTION;
 
 typedef struct {
@@ -71,5 +71,10 @@ typedef struct
 DWORD NamedPipe_CreateListening(const char *pipe_name = NULL, bool wait = false);
 void  NamedPipe_CloseHandle(bool close_event = false);
 DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid);
+
+// ------------ Make Index ------------
+
+errno_t make_index(const CMOVE_LOG_CONTEXT &clc);
+void clear_study_map();
 
 #endif //COMMONLIB_INTERNAL

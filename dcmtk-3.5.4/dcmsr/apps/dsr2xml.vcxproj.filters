@@ -10,4 +10,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Xsd Include="dsr2xml.xsd">
+      <Filter>Source Files</Filter>
+    </Xsd>
+  </ItemGroup>
 </Project>

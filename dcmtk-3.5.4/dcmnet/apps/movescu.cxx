@@ -41,6 +41,7 @@
 #include "dcmtk/ofstd/ofstdinc.h"
 #include <direct.h>
 #include <fcntl.h>
+#include <sys/timeb.h>
 
 #ifdef HAVE_GUSI_H
 #include <GUSI.h>
@@ -1333,7 +1334,15 @@ subOpCallback(void * /*subOpCallbackData*/ ,
     if (*subAssoc == NULL) {
         /* negotiate association */
         acceptSubAssoc(aNet, subAssoc);
-        fprintf_s(fplog, "T 00010010 %s %s %s %d %s\n", 
+
+        struct _timeb storeTimeThis;
+        struct tm localtime;
+        char timeBuffer[16];
+        _ftime_s(&storeTimeThis);
+        localtime_s(&localtime, &storeTimeThis.time);
+        strftime(timeBuffer, sizeof(timeBuffer), "%Y%m%d%H%M%S", &localtime);
+
+        fprintf_s(fplog, "T 00010010 %s%03d_%d %s %s %s %d %s\n", timeBuffer, storeTimeThis.millitm, _getpid(),
             (*subAssoc)->params->DULparams.callingAPTitle, 
             (*subAssoc)->params->DULparams.callingPresentationAddress,
             (*subAssoc)->params->DULparams.calledAPTitle, aNet->acceptorPort, 

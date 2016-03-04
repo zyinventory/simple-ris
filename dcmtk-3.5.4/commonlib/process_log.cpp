@@ -23,11 +23,15 @@ static CMOVE_LOG_CONTEXT  lc;
 void clear_log_context(CMOVE_LOG_CONTEXT *plc)
 {
     if(plc == NULL) plc = &lc;
-    memset(plc, 0, sizeof(CMOVE_LOG_CONTEXT));
     plc->hprocess = INVALID_HANDLE_VALUE;
     plc->hthread = INVALID_HANDLE_VALUE;
     plc->log = INVALID_HANDLE_VALUE;
-    plc->patient.sex = ' ';
+    memset(&plc->file, 0, sizeof(CMOVE_FILE_SECTION));
+    memset(&plc->patient, 0, sizeof(CMOVE_PATIENT_SECTION));
+    plc->patient.sex[0] = ' ';
+    plc->patient.sex[1] = '\0';
+    memset(&plc->study, 0, sizeof(CMOVE_STUDY_SECTION));
+    memset(&plc->series, 0, sizeof(CMOVE_SERIES_SECTION));
 }
 
 static int cmd_series(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
@@ -128,7 +132,11 @@ static int cmd_patient(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
         break;
     case 0x00100040:
         cmdstrm >> lc.patient.sex;
-        if(lc.patient.sex != 'M' && lc.patient.sex != 'F' && lc.patient.sex != 'O') lc.patient.sex = ' ';
+        if(lc.patient.sex[0] != 'M' && lc.patient.sex[0] != 'F' && lc.patient.sex[0] != 'O')
+        {
+            lc.patient.sex[0] = ' ';
+            lc.patient.sex[1] = '\0';
+        }
         else if(strlen(lc.patient.patientID) == 0) dirty = true;
         if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.sex << endl;
         break;
@@ -229,7 +237,6 @@ static void print_error_file_section(unsigned int tag, string &filename, CMOVE_F
     cerr << "\txfer: " << fs.xfer << endl;
 }
 
-//static int line_num = 0;
 static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
@@ -244,12 +251,8 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
             print_error_file_section(tag, filename, lc.file);
         else // OK, commit file section
         {
-            compress_queue_to_workers(&lc);
-            /* test for index
-            CMOVE_FILE_SECTION &fs = lc.file;
-            cerr << line_num++ << " " << fs.patientID << " " << fs.studyUID << " " << fs.seriesUID 
-                << " " << fs.instanceUID << " " << fs.xfer << " " << fs.filename << endl;
-            */
+            //compress_queue_to_workers(&lc);
+            make_index(lc);
         }
         lc.file.inFile = false;
     }
@@ -275,7 +278,7 @@ static int cmd_assoc(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     switch(tag)
     {
     case ASSOC_ESTA:
-        cmdstrm >> lc.assoc.callingAE >> lc.assoc.callingAddr >> lc.assoc.calledAE >> dec >> lc.assoc.port >> lc.assoc.calledAddr;
+        cmdstrm >> lc.assoc.id >> lc.assoc.callingAE >> lc.assoc.callingAddr >> lc.assoc.calledAE >> dec >> lc.assoc.port >> lc.assoc.calledAddr;
         if(opt_verbose) cerr << " " << lc.assoc.callingAE << " " << lc.assoc.callingAddr<< " " << lc.assoc.calledAE<< " " << dec << lc.assoc.port << " " << lc.assoc.calledAddr << endl;
         break;
     case ASSOC_TERM:
