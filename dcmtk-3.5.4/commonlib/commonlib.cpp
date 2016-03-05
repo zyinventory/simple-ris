@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "commonlib.h"
-#define PATH_SEPARATOR '\\'
 
 using namespace std;
 
@@ -123,48 +122,53 @@ COMMONLIB_API LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime)
 
 COMMONLIB_API bool MkdirRecursive(const char *subdir)
 {
-  // check if the subdirectory is already existent
-  if( _mkdir(subdir) )
-  {
-	if(errno == EEXIST)
-	  return true;
-  }
-  else
-  {
-	return true;
-  }
-
-  string subdirectoryPath = subdir;
-  size_t position = subdirectoryPath.rfind(PATH_SEPARATOR);
-  if(position != string::npos)
-  {
-    string upperLevel = subdirectoryPath.substr(0, position);
-	bool mkResult = MkdirRecursive(upperLevel.c_str());
-    if(mkResult != true)
+    // check if the subdirectory is already existent
+    if( _mkdir(subdir) )
     {
-      return mkResult;
+        if(errno == EEXIST)
+            return true;
     }
-    // else: upper level exist, create current level
-  }
+    else
+    {
+        return true;
+    }
 
-  // if it is not existent create it
-  if( _mkdir( subdirectoryPath.c_str() ) == -1 && errno != EEXIST)
-  {
-	cerr << "Could not create subdirectory " << subdirectoryPath.c_str() << endl;
-    return false;
-  }
-  else
-  {
-    return true;
-  }
+    const char *p = subdir + strlen(subdir);
+    while(p != subdir && *p != '/' && *p != '\\') --p;
+    if(p != subdir)
+    {
+        string upperLevel(subdir, p - subdir);
+	    bool mkResult = MkdirRecursive(upperLevel.c_str());
+        if(mkResult != true)
+        {
+            return mkResult;
+        }
+        // else: upper level exist, create current level
+    }
+
+    // if it is not existent create it
+    if( _mkdir(subdir) == -1 && errno != EEXIST)
+    {
+        cerr << "Could not create subdirectory " << subdir << endl;
+        return false;
+    }
+    else
+    {
+        return true;
+    }
 }
 
-COMMONLIB_API bool prepareFileDir(const char *path)
+COMMONLIB_API bool PrepareFileDir(const char *path)
 {
-  string filePath = path;
-  string::size_type p = filePath.rfind('\\');
-  if(p == string::npos || p == 0) return true;
-  return MkdirRecursive(filePath.substr(0, p).c_str());
+    const char *p = path + strlen(path);
+    while(p != path && *p != '/' && *p != '\\') --p;
+    if(p != path)
+    {
+        string upperLevel(path, p - path);
+        return MkdirRecursive(upperLevel.c_str());
+    }
+    else
+        return true;
 }
 
 //return 0 if successful, otherwise errno

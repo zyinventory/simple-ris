@@ -166,7 +166,7 @@ static list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 	ostringstream strbuf;
 	strbuf << timebuf << studyUid << ".txt";
 	wp.logFilePath = new string(strbuf.str());
-	prepareFileDir(wp.logFilePath->c_str());
+	PrepareFileDir(wp.logFilePath->c_str());
 	wp.hLogFile = CreateFile(wp.logFilePath->c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(wp.hLogFile == INVALID_HANDLE_VALUE)
 	{
@@ -458,7 +458,7 @@ static void runArchiveInstance(string &cmd, const int index, string &studyUid)
 		ostringstream strbuf;
 		strbuf << timebuf << index << "_dcmcjpeg.txt";
 		workers[index].logFilePath = new string(strbuf.str());
-		prepareFileDir(workers[index].logFilePath->c_str());
+		PrepareFileDir(workers[index].logFilePath->c_str());
 		workers[index].hLogFile = CreateFile(workers[index].logFilePath->c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 		if(workers[index].hLogFile == INVALID_HANDLE_VALUE)
 		{
@@ -681,7 +681,7 @@ static void processMessage(IMSMQMessagePtr pMsg)
 						buffer[cmd.length()] = '\0';
 						buffer[pos] = '\0';
 						char *src = buffer + srcpos, *dest = buffer + pos + 1;
-						prepareFileDir(dest);
+						PrepareFileDir(dest);
 						int renresult = 0;
 						if(::rename(src, dest)) renresult = errno;
 						if(renresult)

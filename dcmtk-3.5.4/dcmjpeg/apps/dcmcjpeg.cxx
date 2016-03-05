@@ -864,7 +864,7 @@ int main(int argc, char *argv[])
 			}
 			else
 			{
-				prepareFileDir(opt_ofname);
+				PrepareFileDir(opt_ofname);
 				if( rename(opt_ifname, opt_ofname) ) perror(opt_ofname);
 			}
 		}
@@ -880,7 +880,7 @@ int main(int argc, char *argv[])
 
 			if (opt_verbose)
 				CERR << "creating output file " << opt_ofname << endl;
-			prepareFileDir(opt_ofname);
+			PrepareFileDir(opt_ofname);
 
 			//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
 			//CERR << "before load into mem " << GetTickCount() - timerbase << endl;

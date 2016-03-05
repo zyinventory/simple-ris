@@ -178,7 +178,7 @@ static int realMain(int argc, char **argv)
 
 	HANDLE logFile = INVALID_HANDLE_VALUE;
 	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_storescp.txt", timeBuffer, sizeof(timeBuffer));
-	if(prepareFileDir(timeBuffer))
+	if(PrepareFileDir(timeBuffer))
 		logFile = CreateFile(timeBuffer, GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if(logFile != INVALID_HANDLE_VALUE)
@@ -249,7 +249,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	ofstream flog;
 	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", timeBuffer, sizeof(timeBuffer));
-	if(prepareFileDir(timeBuffer))
+	if(PrepareFileDir(timeBuffer))
 		flog.open(timeBuffer);
 	else
 		return -4;

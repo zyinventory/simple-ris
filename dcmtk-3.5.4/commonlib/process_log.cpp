@@ -251,7 +251,9 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
             print_error_file_section(tag, filename, lc.file);
         else // OK, commit file section
         {
+            //test for make_index
             //compress_queue_to_workers(&lc);
+            if(strlen(lc.file.unique_filename) == 0) lc.file.StorePath();
             make_index(lc);
         }
         lc.file.inFile = false;

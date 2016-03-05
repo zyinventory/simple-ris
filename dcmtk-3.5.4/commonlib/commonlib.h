@@ -53,7 +53,7 @@ COMMONLIB_API char *rtrim(char *s, int maxLen = INT_MAX - 1);
 COMMONLIB_API char *trim(char *s, int maxStrLen = INT_MAX - 1);
 COMMONLIB_API LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime = NULL);
 COMMONLIB_API bool MkdirRecursive(const char*);
-COMMONLIB_API bool prepareFileDir(const char *path);
+COMMONLIB_API bool PrepareFileDir(const char *path);
 COMMONLIB_API int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator);
 COMMONLIB_API BOOL DeleteEmptyFile(const char *filePath);
 COMMONLIB_API const char* detectMediaType(size_t *pSize);

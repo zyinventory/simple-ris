@@ -7,9 +7,10 @@ typedef struct {
 
 typedef struct {
     unsigned int tag;
-    char filename[MAX_PATH], unique_filename[65], patientID[65], studyUID[65], seriesUID[65], instanceUID[65], xfer[16];
+    char filename[MAX_PATH], hash[12], unique_filename[65], patientID[65], studyUID[65], seriesUID[65], instanceUID[65], xfer[16];
     bool inFile, isEncapsulated;
-    bool StorePath();
+    const char* StorePath(char sp = '/');
+    char PathSeparator() const { return unique_filename[8]; }
 } CMOVE_FILE_SECTION;
 
 typedef struct {

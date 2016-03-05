@@ -20,6 +20,15 @@ static MSXML2::IXMLDOMDocument* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
             if(pRoot)
             {
                 hr = pRoot->setAttribute(L"id", clc.file.studyUID);
+                if(clc.file.PathSeparator() == '/')
+                    hr = pRoot->setAttribute(L"hash_prefix", clc.file.hash);
+                else
+                {
+                    char buff[sizeof(clc.file.hash)];
+                    strcpy_s(buff, clc.file.hash);
+                    replace(buff, buff + sizeof(clc.file.hash), '\\', '/');
+                    hr = pRoot->setAttribute(L"hash_prefix", buff);
+                }
                 if(strcmp(clc.file.studyUID, clc.study.studyUID) == 0)
                 {
                     hr = pRoot->setAttribute(L"accession_number", clc.study.accessionNumber);
@@ -55,9 +64,15 @@ void clear_study_map()
             MSXML2::IXMLDOMDocument *pXMLDom = it->second;
             if(pXMLDom)
             {
-                uidHash(it->first.c_str(), studyHash, sizeof(studyHash));
-                sprintf_s(xmlpath, "indexdir\\000d0020\\%c%c\\%c%c\\%c%c\\%c%c\\", studyHash[0], studyHash[1],
-                    studyHash[2], studyHash[3], studyHash[4], studyHash[5], studyHash[6], studyHash[7]);
+                MSXML2::IXMLDOMNodePtr hash_prefix = pXMLDom->selectSingleNode(L"/study/@hash_prefix");
+                if(hash_prefix)
+                    sprintf_s(xmlpath, "indexdir/000d0020/%s/", (LPCSTR)hash_prefix->text);
+                else
+                {
+                    uidHash(it->first.c_str(), studyHash, sizeof(studyHash));
+                    sprintf_s(xmlpath, "indexdir/000d0020/%c%c/%c%c/%c%c/%c%c/", studyHash[0], studyHash[1],
+                        studyHash[2], studyHash[3], studyHash[4], studyHash[5], studyHash[6], studyHash[7]);
+                }
                 if(MkdirRecursive(xmlpath))
                 {
                     strcat_s(xmlpath, it->first.c_str());
@@ -165,6 +180,15 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
                 {
                     instance->setAttribute(L"id", clc.file.instanceUID);
                     instance->setAttribute(L"xfer", clc.file.xfer);
+                    if(clc.file.PathSeparator() == '/')
+                        instance->setAttribute(L"url", clc.file.unique_filename);
+                    else
+                    {
+                        char buff[sizeof(clc.file.unique_filename)];
+                        strcpy_s(buff, clc.file.unique_filename);
+                        replace(buff, buff + sizeof(buff), '\\', '/');
+                        instance->setAttribute(L"url", buff);
+                    }
                 }
                 else
                 {

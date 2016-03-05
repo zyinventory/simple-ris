@@ -4,12 +4,15 @@
 
 using namespace std;
 
-bool CMOVE_FILE_SECTION::StorePath()
+const char* CMOVE_FILE_SECTION::StorePath(char sp)
 {
     uidHash(studyUID, unique_filename, sizeof(unique_filename));
-    unique_filename[8] = '\\';
-    SeriesInstancePath(seriesUID, instanceUID, unique_filename + 9, sizeof(unique_filename) - 9);
-    return true;
+    unique_filename[8] = sp;
+    SeriesInstancePath(seriesUID, instanceUID, unique_filename + 9, sizeof(unique_filename) - 9, sp);
+    sprintf_s(hash, "%c%c%c%c%c%c%c%c%c%c%c",
+        unique_filename[0], unique_filename[1], sp, unique_filename[2], unique_filename[3], sp, 
+        unique_filename[4], unique_filename[5], sp, unique_filename[6], unique_filename[7]);
+    return unique_filename;
 }
 
 static list<CMOVE_LOG_CONTEXT> workers, queue_compress;
@@ -30,7 +33,7 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "archdir\\%s\\", lc.file.studyUID);
     lc.file.StorePath();
     strcpy_s(cmd + ctn, sizeof(cmd) - ctn, lc.file.unique_filename);
-    if(!prepareFileDir(mkdir_ptr))
+    if(!PrepareFileDir(mkdir_ptr))
     {
         char msg[1024];
         strerror_s(msg, errno);

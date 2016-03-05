@@ -640,7 +640,7 @@ int main(int argc, char *argv[])
 		if (fileNames.empty())
 			app.printError("no input files: DICOMDIR not created");
 	}
-	prepareFileDir(opt_output);
+	PrepareFileDir(opt_output);
 
 #ifdef BUILD_DCMGPDIR_AS_DCMMKDIR
 	// add image support to DICOMDIR class
