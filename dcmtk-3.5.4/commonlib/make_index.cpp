@@ -3,9 +3,12 @@
 #include "commonlib_internal.h"
 #import <msxml3.dll>
 
+#define XML_HEADER "<?xml version=\"1.0\" encoding=\"GBK\"?>"
+
 using namespace std;
 
-static map<string, MSXML2::IXMLDOMDocument*> study_map;
+static map<string, MSXML2::IXMLDOMDocument*> study_map, association_map;
+
 static MSXML2::IXMLDOMDocument* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
 {
     try
@@ -16,7 +19,8 @@ static MSXML2::IXMLDOMDocument* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
         {
             pXMLDom->preserveWhiteSpace = VARIANT_FALSE;
 	        pXMLDom->async = VARIANT_FALSE;
-            MSXML2::IXMLDOMElementPtr pRoot = pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"study", L"http://www.kurumi.com.cn/xsd/study");
+            pXMLDom->appendChild(pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"study", L"http://www.kurumi.com.cn/xsd/study"));
+            MSXML2::IXMLDOMElementPtr pRoot = pXMLDom->documentElement;
             if(pRoot)
             {
                 hr = pRoot->setAttribute(L"id", clc.file.studyUID);
@@ -35,7 +39,7 @@ static MSXML2::IXMLDOMDocument* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
                     hr = pRoot->setAttribute(L"date", clc.study.studyDate);
                     hr = pRoot->setAttribute(L"time", clc.study.studyTime);
                 }
-                pXMLDom->appendChild(pRoot);
+                
             }
             MSXML2::IXMLDOMDocument *pdom = pXMLDom.Detach();
             return pdom;
@@ -44,17 +48,67 @@ static MSXML2::IXMLDOMDocument* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
     }
 	catch(_com_error &ex) 
 	{
-		cerr << ex.ErrorMessage() << endl;
+		cerr << "create_xmldom() failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
 		return NULL;
 	}
 	catch(char * message)
 	{
-		cerr << message << endl;
+		cerr << "create_xmldom() failed: " << message << endl;
 		return NULL;
 	}
 }
 
-void clear_study_map()
+static void add_association(MSXML2::IXMLDOMDocument *pXMLDom)
+{
+    if(pXMLDom == NULL) return;
+    try
+    {
+        MSXML2::IXMLDOMNodePtr assoc = pXMLDom->selectSingleNode(L"/study/association");
+        if(assoc == NULL) return;
+        string assoc_id((LPCSTR)assoc->attributes->getNamedItem(L"id")->text);
+        MSXML2::IXMLDOMDocument *pa = association_map[assoc_id];
+        MSXML2::IXMLDOMDocumentPtr pDomAssoc;
+        MSXML2::IXMLDOMNodePtr rec_assoc;
+        bool insert_new = false;
+        if(pa == NULL)
+        {
+            pDomAssoc.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+            pDomAssoc->preserveWhiteSpace = VARIANT_FALSE;
+	        pDomAssoc->async = VARIANT_FALSE;
+            rec_assoc = pDomAssoc->createNode(MSXML2::NODE_ELEMENT, L"receive_association", L"http://www.kurumi.com.cn/xsd/study");
+            pDomAssoc->appendChild(rec_assoc);
+            for(long i = 0; i < assoc->attributes->Getlength(); ++i)
+            {
+                MSXML2::IXMLDOMNodePtr attr = assoc->attributes->Getitem(i);
+                pDomAssoc->documentElement->setAttribute(attr->nodeName, attr->text);
+            }
+            insert_new = true;
+        }
+        else
+        {
+            pDomAssoc.Attach(pa);
+            rec_assoc = pDomAssoc->selectSingleNode(L"/receive_association");
+        }
+
+        if(rec_assoc)
+        {
+            MSXML2::IXMLDOMNodePtr study = pXMLDom->selectSingleNode(L"/study");
+            if(study) rec_assoc->appendChild(study->cloneNode(VARIANT_FALSE));
+            pa = pDomAssoc.Detach();
+            if(insert_new) association_map[assoc_id] = pa;
+        }
+    }
+    catch(_com_error &ex) 
+	{
+        cerr << "add_association() failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
+	}
+	catch(char * message)
+	{
+		cerr << "add_association() failed: " << message << endl;
+	}
+}
+
+void clear_map()
 {
     for(map<string, MSXML2::IXMLDOMDocument*>::iterator it = study_map.begin(); it != study_map.end(); ++it)
     {
@@ -80,23 +134,55 @@ void clear_study_map()
                     ofstream fxml(xmlpath, ios_base::trunc | ios_base::out, _SH_DENYNO);
                     if(fxml.good())
                     {
-                        fxml << "<?xml version=\"1.0\" encoding=\"GBK\"?>" << (LPCSTR)pXMLDom->xml << endl;
+                        fxml << XML_HEADER << (LPCSTR)pXMLDom->xml << endl;
                         fxml.close();
+                        add_association(pXMLDom);
                     }
                 }
                 else
                 {
-                    cerr << "can't create path " << xmlpath << endl;
+                    cerr << "can't save " << xmlpath << endl;
                 }
                 pXMLDom->Release();
             }
         }
 	    catch(_com_error &ex) 
 	    {
-		    cerr << ex.ErrorMessage() << endl;
+		    cerr << "clear_map() clear study failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
 	    }
     }
     study_map.clear();
+
+    for(map<string, MSXML2::IXMLDOMDocument*>::iterator it = association_map.begin(); it != association_map.end(); ++it)
+    {
+        MSXML2::IXMLDOMDocument *pDomAssoc = it->second;
+        if(pDomAssoc == NULL) continue;
+        try
+        {
+            MSXML2::IXMLDOMNodePtr assoc = pDomAssoc->selectSingleNode(L"/receive_association");
+            string xmlpath((LPCSTR)assoc->attributes->getNamedItem(L"id")->text);
+            xmlpath.insert(8, 1, '/');
+            xmlpath.insert(6, 1, '/');
+            xmlpath.insert(4, 1, '/');
+            xmlpath.insert(0, "indexdir/receive/");
+            xmlpath.append(".xml");
+            if(PrepareFileDir(xmlpath.c_str()))
+            {
+                ofstream fxml(xmlpath.c_str(), ios_base::trunc | ios_base::out, _SH_DENYNO);
+                if(fxml.good())
+                {
+                    fxml << XML_HEADER << (LPCSTR)pDomAssoc->xml << endl;
+                    fxml.close();
+                }
+            }
+            pDomAssoc->Release();
+        }
+        catch(_com_error &ex) 
+	    {
+		    cerr << "clear_map() clear association failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
+	    }
+    }
+    association_map.clear();
 }
 
 static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTEXT &clc)
@@ -219,11 +305,11 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
     }
 	catch(_com_error &ex) 
 	{
-		cerr << ex.ErrorMessage() << endl;
+		cerr << "add_instance() failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
 	}
 	catch(char * message)
 	{
-		cerr << message << endl;
+		cerr << "add_instance() failed: " << message << endl;
 	}
 }
 

@@ -76,6 +76,6 @@ DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid);
 // ------------ Make Index ------------
 
 errno_t make_index(const CMOVE_LOG_CONTEXT &clc);
-void clear_study_map();
+void clear_map();
 
 #endif //COMMONLIB_INTERNAL

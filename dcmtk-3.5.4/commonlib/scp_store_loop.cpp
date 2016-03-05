@@ -223,7 +223,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     if(objs) delete[] objs;
     if(cbs) delete[] cbs;
     NamedPipe_CloseHandle(true);
-    clear_study_map();
+    clear_map();
     if(com_init) CoUninitialize();
 
     WIN32_FIND_DATA wfd;
