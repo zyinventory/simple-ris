@@ -49,7 +49,7 @@ int echoUsage(const _TCHAR *app)
 	return -1;
 }
 
-bool readKeyFromTxt(const char *keyPath)
+bool readKeyFromTxt(const char *keyPath, const string &lockString)
 {
 	ifstream keystrm(keyPath);
 	if(!keystrm.good())
@@ -58,6 +58,29 @@ bool readKeyFromTxt(const char *keyPath)
 		return false;
 	}
 	bool keyOK = false;
+    string header(lockString);
+    header.append("主");
+    regex headerPattern("^(\\d+)主.+$");
+    while(! keystrm.getline(buffer, MAX_PATH).fail())
+    {
+		match_results<const _TCHAR*> result;
+		if(regex_match(buffer, result, headerPattern))
+		{
+            if(strstr(buffer, header.c_str()) == buffer)
+            {
+                cerr << "key section is found: " << buffer << endl;
+                keyOK = true;
+                break;
+            }
+#ifdef _DEBUG
+            else
+            {
+                cerr << "key section is not match: " << buffer << endl;
+            }
+#endif
+        }
+    }
+    if(! keyOK) return false;
 	regex linePattern("^key(\\d) *= *(\\d+)$");
 	while(! keystrm.getline(buffer, MAX_PATH).fail())
 	{
@@ -264,12 +287,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	if(isInit)
 	{
 		if(argc < 4) return echoUsage(argv[0]);
-		// read key.txt
-		if(!readKeyFromTxt(argv[3]))
-		{
-			cerr << "key文件格式错误" << endl;
-			return -7;
-		}
 		// init_lock_passwd and init_rw_passwd
 		if(argc >= 5) strcpy_s(init_lock_passwd, 9, argv[4]);
 		if(argc >= 6) strcpy_s(init_rw_passwd, 9, argv[5]);
@@ -297,16 +314,28 @@ int _tmain(int argc, _TCHAR* argv[])
 	serialStringStream << lockNumber;
 	string lockString = serialStringStream.str();
 	cerr << "加密狗序列号:" << lockString << endl;
+    	
+    // read key.txt
+	if(!readKeyFromTxt(argv[3], lockString))
+	{
+		cerr << "key文件格式错误" << endl;
+		return -7;
+	}
 
 	if(isInit && _mkdir(lockString.c_str()))
 	{
 		int err = errno;
 		if(errno == EEXIST)
+#ifdef _DEBUG
+            goto mkdir_ok;
+#else
 			cerr << "目录" << lockString << "已存在，不能覆盖" << endl;
+#endif
 		else
 			cerr << "创建目录" << lockString << "错误:" << err << endl;
 		return err;
 	}
+mkdir_ok:
 	if(_chdir(lockString.c_str()))
 	{
 		int err = errno;
