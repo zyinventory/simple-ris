@@ -132,7 +132,7 @@ COMMONLIB_API bool MkdirRecursive(const char *subdir)
     {
         return true;
     }
-
+    // reverse strcspn()
     const char *p = subdir + strlen(subdir);
     while(p != subdir && *p != '/' && *p != '\\') --p;
     if(p != subdir)
@@ -160,6 +160,7 @@ COMMONLIB_API bool MkdirRecursive(const char *subdir)
 
 COMMONLIB_API bool PrepareFileDir(const char *path)
 {
+    // reverse strcspn()
     const char *p = path + strlen(path);
     while(p != path && *p != '/' && *p != '\\') --p;
     if(p != path)

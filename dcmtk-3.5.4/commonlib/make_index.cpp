@@ -237,6 +237,7 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
         }
 
         bool new_series = false;
+        char modality[17] = "OT";
         sprintf_s(filter, "series[@id='%s']", clc.file.seriesUID);
         MSXML2::IXMLDOMElementPtr series = root->selectSingleNode(filter);
         if(series == NULL)
@@ -246,8 +247,18 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
             {
                 new_series = true;
                 series->setAttribute(L"id", clc.file.seriesUID);
-                if(strcmp(clc.file.seriesUID, clc.series.seriesUID) == 0)
-                    series->setAttribute(L"modality", clc.series.modality);
+                if(strcmp(clc.file.seriesUID, clc.series.seriesUID) == 0 && strlen(clc.series.modality) > 0)
+                {
+                    strcpy_s(modality, clc.series.modality);
+                    series->setAttribute(L"modality", modality);
+                }
+                else
+                {   // get first token of file name as modality
+                    size_t cnt = strchr(clc.file.filename, '.') - clc.file.filename;
+                    if(cnt < sizeof(modality) && cnt > 0)
+                        strncpy_s(modality, clc.file.filename, cnt);
+                    series->setAttribute(L"modality", modality);
+                }
             }
             else
             {
@@ -288,16 +299,16 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
                 MSXML2::IXMLDOMNodePtr attr = root->attributes->getNamedItem(L"modality");
                 if(attr)
                 {
-                    if(NULL == strstr((LPCSTR)attr->text, clc.series.modality))
+                    if(NULL == strstr((LPCSTR)attr->text, modality))
                     {
                         attr->text += L",";
-                        attr->text += clc.series.modality;
+                        attr->text += modality;
                     }
                 }
                 else
                 {
                     MSXML2::IXMLDOMNodePtr attr = pXMLDom->createAttribute(L"modality");
-                    attr->text = clc.series.modality;
+                    attr->text = modality;
                     root->attributes->setNamedItem(attr);
                 }
             }

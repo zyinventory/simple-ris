@@ -20,9 +20,10 @@ static DWORD refresh_files(bool timeout)
     char fileFilter[MAX_PATH] = "log\\*.dfc";
     int pathLen = 4;
 
-    if(timeout && hDirNotify == NULL) return ERROR_SUCCESS;;
+    if(timeout && hDirNotify == NULL) return ERROR_BAD_ARGUMENTS;;
 
     HANDLE hDiskSearch = FindFirstFile(fileFilter, &wfd);
+    if(hDiskSearch == INVALID_HANDLE_VALUE) return GetLastError();
     list<string> dfc_files;
     do
 	{
@@ -228,19 +229,21 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 
     WIN32_FIND_DATA wfd;
     HANDLE hDiskSearch = FindFirstFile("log\\*.dfc", &wfd);
-    do
-	{
-        string dfc(wfd.cFileName);
-        if (dfc.compare(".") == 0 || dfc.compare("..") == 0) 
-			continue; // skip . ..
-        if(0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-        {
-            string to_del("log\\");
-            to_del.append(dfc);
-            remove(to_del.c_str());
-        }
-	} while (FindNextFile(hDiskSearch, &wfd));
-	FindClose(hDiskSearch); // ¹Ø±Õ²éÕÒ¾ä±ú
-
+    if(hDiskSearch != INVALID_HANDLE_VALUE)
+    {
+        do
+	    {
+            string dfc(wfd.cFileName);
+            if (dfc.compare(".") == 0 || dfc.compare("..") == 0) 
+			    continue; // skip . ..
+            if(0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+            {
+                string to_del("log\\");
+                to_del.append(dfc);
+                remove(to_del.c_str());
+            }
+	    } while (FindNextFile(hDiskSearch, &wfd));
+	    FindClose(hDiskSearch); // ¹Ø±Õ²éÕÒ¾ä±ú
+    }
     return gle;
 }
