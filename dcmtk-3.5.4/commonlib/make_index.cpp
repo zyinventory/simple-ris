@@ -40,6 +40,8 @@ static MSXML2::IXMLDOMDocument* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
                     hr = pRoot->setAttribute(L"time", clc.study.studyTime);
                 }
                 
+                MSXML2::IXMLDOMNodePtr pAssociations = pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"associations", L"http://www.kurumi.com.cn/xsd/study");
+                pXMLDom->documentElement->appendChild(pAssociations);
             }
             MSXML2::IXMLDOMDocument *pdom = pXMLDom.Detach();
             return pdom;
@@ -63,39 +65,42 @@ static void add_association(MSXML2::IXMLDOMDocument *pXMLDom)
     if(pXMLDom == NULL) return;
     try
     {
-        MSXML2::IXMLDOMNodePtr assoc = pXMLDom->selectSingleNode(L"/study/association");
-        if(assoc == NULL) return;
-        string assoc_id((LPCSTR)assoc->attributes->getNamedItem(L"id")->text);
-        MSXML2::IXMLDOMDocument *pa = association_map[assoc_id];
-        MSXML2::IXMLDOMDocumentPtr pDomAssoc;
-        MSXML2::IXMLDOMNodePtr rec_assoc;
-        bool insert_new = false;
-        if(pa == NULL)
+        MSXML2::IXMLDOMNodeListPtr pAssociations = pXMLDom->selectNodes(L"/study/associations/association");
+        if(pAssociations == NULL) return;
+        while(MSXML2::IXMLDOMNodePtr assoc = pAssociations->nextNode())
         {
-            pDomAssoc.CreateInstance(__uuidof(MSXML2::DOMDocument30));
-            pDomAssoc->preserveWhiteSpace = VARIANT_FALSE;
-	        pDomAssoc->async = VARIANT_FALSE;
-            rec_assoc = pDomAssoc->createNode(MSXML2::NODE_ELEMENT, L"receive_association", L"http://www.kurumi.com.cn/xsd/study");
-            pDomAssoc->appendChild(rec_assoc);
-            for(long i = 0; i < assoc->attributes->Getlength(); ++i)
+            string assoc_id((LPCSTR)assoc->attributes->getNamedItem(L"id")->text);
+            MSXML2::IXMLDOMDocument *pa = association_map[assoc_id];
+            MSXML2::IXMLDOMDocumentPtr pDomAssoc;
+            MSXML2::IXMLDOMNodePtr rec_assoc;
+            bool insert_new = false;
+            if(pa == NULL)
             {
-                MSXML2::IXMLDOMNodePtr attr = assoc->attributes->Getitem(i);
-                pDomAssoc->documentElement->setAttribute(attr->nodeName, attr->text);
+                pDomAssoc.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+                pDomAssoc->preserveWhiteSpace = VARIANT_FALSE;
+	            pDomAssoc->async = VARIANT_FALSE;
+                rec_assoc = pDomAssoc->createNode(MSXML2::NODE_ELEMENT, L"receive_association", L"http://www.kurumi.com.cn/xsd/study");
+                pDomAssoc->appendChild(rec_assoc);
+                for(long i = 0; i < assoc->attributes->Getlength(); ++i)
+                {
+                    MSXML2::IXMLDOMNodePtr attr = assoc->attributes->Getitem(i);
+                    pDomAssoc->documentElement->setAttribute(attr->nodeName, attr->text);
+                }
+                insert_new = true;
             }
-            insert_new = true;
-        }
-        else
-        {
-            pDomAssoc.Attach(pa);
-            rec_assoc = pDomAssoc->selectSingleNode(L"/receive_association");
-        }
+            else
+            {
+                pDomAssoc.Attach(pa);
+                rec_assoc = pDomAssoc->selectSingleNode(L"/receive_association");
+            }
 
-        if(rec_assoc)
-        {
-            MSXML2::IXMLDOMNodePtr study = pXMLDom->selectSingleNode(L"/study");
-            if(study) rec_assoc->appendChild(study->cloneNode(VARIANT_FALSE));
-            pa = pDomAssoc.Detach();
-            if(insert_new) association_map[assoc_id] = pa;
+            if(rec_assoc)
+            {
+                MSXML2::IXMLDOMNodePtr study = pXMLDom->selectSingleNode(L"/study");
+                if(study) rec_assoc->appendChild(study->cloneNode(VARIANT_FALSE));
+                pa = pDomAssoc.Detach();
+                if(insert_new) association_map[assoc_id] = pa;
+            }
         }
     }
     catch(_com_error &ex) 
@@ -190,28 +195,32 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
     try
     {
         char filter[128];
-        MSXML2::IXMLDOMNodePtr root = pXMLDom->lastChild;
+        MSXML2::IXMLDOMElementPtr root = pXMLDom->documentElement;
         if(root == NULL)
         {
-            cerr << "XMLDOM can't find root element." << endl;
+            cerr << "XMLDOM can't find associations element." << endl;
             return;
         }
         if(strlen(clc.assoc.id) > 0)
         {
-            sprintf_s(filter, "association[@id='%s']", clc.assoc.id);
-            MSXML2::IXMLDOMElementPtr asso = root->selectSingleNode(filter);
-            if(asso == NULL)
+            MSXML2::IXMLDOMNodePtr assocCollection = root->selectSingleNode(L"associations");
+            if(assocCollection)
             {
-                asso = pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"association", L"http://www.kurumi.com.cn/xsd/study");
-                if(asso)
+                sprintf_s(filter, "association[@id='%s']", clc.assoc.id);
+                MSXML2::IXMLDOMElementPtr asso = assocCollection->selectSingleNode(filter);
+                if(asso == NULL)
                 {
-                    asso->setAttribute(L"id", clc.assoc.id);
-                    asso->setAttribute(L"calling_ae", clc.assoc.callingAE);
-                    asso->setAttribute(L"calling_address", clc.assoc.callingAddr);
-                    asso->setAttribute(L"called_ae", clc.assoc.calledAE);
-                    asso->setAttribute(L"called_address", clc.assoc.calledAddr);
-                    asso->setAttribute(L"port", clc.assoc.port);
-                    root->appendChild(asso);
+                    asso = pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"association", L"http://www.kurumi.com.cn/xsd/study");
+                    if(asso)
+                    {
+                        asso->setAttribute(L"id", clc.assoc.id);
+                        asso->setAttribute(L"calling_ae", clc.assoc.callingAE);
+                        asso->setAttribute(L"calling_address", clc.assoc.callingAddr);
+                        asso->setAttribute(L"called_ae", clc.assoc.calledAE);
+                        asso->setAttribute(L"called_address", clc.assoc.calledAddr);
+                        asso->setAttribute(L"port", clc.assoc.port);
+                        assocCollection->appendChild(asso);
+                    }
                 }
             }
         }
@@ -292,6 +301,17 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
                     cerr << "ERROR: create instance node " << clc.file.instanceUID << " failed." << endl;
                 }
                 series->appendChild(instance);
+            }
+            if(strlen(clc.assoc.id) > 0)
+            {
+                MSXML2::IXMLDOMNodePtr receive_from = pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"receive_from", L"http://www.kurumi.com.cn/xsd/study");
+                if(receive_from)
+                {
+                    MSXML2::IXMLDOMNodePtr attr = pXMLDom->createAttribute(L"id");
+                    attr->text = clc.assoc.id;
+                    receive_from->attributes->setNamedItem(attr);
+                    instance->appendChild(receive_from);
+                }
             }
             if(new_series)
             {

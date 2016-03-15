@@ -136,6 +136,7 @@ static QuerySyntax querySyntax[3] = {
       UID_MOVEPatientStudyOnlyQueryRetrieveInformationModel }
 };
 
+static DWORD random = 0;
 
 static void
 errmsg(const char *msg,...)
@@ -667,6 +668,7 @@ main(int argc, char *argv[])
             errmsg("cannot create log.txt: %d %s", dw, strerror(dw));
             return 1;
         }
+        random = (DWORD)hd;
         int fd = _open_osfhandle((intptr_t)hd, _O_APPEND | _O_TEXT);
         if(fd == -1)
         {
@@ -1342,7 +1344,8 @@ subOpCallback(void * /*subOpCallbackData*/ ,
         localtime_s(&localtime, &storeTimeThis.time);
         strftime(timeBuffer, sizeof(timeBuffer), "%Y%m%d%H%M%S", &localtime);
 
-        fprintf_s(fplog, "T 00010010 %s%03d_%d %s %s %s %d %s\n", timeBuffer, storeTimeThis.millitm, _getpid(),
+        fprintf_s(fplog, "T 00010010 %s%03d-%x-%x %s %s %s %d %s\n",
+            timeBuffer, storeTimeThis.millitm, _getpid(), random,
             (*subAssoc)->params->DULparams.callingAPTitle, 
             (*subAssoc)->params->DULparams.callingPresentationAddress,
             (*subAssoc)->params->DULparams.calledAPTitle, aNet->acceptorPort, 
