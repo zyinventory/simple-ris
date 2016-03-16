@@ -152,16 +152,17 @@ static BOOL SetPrivilege(LPCTSTR lpszPrivilege, BOOL bEnablePrivilege)
 
 typedef struct
 {
-    struct _timeb tb;
-    __time64_t diff;
+    struct
+    {
+        struct _timeb tb;
+        __time64_t diff;
+    } time_part;
     int checksum;
     int get_checksum()
     {
-        BYTE *vb = reinterpret_cast<BYTE*>(&this->tb);
+        BYTE *vb = reinterpret_cast<BYTE*>(&this->time_part);
         int sum = 0;
-        for(int i = 0; i < sizeof(_timeb); ++i) sum += vb[i];
-        vb = reinterpret_cast<BYTE*>(&this->diff);
-        for(int i = 0; i < sizeof(__time64_t); ++i) sum += vb[i];
+        for(int i = 0; i < sizeof(time_part); ++i) sum += vb[i];
         return sum;
     }
     bool verify()
@@ -254,7 +255,7 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
                     displayErrorToCerr_public(prefix, dw);
                 }
             }
-            hmap = CreateFileMapping(hfile, NULL, PAGE_READWRITE | SEC_COMMIT, 0, sysinfo.dwAllocationGranularity, mappingName);
+            hmap = CreateFileMapping(hfile, NULL, PAGE_READWRITE | SEC_COMMIT, 0, sizeof(MapHistory), mappingName);
             dw = GetLastError();
             if(hmap == NULL && dw != ERROR_ALREADY_EXISTS)
             {
@@ -291,6 +292,7 @@ hmap_OK:
             if(hmap)
             {
                 if(pMapHistory) delete pMapHistory;
+                // MAKE_QWORD(offset_high, offset_low) must be times of sysinfo.dwAllocationGranularity
                 pMapHistory = static_cast<MapHistory*>(MapViewOfFile(hmap, FILE_MAP_WRITE, 0, 0, sizeof(MapHistory)));
                 dw = GetLastError();
                 if(pMapHistory == NULL)
@@ -317,23 +319,23 @@ hmap_OK:
     }
 
     _ftime_s(&storeTimeThis);
-    if(storeTimeThis.time < pMapHistory->tb.time || (storeTimeThis.time == pMapHistory->tb.time && storeTimeThis.millitm <= pMapHistory->tb.millitm))
+    if(storeTimeThis.time < pMapHistory->time_part.tb.time || (storeTimeThis.time == pMapHistory->time_part.tb.time && storeTimeThis.millitm <= pMapHistory->time_part.tb.millitm))
     {
-        if(pMapHistory->tb.millitm == 999)
+        if(pMapHistory->time_part.tb.millitm == 999)
         {
-            ++pMapHistory->tb.time;
-            pMapHistory->tb.millitm = 0;
+            ++pMapHistory->time_part.tb.time;
+            pMapHistory->time_part.tb.millitm = 0;
         }
         else
-            ++pMapHistory->tb.millitm;
+            ++pMapHistory->time_part.tb.millitm;
 
-        pMapHistory->diff = (pMapHistory->tb.time - storeTimeThis.time) * 1000 + pMapHistory->tb.millitm - storeTimeThis.millitm;
-        storeTimeThis = pMapHistory->tb;
+        pMapHistory->time_part.diff = (pMapHistory->time_part.tb.time - storeTimeThis.time) * 1000 + pMapHistory->time_part.tb.millitm - storeTimeThis.millitm;
+        storeTimeThis = pMapHistory->time_part.tb;
     }
     else
     {
-        pMapHistory->tb = storeTimeThis;
-        pMapHistory->diff = 0;
+        pMapHistory->time_part.tb = storeTimeThis;
+        pMapHistory->time_part.diff = 0;
     }
     pMapHistory->checksum = pMapHistory->get_checksum();
     if(owner_mutex) ReleaseMutex(mutex_seq);
@@ -342,7 +344,7 @@ hmap_OK:
     localtime_s(&localtime, &storeTimeThis.time);
     int buf_pos = sprintf_s(pbuf, buf_size, "%s", prefix);
     buf_pos += strftime(pbuf + buf_pos, buf_size - buf_pos, "%Y%m%d%H%M%S", &localtime);
-    buf_pos += sprintf_s(pbuf + buf_pos, buf_size - buf_pos, ".%03hdT%+04d-%lld_%03d", storeTimeThis.millitm, -storeTimeThis.timezone, pMapHistory->diff, sessionId);
+    buf_pos += sprintf_s(pbuf + buf_pos, buf_size - buf_pos, ".%03hdT%+04d-%lld_%03d", storeTimeThis.millitm, -storeTimeThis.timezone, pMapHistory->time_part.diff, sessionId);
     return buf_pos;
 }
 
