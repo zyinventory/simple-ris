@@ -121,7 +121,6 @@ int               opt_dimse_timeout = 0;
 int               opt_acse_timeout = 30;
 OFBool            opt_ignorePendingDatasets = OFTrue;
 OFString          opt_sessionId;
-FILE              *fplog = NULL;
 OFList<OFString>  patients, studies, series;
 size_t            instances = 0x00011000;
 
@@ -136,7 +135,12 @@ static QuerySyntax querySyntax[3] = {
       UID_MOVEPatientStudyOnlyQueryRetrieveInformationModel }
 };
 
-static DWORD random = 0;
+#define STATE_DIR_NO_SP "state"
+#define STATE_DIR       "state\\"
+#define STORE_RELEASE   "T FFFFFFFF"
+#define STORE_ABORT     "T FFFFFFFD"
+#define MOVE_RELEASE    "M FFFFFFFF"
+#define MOVE_ABORT      "M FFFFFFFD"
 
 static void
 errmsg(const char *msg,...)
@@ -150,14 +154,48 @@ errmsg(const char *msg,...)
     fprintf(stderr, "\n");
 }
 
+static _timeb current_sequence_val = {0LL, 0, 0, 0};
+static __time64_t current_sequence_val_diff;
+static size_t in_process_sequence(char *buff, size_t buff_size, const char *prefix)
+{
+    if(strcpy_s(buff, buff_size, prefix)) return 0;
+    size_t buff_used = strlen(buff);
+
+    struct _timeb storeTimeThis;
+    struct tm localtime;
+    _ftime_s(&storeTimeThis);
+    if(storeTimeThis.time < current_sequence_val.time || (storeTimeThis.time == current_sequence_val.time && storeTimeThis.millitm <= current_sequence_val.millitm))
+    {
+        if(current_sequence_val.millitm == 999)
+        {
+            ++current_sequence_val.time;
+            current_sequence_val.millitm = 0;
+        }
+        else
+            ++current_sequence_val.millitm;
+
+        current_sequence_val_diff = (current_sequence_val.time - storeTimeThis.time) * 1000 + current_sequence_val.millitm - storeTimeThis.millitm;
+        storeTimeThis = current_sequence_val;
+    }
+    else
+    {
+        current_sequence_val = storeTimeThis;
+        current_sequence_val_diff = 0;
+    }
+
+    localtime_s(&localtime, &storeTimeThis.time);
+    size_t sf_size = strftime(buff + buff_used, buff_size - buff_used, "%Y%m%d%H%M%S", &localtime);
+    if(sf_size == 0) return 0;
+    buff_used += sf_size;
+    int sp_size = sprintf_s(buff + buff_used, buff_size - buff_used, ".%03hd-%lld-%x", 
+        storeTimeThis.millitm, current_sequence_val_diff, _getpid());
+    if(sp_size == -1) return 0;
+    buff_used += sp_size;
+    return buff_used;
+}
+
 static void exitHook()
 {
-    if(fplog != NULL)
-    {
-        char term[] = "T FFFFFFFF\n";
-        fwrite(term, sizeof(term) -1, 1, fplog);
-        fclose(fplog);
-    }
 }
 
 static void
@@ -661,28 +699,14 @@ main(int argc, char *argv[])
             errmsg("cannot change working dir to %s", opt_sessionId.c_str());
             return 1;
         }
-        HANDLE hd = CreateFile("cmove.txt", FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-        if(hd == INVALID_HANDLE_VALUE)
+
+        mkdir_ret =_mkdir(STATE_DIR_NO_SP);
+        if(mkdir_ret && errno != EEXIST)
         {
-            DWORD dw = errno;
-            errmsg("cannot create log.txt: %d %s", dw, strerror(dw));
-            return 1;
+            errmsg("cannot mkdir %s", STATE_DIR);
+            return 2;
         }
-        random = (DWORD)hd;
-        int fd = _open_osfhandle((intptr_t)hd, _O_APPEND | _O_TEXT);
-        if(fd == -1)
-        {
-            DWORD dw = errno;
-            errmsg("cannot create log.txt: %d %s", dw, strerror(dw));
-            return 1;
-        }
-        fplog = _fdopen(fd, "a");
-        if(fplog == NULL)
-        {
-            DWORD dw = errno;
-            errmsg("cannot create log.txt: %d %s", dw, strerror(dw));
-            return 1;
-        }
+
         atexit(exitHook);
     }
 
@@ -1164,7 +1188,23 @@ storeSCPCallback(
             strmbuf << "F " << hex << setw(8) << setfill('0') << uppercase << instances << endl;
             ++instances;
             OFString sw = strmbuf.str();
-            fwrite(sw.c_str(), 1, sw.length(), fplog); fflush(fplog);
+
+            char filename[MAX_PATH];
+            size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
+            if(used > 0 && 0 == strcpy_s(filename + used, sizeof(filename) - used, "_F.dfc"))
+            {
+                FILE *fplog = fopen(filename, "a");
+                if(fplog != NULL)
+                {
+                    fwrite(sw.c_str(), 1, sw.length(), fplog); fflush(fplog);
+                    fclose(fplog);
+                }
+            }
+            else
+            {
+                cerr << "can't create sequence file name, missing command: " << sw.c_str() << endl;
+            }
+
             sw.clear();
             strmbuf.str(sw);
 
@@ -1299,6 +1339,31 @@ subOpSCP(T_ASC_Association **subAssoc)
             break;
         }
     }
+
+    if(cond != EC_Normal)
+    {
+        char filename[MAX_PATH], term[16];
+        if(cond == DUL_PEERREQUESTEDRELEASE)
+            strcpy_s(term, STORE_RELEASE);
+        else
+            strcpy_s(term, STORE_ABORT);
+
+        size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
+        if(used > 0 && 0 == strcpy_s(filename + used, sizeof(filename) - used, "_T.dfc"))
+        {
+            FILE *fplog = fopen(filename, "a");
+            if(fplog != NULL)
+            {
+                strcat_s(term, "\n");
+                fwrite(term, strlen(term), 1, fplog);
+                fclose(fplog);
+            }
+        }
+        else
+        {
+            cerr << "can't create sequence file name, missing command: " << term << endl;
+        }
+    }
     /* clean up on association termination */
     if (cond == DUL_PEERREQUESTEDRELEASE)
     {
@@ -1337,20 +1402,24 @@ subOpCallback(void * /*subOpCallbackData*/ ,
         /* negotiate association */
         acceptSubAssoc(aNet, subAssoc);
 
-        struct _timeb storeTimeThis;
-        struct tm localtime;
-        char timeBuffer[16];
-        _ftime_s(&storeTimeThis);
-        localtime_s(&localtime, &storeTimeThis.time);
-        strftime(timeBuffer, sizeof(timeBuffer), "%Y%m%d%H%M%S", &localtime);
-
-        fprintf_s(fplog, "T 00010010 %s%03d-%x-%x %s %s %s %d %s\n",
-            timeBuffer, storeTimeThis.millitm, _getpid(), random,
+        FILE *fplog = NULL;
+        char filename[MAX_PATH], seq[64], content[1024];
+        in_process_sequence(seq, sizeof(seq), "");
+        int fn_used = sprintf_s(filename, "%s%s_T.dfc", STATE_DIR, seq);
+        int content_used = sprintf_s(content, "T 00010010 %s %s %s %s %d %s\n", seq,
             (*subAssoc)->params->DULparams.callingAPTitle, 
             (*subAssoc)->params->DULparams.callingPresentationAddress,
             (*subAssoc)->params->DULparams.calledAPTitle, aNet->acceptorPort, 
             (*subAssoc)->params->DULparams.calledPresentationAddress);
-        fflush(fplog);
+        if(fn_used > 0 && (fplog = fopen(filename, "a")))
+        {
+            fwrite(content, content_used, 1, fplog);
+            fclose(fplog);
+        }
+        else
+        {
+            cerr << "can't create sequence file name, missing command: " << content << endl;
+        }
     } else {
         /* be a service class provider */
         subOpSCP(subAssoc);
@@ -1475,13 +1544,34 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
         strcpy(req.MoveDestination, opt_moveDestination);
     }
 
+    FILE *fplog = NULL;
+    char filename[MAX_PATH], seq[64], content[1024];
+    in_process_sequence(seq, sizeof(seq), "");
+    int fn_used = sprintf_s(filename, "%s%s_M.dfc", STATE_DIR, seq);
+    int content_used = sprintf_s(content, "M 00010010 %s %s %s %s %s\n", seq,
+        assoc->params->DULparams.callingAPTitle, 
+        assoc->params->DULparams.callingPresentationAddress,
+        assoc->params->DULparams.calledAPTitle,
+        assoc->params->DULparams.calledPresentationAddress);
+    if(fn_used > 0 && (fplog = fopen(filename, "a")))
+    {
+        fwrite(content, content_used, 1, fplog);
+        fclose(fplog);
+        fplog = NULL;
+    }
+    else
+    {
+        cerr << "can't create sequence file name, missing command: " << content << endl;
+    }
+
     OFCondition cond = DIMSE_moveUser(assoc, presId, &req, dcmff.getDataset(),
         moveCallback, &callbackData, opt_blockMode, opt_dimse_timeout,
         net, subOpCallback, NULL,
         &rsp, &statusDetail, &rspIds, opt_ignorePendingDatasets);
 
+    char term[16];
     if (cond == EC_Normal) {
-        fputs("T FFFFFFFF\n", fplog);  // assoc normal term
+        strcpy_s(term, MOVE_RELEASE);  // assoc normal term
         if (opt_verbose) {
             DIMSE_printCMoveRSP(stdout, &rsp);
             if (rspIds != NULL) {
@@ -1490,10 +1580,27 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
             }
         }
     } else {
-        fputs("T FFFFFFFD\n", fplog);  // assoc abort
+        strcpy_s(term, MOVE_ABORT);  // assoc abort
         errmsg("Move Failed:");
         DimseCondition::dump(cond);
     }
+
+    size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
+    if(used > 0 && 0 == strcpy_s(filename + used, sizeof(filename) - used, "_M.dfc"))
+    {
+        fplog = fopen(filename, "a");
+        if(fplog != NULL)
+        {
+            strcat_s(term, "\n");
+            fwrite(term, strlen(term), 1, fplog);
+            fclose(fplog);
+        }
+    }
+    else
+    {
+        cerr << "can't create sequence file name, missing command: " << term << endl;
+    }
+
     if (statusDetail != NULL) {
         printf("  Status Detail:\n");
         statusDetail->print(COUT);

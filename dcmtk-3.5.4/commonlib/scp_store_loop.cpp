@@ -17,7 +17,7 @@ static bool close_too_late = false;
 static DWORD refresh_files(bool timeout)
 {
     WIN32_FIND_DATA wfd;
-    char fileFilter[MAX_PATH] = "log\\*.dfc";
+    char fileFilter[MAX_PATH] = "state\\*.dfc";
     int pathLen = 4;
 
     if(timeout && hDirNotify == NULL) return ERROR_BAD_ARGUMENTS;;
@@ -38,10 +38,22 @@ static DWORD refresh_files(bool timeout)
     dfc_files.sort();
     bool end_of_move = false;
     list<string>::iterator it = dfc_files.end();
+
+    char *buff_ptr = strchr(fileFilter, '\\');
+    size_t buff_size = sizeof(fileFilter);
+    if(buff_ptr)
+    {
+        ++buff_ptr;
+        buff_size -= (buff_ptr - fileFilter);
+    }
+    else
+    {
+        buff_ptr = fileFilter;
+    }
+
     for(it = dfc_files.begin(); it != dfc_files.end(); ++it)
     {
-        fileFilter[4] = '\0';
-        strcat_s(fileFilter, it->c_str());
+        strcpy_s(buff_ptr, buff_size, it->c_str());
         ifstream ifcmd(fileFilter, ios_base::in, _SH_DENYRW);
         if(ifcmd.fail())
         {
@@ -123,14 +135,14 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         cerr << "无法切换工作目录" << endl;
         return -1;
     }
-    if(!make_relate_dir("log")) return -1;
+    if(!make_relate_dir("state")) return -1;
     if(!make_relate_dir("archdir")) return -1;
     if(!make_relate_dir("indexdir")) return -1;
     bool com_init = (CoInitialize(NULL) == S_OK);
     if(!com_init) return -1;
     
     fn = _getcwd(NULL, 0);
-    fn.append("\\log");
+    fn.append("\\state");
     hDirNotify = FindFirstChangeNotification(fn.c_str(), FALSE, FILE_NOTIFY_CHANGE_SIZE);
     if(hDirNotify == INVALID_HANDLE_VALUE)
     {
@@ -228,7 +240,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     if(com_init) CoUninitialize();
 
     WIN32_FIND_DATA wfd;
-    HANDLE hDiskSearch = FindFirstFile("log\\*.dfc", &wfd);
+    HANDLE hDiskSearch = FindFirstFile("state\\*.dfc", &wfd);
     if(hDiskSearch != INVALID_HANDLE_VALUE)
     {
         do
@@ -238,7 +250,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 			    continue; // skip . ..
             if(0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
             {
-                string to_del("log\\");
+                string to_del("state\\");
                 to_del.append(dfc);
                 remove(to_del.c_str());
             }

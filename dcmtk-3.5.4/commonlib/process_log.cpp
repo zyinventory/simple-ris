@@ -304,7 +304,10 @@ static int cmd_move(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     unsigned int tag = 0;
     cmdstrm >> hex >> tag;
     if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag;
-    return 0;
+    if(tag == ASSOC_TERM || tag == ASSOC_ABORT)
+        return 0;
+    else
+        return 1;
 }
 
 int process_cmd(const string &buf)
