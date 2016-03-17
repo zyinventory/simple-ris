@@ -238,7 +238,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     NamedPipe_CloseHandle(true);
     clear_map();
     if(com_init) CoUninitialize();
-
+    /*
     WIN32_FIND_DATA wfd;
     HANDLE hDiskSearch = FindFirstFile("state\\*.dfc", &wfd);
     if(hDiskSearch != INVALID_HANDLE_VALUE)
@@ -257,5 +257,6 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 	    } while (FindNextFile(hDiskSearch, &wfd));
 	    FindClose(hDiskSearch); // ¹Ø±Õ²éÕÒ¾ä±ú
     }
+    */
     return gle;
 }

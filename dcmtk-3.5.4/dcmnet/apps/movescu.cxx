@@ -1439,21 +1439,38 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
         printf("Move Response %d: ", responseCount);
         DIMSE_printCMoveRSP(stdout, response);
     }
-	// report progress
+
+    std::stringstream strmbuf;
+    strmbuf << "N FFFFFFFB MOVE " << responseCount << endl;
+
+    // report progress
 	printf("trigger move progress:");
 	if (response->opts & O_MOVE_NUMBEROFREMAININGSUBOPERATIONS)
+    {
 		printf(" Remaining: %d ;", response->NumberOfRemainingSubOperations);
+        strmbuf << "A 00001020 " << response->NumberOfRemainingSubOperations << endl;
+    }
     if (response->opts & O_MOVE_NUMBEROFCOMPLETEDSUBOPERATIONS)
+    {
 		printf(" Completed: %d ;", response->NumberOfCompletedSubOperations);
+        strmbuf << "A 00001021 " << response->NumberOfCompletedSubOperations << endl;
+    }
     if (response->opts & O_MOVE_NUMBEROFFAILEDSUBOPERATIONS)
+    {
 		printf(" Failed: %d ;", response->NumberOfFailedSubOperations);
+        strmbuf << "A 00001022 " << response->NumberOfFailedSubOperations << endl;
+    }
     if (response->opts & O_MOVE_NUMBEROFWARNINGSUBOPERATIONS)
+    {
 		printf(" Warning: %d ;", response->NumberOfWarningSubOperations);
+        strmbuf << "A 00001023 " << response->NumberOfWarningSubOperations << endl;
+    }
 	printf("\n");
 
     /* should we send a cancel back ?? */
     if (opt_cancelAfterNResponses == responseCount) {
 		printf("trigger move cancel after: %d\n", opt_cancelAfterNResponses);
+        strmbuf << "A FFFFFFFC " << opt_cancelAfterNResponses << endl;
         if (opt_verbose) {
             printf("Sending Cancel RQ, MsgId: %d, PresId: %d\n",
                 request->MessageID, myCallbackData->presId);
@@ -1464,6 +1481,25 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
             errmsg("Cancel RQ Failed:");
             DimseCondition::dump(cond);
         }
+    }
+    
+    strmbuf << "N FFFFFFFE MOVE" << endl;
+
+    char filename[MAX_PATH];
+    string sw = strmbuf.str();
+    size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
+    if(used > 0 && 0 == strcpy_s(filename + used, sizeof(filename) - used, "_N.dfc"))
+    {
+        FILE *fplog = fopen(filename, "a");
+        if(fplog != NULL)
+        {
+            fwrite(sw.c_str(), 1, sw.length(), fplog); fflush(fplog);
+            fclose(fplog);
+        }
+    }
+    else
+    {
+        cerr << "can't create sequence file name, missing command: " << sw.c_str() << endl;
     }
 }
 

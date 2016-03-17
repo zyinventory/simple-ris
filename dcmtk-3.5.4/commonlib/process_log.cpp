@@ -10,11 +10,21 @@
 #define TYPE_STUDY      'S'
 #define TYPE_SERIES     'E'
 #define TYPE_INSTANCE   'I'
+#define TYPE_NOTIFY     'N'
+#define TYPE_ACK        'A'
 
 #define ASSOC_ESTA  0x00010010
 #define FILE_START  0x00011000
 #define ASSOC_TERM  0xFFFFFFFF
 #define ASSOC_ABORT 0xFFFFFFFD
+
+#define NOTIFY_START    0xFFFFFFFB
+#define NOTIFY_REMAIN   0x00001020
+#define NOTIFY_COMPLETE 0x00001021
+#define NOTIFY_FAILED   0x00001022
+#define NOTIFY_WARNING  0x00001023
+#define NOTIFY_END      0xFFFFFFFE
+#define NOTIFY_CANCEL   0xFFFFFFFC
 
 using namespace std;
 
@@ -335,6 +345,9 @@ int process_cmd(const string &buf)
         break;
     case TYPE_INSTANCE:
         if(lc.file.inFile) cmd_instance(type, cmdstrm, lc);
+        break;
+    case TYPE_NOTIFY:
+    case TYPE_ACK:
         break;
     case TYPE_MOVE:
         return cmd_move(type, cmdstrm, lc);
