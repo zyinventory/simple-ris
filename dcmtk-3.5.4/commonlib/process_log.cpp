@@ -72,7 +72,7 @@ static int cmd_series(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
         }
         break;
     }
-    if(dirty && strlen(lc.series.seriesUID) == 0) strcpy_s(lc.series.seriesUID, lc.file.seriesUID);
+    if(dirty) strcpy_s(lc.series.seriesUID, lc.file.seriesUID);
     return 1;
 }
 
@@ -110,7 +110,7 @@ static int cmd_study(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
         }
         break;
     }
-    if(dirty && strlen(lc.study.studyUID) == 0)
+    if(dirty)
         strcpy_s(lc.study.studyUID, lc.file.studyUID);
     return 1;
 }
@@ -169,7 +169,7 @@ static int cmd_patient(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
         }
         break;
     }
-    if(dirty && strlen(lc.patient.patientID) == 0) strcpy_s(lc.patient.patientID, lc.file.patientID);
+    if(dirty) strcpy_s(lc.patient.patientID, lc.file.patientID);
     return 1;
 }
 
@@ -261,10 +261,8 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
             print_error_file_section(tag, filename, lc.file);
         else // OK, commit file section
         {
-            //test for make_index
-            //compress_queue_to_workers(&lc);
-            if(strlen(lc.file.unique_filename) == 0) lc.file.StorePath();
-            make_index(lc);
+            compress_queue_to_workers(&lc);
+            if(strlen(lc.file.unique_filename) == 0) lc.file.StorePath('\\');
         }
         lc.file.inFile = false;
     }

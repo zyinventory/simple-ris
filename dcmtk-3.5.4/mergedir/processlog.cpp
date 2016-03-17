@@ -9,7 +9,7 @@ static void close_cmdfile(ofstream &cmdfile)
     cmdfile.close();
     inFile = false;
     ++start_write_log;
-    Sleep(rand() % 30);
+    Sleep(10 + rand() % 50);
 }
 
 static void test_sim_slow_log_writer(void *seid)

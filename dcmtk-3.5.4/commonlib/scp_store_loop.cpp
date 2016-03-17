@@ -154,7 +154,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     clear_log_context();
     
     DWORD gle = 0;
-    /*
+    
     gle = NamedPipe_CreateListening(sessionId, false);
     if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
     {
@@ -169,7 +169,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         CloseHandle(hDirNotify);
         return -5;
     }
-    */
+    
     size_t worker_num = 0, all_queue_size = 0;
     HANDLE *objs = NULL;
     WORKER_CALLBACK *cbs = NULL;
@@ -185,7 +185,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 
     // hEventPipe must be alive, hDirNotify is the first exit signal.
     // so worker_num must be 1, all_queue_size must be 0.
-    while(worker_num + all_queue_size > 0)
+    while(worker_num + all_queue_size > 1)
     {
         DWORD wr = WaitForMultipleObjectsEx(worker_num, objs, FALSE, 200, TRUE);
         // switch(wr)
@@ -238,7 +238,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     NamedPipe_CloseHandle(true);
     clear_map();
     if(com_init) CoUninitialize();
-    /*
+    
     WIN32_FIND_DATA wfd;
     HANDLE hDiskSearch = FindFirstFile("state\\*.dfc", &wfd);
     if(hDiskSearch != INVALID_HANDLE_VALUE)
@@ -257,6 +257,6 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 	    } while (FindNextFile(hDiskSearch, &wfd));
 	    FindClose(hDiskSearch); // ¹Ø±Õ²éÕÒ¾ä±ú
     }
-    */
+    
     return gle;
 }

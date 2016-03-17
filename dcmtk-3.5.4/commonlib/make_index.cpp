@@ -201,6 +201,13 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
             cerr << "XMLDOM can't find associations element." << endl;
             return;
         }
+        if(strcmp(clc.file.studyUID, clc.study.studyUID) == 0)
+        {
+            root->setAttribute(L"accession_number", clc.study.accessionNumber);
+            root->setAttribute(L"date", clc.study.studyDate);
+            root->setAttribute(L"time", clc.study.studyTime);
+        }
+
         if(strlen(clc.assoc.id) > 0)
         {
             MSXML2::IXMLDOMNodePtr assocCollection = root->selectSingleNode(L"associations");
@@ -233,20 +240,21 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
             if(pat)
             {
                 pat->setAttribute(L"id", clc.file.patientID);
-                if(strcmp(clc.file.patientID, clc.patient.patientID) == 0)
-                {
-                    pat->setAttribute(L"name", clc.patient.patientsName);
-                    pat->setAttribute(L"sex", clc.patient.sex);
-                    pat->setAttribute(L"birthday", clc.patient.birthday);
-                    pat->setAttribute(L"height", clc.patient.height);
-                    pat->setAttribute(L"weight", clc.patient.weight);
-                }
                 root->appendChild(pat);
             }
+            else
+                cerr << "ERROR: create patient node " << clc.file.patientID << " failed." << endl;
+        }
+        if(pat && strcmp(clc.patient.patientID, clc.file.patientID) == 0)
+        {
+            pat->setAttribute(L"name", clc.patient.patientsName);
+            pat->setAttribute(L"sex", clc.patient.sex);
+            pat->setAttribute(L"birthday", clc.patient.birthday);
+            pat->setAttribute(L"height", clc.patient.height);
+            pat->setAttribute(L"weight", clc.patient.weight);
         }
 
-        bool new_series = false;
-        char modality[17] = "OT";
+        char modality[17] = "";
         sprintf_s(filter, "series[@id='%s']", clc.file.seriesUID);
         MSXML2::IXMLDOMElementPtr series = root->selectSingleNode(filter);
         if(series == NULL)
@@ -254,24 +262,41 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
             series = pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"series", L"http://www.kurumi.com.cn/xsd/study");
             if(series)
             {
-                new_series = true;
                 series->setAttribute(L"id", clc.file.seriesUID);
-                if(strcmp(clc.file.seriesUID, clc.series.seriesUID) == 0 && strlen(clc.series.modality) > 0)
+                root->appendChild(series);
+            }
+            else
+                cerr << "ERROR: create series node " << clc.file.seriesUID << " failed." << endl;
+        }
+        if(series && strcmp(clc.file.seriesUID, clc.series.seriesUID) == 0)
+        {
+            if(strlen(clc.series.modality) > 0)
+            {
+                strcpy_s(modality, clc.series.modality);
+            }
+            else
+            {   // get first token of file name as modality
+                size_t cnt = strchr(clc.file.filename, '.') - clc.file.filename;
+                if(cnt < sizeof(modality) && cnt > 0)
+                    strncpy_s(modality, clc.file.filename, cnt);
+            }
+            series->setAttribute(L"modality", modality);
+
+            // update study's modality list
+            MSXML2::IXMLDOMNodePtr attr = root->attributes->getNamedItem(L"modality");
+            if(attr)
+            {
+                if(NULL == strstr((LPCSTR)attr->text, modality))
                 {
-                    strcpy_s(modality, clc.series.modality);
-                    series->setAttribute(L"modality", modality);
-                }
-                else
-                {   // get first token of file name as modality
-                    size_t cnt = strchr(clc.file.filename, '.') - clc.file.filename;
-                    if(cnt < sizeof(modality) && cnt > 0)
-                        strncpy_s(modality, clc.file.filename, cnt);
-                    series->setAttribute(L"modality", modality);
+                    attr->text += L",";
+                    attr->text += modality;
                 }
             }
             else
             {
-                cerr << "ERROR: create series node " << clc.file.seriesUID << " failed." << endl;
+                MSXML2::IXMLDOMNodePtr attr = pXMLDom->createAttribute(L"modality");
+                attr->text = modality;
+                root->attributes->setNamedItem(attr);
             }
         }
 
@@ -311,25 +336,6 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
                     attr->text = clc.assoc.id;
                     receive_from->attributes->setNamedItem(attr);
                     instance->appendChild(receive_from);
-                }
-            }
-            if(new_series)
-            {
-                root->appendChild(series);
-                MSXML2::IXMLDOMNodePtr attr = root->attributes->getNamedItem(L"modality");
-                if(attr)
-                {
-                    if(NULL == strstr((LPCSTR)attr->text, modality))
-                    {
-                        attr->text += L",";
-                        attr->text += modality;
-                    }
-                }
-                else
-                {
-                    MSXML2::IXMLDOMNodePtr attr = pXMLDom->createAttribute(L"modality");
-                    attr->text = modality;
-                    root->attributes->setNamedItem(attr);
                 }
             }
         }
