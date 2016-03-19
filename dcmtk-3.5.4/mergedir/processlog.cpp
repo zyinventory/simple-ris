@@ -2,7 +2,7 @@
 using namespace std;
 
 static int start_write_log = 0;
-static bool inFile = false, inNotify = false;
+static bool inFile = false;
 
 static void close_cmdfile(ofstream &cmdfile)
 {
@@ -46,13 +46,15 @@ static void test_sim_slow_log_writer(void *seid)
                 cmdfile << buf << endl;
                 close_cmdfile(cmdfile);
             }
-            else cerr << "can't write " << buf << " to file " << fn << endl;
+            else cerr << "can't understand how to write " << buf << " to file " << fn << endl;
             break;
         case 'F': // F tag must be coupled !!!
+        case 'N': // N tag must be coupled !!!
             if(inFile)
             {
                 cmdfile << buf << endl;
                 close_cmdfile(cmdfile);
+                inFile = false;
             }
             else
             {
@@ -62,32 +64,15 @@ static void test_sim_slow_log_writer(void *seid)
                 cmdfile.open(fn, ios_base::out | ios_base::trunc, _SH_DENYRW);
                 inFile = !cmdfile.fail();
                 if(inFile) cmdfile << buf << endl;
-                else cerr << "can't write " << buf << " to file " << fn << endl;
-            }
-            break;
-        case 'N': // N tag must be coupled !!!
-            if(inNotify)
-            {
-                cmdfile << buf << endl;
-                close_cmdfile(cmdfile);
-            }
-            else
-            {
-                int fnpos = GetNextUniqueNo(src_name, fn, sizeof(fn));
-                sprintf_s(fn + fnpos, sizeof(fn) - fnpos, "_%c.dfc", buf[0]);
-                if(inNotify) close_cmdfile(cmdfile);
-                cmdfile.open(fn, ios_base::out | ios_base::trunc, _SH_DENYRW);
-                inNotify = !cmdfile.fail();
-                if(inNotify) cmdfile << buf << endl;
-                else cerr << "can't write " << buf << " to file " << fn << endl;
+                else cerr << "can't understand how to write " << buf << " to file " << fn << endl;
             }
             break;
         default:
-            if(inFile || inNotify) cmdfile << buf << endl;
-            else cerr << "can't write " << buf << " to file " << fn << endl;
+            if(inFile) cmdfile << buf << endl;
+            else cerr << "can't understand how to write " << buf << " to file " << fn << endl;
         }
     } while(!strmlog.eof());
-    if(inFile || inNotify) cmdfile.close();
+    if(inFile) cmdfile.close();
     strmlog.close();
 }
 /*

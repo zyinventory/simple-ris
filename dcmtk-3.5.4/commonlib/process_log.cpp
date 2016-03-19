@@ -25,6 +25,7 @@
 #define NOTIFY_WARNING  0x00001023
 #define NOTIFY_END      0xFFFFFFFE
 #define NOTIFY_CANCEL   0xFFFFFFFC
+#define NOTIFY_XML_OK   0xFFFFFFF0
 
 using namespace std;
 
@@ -261,8 +262,8 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
             print_error_file_section(tag, filename, lc.file);
         else // OK, commit file section
         {
-            compress_queue_to_workers(&lc);
             if(strlen(lc.file.unique_filename) == 0) lc.file.StorePath('\\');
+            compress_queue_to_workers(&lc);
         }
         lc.file.inFile = false;
     }

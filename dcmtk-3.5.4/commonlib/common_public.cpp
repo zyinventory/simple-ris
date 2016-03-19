@@ -4,6 +4,7 @@
 #include <sys/timeb.h>
 #include <share.h>
 #include <io.h>
+#include <fcntl.h>
 #include <direct.h>
 #include <string.h>
 #include <errno.h>
@@ -97,6 +98,33 @@ static DWORD DisplayErrorToFileHandle_internal(TCHAR *lpszFunction, DWORD dw, HA
 	LocalFree(lpMsgBuf);
 	LocalFree(lpDisplayBuf);
     return dw;
+}
+
+FILE *create_transaction_append_file(const char *fn)
+{
+    FILE *fp = NULL;
+    if(fn == NULL) return NULL;
+    HANDLE herr = CreateFile(fn,  FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, 
+        NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if(herr == INVALID_HANDLE_VALUE)
+    {
+        char msg[MAX_PATH];
+        sprintf_s(msg, "CreateFile(%s)", fn);
+        displayErrorToCerr_public(msg, GetLastError());
+    }
+    else
+    {
+        int fd = _open_osfhandle((intptr_t)herr, _O_APPEND | _O_TEXT);
+        if(fd != -1)
+            fp = _fdopen(fd, "a");
+        else
+        {
+            char msg[MAX_PATH];
+            sprintf_s(msg, "_open_osfhandle(fd of %s) failed", fn);
+            perror(msg);
+        }
+    }
+    return fp;
 }
 
 static BOOL SetPrivilege(LPCTSTR lpszPrivilege, BOOL bEnablePrivilege)

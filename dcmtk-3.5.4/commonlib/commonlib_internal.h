@@ -1,5 +1,8 @@
 #ifndef COMMONLIB_INTERNAL
 #define COMMONLIB_INTERNAL
+
+FILE *create_transaction_append_file(const char *fn);
+
 typedef struct {
     char id[32], callingAE[65], callingAddr[65], calledAE[65], calledAddr[65];
     unsigned short port;

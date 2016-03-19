@@ -675,13 +675,14 @@ int main(int argc, char *argv[])
             {
                 fnbuf[0] = '\0';
                 char *dir = NULL, *pfn = NULL;
+                // at first pull loop, last_file_name is empty, report dcmmkdir's pid
                 sprintf_s(last_file_name, "dcmmkdir pid %d", clientId);
                 while(true)
                 {
                     DWORD cbRead = 0, cbWritten = 0, cbToWrite = 0, gle = 0;
 
                     cbToWrite = sprintf_s(fnbuf, "%s|%s", opt_directory, last_file_name);
-
+                    // pull loop: write last_file_name, indicate that dcmmkdir is ready to read next file.
                     if(!WriteFile(hPipe, fnbuf, cbToWrite, &cbWritten, NULL))
                     {
                         char msg[32];
@@ -727,8 +728,8 @@ block_read_mode:
 					}
 					else pfn = fnbuf;
 
-                    if(pfn[0] == 'w' && pfn[1] == 'a' && pfn[2] == 'i' && pfn[3] == 't')
-                        goto block_read_mode;
+                    if(strncmp(pfn, "wait", 4) == 0)
+                        goto block_read_mode; // server has no more data, wait in block mode
                     else
                         strcpy_s(last_file_name, pfn);
                     

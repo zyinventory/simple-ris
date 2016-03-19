@@ -31,7 +31,7 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     char *mkdir_ptr = cmd + mkdir_pos;
     int ctn = mkdir_pos;
     ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "archdir\\%s\\", lc.file.studyUID);
-    lc.file.StorePath('\\');
+    if(strlen(lc.file.unique_filename) == 0) lc.file.StorePath('\\');
     strcpy_s(cmd + ctn, sizeof(cmd) - ctn, lc.file.unique_filename);
     if(!PrepareFileDir(mkdir_ptr))
     {
@@ -76,7 +76,7 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     lc.hthread = pi.hThread;
     lc.log = log;
     workers.push_back(lc);
-    cerr << "trigger compress "  << lc.file.filename << endl;
+    cout << "trigger compress "  << lc.file.filename << endl;
     return 1;
 }
 
@@ -128,7 +128,7 @@ static DWORD close_dcmmkdir_worker(HANDLE hProc)
         [hProc](DCMMKDIR_CONTEXT &dc) { return hProc == dc.hProcess; });
     if(it != list_dir_workers.end())
     {
-        cerr << "close_dcmmkdir_worker(): close dcmmkdir process " << it->hProcess << ", study uid " << it->dot_or_study_uid << endl;
+        if(opt_verbose) cout << "close_dcmmkdir_worker(): close dcmmkdir process " << it->hProcess << ", study uid " << it->dot_or_study_uid << endl;
         CloseHandle(it->hThread);
         CloseHandle(it->hProcess);
         close_log(it->log);
@@ -270,7 +270,7 @@ DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid)
     else
         sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "+D DICOMDIR --viewer GE -pn %s #", sessionId);
 
-    string logfile("a_");
+    string logfile("_");
     logfile.append(strcmp(".", dot_or_study_uid) ? dot_or_study_uid : "dicomdir").append(".txt");
     HANDLE log = CreateFile(logfile.c_str(), GENERIC_READ | FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_FLAG_DELETE_ON_CLOSE | FILE_ATTRIBUTE_NORMAL, NULL);
     if(log == INVALID_HANDLE_VALUE)
@@ -325,6 +325,8 @@ static void push_cmove_log_context_to_dcmmkdir_queue(const CMOVE_LOG_CONTEXT &ov
     create_or_open_dicomdir_queue(".")->second.push_back(over_lc);
     list<LPPIPEINST>::iterator it = find_if(list_blocked_pipe_instances.begin(), list_blocked_pipe_instances.end(), 
             [](LPPIPEINST ppi) { return 0 == strcmp(ppi->dot_or_study_uid, "."); });
+    // if the queue in block mode, shall call NamedPipe_ReadPipeComplete(.|restart) to active queue.
+    // otherwise, don't call NamedPipe_ReadPipeComplete()! it may send 2 files concurrently!
     if(it != list_blocked_pipe_instances.end())
     {
         const char read_message[] = ".|restart";
@@ -341,9 +343,9 @@ static void push_cmove_log_context_to_dcmmkdir_queue(const CMOVE_LOG_CONTEXT &ov
     if(strlen(over_lc.file.studyUID) > 0)
     {
         create_or_open_dicomdir_queue(over_lc.file.studyUID)->second.push_back(over_lc);
-
         it = find_if(list_blocked_pipe_instances.begin(), list_blocked_pipe_instances.end(), 
             [&over_lc](LPPIPEINST ppi) { return 0 == strcmp(ppi->dot_or_study_uid, over_lc.file.studyUID); });
+        // same as queue "."
         if(it != list_blocked_pipe_instances.end())
         {
             LPPIPEINST ppi = *it;
@@ -363,21 +365,10 @@ int compress_queue_to_workers(CMOVE_LOG_CONTEXT *plc)
 {
     if(plc)
     {
-        if(plc->file.isEncapsulated)
-        {
-            cerr << "trigger que_compr "  << plc->file.filename << endl;
-            // copy to archdir
-            // ...
-            // copy OK
-            cerr << "trigger complete " << plc->file.filename << endl;
-            push_cmove_log_context_to_dcmmkdir_queue(*plc);
-        }
-        else
-        {
-            queue_compress.push_back(*plc);
-            cerr << "trigger que_compr "  << plc->file.filename << endl;
-        }
+        queue_compress.push_back(*plc);
+        cout << "trigger que_compr "  << plc->file.filename << endl;
     }
+
     int step = 0;
     while(workers.size() < worker_core_num && queue_compress.size() > 0)
     {
@@ -511,15 +502,44 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
         list<CMOVE_LOG_CONTEXT> &queue_clc = it->second;
 
         list<CMOVE_LOG_CONTEXT>::iterator it_clc = queue_clc.end();
-        string prefix(filename.substr(0, 7));
-        if(prefix.compare("restart") && prefix.compare("dcmmkdi"))
-        {   // restart: leave block. dcmmkdi: dcmmkdir pid xxxx, dcmmkdir first bind.
+        if(strncmp(filename.c_str(), "restart", 7) && strncmp(filename.c_str(), "dcmmkdir", 7))
+        {   // restart shall only send by server's call: push_cmove_log_context_to_dcmmkdir_queue().
+            // restart: some file is ready in queue, send it to dcmmkdir, queue shall leave block mode.
+            // dcmmkdi: dcmmkdir pid xxxx, dcmmkdir first bind.
             it_clc = find_if(queue_clc.begin(), queue_clc.end(),
                 [&filename](CMOVE_LOG_CONTEXT &lc){ return filename.compare(lc.file.unique_filename) == 0; });
             if(it_clc != queue_clc.end())
             {
-                cerr << "trigger make_dicomdir " << studyUID << "\\" << it_clc->file.filename << endl;
-                if(studyUID != ".") make_index(*it_clc);
+                cout << "trigger make_dicomdir " << studyUID << "\\" << it_clc->file.filename << endl;
+                if(studyUID != ".")
+                {
+                    make_index(*it_clc);
+
+                    // send notify of a file OK to state dir
+                    stringstream output;
+                    output << "N " << hex << setw(8) << setfill('0') << uppercase << it_clc->file.tag
+                        << " " << it_clc->file.filename << " " << it_clc->file.unique_filename << endl;
+                    output << "N 00100020 " << it_clc->file.patientID << endl;
+                    output << "N 0020000D " << it_clc->file.studyUID << endl;
+                    output << "N 0020000E " << it_clc->file.seriesUID << endl;
+                    output << "N 00080018 " << it_clc->file.instanceUID << endl;
+                    output << "N 00020010 " << it_clc->file.xfer << " " << it_clc->file.isEncapsulated << endl;
+                    output << "N " << hex << setw(8) << setfill('0') << uppercase << it_clc->file.tag << endl;
+                    string notify = output.str();
+                    output.str("");
+
+                    char notify_file_name[MAX_PATH];
+                    GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+                    strcat_s(notify_file_name, "_N.dfc");
+                    ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
+                    if(ntf.good())
+                    {
+                        ntf << notify ;
+                        ntf.close();
+                    }
+                    else
+                        cerr << notify;
+                }
                 queue_clc.erase(it_clc);
             }
             else
@@ -528,7 +548,9 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
 
         if(queue_clc.empty())
         {
-            // tell dcmmkdir to block read.
+            // no more file in queue, queue is block mode now. tell dcmmkdir to block read.
+            // todo: is it necessary to write "wait" to dcmmkdir?
+            // todo: try move list_blocked_pipe_instances.push_back(lpPipeInst) from NamedPipe_WritePipeComplete() to here
             const char wait_some_time[] = "wait";
             strcpy_s(lpPipeInst->chBuffer, wait_some_time);
             lpPipeInst->cbShouldWrite = sizeof(wait_some_time) - 1;
@@ -575,6 +597,8 @@ static void CALLBACK NamedPipe_WritePipeComplete(DWORD dwErr, DWORD cbBytesWrite
     // The read operation has finished, so write a response (if no error occurred).
     if ((dwErr == 0) && (cbBytesWrite == lpPipeInst->cbShouldWrite))
     {
+        // todo: is it necessary to write "wait" to dcmmkdir?
+        // todo: try move list_blocked_pipe_instances.push_back(lpPipeInst) to NamedPipe_ReadPipeComplete()
         if(0 == strncmp(lpPipeInst->chBuffer, "wait", 4))
         {
             list<LPPIPEINST>::iterator it = find_if(list_blocked_pipe_instances.begin(), list_blocked_pipe_instances.end(), 
@@ -679,7 +703,7 @@ DWORD worker_complete(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worke
         [over_hProcess](CMOVE_LOG_CONTEXT &clc) { return clc.hprocess == over_hProcess; });
     over_lc = *it;
     workers.erase(it);
-    cerr << "trigger complete " << over_lc.file.filename << endl;
+    cout << "trigger complete " << over_lc.file.filename << endl;
 
     bool result = false;
     if(over_lc.hprocess != INVALID_HANDLE_VALUE)

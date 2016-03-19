@@ -188,6 +188,18 @@ void clear_map()
 	    }
     }
     association_map.clear();
+
+    char notify_file_name[MAX_PATH];
+    GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+    strcat_s(notify_file_name, "_N.dfc");
+    ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
+    if(ntf.good())
+    {
+        ntf << "N FFFFFFF0" << endl;
+        ntf.close();
+    }
+    else
+        cerr << "N FFFFFFF0" << endl;
 }
 
 static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTEXT &clc)

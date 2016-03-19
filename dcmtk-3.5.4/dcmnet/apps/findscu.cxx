@@ -1204,7 +1204,7 @@ progressCallback(
 			stream.close();
 		}
 		else {
-			errmsg("trigger find failed to create XML: %s", rspIdsFileName);
+			errmsg("findscu failed to create XML: %s", rspIdsFileName);
 			//result = makeOFCondition(OFM_dcmnet, 1, OF_failure, errorMessage);
 			result = EC_InvalidStream;
 		}
@@ -1224,7 +1224,7 @@ progressCallback(
         OFCondition cond = DIMSE_sendCancelRequest(myCallbackData->assoc, myCallbackData->presId, request->MessageID);
         if (cond.bad())
         {
-            errmsg("trigger find cancel request: Cancel RQ Failed:");
+            puts("findscu cancel request: Cancel RQ Failed:");
             DimseCondition::dump(cond);
         }
 		else

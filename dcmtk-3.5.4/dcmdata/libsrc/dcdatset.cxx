@@ -599,7 +599,7 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, char level)
         *studyUID, *studyDate, *studyTime, *accessionNumber, 
         *seriesUID, *modality, *instanceUID;
 
-    if(level == 'I' || level == 'A')
+    if(level == 'I' || level == 'F') // F is FULL
     {
 	    findAndGetString(DCM_PatientID, patientID);
         findAndGetString(DCM_StudyInstanceUID, studyUID);
@@ -627,7 +627,7 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, char level)
             << " " << xfer.getXferShortName() << " " << xfer.isEncapsulated() << endl;
     }
 
-    if(level == 'P' || level == 'A')
+    if(level == 'P' || level == 'F')
     {
         findAndGetString(DCM_PatientsName, patientsName);
         findAndGetString(DCM_PatientsBirthDate, patientsBirthDate);
@@ -655,7 +655,7 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, char level)
             << " " << ((patientsWeight == NULL || *patientsWeight == '\0') ? "" : patientsWeight) << endl;
     }
 
-    if(level == 'S' || level == 'A')
+    if(level == 'S' || level == 'F')
     {
         findAndGetString(DCM_StudyDate, studyDate);
         findAndGetString(DCM_StudyTime, studyTime);
@@ -674,7 +674,7 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, char level)
         strmbuf << endl;
     }
 
-    if(level == 'E' || level == 'A')
+    if(level == 'E' || level == 'F')
     {
         findAndGetString(DCM_Modality, modality);
         strmbuf << "E " << hex << setw(4) << setfill('0') << DCM_Modality.getGroup() 

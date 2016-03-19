@@ -12,7 +12,6 @@ const char *sessionId;
 HANDLE hDirNotify;
 
 static string last_dfc;
-static bool close_too_late = false;
 
 static DWORD refresh_files(bool timeout)
 {
@@ -53,14 +52,16 @@ static DWORD refresh_files(bool timeout)
 
     for(it = dfc_files.begin(); it != dfc_files.end(); ++it)
     {
+        if(end_of_move && strstr(it->c_str(), "_N.dfc")) continue;  // skip notify file after end_of_move
+
         strcpy_s(buff_ptr, buff_size, it->c_str());
         ifstream ifcmd(fileFilter, ios_base::in, _SH_DENYRW);
         if(ifcmd.fail())
         {
-            if(opt_verbose) cerr << "open file " << fileFilter << " failed, OS close file delay." << endl;
-            close_too_late = true;
+            cerr << "open file " << fileFilter << " failed, OS close file delay." << endl;
             break;
         }
+
         char cmd[1024];
         ifcmd.getline(cmd, sizeof(cmd));
         while(!ifcmd.fail())
@@ -69,28 +70,16 @@ static DWORD refresh_files(bool timeout)
             {
                 if(end_of_move)
                 {
-                    HANDLE herr = CreateFile("cmove_error.txt",  FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-                    if(herr == INVALID_HANDLE_VALUE)
-                        displayErrorToCerr("CreateFile(cmove_error.txt)", GetLastError());
-                    else
-                    {
-                        DWORD written = 0;
-                        char *tip = new char[1024];
-                        size_t tiplen = sprintf_s(tip, 1024, "Commands is after end-of-move: %s\r\n", cmd);
-                        if(!WriteFile(herr, tip, tiplen, &written, NULL))
-                            displayErrorToCerr("WriteFile() to cmove_error.txt", GetLastError());
-                        delete[] tip;
-                        CloseHandle(herr);
-                    }
+                    fprintf_s(stderr, "Commands is after end-of-move: %s\n", cmd);
                 }
-                else if(0 == process_cmd(cmd)) end_of_move = true;
+                else if(0 == process_cmd(cmd))
+                    end_of_move = true;
             }
             ifcmd.getline(cmd, sizeof(cmd));
         }
         ifcmd.close();
         last_dfc = *it;
     }
-    if(it == dfc_files.end() && !dfc_files.empty()) close_too_late = false;
 
     if(timeout) return ERROR_SUCCESS;
 
@@ -138,8 +127,8 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     if(!make_relate_dir("state")) return -1;
     if(!make_relate_dir("archdir")) return -1;
     if(!make_relate_dir("indexdir")) return -1;
-    bool com_init = (CoInitialize(NULL) == S_OK);
-    if(!com_init) return -1;
+
+    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
     
     fn = _getcwd(NULL, 0);
     fn.append("\\state");
@@ -198,7 +187,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
                 if(is_idle()) // no more work
                 {
                     ready_to_close_dcmmkdir_workers = true;
-                    cerr << "trigger ready_close" << endl;
+                    cout << "trigger ready_close" << endl;
                 }
             }
             else
@@ -237,8 +226,8 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     if(cbs) delete[] cbs;
     NamedPipe_CloseHandle(true);
     clear_map();
-    if(com_init) CoUninitialize();
-    
+    CoUninitialize();
+    /*
     WIN32_FIND_DATA wfd;
     HANDLE hDiskSearch = FindFirstFile("state\\*.dfc", &wfd);
     if(hDiskSearch != INVALID_HANDLE_VALUE)
@@ -257,6 +246,6 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 	    } while (FindNextFile(hDiskSearch, &wfd));
 	    FindClose(hDiskSearch); // ¹Ø±Õ²éÕÒ¾ä±ú
     }
-    
+    */
     return gle;
 }
