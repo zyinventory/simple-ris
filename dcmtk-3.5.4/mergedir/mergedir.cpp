@@ -3,6 +3,7 @@
 #include <io.h>
 #include <string.h>
 #include <fcntl.h>  //_O_BINARY
+#include <direct.h>
 
 #include "dcmtk/config/osconfig.h"     /* make sure OS specific configuration is included first */
 #include "dcmtk/dcmdata/dctk.h"
@@ -12,7 +13,7 @@
 #include "dcmtk/ofstd/ofcond.h"       /* for class OFCondition */
 #include "dcmdynamic.h"
 
-void call_process_log(string &sessionId);
+void call_process_log(const string &storedir, const string &sessionId);
 void clear_resource();
 
 #define OFFIS_CONSOLE_APPLICATION "mergedir"
@@ -96,7 +97,8 @@ int main(int argc, char *argv[])
         return -2;  /* DcmDicomDir class dumps core when no data dictionary */
     }
 
-    for_each(fileNames.begin(), fileNames.end(), call_process_log);
+    string storedir(_getcwd(NULL, 0));
+    for_each(fileNames.begin(), fileNames.end(), [&storedir](const string &seid) { call_process_log(storedir, seid); });
     
     clear_resource();
     return 0;

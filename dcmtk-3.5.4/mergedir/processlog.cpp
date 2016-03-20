@@ -12,19 +12,15 @@ static void close_cmdfile(ofstream &cmdfile)
     Sleep(10 + rand() % 50);
 }
 
-static void test_sim_slow_log_writer(void *seid)
+static void test_sim_slow_log_writer(void*)
 {
-    char src_name[MAX_PATH];
-    sprintf_s(src_name, "%s\\cmove.txt", (const char*)seid);
-
-    ifstream strmlog(src_name, ios_base::in, _SH_DENYNO);
+    ifstream strmlog("cmove.txt", ios_base::in, _SH_DENYNO);
     if(strmlog.fail())
     {
         start_write_log = -1;
         displayErrorToCerr("test_sim_slow_log_writer()", GetLastError());
         return;
     }
-    sprintf_s(src_name, "%s\\%s\\state\\", _getcwd(NULL, 0), seid);
     char buf[1024];
     int fnpos = 0;
     ofstream cmdfile;
@@ -36,7 +32,7 @@ static void test_sim_slow_log_writer(void *seid)
         {
         case 'M':
         case 'T':
-            fnpos = GetNextUniqueNo(src_name, fn, sizeof(fn));
+            fnpos = GetNextUniqueNo("state\\", fn, sizeof(fn));
             sprintf_s(fn + fnpos, sizeof(fn) - fnpos, "_%c.dfc", buf[0]);
             if(inFile) close_cmdfile(cmdfile);
             cmdfile.open(fn, ios_base::out | ios_base::trunc, _SH_DENYRW);
@@ -58,7 +54,7 @@ static void test_sim_slow_log_writer(void *seid)
             }
             else
             {
-                int fnpos = GetNextUniqueNo(src_name, fn, sizeof(fn));
+                int fnpos = GetNextUniqueNo("state\\", fn, sizeof(fn));
                 sprintf_s(fn + fnpos, sizeof(fn) - fnpos, "_%c.dfc", buf[0]);
                 if(inFile) close_cmdfile(cmdfile);
                 cmdfile.open(fn, ios_base::out | ios_base::trunc, _SH_DENYRW);
@@ -101,31 +97,39 @@ static void test_consume_log(const char *sid)
     tail.close();
 }
 */
-void call_process_log(std::string &sessionId)
+void call_process_log(const std::string &storedir, const std::string &sessionId)
 {
     char src_name[MAX_PATH];
-    sprintf_s(src_name, "%s\\%s\\state", _getcwd(NULL, 0), sessionId.c_str());
-    if(_mkdir(src_name) && errno != EEXIST)
+    sprintf_s(src_name, "%s\\%s", storedir.c_str(), sessionId.c_str());
+    if(_chdir(src_name))
+    {
+        char msg[1024];
+        strerror_s(msg, errno);
+        cerr << "chdir to " << src_name << " failed: " << msg << endl;
+        return;
+    }
+    if(_mkdir("state") && errno != EEXIST)
     {
         char msg[1024];
         strerror_s(msg, errno);
         cerr << "mkdir state faile: " << msg << endl;
         return;
     }
-    HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, (void*)sessionId.c_str());
+    HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, NULL);
     //test_sim_slow_log_writer((void*)sessionId.c_str());
+    /*
     int i = 10;
     while(start_write_log == 0 && i < 1000)
     {
         Sleep(i);
         i += 10;
     }
-    if(start_write_log > 0)
+    */
+    if(start_write_log >= 0)
     {
         scp_store_main_loop(sessionId.c_str(), false);
         //test_consume_log(sessionId.c_str());
     }
-    WaitForSingleObject(ht, INFINITE);
 }
 
 void clear_resource()

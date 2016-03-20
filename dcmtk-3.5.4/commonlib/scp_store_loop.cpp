@@ -12,6 +12,7 @@ const char *sessionId;
 HANDLE hDirNotify;
 
 static string last_dfc;
+static list<string> delay_dfc;
 
 static DWORD refresh_files(bool timeout)
 {
@@ -54,12 +55,21 @@ static DWORD refresh_files(bool timeout)
     {
         if(end_of_move && strstr(it->c_str(), "_N.dfc")) continue;  // skip notify file after end_of_move
 
+        list<string>::iterator dlit = find_if(delay_dfc.begin(), delay_dfc.end(),
+            [&it](const string &dlfn) { return it->compare(dlfn) == 0; });
+
         strcpy_s(buff_ptr, buff_size, it->c_str());
         ifstream ifcmd(fileFilter, ios_base::in, _SH_DENYRW);
         if(ifcmd.fail())
         {
-            cerr << "open file " << fileFilter << " failed, OS close file delay." << endl;
+            if(opt_verbose) cerr << "open file " << fileFilter << " failed, OS close file delay." << endl;
+            if(dlit == delay_dfc.end()) delay_dfc.push_back(*it);
             break;
+        }
+        else if(dlit != delay_dfc.end())
+        {
+            if(opt_verbose) cerr << "retry file " << fileFilter << " OK." << endl;
+            delay_dfc.erase(dlit);
         }
 
         char cmd[1024];
@@ -69,9 +79,7 @@ static DWORD refresh_files(bool timeout)
             if(strlen(cmd))
             {
                 if(end_of_move)
-                {
                     fprintf_s(stderr, "Commands is after end-of-move: %s\n", cmd);
-                }
                 else if(0 == process_cmd(cmd))
                     end_of_move = true;
             }
@@ -226,6 +234,10 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     if(cbs) delete[] cbs;
     NamedPipe_CloseHandle(true);
     clear_map();
+    for(list<string>::iterator it = delay_dfc.begin(); it != delay_dfc.end(); ++it)
+    {
+        cerr << "remain delay file " << *it << endl;
+    }
     CoUninitialize();
     /*
     WIN32_FIND_DATA wfd;

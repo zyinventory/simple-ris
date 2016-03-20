@@ -693,7 +693,7 @@ int main(int argc, char *argv[])
                     }
                     if(ddir.verboseMode())
                         time_header_out(CERR) << "dcmmkdir WriteFile(): " << fnbuf << endl;
-block_read_mode:
+
                     gle = 0;
                     do
                     {
@@ -717,9 +717,10 @@ block_read_mode:
                         break;
                     }
                     fnbuf[cbRead] = '\0';
-                    if(ddir.verboseMode()) // fnbuf is not "wait xxx"
+                    if(ddir.verboseMode())
                         time_header_out(CERR) << "dcmmkdir ReadFile(): " << fnbuf << endl;
 
+                    // split studyUID(fnbuf) and filename(pfn)
                     pfn = strchr(fnbuf, '|');
 					if(pfn)
 					{
@@ -728,10 +729,8 @@ block_read_mode:
 					}
 					else pfn = fnbuf;
 
-                    if(strncmp(pfn, "wait", 4) == 0)
-                        goto block_read_mode; // server has no more data, wait in block mode
-                    else
-                        strcpy_s(last_file_name, pfn);
+                    // save filename for response message that is written to sender
+                    strcpy_s(last_file_name, pfn);
                     
                     /* add files to the DICOMDIR */
 					result = ddir.addDicomFile(pfn, dir && *dir != '\0' ? dir : opt_directory);

@@ -386,35 +386,16 @@ static void DisconnectAndClose(LPPIPEINST lpPipeInst)
     if (lpPipeInst != NULL) delete lpPipeInst;
 }
 
-static bool check_reading_message(LPPIPEINST lpPipeInst, DWORD cbBytesRead, string *studyUID, string *afterSperator, bool confirm = true)
+static bool check_reading_message(LPPIPEINST lpPipeInst, DWORD cbBytesRead, string &studyUID, string &afterSperator, bool confirm = true)
 {
     char *sp = strchr(lpPipeInst->chBuffer, '|');
-    if(sp == NULL)
-        return false;
-    bool releaseString = false;
-    if(studyUID == NULL)
-    {
-        studyUID = new string();
-        releaseString = true;
-    }
+    if(sp == NULL) return false;
+    studyUID.append(lpPipeInst->chBuffer, sp - lpPipeInst->chBuffer);
+    ++sp;
+    size_t otherLen = strlen(sp);
+    if(otherLen > 0) afterSperator.append(sp, otherLen);
 
-    studyUID->append(lpPipeInst->chBuffer, sp - lpPipeInst->chBuffer);
-    if(afterSperator)
-    {
-        ++sp;
-        size_t otherLen = strlen(sp);
-        if(otherLen > 0) afterSperator->append(sp, otherLen);
-    }
-    if(confirm && studyUID->compare(lpPipeInst->dot_or_study_uid))
-    {
-        if(releaseString) delete studyUID;
-        return false;
-    }
-    else
-    {
-        if(releaseString) delete studyUID;
-        return true;
-    }
+    return !(confirm && studyUID.compare(lpPipeInst->dot_or_study_uid));
 }
 
 bool ready_to_close_dcmmkdir_workers = false;
@@ -484,14 +465,15 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
             lpPipeInst->chBuffer[cbBytesRead] = '\0';
 
         string studyUID, filename;
-        if(!check_reading_message(lpPipeInst, cbBytesRead, &studyUID, &filename))
+        // extract studyUID and filename from message
+        if(!check_reading_message(lpPipeInst, cbBytesRead, studyUID, filename))
         {
             cerr << "NamedPipe_ReadPipeComplete() check_reading_message(): message is corrupt, " << lpPipeInst->chBuffer << endl;
             DisconnectAndClose(lpPipeInst);
             return;
         }
 
-        // erase instance which is written to dicomdir
+        // find study's queue from map by studyUID
         map<string, list<CMOVE_LOG_CONTEXT> >::iterator it = create_or_open_dicomdir_queue(studyUID.c_str());
         if(it == map_dir_queue_list.end())
         {
@@ -499,13 +481,15 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
             DisconnectAndClose(lpPipeInst);
             return;
         }
-        list<CMOVE_LOG_CONTEXT> &queue_clc = it->second;
+        list<CMOVE_LOG_CONTEXT> &queue_clc = it->second;  // get queue
 
         list<CMOVE_LOG_CONTEXT>::iterator it_clc = queue_clc.end();
+        // is the message send by dcmmkdir?
+        // restart shall only send by server's call: push_cmove_log_context_to_dcmmkdir_queue().
+        // restart: some file is ready in queue, send it to dcmmkdir, queue shall leave block mode.
+        // dcmmkdi: dcmmkdir pid xxxx, dcmmkdir first bind.
         if(strncmp(filename.c_str(), "restart", 7) && strncmp(filename.c_str(), "dcmmkdir", 7))
-        {   // restart shall only send by server's call: push_cmove_log_context_to_dcmmkdir_queue().
-            // restart: some file is ready in queue, send it to dcmmkdir, queue shall leave block mode.
-            // dcmmkdi: dcmmkdir pid xxxx, dcmmkdir first bind.
+        {   // yes, real message
             it_clc = find_if(queue_clc.begin(), queue_clc.end(),
                 [&filename](CMOVE_LOG_CONTEXT &lc){ return filename.compare(lc.file.unique_filename) == 0; });
             if(it_clc != queue_clc.end())
@@ -515,7 +499,7 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
                 {
                     make_index(*it_clc);
 
-                    // send notify of a file OK to state dir
+                    // send notification of a file OK to state dir
                     stringstream output;
                     output << "N " << hex << setw(8) << setfill('0') << uppercase << it_clc->file.tag
                         << " " << it_clc->file.filename << " " << it_clc->file.unique_filename << endl;
@@ -540,6 +524,7 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
                     else
                         cerr << notify;
                 }
+                // this instance is all OK, erase it from queue
                 queue_clc.erase(it_clc);
             }
             else
@@ -548,22 +533,12 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
 
         if(queue_clc.empty())
         {
-            // no more file in queue, queue is block mode now. tell dcmmkdir to block read.
-            // todo: is it necessary to write "wait" to dcmmkdir?
-            // todo: try move list_blocked_pipe_instances.push_back(lpPipeInst) from NamedPipe_WritePipeComplete() to here
-            const char wait_some_time[] = "wait";
-            strcpy_s(lpPipeInst->chBuffer, wait_some_time);
-            lpPipeInst->cbShouldWrite = sizeof(wait_some_time) - 1;
-            if(!WriteFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer, lpPipeInst->cbShouldWrite, 
-                (LPOVERLAPPED) lpPipeInst, (LPOVERLAPPED_COMPLETION_ROUTINE) NamedPipe_WritePipeComplete))
-            {
-                DWORD gle = GetLastError();
-                if(gle != ERROR_INVALID_USER_BUFFER && gle != ERROR_NOT_ENOUGH_MEMORY)
-                {
-                    displayErrorToCerr("NamedPipe_ReadPipeComplete() WriteFileEx()", gle);
-                    DisconnectAndClose(lpPipeInst);
-                }
-            }
+            // no more file in queue, add to lpPipeInst list_blocked_pipe_instances.
+            // queue has blocked until "studyUID|restart" message arriving.
+            list<LPPIPEINST>::iterator it = find_if(list_blocked_pipe_instances.begin(), list_blocked_pipe_instances.end(), 
+                [lpPipeInst](LPPIPEINST ppi) { return 0 == strcmp(ppi->dot_or_study_uid, lpPipeInst->dot_or_study_uid); });
+            if(it == list_blocked_pipe_instances.end())
+                list_blocked_pipe_instances.push_back(lpPipeInst);
         }
         else
         {
@@ -597,23 +572,10 @@ static void CALLBACK NamedPipe_WritePipeComplete(DWORD dwErr, DWORD cbBytesWrite
     // The read operation has finished, so write a response (if no error occurred).
     if ((dwErr == 0) && (cbBytesWrite == lpPipeInst->cbShouldWrite))
     {
-        // todo: is it necessary to write "wait" to dcmmkdir?
-        // todo: try move list_blocked_pipe_instances.push_back(lpPipeInst) to NamedPipe_ReadPipeComplete()
-        if(0 == strncmp(lpPipeInst->chBuffer, "wait", 4))
-        {
-            list<LPPIPEINST>::iterator it = find_if(list_blocked_pipe_instances.begin(), list_blocked_pipe_instances.end(), 
-                [lpPipeInst](LPPIPEINST ppi) { return 0 == strcmp(ppi->dot_or_study_uid, lpPipeInst->dot_or_study_uid); });
-            if(it == list_blocked_pipe_instances.end())
-                list_blocked_pipe_instances.push_back(lpPipeInst);
-            fRead = TRUE;
-        }
-        else
-        {
-            // next read loop, until dcmmkdir close pipe
-            fRead = ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer,
-                FILE_ASYN_BUF_SIZE * sizeof(TCHAR), (LPOVERLAPPED) lpPipeInst,
-                (LPOVERLAPPED_COMPLETION_ROUTINE)NamedPipe_ReadPipeComplete);
-        }
+        // next read loop, until dcmmkdir close pipe
+        fRead = ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer,
+            FILE_ASYN_BUF_SIZE * sizeof(TCHAR), (LPOVERLAPPED) lpPipeInst,
+            (LPOVERLAPPED_COMPLETION_ROUTINE)NamedPipe_ReadPipeComplete);
     }
     // Disconnect if an error occurred.
     if (! fRead) DisconnectAndClose(lpPipeInst);
@@ -629,7 +591,7 @@ static void CALLBACK NamedPipe_FirstReadBindPipe(DWORD dwErr, DWORD cbBytesRead,
     {
         string studyUID, otherMessage;
         // don't confirm studyUID == lpPipeInst->dot_or_study_uid, it's unbound.
-        if(!check_reading_message(lpPipeInst, cbBytesRead, &studyUID, &otherMessage, false))
+        if(!check_reading_message(lpPipeInst, cbBytesRead, studyUID, otherMessage, false))
         {
             cerr << "NamedPipe_FirstReadBindPipe(): message is corrupt, " << studyUID << "|" << otherMessage << endl;
             DisconnectAndClose(lpPipeInst);
