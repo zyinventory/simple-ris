@@ -239,25 +239,10 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         cerr << "remain delay file " << *it << endl;
     }
     CoUninitialize();
-    /*
-    WIN32_FIND_DATA wfd;
-    HANDLE hDiskSearch = FindFirstFile("state\\*.dfc", &wfd);
-    if(hDiskSearch != INVALID_HANDLE_VALUE)
-    {
-        do
-	    {
-            string dfc(wfd.cFileName);
-            if (dfc.compare(".") == 0 || dfc.compare("..") == 0) 
-			    continue; // skip . ..
-            if(0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-            {
-                string to_del("state\\");
-                to_del.append(dfc);
-                remove(to_del.c_str());
-            }
-	    } while (FindNextFile(hDiskSearch, &wfd));
-	    FindClose(hDiskSearch); // ¹Ø±Õ²éÕÒ¾ä±ú
-    }
-    */
+#ifdef _DEBUG
+    //DeleteSubTree("archdir");
+    //DeleteSubTree("indexdir");
+    //DeleteSubTree("state");
+#endif
     return gle;
 }

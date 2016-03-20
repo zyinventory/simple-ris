@@ -42,7 +42,7 @@ static string parsePatientName(string &patient)
 	return test;
 }
 
-COMMONLIB_API bool deleteSubTree(const char *dirpath, ostream *ostrm)
+COMMONLIB_API bool DeleteSubTree(const char *dirpath, ostream *ostrm)
 {
 	bool allOK = true;
 	WIN32_FIND_DATA wfd;
@@ -68,7 +68,7 @@ COMMONLIB_API bool deleteSubTree(const char *dirpath, ostream *ostrm)
 		PathAppend(fileFilter, wfd.cFileName);
 		if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
-			if(deleteSubTree(fileFilter))
+			if(DeleteSubTree(fileFilter))
 			{
 				if(_rmdir(fileFilter))
 				{
@@ -94,12 +94,12 @@ COMMONLIB_API bool deleteSubTree(const char *dirpath, ostream *ostrm)
 	return allOK;
 }
 
-COMMONLIB_API bool deleteTree(const char *dirpath, ostream *ostrm)
+COMMONLIB_API bool DeleteTree(const char *dirpath, ostream *ostrm)
 {
 	if (_access_s(dirpath, 0))
 		return true;  // dirpath dose not exist
 
-	if(deleteSubTree(dirpath, ostrm))
+	if(DeleteSubTree(dirpath, ostrm))
 	{
 		if( ! _rmdir(dirpath))
 			return true;

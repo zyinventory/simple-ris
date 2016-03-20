@@ -113,6 +113,9 @@ static void add_association(MSXML2::IXMLDOMDocument *pXMLDom)
 	}
 }
 
+#define CLUSTER_SIZE 4096LL
+#define ALIGNED_SIZE(x) (((x) & ~(CLUSTER_SIZE - 1LL)) + CLUSTER_SIZE)
+
 void clear_map()
 {
     for(map<string, MSXML2::IXMLDOMDocument*>::iterator it = study_map.begin(); it != study_map.end(); ++it)
@@ -123,15 +126,23 @@ void clear_map()
             MSXML2::IXMLDOMDocument *pXMLDom = it->second;
             if(pXMLDom)
             {
-                MSXML2::IXMLDOMNodePtr hash_prefix = pXMLDom->selectSingleNode(L"/study/@hash_prefix");
-                if(hash_prefix)
-                    sprintf_s(xmlpath, "indexdir/000d0020/%s/", (LPCSTR)hash_prefix->text);
+                _bstr_t hash_prefix(pXMLDom->documentElement->getAttribute(L"hash_prefix").bstrVal);
+                if(hash_prefix.length() > 0)
+                    sprintf_s(xmlpath, "indexdir/000d0020/%s/", (LPCSTR)hash_prefix);
                 else
                 {
                     uidHash(it->first.c_str(), studyHash, sizeof(studyHash));
                     sprintf_s(xmlpath, "indexdir/000d0020/%c%c/%c%c/%c%c/%c%c/", studyHash[0], studyHash[1],
                         studyHash[2], studyHash[3], studyHash[4], studyHash[5], studyHash[6], studyHash[7]);
                 }
+                MSXML2::IXMLDOMNodeListPtr instances = pXMLDom->documentElement->selectNodes(L"//instance");
+                __int64 size_aligned = 0;
+                while(MSXML2::IXMLDOMNodePtr n = instances->nextNode())
+                {
+                    __int64 fs = _atoi64((LPCSTR)n->attributes->getNamedItem(L"file_size")->text);
+                    size_aligned += ALIGNED_SIZE(fs);
+                }
+                pXMLDom->documentElement->setAttribute(L"study_size_cluster_aligned", size_aligned);
                 if(MkdirRecursive(xmlpath))
                 {
                     strcat_s(xmlpath, it->first.c_str());
@@ -323,6 +334,17 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
                 {
                     instance->setAttribute(L"id", clc.file.instanceUID);
                     instance->setAttribute(L"xfer", clc.file.xfer);
+                    char instance_path[MAX_PATH];
+                    int path_len = sprintf_s(instance_path, "archdir\\%s\\%s", clc.file.studyUID, clc.file.unique_filename);
+                    if(clc.file.PathSeparator() == '/')
+                        replace(instance_path, instance_path + path_len, '/', '\\');
+                    struct _stat64 fs;
+                    if(_stat64(instance_path, &fs))
+                    {
+                        perror(instance_path);
+                        fs.st_size = 0;
+                    }
+                    instance->setAttribute(L"file_size", fs.st_size);
                     if(clc.file.PathSeparator() == '/')
                         instance->setAttribute(L"url", clc.file.unique_filename);
                     else

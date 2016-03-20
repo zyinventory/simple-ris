@@ -23,7 +23,7 @@ bool deleteDayStudy(const char *dayxml)
 		__int64 hashStudy = uidHashW((LPCWSTR)studyUid, hashBuf, sizeof(hashBuf));
 		sprintf_s(studyPath, MAX_PATH, "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s",
 			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], (LPCSTR)studyUid);
-		if(deleteTree(studyPath, &cerr))
+		if(DeleteTree(studyPath, &cerr))
 		{
 			if(opt_verbose) time_header_out(cout) << studyPath << " delete OK" << endl;
 		}

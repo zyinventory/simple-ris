@@ -41,6 +41,5 @@ int commandDispatcher(const char *queueName, int processorNumber);
 std::ostream& time_header_out(std::ostream &os);
 void autoCleanPacsDiskByStudyDate();
 bool deleteDayStudy(const char *dayxml);
-bool deleteTree(const char *dirpath);
 bool __stdcall captureStdoutToLogStream(std::ostream &flog);
 void __stdcall releaseStdout(std::ostream &flog);

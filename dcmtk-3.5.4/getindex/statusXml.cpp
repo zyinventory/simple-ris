@@ -307,7 +307,7 @@ int removeStudy(const char *flag)
 		__int64 hashStudy = uidHash(studyUID, hashBuf, sizeof(hashBuf));
 		sprintf_s(indexPath, MAX_PATH, "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s",
 			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
-		if(deleteTree(indexPath, &errorMessageStream))
+		if(DeleteTree(indexPath, &errorMessageStream))
 		{
 			sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml",
 				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
