@@ -97,6 +97,169 @@ static void test_consume_log(const char *sid)
     tail.close();
 }
 */
+
+static map<string, DWORD> map_move_study_status;
+
+void move_study_dir(const char *pacs_base)
+{
+    list<string> study_dirs, dir_files;
+    struct _finddata_t wfd;
+    intptr_t hSearch = _findfirst("archdir\\*", &wfd);
+    if(hSearch == -1)
+    {
+        perror("move_study_dir() failed");
+        fprintf_s(stderr, "\tfind %s failed\n", "archdir\\*");
+        return;
+    }
+    do {
+        string node(wfd.name);
+        if (node.compare(".") == 0 || node.compare("..") == 0 || node.compare("DICOMDIR") == 0) 
+			continue; // skip . .. DICOMDIR
+        if(wfd.attrib & _A_SUBDIR)
+            study_dirs.push_back(node);
+        else
+            dir_files.push_back(node);
+	} while(_findnext(hSearch, &wfd) == 0);
+	_findclose(hSearch);
+
+    map<string, string> map_studies;
+    for(list<string>::iterator it_study = study_dirs.begin(); it_study != study_dirs.end(); ++it_study)
+    {
+        string dir_filename(*it_study);
+        dir_filename.append(".dir");
+        list<string>::iterator it_dicomdir = find_if(dir_files.begin(), dir_files.end(),
+            [&dir_filename](const string &fn) { return fn.compare(dir_filename) == 0; });
+        if(it_dicomdir != dir_files.end())
+        {
+            map_studies[*it_study] = dir_filename;
+            dir_files.erase(it_dicomdir);
+        }
+        else
+            cerr << "study " << *it_study << " can't find matched DICOMDIR " << dir_filename << endl;
+    }
+    for_each(dir_files.begin(), dir_files.end(), [](const string &fn)
+        { cerr << "dicomdir " << fn << " remain, there is no matched study UID." << endl; });
+
+    for(map<string, string>::iterator it = map_studies.begin(); it != map_studies.end(); ++it)
+    {
+        char prefix[16], src_path[MAX_PATH], dest_path[MAX_PATH];
+        uidHash(it->first.c_str(), prefix, sizeof(prefix));
+        sprintf_s(src_path, "archdir\\%s", it->first.c_str());
+        sprintf_s(dest_path, "%s\\pacs\\archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s", pacs_base, 
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
+
+        DWORD gle = 0;
+        // move study dir
+        bool study_moved = false;
+        if(DeleteTree(dest_path, &cerr))
+        {
+            if(PrepareFileDir(dest_path))
+            {
+                if(rename(src_path, dest_path))
+                {
+                    perror("move_study_dir() rename study dir failed");
+                    cerr << "\t" << src_path << " -> " << dest_path << endl;
+                }
+                else
+                {
+                    study_moved = true;
+                    cout << "trigger archive " << it->first << " " << dest_path << endl;
+                }
+            }
+            else
+                cerr << "move_study_dir() can't PrepareFileDir(" << dest_path << ")" << endl;
+        }
+        else
+            cerr << "move_study_dir() can't delete dir " << dest_path << endl;
+
+        if(!study_moved)
+        {
+            gle = ERROR_PATH_NOT_FOUND;
+            goto report_study_status;
+        }
+
+        // move dicomdir
+        bool dicomdir_moved = false;
+        strcat_s(src_path, ".dir");
+        strcat_s(dest_path, ".dir");
+        errno_t ec = _unlink(dest_path);
+        if(ec == 0 || errno == ENOENT)
+        {
+            if(rename(src_path, dest_path))
+            {
+                perror("move_study_dir() rename dicomdir failed");
+                cerr << "\t" << src_path << " -> " << dest_path << endl;
+            }
+            else
+            {
+                dicomdir_moved = true;
+                cout << "trigger dicomdir " << it->first << ".dir " << dest_path << endl;
+            }
+        }
+        else
+            cerr << "move_study_dir() can't delete dicomdir " << dest_path << endl;
+
+        if(!dicomdir_moved) gle = ERROR_FILE_NOT_FOUND;
+
+report_study_status:
+        sprintf_s(dest_path, "%c%c\\%c%c\\%c%c\\%c%c\\%s", 
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
+        map_move_study_status[dest_path] = gle;
+    }
+}
+
+void write_index_study(const char *pacs_base)
+{
+    for(map<string, DWORD>::iterator it = map_move_study_status.begin(); it != map_move_study_status.end(); ++it)
+    {
+        if(it->second == ERROR_PATH_NOT_FOUND) continue;
+        char dest_path[MAX_PATH];
+        int offset = sprintf_s(dest_path, "%s\\pacs\\", pacs_base);
+        char *src_path = dest_path + offset;
+        sprintf_s(src_path, sizeof(dest_path) - offset, "indexdir\\000d0020\\%s.xml", it->first.c_str());
+        errno_t err = _access_s(dest_path, 6);
+        if(err == ENOENT)
+        {
+            if(!PrepareFileDir(dest_path))
+            {
+                cerr << "write_index_study() can't PrepareFileDir(" << dest_path << ")" << endl;
+                err = EINVAL;
+            }
+        }
+        bool write_study_xml = false;
+        FILE *dest_fp = NULL, *src_fp = fopen(src_path, "r");
+        if(src_fp)
+        {
+            if(err == 0 || err == ENOENT) dest_fp = fopen(dest_path, "w+");
+            if(dest_fp)
+            {
+                char *buff = new char[4096];
+                size_t read_bytes = 0;
+                while(read_bytes = fread(buff, 1, 4096, src_fp))
+                    fwrite(buff, 1, read_bytes, dest_fp);
+                delete[] buff;
+                fclose(dest_fp);
+
+                // todo: link to patient index and study date index
+
+                write_study_xml = true;
+                cout << "trigger index_study " << dest_path << endl;
+            }
+            else
+            {
+                perror("write_index_study() can't open dest file");
+                fprintf_s(stderr, "\topen %s failed\n", dest_path);
+            }
+            fclose(src_fp);
+        }
+        else
+        {
+            perror("write_index_study() can't open src file");
+            fprintf_s(stderr, "\topen %s failed\n", src_path);
+        }
+    }
+}
+
 void call_process_log(const std::string &storedir, const std::string &sessionId)
 {
     char src_name[MAX_PATH];
@@ -115,7 +278,7 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
         cerr << "mkdir state faile: " << msg << endl;
         return;
     }
-    HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, NULL);
+    //HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, NULL);
     //test_sim_slow_log_writer((void*)sessionId.c_str());
     /*
     int i = 10;
@@ -127,8 +290,22 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
     */
     if(start_write_log >= 0)
     {
-        scp_store_main_loop(sessionId.c_str(), false);
+        //scp_store_main_loop(sessionId.c_str(), false);
         //test_consume_log(sessionId.c_str());
+        // todo: move arch and index to pacs_base
+
+        const char *pacs_base = "C:\\usr\\local\\dicom";
+
+        //move_study_dir(pacs_base);
+        /*
+        map_move_study_status["CL\\6F\\47\\0L\\1.2.840.113619.2.55.3.2831208458.63.1326435165.930"] = 0;
+        map_move_study_status["J9\\DD\\O9\\GS\\1.2.840.113619.2.55.3.2831208458.315.1336457410.39"] = 0;
+        map_move_study_status["N3\\LE\\BX\\J5\\1.2.840.113619.2.55.3.2831208458.335.1327645840.955"] = 0;
+        */
+        //write_index_study(pacs_base);
+
+        // todo: write receive index, recursive search xml file at receive dir
+        // find_recursive("path", list_collector, predicate function);
     }
 }
 
