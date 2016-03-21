@@ -260,6 +260,106 @@ void write_index_study(const char *pacs_base)
     }
 }
 
+template<class Pred> static void find_recursive(const string &input_path, list<string> &collector, Pred pred)
+{
+    string path(input_path);
+    if(path.empty()) path = ".";
+    string::size_type old_size = path.size();
+    string::iterator it = path.end();
+    --it;
+    if(*it != '\\') path.append(1, '\\');
+    path.append(1, '*');
+    it = path.end();
+    --it; // it -> '*'
+
+    struct __finddata64_t wfd;
+    intptr_t hSearch = _findfirst64(path.c_str(), &wfd);
+    if(hSearch == -1)
+    {
+        perror("find_recursive() failed");
+        fprintf_s(stderr, "\tfind %s failed\n", path.c_str());
+        return;
+    }
+    path.erase(it);
+    do {
+        if(wfd.attrib & _A_SUBDIR)
+        {
+            if(strcmp(wfd.name, ".") == 0 || strcmp(wfd.name, "..") == 0) continue;
+            size_t old_len = path.length();
+            path.append(wfd.name);
+            find_recursive(path, collector, pred);
+            path.resize(old_len);
+        }
+        else  // file
+        {
+            if(pred(&wfd))
+            {
+                size_t old_len = path.length();
+                path.append(wfd.name);
+                collector.push_back(path);
+                path.resize(old_len);
+            }
+        }
+	} while(_findnext64(hSearch, &wfd) == 0);
+	_findclose(hSearch);
+}
+
+static bool is_ext_file(const struct __finddata64_t *wfd, const char *ext)
+{
+    if((wfd->attrib & _A_SUBDIR) == 0)
+    {
+        const char * p = strstr(wfd->name, ext);
+        if(p && strcmp(p, ext) == 0) return true;
+    }
+    return false;
+}
+
+static void find_recursive_xml_file(string &input_path, list<string> &collector)
+{
+    find_recursive(input_path, collector, bind2nd(ptr_fun(is_ext_file), ".xml"));
+}
+
+void move_index_receive(map<string, bool> &map_receive_index, const char *pacs_base)
+{
+    list<string> collector;
+    string path("indexdir\\receive");
+    //find_recursive(path, collector, [](const struct __finddata64_t *wfd) { return is_ext_file(wfd, ".xml"); });
+    find_recursive_xml_file(path, collector);
+
+    for(list<string>::iterator it = collector.begin(); it != collector.end(); ++it)
+    {
+        bool move_ok = false;
+        char dest_path[MAX_PATH];
+        sprintf_s(dest_path, "%s\\pacs\\%s", pacs_base, it->c_str());
+        if(PrepareFileDir(dest_path))
+        {
+            if(_unlink(dest_path) == 0 || errno == ENOENT)
+            {
+                if(rename(it->c_str(), dest_path))
+                {
+                    char msg[1024];
+                    strerror_s(msg, errno);
+                    cerr << "move_index_receive() move " << *it << " to " << dest_path << " failed: " << msg << endl;
+                }
+                else
+                {
+                    move_ok = true;
+                    cout << "trigger index_receive " << dest_path << endl;
+                }
+            }
+            else
+            {
+                char msg[1024];
+                strerror_s(msg, errno);
+                cerr << "move_index_receive() delete " << dest_path << " failed: " << msg << endl;
+            }
+        }
+        else
+            cerr << "move_index_receive() can't mkdir " << dest_path << endl;
+        map_receive_index[*it] = move_ok;
+    }
+}
+
 void call_process_log(const std::string &storedir, const std::string &sessionId)
 {
     char src_name[MAX_PATH];
@@ -292,20 +392,22 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
     {
         //scp_store_main_loop(sessionId.c_str(), false);
         //test_consume_log(sessionId.c_str());
-        // todo: move arch and index to pacs_base
 
         const char *pacs_base = "C:\\usr\\local\\dicom";
 
         //move_study_dir(pacs_base);
-        /*
+
+        /* test for write_index_study()
         map_move_study_status["CL\\6F\\47\\0L\\1.2.840.113619.2.55.3.2831208458.63.1326435165.930"] = 0;
         map_move_study_status["J9\\DD\\O9\\GS\\1.2.840.113619.2.55.3.2831208458.315.1336457410.39"] = 0;
         map_move_study_status["N3\\LE\\BX\\J5\\1.2.840.113619.2.55.3.2831208458.335.1327645840.955"] = 0;
         */
         //write_index_study(pacs_base);
 
-        // todo: write receive index, recursive search xml file at receive dir
-        // find_recursive("path", list_collector, predicate function);
+        map<string, bool> map_receive_index;
+        move_index_receive(map_receive_index, pacs_base);
+
+        // todo: link study xml to patient dir and study date dir
     }
 }
 
