@@ -1,4 +1,6 @@
 #include "stdafx.h"
+#import <msxml3.dll>
+
 using namespace std;
 
 static int start_write_log = 0;
@@ -98,9 +100,7 @@ static void test_consume_log(const char *sid)
 }
 */
 
-static map<string, DWORD> map_move_study_status;
-
-void merge_study_dir(const char *pacs_base)
+void overwrite_study_archdir(const char *pacs_base, map<string, DWORD> &map_move_study_status)
 {
     list<string> study_dirs, dir_files;
     struct _finddata_t wfd;
@@ -208,7 +208,7 @@ report_study_status:
     }
 }
 
-void write_index_study(const char *pacs_base)
+void overwrite_study_index(const char *pacs_base, map<string, DWORD> &map_move_study_status)
 {
     for(map<string, DWORD>::iterator it = map_move_study_status.begin(); it != map_move_study_status.end(); ++it)
     {
@@ -217,20 +217,24 @@ void write_index_study(const char *pacs_base)
         int offset = sprintf_s(dest_path, "%s\\pacs\\", pacs_base);
         char *src_path = dest_path + offset;
         sprintf_s(src_path, sizeof(dest_path) - offset, "indexdir\\000d0020\\%s.xml", it->first.c_str());
-        errno_t err = _access_s(dest_path, 6);
-        if(err == ENOENT)
+        if(!PrepareFileDir(dest_path))
         {
-            if(!PrepareFileDir(dest_path))
-            {
-                cerr << "write_index_study() can't PrepareFileDir(" << dest_path << ")" << endl;
-                err = EINVAL;
-            }
+            cerr << "overwrite_index_study() can't PrepareFileDir(" << dest_path << ")" << endl;
+            continue;
         }
-        bool write_study_xml = false;
-        FILE *dest_fp = NULL, *src_fp = fopen(src_path, "r");
-        if(src_fp)
-        {
-            if(err == 0 || err == ENOENT) dest_fp = fopen(dest_path, "w+");
+        if(_access_s(dest_path, 0) == 0)
+        {   // todo: dest xml exist, merge it by xml dom
+            cout << "merge " << dest_path << endl;
+        }
+        else
+        {   // not exist, copy src xml to dest
+            FILE *dest_fp = NULL, *src_fp = fopen(src_path, "r");
+            if(src_fp == NULL)
+            {
+                cerr << "overwrite_index_study() can't fopen(" << src_fp << ")" << endl;
+                continue;
+            }
+            dest_fp = fopen(dest_path, "w+");
             if(dest_fp)
             {
                 char *buff = new char[4096];
@@ -239,23 +243,14 @@ void write_index_study(const char *pacs_base)
                     fwrite(buff, 1, read_bytes, dest_fp);
                 delete[] buff;
                 fclose(dest_fp);
-
-                // todo: link to patient index and study date index
-
-                write_study_xml = true;
                 cout << "trigger index_study " << dest_path << endl;
             }
             else
             {
-                perror("write_index_study() can't open dest file");
-                fprintf_s(stderr, "\topen %s failed\n", dest_path);
+                perror("overwrite_index_study() can't create dest file");
+                fprintf_s(stderr, "\tcreate %s failed\n", dest_path);
             }
             fclose(src_fp);
-        }
-        else
-        {
-            perror("write_index_study() can't open src file");
-            fprintf_s(stderr, "\topen %s failed\n", src_path);
         }
     }
 }
@@ -319,7 +314,7 @@ static void find_recursive_xml_file(string &input_path, list<string> &collector)
     find_recursive(input_path, collector, bind2nd(ptr_fun(is_ext_file), ".xml"));
 }
 
-void move_index_receive(map<string, bool> &map_receive_index, const char *pacs_base)
+void move_index_receive(const char *pacs_base, map<string, bool> &map_receive_index)
 {
     list<string> collector;
     string path("indexdir\\receive");
@@ -388,24 +383,24 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
         i += 10;
     }
     */
-    if(start_write_log >= 0)
+    if(start_write_log >= 0) // start_write_log == 0, start immediately
     {
         //scp_store_main_loop(sessionId.c_str(), false);
         //test_consume_log(sessionId.c_str());
 
         const char *pacs_base = "C:\\usr\\local\\dicom";
+        map<string, DWORD> map_move_study_status;
+        //overwrite_study_archdir(pacs_base, map_move_study_status);
 
-        merge_study_dir(pacs_base);
-
-        /* test for write_index_study()
+        // test for overwrite_study_index()
         map_move_study_status["CL\\6F\\47\\0L\\1.2.840.113619.2.55.3.2831208458.63.1326435165.930"] = 0;
         map_move_study_status["J9\\DD\\O9\\GS\\1.2.840.113619.2.55.3.2831208458.315.1336457410.39"] = 0;
         map_move_study_status["N3\\LE\\BX\\J5\\1.2.840.113619.2.55.3.2831208458.335.1327645840.955"] = 0;
-        */
-        write_index_study(pacs_base);
+        
+        overwrite_study_index(pacs_base, map_move_study_status);
 
         map<string, bool> map_receive_index;
-        move_index_receive(map_receive_index, pacs_base);
+        //move_index_receive(pacs_base, map_receive_index);
 
         // todo: add study xml to patient xml and study date xml
     }
