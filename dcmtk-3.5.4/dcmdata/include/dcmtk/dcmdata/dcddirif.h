@@ -264,7 +264,7 @@ class DicomDirInterface
      *  @return EC_Normal upon success, an error code otherwise
      */
     OFCondition addDicomFile(const char *filename,
-                             const char *directory = NULL);
+                             const char *directory = NULL, E_TransferSyntax *xfer = NULL);
 
     /** set the fileset descriptor file ID and character set.
      *  Prior to any internal modification both 'filename' and 'charset' are checked

@@ -242,7 +242,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 #ifdef _DEBUG
     //DeleteSubTree("archdir");
     //DeleteSubTree("indexdir");
-    //DeleteSubTree("state");
+    DeleteSubTree("state");
 #endif
     return gle;
 }

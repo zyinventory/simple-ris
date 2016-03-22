@@ -115,6 +115,17 @@ static void add_association(MSXML2::IXMLDOMDocument *pXMLDom)
 
 #define CLUSTER_SIZE 4096LL
 #define ALIGNED_SIZE(x) (((x) & ~(CLUSTER_SIZE - 1LL)) + CLUSTER_SIZE)
+void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument *pXMLDom)
+{
+    MSXML2::IXMLDOMNodeListPtr instances = pXMLDom->documentElement->selectNodes(L"//instance");
+    __int64 size_aligned = 0;
+    while(MSXML2::IXMLDOMNodePtr n = instances->nextNode())
+    {
+        __int64 fs = _atoi64((LPCSTR)n->attributes->getNamedItem(L"file_size")->text);
+        size_aligned += ALIGNED_SIZE(fs);
+    }
+    pXMLDom->documentElement->setAttribute(L"study_size_cluster_aligned", size_aligned);
+}
 
 void clear_map()
 {
@@ -135,14 +146,9 @@ void clear_map()
                     sprintf_s(xmlpath, "indexdir/000d0020/%c%c/%c%c/%c%c/%c%c/", studyHash[0], studyHash[1],
                         studyHash[2], studyHash[3], studyHash[4], studyHash[5], studyHash[6], studyHash[7]);
                 }
-                MSXML2::IXMLDOMNodeListPtr instances = pXMLDom->documentElement->selectNodes(L"//instance");
-                __int64 size_aligned = 0;
-                while(MSXML2::IXMLDOMNodePtr n = instances->nextNode())
-                {
-                    __int64 fs = _atoi64((LPCSTR)n->attributes->getNamedItem(L"file_size")->text);
-                    size_aligned += ALIGNED_SIZE(fs);
-                }
-                pXMLDom->documentElement->setAttribute(L"study_size_cluster_aligned", size_aligned);
+
+                //calculate_size_cluster_aligned(pXMLDom);
+
                 if(MkdirRecursive(xmlpath))
                 {
                     strcat_s(xmlpath, it->first.c_str());
@@ -333,7 +339,8 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
                 if(instance)
                 {
                     instance->setAttribute(L"id", clc.file.instanceUID);
-                    instance->setAttribute(L"xfer", clc.file.xfer);
+                    instance->setAttribute(L"xfer_receive", clc.file.xfer);
+                    instance->setAttribute(L"xfer", clc.file.xfer_new);
                     char instance_path[MAX_PATH];
                     int path_len = sprintf_s(instance_path, "archdir\\%s\\%s", clc.file.studyUID, clc.file.unique_filename);
                     if(clc.file.PathSeparator() == '/')
@@ -368,6 +375,12 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
                 {
                     MSXML2::IXMLDOMNodePtr attr = pXMLDom->createAttribute(L"id");
                     attr->text = clc.assoc.id;
+                    receive_from->attributes->setNamedItem(attr);
+                    attr = pXMLDom->createAttribute(L"xfer_receive");
+                    attr->text = clc.file.xfer;
+                    receive_from->attributes->setNamedItem(attr);
+                    attr = pXMLDom->createAttribute(L"xfer_save");
+                    attr->text = clc.file.xfer_new;
                     receive_from->attributes->setNamedItem(attr);
                     instance->appendChild(receive_from);
                 }

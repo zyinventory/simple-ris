@@ -43,7 +43,7 @@ typedef struct
 {
     const char         *xferID;
     const char         *xferName;
-    const char         *xferShortName;
+    const char         *xferShortName; // max length is 13: JpegLess14SV1
     E_TransferSyntax    xfer;
     E_ByteOrder         byteOrder;
     E_VRType            vrType;
@@ -273,7 +273,7 @@ const S_XferNames XferNames[] =
 #endif
     },
     { UID_JPEG2000LosslessOnlyTransferSyntax,
-      "JPEG 2000 (Lossless only)", "Jp2kLossy",
+      "JPEG 2000 (Lossless only)", "Jp2kLossLess",
       EXS_JPEG2000LosslessOnly,
       EBO_LittleEndian,
       EVT_Explicit,
@@ -281,7 +281,7 @@ const S_XferNames XferNames[] =
       0L, 0L,
       ESC_none },
     { UID_JPEG2000TransferSyntax,
-      "JPEG 2000 (Lossless or Lossy)", "Jp2kLess",
+      "JPEG 2000 (Lossless or Lossy)", "Jp2kLossy",
       EXS_JPEG2000,
       EBO_LittleEndian,
       EVT_Explicit,

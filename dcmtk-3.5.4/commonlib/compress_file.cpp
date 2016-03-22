@@ -386,15 +386,24 @@ static void DisconnectAndClose(LPPIPEINST lpPipeInst)
     if (lpPipeInst != NULL) delete lpPipeInst;
 }
 
-static bool check_reading_message(LPPIPEINST lpPipeInst, DWORD cbBytesRead, string &studyUID, string &afterSperator, bool confirm = true)
+static bool check_reading_message(LPPIPEINST lpPipeInst, DWORD cbBytesRead, string &studyUID, string &filename, string &xfer, bool confirm = true)
 {
-    char *sp = strchr(lpPipeInst->chBuffer, '|');
-    if(sp == NULL) return false;
-    studyUID.append(lpPipeInst->chBuffer, sp - lpPipeInst->chBuffer);
-    ++sp;
-    size_t otherLen = strlen(sp);
-    if(otherLen > 0) afterSperator.append(sp, otherLen);
-
+    char *sp1 = strchr(lpPipeInst->chBuffer, '|');
+    if(sp1 == NULL) return false;
+    studyUID.append(lpPipeInst->chBuffer, sp1 - lpPipeInst->chBuffer);
+    ++sp1;
+    char *sp2 = strchr(sp1, '|');
+    if(sp2 == NULL)
+    {
+        size_t otherLen = strlen(sp1);
+        if(otherLen > 0) filename.append(sp1, otherLen);
+    }
+    else
+    {
+        filename.append(sp1, sp2 - sp1);
+        ++sp2;
+        xfer.append(sp2);
+    }
     return !(confirm && studyUID.compare(lpPipeInst->dot_or_study_uid));
 }
 
@@ -464,9 +473,9 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
         else
             lpPipeInst->chBuffer[cbBytesRead] = '\0';
 
-        string studyUID, filename;
+        string studyUID, filename, xfer;
         // extract studyUID and filename from message
-        if(!check_reading_message(lpPipeInst, cbBytesRead, studyUID, filename))
+        if(!check_reading_message(lpPipeInst, cbBytesRead, studyUID, filename, xfer))
         {
             cerr << "NamedPipe_ReadPipeComplete() check_reading_message(): message is corrupt, " << lpPipeInst->chBuffer << endl;
             DisconnectAndClose(lpPipeInst);
@@ -497,6 +506,7 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
                 cout << "trigger make_dicomdir " << studyUID << "\\" << it_clc->file.filename << endl;
                 if(studyUID != ".")
                 {
+                    strcpy_s(it_clc->file.xfer_new, xfer.c_str());
                     make_index(*it_clc);
 
                     // send notification of a file OK to state dir
@@ -507,7 +517,7 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
                     output << "N 0020000D " << it_clc->file.studyUID << endl;
                     output << "N 0020000E " << it_clc->file.seriesUID << endl;
                     output << "N 00080018 " << it_clc->file.instanceUID << endl;
-                    output << "N 00020010 " << it_clc->file.xfer << " " << it_clc->file.isEncapsulated << endl;
+                    output << "N 00020010 " << it_clc->file.xfer << " " << it_clc->file.isEncapsulated << " " << it_clc->file.xfer_new << endl;
                     output << "N " << hex << setw(8) << setfill('0') << uppercase << it_clc->file.tag << endl;
                     string notify = output.str();
                     output.str("");
@@ -589,9 +599,9 @@ static void CALLBACK NamedPipe_FirstReadBindPipe(DWORD dwErr, DWORD cbBytesRead,
     // if first bind failed, how to?
     if ((dwErr == 0) && (cbBytesRead != 0))
     {
-        string studyUID, otherMessage;
+        string studyUID, otherMessage, xfer;
         // don't confirm studyUID == lpPipeInst->dot_or_study_uid, it's unbound.
-        if(!check_reading_message(lpPipeInst, cbBytesRead, studyUID, otherMessage, false))
+        if(!check_reading_message(lpPipeInst, cbBytesRead, studyUID, otherMessage, xfer, false))
         {
             cerr << "NamedPipe_FirstReadBindPipe(): message is corrupt, " << studyUID << "|" << otherMessage << endl;
             DisconnectAndClose(lpPipeInst);

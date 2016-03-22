@@ -3804,7 +3804,7 @@ void DicomDirInterface::inventMissingInstanceLevelAttributes(DcmDirectoryRecord 
 
 // add DICOM file to the current DICOMDIR object
 OFCondition DicomDirInterface::addDicomFile(const char *filename,
-                                            const char *directory)
+                                            const char *directory, E_TransferSyntax *xfer)
 {
     OFCondition result = EC_IllegalParameter;
     /* first make sure that a DICOMDIR object exists */
@@ -3824,6 +3824,8 @@ OFCondition DicomDirInterface::addDicomFile(const char *filename,
             DcmDirectoryRecord *rootRecord = &(DicomDir->getRootRecord());
             DcmMetaInfo *metainfo = fileformat.getMetaInfo();
             DcmDataset *dataset = fileformat.getDataset();
+            if(xfer) *xfer = dataset->getOriginalXfer();
+
             /* massage filename into DICOM format (DOS conventions for path separators, uppercase) */
             OFString fileID;
             hostToDicomFilename(filename, fileID);
@@ -3849,11 +3851,11 @@ OFCondition DicomDirInterface::addDicomFile(const char *filename,
                         printFileErrorMessage(result, "cannot assign patient record to", pathname.c_str());
                     } else {
                         /* add a study record below the current patient record */
-                        DcmDirectoryRecord *studyRecord = addRecord(patientRecord, ERT_Study, dataset, fileID, pathname);;
+                        DcmDirectoryRecord *studyRecord = addRecord(patientRecord, ERT_Study, dataset, fileID, pathname);
                         if (studyRecord != NULL)
                         {
                             /* add a series record below the current study record */
-                            DcmDirectoryRecord *seriesRecord = addRecord(studyRecord, ERT_Series, dataset, fileID, pathname);;
+                            DcmDirectoryRecord *seriesRecord = addRecord(studyRecord, ERT_Series, dataset, fileID, pathname);
                             if (seriesRecord != NULL)
                             {
                                 /* add one of the instance record below the current series record */

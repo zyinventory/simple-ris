@@ -100,7 +100,7 @@ static void test_consume_log(const char *sid)
 
 static map<string, DWORD> map_move_study_status;
 
-void move_study_dir(const char *pacs_base)
+void merge_study_dir(const char *pacs_base)
 {
     list<string> study_dirs, dir_files;
     struct _finddata_t wfd;
@@ -395,19 +395,19 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
 
         const char *pacs_base = "C:\\usr\\local\\dicom";
 
-        //move_study_dir(pacs_base);
+        merge_study_dir(pacs_base);
 
         /* test for write_index_study()
         map_move_study_status["CL\\6F\\47\\0L\\1.2.840.113619.2.55.3.2831208458.63.1326435165.930"] = 0;
         map_move_study_status["J9\\DD\\O9\\GS\\1.2.840.113619.2.55.3.2831208458.315.1336457410.39"] = 0;
         map_move_study_status["N3\\LE\\BX\\J5\\1.2.840.113619.2.55.3.2831208458.335.1327645840.955"] = 0;
         */
-        //write_index_study(pacs_base);
+        write_index_study(pacs_base);
 
         map<string, bool> map_receive_index;
         move_index_receive(map_receive_index, pacs_base);
 
-        // todo: link study xml to patient dir and study date dir
+        // todo: add study xml to patient xml and study date xml
     }
 }
 

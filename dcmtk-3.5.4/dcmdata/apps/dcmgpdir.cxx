@@ -729,11 +729,13 @@ int main(int argc, char *argv[])
 					}
 					else pfn = fnbuf;
 
-                    // save filename for response message that is written to sender
-                    strcpy_s(last_file_name, pfn);
-                    
                     /* add files to the DICOMDIR */
-					result = ddir.addDicomFile(pfn, dir && *dir != '\0' ? dir : opt_directory);
+                    E_TransferSyntax xfer = EXS_Unknown;
+					result = ddir.addDicomFile(pfn, dir && *dir != '\0' ? dir : opt_directory, &xfer);
+                    DcmXfer dcmxfer(xfer);
+                    // save filename for response message that is written to sender
+                    sprintf_s(last_file_name, "%s|%s", pfn, dcmxfer.getXferShortName());
+
 					if (result.bad())
 					{
 						badFiles.push_back(pfn);
