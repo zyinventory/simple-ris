@@ -304,7 +304,7 @@ int removeStudy(const char *flag)
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
 		char hashBuf[9];
-		__int64 hashStudy = uidHash(studyUID, hashBuf, sizeof(hashBuf));
+		__int64 hashStudy = HashStr(studyUID, hashBuf, sizeof(hashBuf));
 		sprintf_s(indexPath, MAX_PATH, "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s",
 			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
 		if(DeleteTree(indexPath, &errorMessageStream))

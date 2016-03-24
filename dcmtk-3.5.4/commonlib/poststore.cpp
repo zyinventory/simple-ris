@@ -145,7 +145,7 @@ static HRESULT getStudyNode(const char *line, MSXML2::IXMLDOMDocumentPtr& pXMLDo
 	studyDatePath.append(1, '/').append(studyDate.substr(6, 2));
 
 	char buf[MAX_PATH], hashBuf[9];
-	__int64 hashStudy = uidHash(studyUID.c_str(), hashBuf, sizeof(hashBuf));
+	__int64 hashStudy = HashStr(studyUID.c_str(), hashBuf, sizeof(hashBuf));
 	if(studyUID.length() == 0) studyUID = "NULL";
 	sprintf_s(buf, sizeof(buf), "%s/%c%c/%c%c/%c%c/%c%c/%s/%s", archivePath.c_str(),
 		hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID.c_str(), hashBuf);
@@ -279,8 +279,8 @@ static HRESULT addInstance(char *buffer, MSXML2::IXMLDOMElementPtr& study)
 	else
 	{
 		char hashBufSeries[9], hashBufInstance[9];
-		uidHash(seriesUID.c_str(), hashBufSeries, sizeof(hashBufSeries));
-		uidHash(instanceUID.c_str(), hashBufInstance, sizeof(hashBufInstance));
+		HashStr(seriesUID.c_str(), hashBufSeries, sizeof(hashBufSeries));
+		HashStr(instanceUID.c_str(), hashBufInstance, sizeof(hashBufInstance));
 		sprintf_s(buf, sizeof(buf), "%s/%s/%s", downloadUrl.c_str(), hashBufSeries, hashBufInstance);
 	}
 	instance->setAttribute("DirectDownloadFile", buf);
@@ -549,7 +549,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 		if(!pacsBase.empty())
 		{
 			char hashBuf[9];
-			__int64 hashStudy = uidHash(tagValue, hashBuf, sizeof(hashBuf));
+			__int64 hashStudy = HashStr(tagValue, hashBuf, sizeof(hashBuf));
             GetNextUniqueNo("job_", jobIdBuf, sizeof(jobIdBuf));
 			sprintf_s(buffer, BUFF_SIZE, "%s\\tdd\\%s.jdf", pacsBase.c_str(), jobIdBuf);
 
@@ -662,7 +662,7 @@ COMMONLIB_API bool deleteStudyFromIndex(const char *mode, const char *modeValue,
     if(strcmp(mode, "00100020") == 0)   // patient id
     {
         char hashBuf[9];
-	    __int64 hash = uidHash(modeValue, hashBuf, sizeof(hashBuf));
+	    __int64 hash = HashStr(modeValue, hashBuf, sizeof(hashBuf));
 	    sprintf_s(buffer, sizeof(buffer), "indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml",
 		    hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], modeValue);
     }
@@ -715,7 +715,7 @@ static HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const cha
 	HRESULT hr;
 	_bstr_t tagValue = pXMLDom->selectSingleNode(queryValue)->Gettext();
 	char hashBuf[9];
-	__int64 hashUid36 = uidHashW(tagValue, hashBuf, sizeof(hashBuf));
+	__int64 hashUid36 = HashStrW(tagValue, hashBuf, sizeof(hashBuf));
 	if(tagValue.length() == 0) return FWP_E_NULL_POINTER;
 
 	sprintf_s(buffer, BUFF_SIZE, "%s\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s", indexBase.c_str(), tag,
@@ -1012,7 +1012,7 @@ COMMONLIB_API long long diskUsage(const char *pacsBase, const char *studyUID)
 {
 	long long filesizes = 0LL;
 	char hashBuf[9];
-	__int64 hashStudy = uidHash(studyUID, hashBuf, sizeof(hashBuf));
+	__int64 hashStudy = HashStr(studyUID, hashBuf, sizeof(hashBuf));
 	if(strlen(studyUID) == 0) studyUID = "NULL";
 	sprintf_s(buffer, sizeof(buffer), "%s\\pacs\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s", pacsBase, archivePath.c_str(),
 		hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);

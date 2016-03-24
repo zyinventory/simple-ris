@@ -1974,7 +1974,7 @@ storeSCPCallback(
         }
         if (tmpstr1) currentStudyInstanceUID = tmpstr1;
 		char hashBuf[9];
-		uidHash(currentStudyInstanceUID.c_str(), hashBuf, sizeof(hashBuf));
+		HashStr(currentStudyInstanceUID.c_str(), hashBuf, sizeof(hashBuf));
 		if(currentStudyInstanceUID.length() == 0) currentStudyInstanceUID = "NULL";
 		
 		char buf[MAX_PATH];
@@ -2084,8 +2084,8 @@ storeSCPCallback(
 		else
 		{
 			char hashBufSeries[9], hashBufImage[9];
-			uidHash(currentSeriesInstanceUID.c_str(), hashBufSeries, sizeof(hashBufSeries));
-			uidHash(sopInstanceUid.c_str(), hashBufImage, sizeof(hashBufImage));
+			HashStr(currentSeriesInstanceUID.c_str(), hashBufSeries, sizeof(hashBufSeries));
+			HashStr(sopInstanceUid.c_str(), hashBufImage, sizeof(hashBufImage));
 			sprintf_s(buf, MAX_PATH, "%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\%s\\%s\\%s", opt_volumeLabel.c_str(),
 				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7],
 				currentStudyInstanceUID.c_str(), hashBuf, hashBufSeries, hashBufImage);

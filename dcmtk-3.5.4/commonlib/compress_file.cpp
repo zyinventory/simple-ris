@@ -6,7 +6,7 @@ using namespace std;
 
 const char* CMOVE_FILE_SECTION::StorePath(char sp)
 {
-    uidHash(studyUID, unique_filename, sizeof(unique_filename));
+    HashStr(studyUID, unique_filename, sizeof(unique_filename));
     unique_filename[8] = sp;
     SeriesInstancePath(seriesUID, instanceUID, unique_filename + 9, sizeof(unique_filename) - 9, sp);
     sprintf_s(hash, "%c%c%c%c%c%c%c%c%c%c%c",

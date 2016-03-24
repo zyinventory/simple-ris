@@ -108,13 +108,13 @@ int queryXml(int hostLength)
 	char hashBuf[9];
 	if(cgiFormNotFound != cgiFormString("studyUID", studyUID, 65) && strlen(studyUID) > 0)
 	{
-		__int64 hashStudy = uidHash(studyUID, hashBuf, sizeof(hashBuf));
+		__int64 hashStudy = HashStr(studyUID, hashBuf, sizeof(hashBuf));
 		sprintf_s(indexPath, MAX_PATH, "indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml",
 			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
 	}
 	else if(cgiFormNotFound != cgiFormString("patientID", patientID, 65) && strlen(patientID) > 0)
 	{
-		__int64 hashPatient = uidHash(patientID, hashBuf, sizeof(hashBuf));
+		__int64 hashPatient = HashStr(patientID, hashBuf, sizeof(hashBuf));
 		sprintf_s(indexPath, MAX_PATH, "indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml",
 			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], patientID);
 	}
@@ -536,7 +536,7 @@ int batchBurn()
 			if(isPatient)
 			{
 				char hashBuf[9];
-				__int64 hashUid36 = uidHash(postfix, hashBuf, sizeof(hashBuf));
+				__int64 hashUid36 = HashStr(postfix, hashBuf, sizeof(hashBuf));
 				sprintf_s(xmlpath + pathlen, MAX_PATH - pathlen, "%c%c\\%c%c\\%c%c\\%c%c\\%s",
 					hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tag);
 			}
@@ -595,7 +595,7 @@ static int wadoRequest(const char *flag)
 	if(cgiFormNotFound == cgiFormString("studyUID", studyUID, 65) || strlen(studyUID) == 0)
 		goto study_process_error;
 	char hashBuf[9];
-	__int64 hashUid36 = uidHash(studyUID, hashBuf, sizeof(hashBuf));
+	__int64 hashUid36 = HashStr(studyUID, hashBuf, sizeof(hashBuf));
 	if(strcmp(flag, "WADO") == 0)
 	{
 		char seriesUID[65], objectUID[65], instancePath[MAX_PATH];

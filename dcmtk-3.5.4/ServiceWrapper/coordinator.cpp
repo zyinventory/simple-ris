@@ -150,7 +150,7 @@ static list<WorkerProcess>::iterator runDcmmkdir(string &studyUid)
 	WorkerProcess wp;
 	memset(&wp, 0, sizeof(WorkerProcess));
 	char hashBuf[9];
-	__int64 hashStudy = uidHash(studyUid.c_str(), hashBuf, sizeof(hashBuf));
+	__int64 hashStudy = HashStr(studyUid.c_str(), hashBuf, sizeof(hashBuf));
 	char archivedir[MAX_PATH];
 	int archlen = sprintf_s(archivedir, MAX_PATH, "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s",
 		hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUid.c_str());

@@ -143,7 +143,7 @@ void overwrite_study_archdir(const char *pacs_base, map<string, DWORD> &map_move
     for(map<string, string>::iterator it = map_studies.begin(); it != map_studies.end(); ++it)
     {
         char prefix[16], src_path[MAX_PATH], dest_path[MAX_PATH];
-        uidHash(it->first.c_str(), prefix, sizeof(prefix));
+        HashStr(it->first.c_str(), prefix, sizeof(prefix));
         sprintf_s(src_path, "archdir\\%s", it->first.c_str());
         sprintf_s(dest_path, "%s\\pacs\\archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s", pacs_base, 
             prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
@@ -208,7 +208,7 @@ report_study_status:
     }
 }
 
-void overwrite_study_index(const char *pacs_base, map<string, DWORD> &map_move_study_status)
+void merge_study_index(const char *pacs_base, map<string, DWORD> &map_move_study_status)
 {
     for(map<string, DWORD>::iterator it = map_move_study_status.begin(); it != map_move_study_status.end(); ++it)
     {
@@ -225,6 +225,7 @@ void overwrite_study_index(const char *pacs_base, map<string, DWORD> &map_move_s
         if(_access_s(dest_path, 0) == 0)
         {   // todo: dest xml exist, merge it by xml dom
             cout << "merge " << dest_path << endl;
+
         }
         else
         {   // not exist, copy src xml to dest
@@ -397,7 +398,7 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
         map_move_study_status["J9\\DD\\O9\\GS\\1.2.840.113619.2.55.3.2831208458.315.1336457410.39"] = 0;
         map_move_study_status["N3\\LE\\BX\\J5\\1.2.840.113619.2.55.3.2831208458.335.1327645840.955"] = 0;
         
-        overwrite_study_index(pacs_base, map_move_study_status);
+        merge_study_index(pacs_base, map_move_study_status);
 
         map<string, bool> map_receive_index;
         //move_index_receive(pacs_base, map_receive_index);

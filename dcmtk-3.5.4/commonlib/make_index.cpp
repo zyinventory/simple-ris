@@ -142,7 +142,7 @@ void clear_map()
                     sprintf_s(xmlpath, "indexdir/000d0020/%s/", (LPCSTR)hash_prefix);
                 else
                 {
-                    uidHash(it->first.c_str(), studyHash, sizeof(studyHash));
+                    HashStr(it->first.c_str(), studyHash, sizeof(studyHash));
                     sprintf_s(xmlpath, "indexdir/000d0020/%c%c/%c%c/%c%c/%c%c/", studyHash[0], studyHash[1],
                         studyHash[2], studyHash[3], studyHash[4], studyHash[5], studyHash[6], studyHash[7]);
                 }

@@ -62,7 +62,7 @@ static int hashCode(const char *s, unsigned int seed)
   return hash;
 }
 
-static __int64 uidHashImpl(__int64 hash, int hash131, char *buffer, size_t buffer_size)
+static __int64 HashStrImpl(__int64 hash, int hash131, char *buffer, size_t buffer_size)
 {
 	hash <<= 9;
 	hash &= 0x1FFFFFFFFFFL;
@@ -88,23 +88,23 @@ static __int64 uidHashImpl(__int64 hash, int hash131, char *buffer, size_t buffe
 	return hash;
 }
 
-COMMONLIB_API __int64 uidHashW(const wchar_t *s, char *buffer, size_t buffer_size)
+COMMONLIB_API __int64 HashStrW(const wchar_t *s, char *buffer, size_t buffer_size)
 {
 	__int64 hash = hashCodeW(s, 31);
 	int hash131 = hashCodeW(s, 131);
-	return uidHashImpl(hash, hash131, buffer, buffer_size);
+	return HashStrImpl(hash, hash131, buffer, buffer_size);
 }
 
-COMMONLIB_API __int64 uidHash(const char *s, char *buffer, size_t buffer_size)
+COMMONLIB_API __int64 HashStr(const char *s, char *buffer, size_t buffer_size)
 {
 	__int64 hash = hashCode(s, 31);
 	int hash131 = hashCode(s, 131);
-	return uidHashImpl(hash, hash131, buffer, buffer_size);
+	return HashStrImpl(hash, hash131, buffer, buffer_size);
 }
 
 COMMONLIB_API errno_t SeriesInstancePath(const char *series, const string &instance, char *outputBuffer, size_t bufLen, char pathSeparator)
 {
-	uidHash(series, outputBuffer, bufLen);
+	HashStr(series, outputBuffer, bufLen);
 	char compbuf[UIDBase36::COMPRESS_MAX_LEN + 1];
 	size_t complen = UIDBase36::instance.compress(instance, compbuf, UIDBase36::COMPRESS_MAX_LEN + 1);
 	const char *src;

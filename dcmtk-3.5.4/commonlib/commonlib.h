@@ -70,8 +70,8 @@ COMMONLIB_API size_t GenerateTime(const char *format, char *timeBuffer, size_t b
 COMMONLIB_API char* GetPacsBase();
 COMMONLIB_API int ChangeToPacsWebSub(char *pPacsBase, size_t buff_size, const char *subdir = NULL);
 COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase = NULL);
-COMMONLIB_API __int64 uidHashW(const wchar_t *s, char *buffer = NULL, size_t buffer_size = 0);
-COMMONLIB_API __int64 uidHash(const char *s, char *buffer = NULL, size_t buffer_size = 0);
+COMMONLIB_API __int64 HashStrW(const wchar_t *s, char *buffer = NULL, size_t buffer_size = 0);
+COMMONLIB_API __int64 HashStr(const char *s, char *buffer = NULL, size_t buffer_size = 0);
 COMMONLIB_API long long diskUsage(const char *pacsBase, const char *studyUID);
 COMMONLIB_API bool DeleteSubTree(const char *dirpath, std::ostream *ostrm = NULL);
 COMMONLIB_API bool DeleteTree(const char *dirpath, std::ostream *ostrm = NULL);

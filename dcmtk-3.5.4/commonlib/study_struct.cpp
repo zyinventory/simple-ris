@@ -9,7 +9,7 @@ _tagStudy::_tagStudy(const char *puid, size_t s) : size(s)
 		strcpy_s(uid, sizeof(uid), puid);
 	else
 		throw exception("检查UID不能为空");
-	__int64 hashStudy = uidHash(puid, hash, sizeof(hash));
+	__int64 hashStudy = HashStr(puid, hash, sizeof(hash));
 	sprintf_s(path, sizeof(path), "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s",
 		hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], uid);
 	string dicomdirPath;
