@@ -269,6 +269,12 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
             if(pat)
             {
                 pat->setAttribute(L"id", clc.file.patientID);
+                char hash[16] = "", prefix[16] = "", enc[128];
+                HashStr(clc.file.patientID, hash, sizeof(hash));
+                sprintf_s(prefix, "%c%c/%c%c/%c%c/%c%c", hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7]);
+                pat->setAttribute(L"hash_prefix", prefix);
+                EncodeBase32(clc.file.patientID, enc, sizeof(enc));
+                pat->setAttribute(L"encoded", enc);
                 root->appendChild(pat);
             }
             else
