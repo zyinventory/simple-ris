@@ -337,6 +337,8 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
 
         if(series)
         {
+            struct _stat64 fs;
+            fs.st_size = 0;
             sprintf_s(filter, "instance[@id='%s']", clc.file.instanceUID);
             MSXML2::IXMLDOMElementPtr instance = series->selectSingleNode(filter);
             if(instance == NULL)
@@ -345,13 +347,11 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
                 if(instance)
                 {
                     instance->setAttribute(L"id", clc.file.instanceUID);
-                    instance->setAttribute(L"xfer_receive", clc.file.xfer);
                     instance->setAttribute(L"xfer", clc.file.xfer_new);
                     char instance_path[MAX_PATH];
                     int path_len = sprintf_s(instance_path, "archdir\\%s\\%s", clc.file.studyUID, clc.file.unique_filename);
                     if(clc.file.PathSeparator() == '/')
                         replace(instance_path, instance_path + path_len, '/', '\\');
-                    struct _stat64 fs;
                     if(_stat64(instance_path, &fs))
                     {
                         perror(instance_path);
@@ -387,6 +387,24 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
                     receive_from->attributes->setNamedItem(attr);
                     attr = pXMLDom->createAttribute(L"xfer_save");
                     attr->text = clc.file.xfer_new;
+                    receive_from->attributes->setNamedItem(attr);
+                    attr = pXMLDom->createAttribute(L"file_size_save");
+                    char ui64buf[32];
+                    if(_ui64toa_s(fs.st_size, ui64buf, sizeof(ui64buf), 10))
+                        attr->text = L"0";
+                    else
+                        attr->text = ui64buf;
+                    receive_from->attributes->setNamedItem(attr);
+                    if(_stat64(clc.file.filename, &fs))
+                    {
+                        perror(clc.file.filename);
+                        fs.st_size = 0;
+                    }
+                    attr = pXMLDom->createAttribute(L"file_size_receive");
+                    if(_ui64toa_s(fs.st_size, ui64buf, sizeof(ui64buf), 10))
+                        attr->text = L"0";
+                    else
+                        attr->text = ui64buf;
                     receive_from->attributes->setNamedItem(attr);
                     instance->appendChild(receive_from);
                 }
