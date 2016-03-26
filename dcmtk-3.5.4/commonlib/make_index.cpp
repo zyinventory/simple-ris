@@ -358,6 +358,9 @@ static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTE
                         fs.st_size = 0;
                     }
                     instance->setAttribute(L"file_size", fs.st_size);
+                    // off_in : remote is offline and local is inclusive
+                    // off_ex : remote is offline and local is exclusive
+                    instance->setAttribute(L"state", fs.st_size ? L"off_in" : L"off_ex");
                     if(clc.file.PathSeparator() == '/')
                         instance->setAttribute(L"url", clc.file.unique_filename);
                     else
