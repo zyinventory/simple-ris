@@ -121,6 +121,121 @@ static bool make_relate_dir(const char *dir_name)
     return true;
 }
 
+static void find_all_study(map<string, string> &map_studies_dicomdir)
+{
+    list<string> study_dirs, dir_files;
+    struct _finddata_t wfd;
+    intptr_t hSearch = _findfirst("archdir\\*", &wfd);
+    if(hSearch == -1)
+    {
+        perror("move_study_dir() failed");
+        fprintf_s(stderr, "\tfind %s failed\n", "archdir\\*");
+        return;
+    }
+    do {
+        string node(wfd.name);
+        if (node.compare(".") == 0 || node.compare("..") == 0 || node.compare("DICOMDIR") == 0) 
+			continue; // skip . .. DICOMDIR
+        if(wfd.attrib & _A_SUBDIR)
+            study_dirs.push_back(node);
+        else
+            dir_files.push_back(node);
+	} while(_findnext(hSearch, &wfd) == 0);
+	_findclose(hSearch);
+
+    for(list<string>::iterator it_study = study_dirs.begin(); it_study != study_dirs.end(); ++it_study)
+    {
+        string dir_filename(*it_study);
+        dir_filename.append(".dir");
+        list<string>::iterator it_dicomdir = find_if(dir_files.begin(), dir_files.end(),
+            [&dir_filename](const string &fn) { return fn.compare(dir_filename) == 0; });
+        if(it_dicomdir != dir_files.end())
+        {
+            map_studies_dicomdir[*it_study] = dir_filename;
+            dir_files.erase(it_dicomdir);
+        }
+        else
+            cerr << "study " << *it_study << " can't find matched DICOMDIR " << dir_filename << endl;
+    }
+    for_each(dir_files.begin(), dir_files.end(), [](const string &fn)
+        { cerr << "dicomdir " << fn << " remain, there is no matched study UID." << endl; });
+}
+
+// todo: for storescp, merge instances to old archive volume
+
+// move instances to old archive volume
+static void overwrite_study_archdir(const char *pacs_base, const map<string, string> &map_studies_dicomdir, map<string, LARGE_INTEGER> &map_move_study_status)
+{
+    for(map<string, string>::const_iterator it = map_studies_dicomdir.begin(); it != map_studies_dicomdir.end(); ++it)
+    {
+        LARGE_INTEGER state;
+        state.HighPart = 0; // for test, todo: find old archive vol.
+        state.LowPart = 0;  // last error is 0.
+        char prefix[16], src_path[MAX_PATH], dest_path[MAX_PATH];
+        HashStr(it->first.c_str(), prefix, sizeof(prefix));
+        sprintf_s(src_path, "archdir\\%s", it->first.c_str());
+        sprintf_s(dest_path, "%s\\pacs\\archdir\\v%07d\\%c%c\\%c%c\\%c%c\\%c%c\\%s", pacs_base, state.HighPart,
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
+        
+        // move study dir 
+        bool study_moved = false;
+        if(DeleteTree(dest_path, &cerr))
+        {
+            if(PrepareFileDir(dest_path))
+            {
+                if(rename(src_path, dest_path))
+                {
+                    perror("move_study_dir() rename study dir failed");
+                    cerr << "\t" << src_path << " -> " << dest_path << endl;
+                }
+                else
+                {
+                    study_moved = true;
+                    cout << "trigger archive " << it->first << " " << dest_path << endl;
+                }
+            }
+            else
+                cerr << "move_study_dir() can't PrepareFileDir(" << dest_path << ")" << endl;
+        }
+        else
+            cerr << "move_study_dir() can't delete dir " << dest_path << endl;
+
+        if(!study_moved)
+        {
+            state.LowPart = ERROR_PATH_NOT_FOUND;
+            goto report_study_status;
+        }
+
+        // move dicomdir
+        bool dicomdir_moved = false;
+        strcat_s(src_path, ".dir");
+        strcat_s(dest_path, ".dir");
+        errno_t ec = _unlink(dest_path);
+        if(ec == 0 || errno == ENOENT)
+        {
+            if(rename(src_path, dest_path))
+            {
+                perror("move_study_dir() rename dicomdir failed");
+                cerr << "\t" << src_path << " -> " << dest_path << endl;
+            }
+            else
+            {
+                dicomdir_moved = true;
+                cout << "trigger dicomdir " << it->first << ".dir " << dest_path << endl;
+            }
+        }
+        else
+            cerr << "move_study_dir() can't delete dicomdir " << dest_path << endl;
+
+        if(!dicomdir_moved) state.LowPart = ERROR_FILE_NOT_FOUND;
+
+report_study_status:
+        sprintf_s(dest_path, "%c%c\\%c%c\\%c%c\\%c%c\\%s", 
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
+        map_move_study_status[dest_path] = state;
+    }
+}
+
 COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 {
     opt_verbose = verbose;
@@ -238,6 +353,22 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     {
         cerr << "remain delay file " << *it << endl;
     }
+
+    map<string, string> map_studies_dicomdir;
+    find_all_study(map_studies_dicomdir);
+
+    // LARGE_INTEGER: HighPart is vol id, LowPart is last error state.
+    map<string, LARGE_INTEGER> map_move_study_status;
+    overwrite_study_archdir(pacs_base, map_studies_dicomdir, map_move_study_status);
+
+    // all study in vol 0
+    LARGE_INTEGER state = {0, 0};
+    //map_move_study_status["CL\\6F\\47\\0L\\1.2.840.113619.2.55.3.2831208458.63.1326435165.930"] = state;
+    //map_move_study_status["J9\\DD\\O9\\GS\\1.2.840.113619.2.55.3.2831208458.315.1336457410.39"] = state;
+    //map_move_study_status["N3\\LE\\BX\\J5\\1.2.840.113619.2.55.3.2831208458.335.1327645840.955"] = state;
+        
+    merge_study_index(pacs_base, true, map_move_study_status);
+
     CoUninitialize();
 #ifdef _DEBUG
     //DeleteSubTree("archdir");

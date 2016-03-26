@@ -117,7 +117,7 @@ static void add_association(MSXML2::IXMLDOMDocument *pXMLDom)
 #define ALIGNED_SIZE(x) (((x) & ~(CLUSTER_SIZE - 1LL)) + CLUSTER_SIZE)
 void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument *pXMLDom)
 {
-    MSXML2::IXMLDOMNodeListPtr instances = pXMLDom->documentElement->selectNodes(L"//instance");
+    MSXML2::IXMLDOMNodeListPtr instances = pXMLDom->documentElement->selectNodes(L"//instance[@state='off_in' or @state='on_in']");
     __int64 size_aligned = 0;
     while(MSXML2::IXMLDOMNodePtr n = instances->nextNode())
     {
@@ -147,7 +147,7 @@ void clear_map()
                         studyHash[2], studyHash[3], studyHash[4], studyHash[5], studyHash[6], studyHash[7]);
                 }
 
-                //calculate_size_cluster_aligned(pXMLDom);
+                calculate_size_cluster_aligned(pXMLDom);
 
                 if(MkdirRecursive(xmlpath))
                 {
@@ -440,4 +440,297 @@ errno_t make_index(const CMOVE_LOG_CONTEXT &clc)
     }
     else
         return ENOENT;
+}
+
+static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML2::IXMLDOMNode *nodeDest)
+{
+    //cerr << (LPCSTR)xpath << endl;
+
+    if(nodeSrc->nodeName != nodeDest->nodeName)
+    {
+        cerr << "merge_node(" << (LPCSTR)nodeSrc->nodeName << ", " << (LPCSTR)nodeDest->nodeName << "): node name mismatch." << endl;
+        return false;
+    }
+
+    MSXML2::IXMLDOMNamedNodeMapPtr attrs = nodeSrc->attributes;
+    while(MSXML2::IXMLDOMNodePtr attr = attrs->nextNode())
+    {
+        if(attr->nodeName == _bstr_t(L"xmlns")) continue; // xmlns is read-only
+
+        _bstr_t nodeName("@");
+        nodeName += attr->nodeName;
+        try
+        {
+            if(attr->text.length())
+            {
+                MSXML2::IXMLDOMNodePtr attr_dest = nodeDest->attributes->getNamedItem(attr->nodeName);
+                if(attr_dest == NULL)
+                {
+                    attr_dest = nodeDest->ownerDocument->createAttribute(attr->nodeName);
+                    nodeDest->appendChild(attr_dest);
+                }
+                attr_dest->Puttext(attr->text);
+            }
+            else
+            {
+                nodeDest->attributes->removeNamedItem(attr->nodeName);
+            }
+            /*
+            cerr << (LPCSTR)nodeName << " : ";
+            if(attr->text.length())
+                cerr << (LPCSTR)attr->text;
+            cerr << endl;
+            */
+        }
+        catch(_com_error & come)
+        {
+            cerr << "merge_node() node " << (LPCSTR)xpath <<(LPCSTR)nodeName << " COM error: " << come.ErrorMessage();
+            _bstr_t desc = come.Description();
+            if(desc.length())
+                cerr << ", " << (LPCSTR)desc;
+            cerr << endl;
+        }
+        catch(...)
+        {
+            cerr << "merge_node() node " << (LPCSTR)xpath << (LPCSTR)nodeName << " unknown error" << endl;
+        }
+    }
+
+    MSXML2::IXMLDOMNodeListPtr nodes = nodeSrc->childNodes;
+    MSXML2::IXMLDOMNodePtr textNodeSrc;
+    while(MSXML2::IXMLDOMNodePtr child = nodes->nextNode())
+    {
+        _bstr_t filter(L""), currentNodeXPath(xpath + _bstr_t(L"/") + child->nodeName);
+        try
+        {
+            if(child->nodeType == MSXML2::DOMNodeType::NODE_TEXT)
+            {
+                textNodeSrc = child;
+                continue;
+            }
+            else if(child->nodeType != MSXML2::DOMNodeType::NODE_ELEMENT)
+            {
+                cerr << "ignore " << (LPCSTR)currentNodeXPath << " : " << child->nodeTypeString << endl;
+                continue;
+            }
+            //else ergodic attributes and child nodes
+
+            MSXML2::IXMLDOMNodePtr attr_id = child->attributes->getNamedItem(L"id");
+            _bstr_t id_value;
+            if(attr_id) id_value = attr_id->text;
+            if(id_value.length())
+                filter = _bstr_t(L"[@id=\"") + id_value + _bstr_t(L"\"]");
+            currentNodeXPath += filter;
+            MSXML2::IXMLDOMNodePtr child_dest = nodeDest->selectSingleNode(child->nodeName + filter);
+            if(child_dest)
+                merge_node(currentNodeXPath, child, child_dest);
+            else
+            {   
+                nodeDest->appendChild(child->cloneNode(VARIANT_TRUE));
+            }
+        }
+        catch(_com_error & come)
+        {
+            cerr << "merge_node() node " << (LPCSTR)currentNodeXPath << " COM error: " << come.ErrorMessage();
+            _bstr_t desc = come.Description();
+            if(desc.length())
+                cerr << ", " << (LPCSTR)desc;
+            cerr << endl;
+        }
+        catch(...)
+        {
+            cerr << "merge_node() node " << (LPCSTR)currentNodeXPath << " unknown error" << endl;
+        }
+    }
+    // process text node
+    try
+    {
+        MSXML2::IXMLDOMNodeListPtr list_dest = nodeDest->childNodes;
+        MSXML2::IXMLDOMNodePtr textNodeDest;
+        while(MSXML2::IXMLDOMNodePtr it = list_dest->nextNode())
+        {
+            if(it->nodeType == MSXML2::DOMNodeType::NODE_TEXT)
+            {
+                textNodeDest = it;
+                break;
+            }
+        }
+        if(textNodeSrc)
+        {
+            _bstr_t node_value(textNodeSrc->nodeValue.bstrVal);
+            //cerr << (LPCSTR)xpath << "/#text" << " : " << (LPCSTR)node_value << endl;
+            if(textNodeDest == NULL)
+                nodeDest->appendChild(nodeDest->ownerDocument->createTextNode(node_value));
+            else
+                textNodeDest->PutnodeValue(node_value);
+        }
+        else if(textNodeDest)
+        {
+            nodeDest->removeChild(textNodeDest);
+        }
+    }
+    catch(_com_error & come)
+    {
+        cerr << "merge_node() text node " << (LPCSTR)xpath << "/#text COM error: " << come.ErrorMessage();
+        _bstr_t desc = come.Description();
+        if(desc.length())
+            cerr << ", " << (LPCSTR)desc;
+        cerr << endl;
+    }
+    catch(...)
+    {
+        cerr << "merge_node() text node " << (LPCSTR)xpath << "/#text unknown error" << endl;
+    }
+    return true;
+}
+
+void merge_study_index(const char *pacs_base, bool overwrite, std::map<std::string, LARGE_INTEGER> &map_move_study_status)
+{
+    for(map<string, LARGE_INTEGER>::iterator it = map_move_study_status.begin(); it != map_move_study_status.end(); ++it)
+    {
+        try
+        {
+            if(it->second.LowPart == ERROR_PATH_NOT_FOUND) continue;
+            char dest_path[MAX_PATH];
+            int offset = sprintf_s(dest_path, "%s\\pacs\\", pacs_base);
+            char *src_path = dest_path + offset;
+            sprintf_s(src_path, sizeof(dest_path) - offset, "indexdir\\000d0020\\%s.xml", it->first.c_str());
+            MSXML2::IXMLDOMDocument2Ptr pSrc;
+            HRESULT hr = pSrc.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+            if(VARIANT_FALSE == pSrc->load(src_path))
+            {
+                cerr << "overwrite_index_study() can't load src xml " << src_path << endl;
+                it->second.LowPart = ERROR_FILE_NOT_FOUND;
+                continue;
+            }
+            pSrc->preserveWhiteSpace = VARIANT_FALSE;
+	        pSrc->async = VARIANT_FALSE;
+
+            char vol_id[16];
+            sprintf_s(vol_id, "v%07d", it->second.HighPart);
+            pSrc->documentElement->setAttribute(L"volume", vol_id);
+
+            if(!PrepareFileDir(dest_path))
+            {
+                cerr << "overwrite_index_study() can't PrepareFileDir(" << dest_path << ")" << endl;
+                it->second.LowPart = ERROR_PATH_NOT_FOUND;
+                continue;
+            }
+            if(_access_s(dest_path, 0) == 0)
+            {
+                ofstream merged_xml;
+                MSXML2::IXMLDOMDocument2Ptr pDest;
+                hr = pDest.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+                if(VARIANT_FALSE == pDest->load(dest_path))
+                {
+                    it->second.LowPart = ERROR_FILE_NOT_FOUND;
+                    cerr << "overwrite_index_study() can't load dest xml " << src_path << endl;
+                    continue;
+                }
+                pDest->preserveWhiteSpace = VARIANT_FALSE;
+	            pDest->async = VARIANT_FALSE;
+                //hr = pDest->setProperty(L"SelectionLanguage", L"XPath");
+                //hr = pDest->setProperty(L"SelectionNamespaces", "xmlns:p='http://www.kurumi.com.cn/xsd/study'");
+                if(overwrite)
+                {
+                    MSXML2::IXMLDOMNodeListPtr instances = pDest->documentElement->selectNodes(L"//instance");
+                    while(MSXML2::IXMLDOMNodePtr n = instances->nextNode())
+                    {
+                        MSXML2::IXMLDOMNodePtr attr = n->attributes->getNamedItem(L"state");
+                        if(attr == NULL)
+                        {
+                            attr = pDest->createAttribute(L"state");
+                            attr->nodeValue = L"off_ex"; // remote is offline and local is exclusive
+                            n->appendChild(attr);
+                        }
+                        else
+                            attr->nodeValue = L"off_ex";
+                    }
+                }
+
+                if(merge_node(L"/study", pSrc->documentElement, pDest->documentElement))
+                    calculate_size_cluster_aligned(pDest);
+                else
+                {
+                    it->second.LowPart = ERROR_FILE_NOT_FOUND;
+                    cerr << "overwrite_index_study() merge study node failed" << endl;
+                    continue;
+                }
+                
+                merged_xml.open(dest_path, ios_base::out | ios_base::trunc, _SH_DENYNO);
+                if(merged_xml.good())
+                {
+                    merged_xml << XML_HEADER << (LPCSTR)pDest->documentElement->xml << endl;
+                    merged_xml.close();
+                }
+                else
+                {
+                    char msg[1024];
+                    DWORD gle = GetLastError();
+                    errno_t en = errno;
+                    it->second.LowPart = ERROR_FILE_NOT_FOUND;
+                    sprintf_s(msg, "merge_study_index() save %s failed", dest_path);
+                    displayErrorToCerr(msg, gle);
+                    strerror_s(msg, en);
+                    cerr << "merge_study_index() save " << dest_path << " failed: " << msg << endl;
+                }
+                it->second.LowPart = 0;
+            }
+            else
+            {   // not exist, save dom to dest xml
+                FILE *dest_fp = NULL;
+                errno_t en = 0;
+                if(0 == (en = fopen_s(&dest_fp, dest_path, "w+")))
+                {
+                    fwrite(XML_HEADER, 1, strlen(XML_HEADER), dest_fp);
+                    size_t xml_len = strlen((LPCSTR)pSrc->documentElement->xml);
+                    char *buff = new char[xml_len + 2];  // 2 is \n + \0
+                    if(0 == (en = strcpy_s(buff, xml_len + 2, (LPCSTR)pSrc->documentElement->xml)))
+                    {
+                        if(strlen(buff) == xml_len)
+                        {
+                            buff[xml_len] = '\n';
+                            buff[xml_len + 1] = '\0';
+                            fwrite(buff, 1, xml_len + 1, dest_fp);
+                            fclose(dest_fp);
+                            cout << "trigger index_study " << dest_path << endl;
+                        }
+                        else
+                        {
+                            fclose(dest_fp);
+                            it->second.LowPart = ERROR_FILE_NOT_FOUND;
+                            cerr << "merge_study_index() strcpy_s(xml) from " << dest_path << ": buffer size error." << endl;
+                        }
+                    }
+                    else
+                    {
+                        char msg[1024];
+                        fclose(dest_fp);
+                        it->second.LowPart = ERROR_FILE_NOT_FOUND;
+                        strerror_s(msg, en);
+                        cerr << "merge_study_index() strcpy_s(xml) from " << dest_path << " failed: " << msg << endl;
+                    }
+                }
+                else
+                {
+                    char msg[1024];
+                    strerror_s(msg, en);
+                    cerr << "overwrite_index_study() can't fopen_s(" << dest_path << ", w+): " << msg << endl;
+                    it->second.LowPart = ERROR_FILE_NOT_FOUND;
+                }
+            }
+        }
+        catch(_com_error & come)
+        {
+            cerr << "overwrite_index_study() COM error: " << come.ErrorMessage();
+            _bstr_t desc = come.Description();
+            if(desc.length())
+                cerr << ", " << (LPCSTR)desc;
+            cerr << endl;
+        }
+        catch(...)
+        {
+            cerr << "overwrite_index_study() unknown error" << endl;
+        }
+    }
 }
