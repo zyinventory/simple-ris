@@ -729,7 +729,7 @@ HANDLE *get_worker_handles(size_t *worker_num, size_t *queue_size, WORKER_CALLBA
             transform(list_dir_workers.begin(), list_dir_workers.end(), objs + i, 
                 [](const DCMMKDIR_CONTEXT &dc) { return dc.hProcess; });
 
-        for(int dir_num = 0; dir_num < list_dir_workers.size(); ++dir_num)
+        for(size_t dir_num = 0; dir_num < list_dir_workers.size(); ++dir_num)
             (*ppCBs)[i + dir_num] = close_dcmmkdir_worker;
 
         if(worker_num) *worker_num = wk_num;

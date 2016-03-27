@@ -79,7 +79,7 @@ DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid);
 // ------------ Make Index ------------
 
 errno_t make_index(const CMOVE_LOG_CONTEXT &clc);
-void clear_map();
+void save_index_study_and_receive();
 void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::string, LARGE_INTEGER> &map_move_study_status);
 
 #endif //COMMONLIB_INTERNAL

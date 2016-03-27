@@ -7,7 +7,7 @@
 
 using namespace std;
 
-static map<string, MSXML2::IXMLDOMDocument2*> study_map, association_map;
+static map<string, MSXML2::IXMLDOMDocument2*> study_map;
 
 static MSXML2::IXMLDOMDocument2* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
 {
@@ -60,7 +60,7 @@ static MSXML2::IXMLDOMDocument2* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
 	}
 }
 
-static void add_association(MSXML2::IXMLDOMDocument2 *pXMLDom)
+static void add_association(map<string, MSXML2::IXMLDOMDocument2*> &association_map, MSXML2::IXMLDOMDocument2 *pXMLDom)
 {
     if(pXMLDom == NULL) return;
     try
@@ -91,13 +91,18 @@ static void add_association(MSXML2::IXMLDOMDocument2 *pXMLDom)
             else
             {
                 pDomAssoc.Attach(pa);
-                rec_assoc = pDomAssoc->selectSingleNode(L"/receive_association");
+                rec_assoc = pDomAssoc->documentElement; //receive_association
             }
 
             if(rec_assoc)
             {
-                MSXML2::IXMLDOMNodePtr study = pXMLDom->selectSingleNode(L"/study");
-                if(study) rec_assoc->appendChild(study->cloneNode(VARIANT_FALSE));
+                MSXML2::IXMLDOMNodePtr study = pXMLDom->documentElement->cloneNode(VARIANT_FALSE);
+                if(study)
+                {
+                    MSXML2::IXMLDOMNodePtr patient = pXMLDom->documentElement->selectSingleNode(L"patient");
+                    if(patient) study->appendChild(patient->cloneNode(VARIANT_TRUE));
+                    rec_assoc->appendChild(study);
+                }
                 pa = pDomAssoc.Detach();
                 if(insert_new) association_map[assoc_id] = pa;
             }
@@ -146,8 +151,10 @@ static void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument2 *pXMLDom)
     pXMLDom->documentElement->setAttribute(L"instance_count", instance_count);
 }
 
-void clear_map()
+// ref static: study_map
+void save_index_study_and_receive()
 {
+    map<string, MSXML2::IXMLDOMDocument2*> association_map;
     for(map<string, MSXML2::IXMLDOMDocument2*>::iterator it = study_map.begin(); it != study_map.end(); ++it)
     {
         try
@@ -177,19 +184,19 @@ void clear_map()
                     {
                         fxml << XML_HEADER << (LPCSTR)pXMLDom->xml << endl;
                         fxml.close();
-                        add_association(pXMLDom);
+                        add_association(association_map, pXMLDom);
                     }
                 }
                 else
                 {
-                    cerr << "can't save " << xmlpath << endl;
+                    cerr << "save_index_study_and_receive() can't save " << xmlpath << endl;
                 }
                 pXMLDom->Release();
             }
         }
 	    catch(_com_error &ex) 
 	    {
-		    cerr << "clear_map() clear study failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
+		    cerr << "save_index_study_and_receive() clear study failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
 	    }
     }
     study_map.clear();
@@ -200,7 +207,7 @@ void clear_map()
         if(pDomAssoc == NULL) continue;
         try
         {
-            MSXML2::IXMLDOMNodePtr assoc = pDomAssoc->selectSingleNode(L"/receive_association");
+            MSXML2::IXMLDOMNodePtr assoc = pDomAssoc->documentElement; //receive_association
             string xmlpath((LPCSTR)assoc->attributes->getNamedItem(L"id")->text);
             xmlpath.insert(8, 1, '/');
             xmlpath.insert(6, 1, '/');
@@ -220,7 +227,7 @@ void clear_map()
         }
         catch(_com_error &ex) 
 	    {
-		    cerr << "clear_map() clear association failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
+		    cerr << "save_index_study_and_receive() clear association failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
 	    }
     }
     association_map.clear();
@@ -246,7 +253,7 @@ static void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const CMOVE_LOG_CONT
         MSXML2::IXMLDOMElementPtr root = pXMLDom->documentElement;
         if(root == NULL)
         {
-            cerr << "XMLDOM can't find associations element." << endl;
+            cerr << "add_instance() XMLDOM can't find associations element." << endl;
             return;
         }
         if(strcmp(clc.file.studyUID, clc.study.studyUID) == 0)
@@ -297,7 +304,7 @@ static void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const CMOVE_LOG_CONT
                 root->appendChild(pat);
             }
             else
-                cerr << "ERROR: create patient node " << clc.file.patientID << " failed." << endl;
+                cerr << "add_instance() create patient node " << clc.file.patientID << " failed." << endl;
         }
         if(pat && strcmp(clc.patient.patientID, clc.file.patientID) == 0)
         {
@@ -320,7 +327,7 @@ static void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const CMOVE_LOG_CONT
                 root->appendChild(series);
             }
             else
-                cerr << "ERROR: create series node " << clc.file.seriesUID << " failed." << endl;
+                cerr << "add_instance() create series node " << clc.file.seriesUID << " failed." << endl;
         }
         if(series && strcmp(clc.file.seriesUID, clc.series.seriesUID) == 0)
         {
@@ -392,7 +399,7 @@ static void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const CMOVE_LOG_CONT
                 }
                 else
                 {
-                    cerr << "ERROR: create instance node " << clc.file.instanceUID << " failed." << endl;
+                    cerr << "add_instance() create instance node " << clc.file.instanceUID << " failed." << endl;
                 }
                 series->appendChild(instance);
             }

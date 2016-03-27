@@ -158,7 +158,8 @@ static void find_all_study(map<string, string> &map_studies_dicomdir)
             cerr << "study " << *it_study << " can't find matched DICOMDIR " << dir_filename << endl;
     }
     for_each(dir_files.begin(), dir_files.end(), [](const string &fn) {
-        cerr << "dicomdir " << fn << " remain, there is no matched study UID." << endl; });
+        cerr << "dicomdir " << fn << " remain, there is no matched study UID." << endl; 
+    });
 }
 
 // todo: for storescp, merge instances to old archive volume
@@ -233,6 +234,110 @@ report_study_status:
         sprintf_s(dest_path, "%c%c\\%c%c\\%c%c\\%c%c\\%s", 
             prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
         map_move_study_status[dest_path] = state;
+    }
+}
+
+template<class Pred> static void find_recursive(const string &input_path, list<string> &collector, Pred pred)
+{
+    string path(input_path);
+    if(path.empty()) path = ".";
+    string::size_type old_size = path.size();
+    string::iterator it = path.end();
+    --it;
+    if(*it != '\\') path.append(1, '\\');
+    path.append(1, '*');
+    it = path.end();
+    --it; // it -> '*'
+
+    struct __finddata64_t wfd;
+    intptr_t hSearch = _findfirst64(path.c_str(), &wfd);
+    if(hSearch == -1)
+    {
+        perror("find_recursive() failed");
+        fprintf_s(stderr, "\tfind %s failed\n", path.c_str());
+        return;
+    }
+    path.erase(it);
+    do {
+        if(wfd.attrib & _A_SUBDIR)
+        {
+            if(strcmp(wfd.name, ".") == 0 || strcmp(wfd.name, "..") == 0) continue;
+            size_t old_len = path.length();
+            path.append(wfd.name);
+            find_recursive(path, collector, pred);
+            path.resize(old_len);
+        }
+        else  // file
+        {
+            if(pred(&wfd))
+            {
+                size_t old_len = path.length();
+                path.append(wfd.name);
+                collector.push_back(path);
+                path.resize(old_len);
+            }
+        }
+	} while(_findnext64(hSearch, &wfd) == 0);
+	_findclose(hSearch);
+}
+
+static bool is_ext_file(const struct __finddata64_t *wfd, const char *ext)
+{
+    if((wfd->attrib & _A_SUBDIR) == 0)
+    {
+        const char * p = strstr(wfd->name, ext);
+        if(p && strcmp(p, ext) == 0) return true;
+    }
+    return false;
+}
+
+static void find_recursive_xml_file(string &input_path, list<string> &collector)
+{
+    find_recursive(input_path, collector, bind2nd(ptr_fun(is_ext_file), ".xml"));
+}
+
+static void move_index_receive(const char *pacs_base, map<string, errno_t> &map_receive_index)
+{
+    list<string> collector;
+    string path("indexdir\\receive");
+    //find_recursive(path, collector, [](const struct __finddata64_t *wfd) { return is_ext_file(wfd, ".xml"); });
+    find_recursive_xml_file(path, collector);
+
+    for(list<string>::iterator it = collector.begin(); it != collector.end(); ++it)
+    {
+        errno_t move_state = 0;
+        char dest_path[MAX_PATH];
+        sprintf_s(dest_path, "%s\\pacs\\%s", pacs_base, it->c_str());
+        if(PrepareFileDir(dest_path))
+        {
+            if(_unlink(dest_path) == 0 || errno == ENOENT)
+            {
+                if(rename(it->c_str(), dest_path))
+                {
+                    char msg[1024];
+                    move_state = errno;
+                    strerror_s(msg, move_state);
+                    cerr << "move_index_receive() move " << *it << " to " << dest_path << " failed: " << msg << endl;
+                }
+                else
+                {
+                    cout << "trigger index_receive " << dest_path << endl;
+                }
+            }
+            else
+            {
+                char msg[1024];
+                move_state = errno;
+                strerror_s(msg, move_state);
+                cerr << "move_index_receive() delete " << dest_path << " failed: " << msg << endl;
+            }
+        }
+        else
+        {
+            move_state = EINVAL;
+            cerr << "move_index_receive() can't mkdir " << dest_path << endl;
+        }
+        map_receive_index[*it] = move_state;
     }
 }
 
@@ -348,7 +453,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     if(objs) delete[] objs;
     if(cbs) delete[] cbs;
     NamedPipe_CloseHandle(true);
-    clear_map();
+    save_index_study_and_receive();
     for(list<string>::iterator it = delay_dfc.begin(); it != delay_dfc.end(); ++it)
     {
         cerr << "scp_store_main_loop(): remain delay file " << *it << endl;
@@ -362,6 +467,14 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     overwrite_study_archdir(pacs_base, map_studies_dicomdir, map_move_study_status);
 
     merge_index_study(pacs_base, true, map_move_study_status);
+
+    map<string, errno_t> map_receive_index;
+    move_index_receive(pacs_base, map_receive_index);
+    for_each(map_receive_index.begin(), map_receive_index.end(), [](const pair<string, errno_t> &p)
+    {
+        if(p.second)
+            cerr << "scp_store_main_loop() move_index_receive() error " << p.second << " at " << p.first << endl;
+    });
 
     CoUninitialize();
 #ifdef _DEBUG
