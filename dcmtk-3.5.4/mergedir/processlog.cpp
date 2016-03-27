@@ -218,7 +218,7 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
         cerr << "mkdir state faile: " << msg << endl;
         return;
     }
-    HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, NULL);
+    //HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, NULL);
     //test_sim_slow_log_writer((void*)sessionId.c_str());
     /*
     int i = 10;
@@ -230,13 +230,19 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
     */
     if(start_write_log >= 0) // start_write_log == 0, start immediately
     {
-        scp_store_main_loop(sessionId.c_str(), false);
         //test_consume_log(sessionId.c_str());
+
+        //scp_store_main_loop(sessionId.c_str(), false);
+        
+        test_for_make_index("C:\\usr\\local\\dicom", true);
+        
+        //CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
 
         map<string, bool> map_receive_index;
         //move_index_receive(pacs_base, map_receive_index);
 
         // todo: add study xml to patient xml and study date xml
+        //CoUninitialize();
     }
 }
 

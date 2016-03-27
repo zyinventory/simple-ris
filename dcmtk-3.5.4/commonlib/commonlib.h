@@ -86,3 +86,9 @@ COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t b
 COMMONLIB_API void ReleaseUniqueNoResource();
 
 COMMONLIB_API int scp_store_main_loop(const char *sessionId, bool verbose);
+
+#ifdef _DEBUG
+
+COMMONLIB_API int test_for_make_index(const char *pacs_base, bool verbose);
+
+#endif //_DEBUG

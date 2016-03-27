@@ -62,13 +62,13 @@ static DWORD refresh_files(bool timeout)
         ifstream ifcmd(fileFilter, ios_base::in, _SH_DENYRW);
         if(ifcmd.fail())
         {
-            if(opt_verbose) cerr << "open file " << fileFilter << " failed, OS close file delay." << endl;
+            if(opt_verbose) cerr << "refresh_files(): open file " << fileFilter << " failed, OS close file delay." << endl;
             if(dlit == delay_dfc.end()) delay_dfc.push_back(*it);
             break;
         }
         else if(dlit != delay_dfc.end())
         {
-            if(opt_verbose) cerr << "retry file " << fileFilter << " OK." << endl;
+            if(opt_verbose) cerr << "refresh_files(): retry file " << fileFilter << " OK." << endl;
             delay_dfc.erase(dlit);
         }
 
@@ -115,7 +115,7 @@ static bool make_relate_dir(const char *dir_name)
     {
         char msg[1024];
         strerror_s(msg, errno);
-        cerr << "mkdir " << dir_name << " faile: " << msg << endl;
+        cerr << "make_relate_dir(): mkdir " << dir_name << " faile: " << msg << endl;
         return false;
     }
     return true;
@@ -157,8 +157,8 @@ static void find_all_study(map<string, string> &map_studies_dicomdir)
         else
             cerr << "study " << *it_study << " can't find matched DICOMDIR " << dir_filename << endl;
     }
-    for_each(dir_files.begin(), dir_files.end(), [](const string &fn)
-        { cerr << "dicomdir " << fn << " remain, there is no matched study UID." << endl; });
+    for_each(dir_files.begin(), dir_files.end(), [](const string &fn) {
+        cerr << "dicomdir " << fn << " remain, there is no matched study UID." << endl; });
 }
 
 // todo: for storescp, merge instances to old archive volume
@@ -244,7 +244,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     fn.append(sessionId);
     if(ChangeToPacsWebSub(pacs_base, MAX_PATH, fn.c_str()))
     {
-        cerr << "无法切换工作目录" << endl;
+        cerr << "scp_store_main_loop(): 无法切换工作目录" << endl;
         return -1;
     }
     if(!make_relate_dir("state")) return -1;
@@ -258,7 +258,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     hDirNotify = FindFirstChangeNotification(fn.c_str(), FALSE, FILE_NOTIFY_CHANGE_SIZE);
     if(hDirNotify == INVALID_HANDLE_VALUE)
     {
-        displayErrorToCerr("FindFirstChangeNotification()", GetLastError());
+        displayErrorToCerr("scp_store_main_loop(): FindFirstChangeNotification()", GetLastError());
         return -2;
     }
 
@@ -326,13 +326,13 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
             gle = worker_complete(wr, objs, cbs, worker_num);
             if(gle)
             {
-                cerr << "fatal error at worker_complete()" << endl;
+                cerr << "scp_store_main_loop(): fatal error at worker_complete()" << endl;
                 break;
             }
         }
         else
         {   // shall not reach here ...
-            displayErrorToCerr("WaitForMultipleObjectsEx() ", GetLastError());
+            displayErrorToCerr("scp_store_main_loop(): WaitForMultipleObjectsEx() ", GetLastError());
             break;
         }
 
@@ -351,7 +351,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     clear_map();
     for(list<string>::iterator it = delay_dfc.begin(); it != delay_dfc.end(); ++it)
     {
-        cerr << "remain delay file " << *it << endl;
+        cerr << "scp_store_main_loop(): remain delay file " << *it << endl;
     }
 
     map<string, string> map_studies_dicomdir;
@@ -361,13 +361,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     map<string, LARGE_INTEGER> map_move_study_status;
     overwrite_study_archdir(pacs_base, map_studies_dicomdir, map_move_study_status);
 
-    // all study in vol 0
-    LARGE_INTEGER state = {0, 0};
-    //map_move_study_status["CL\\6F\\47\\0L\\1.2.840.113619.2.55.3.2831208458.63.1326435165.930"] = state;
-    //map_move_study_status["J9\\DD\\O9\\GS\\1.2.840.113619.2.55.3.2831208458.315.1336457410.39"] = state;
-    //map_move_study_status["N3\\LE\\BX\\J5\\1.2.840.113619.2.55.3.2831208458.335.1327645840.955"] = state;
-        
-    merge_study_index(pacs_base, true, map_move_study_status);
+    merge_index_study(pacs_base, true, map_move_study_status);
 
     CoUninitialize();
 #ifdef _DEBUG

@@ -80,6 +80,6 @@ DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid);
 
 errno_t make_index(const CMOVE_LOG_CONTEXT &clc);
 void clear_map();
-void merge_study_index(const char *pacs_base, bool overwrite, std::map<std::string, LARGE_INTEGER> &map_move_study_status);
+void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::string, LARGE_INTEGER> &map_move_study_status);
 
 #endif //COMMONLIB_INTERNAL

@@ -7,13 +7,13 @@
 
 using namespace std;
 
-static map<string, MSXML2::IXMLDOMDocument*> study_map, association_map;
+static map<string, MSXML2::IXMLDOMDocument2*> study_map, association_map;
 
-static MSXML2::IXMLDOMDocument* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
+static MSXML2::IXMLDOMDocument2* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
 {
     try
     {
-        MSXML2::IXMLDOMDocumentPtr pXMLDom;
+        MSXML2::IXMLDOMDocument2Ptr pXMLDom;
         HRESULT hr = pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
         if(SUCCEEDED(hr))
         {
@@ -43,7 +43,7 @@ static MSXML2::IXMLDOMDocument* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
                 MSXML2::IXMLDOMNodePtr pAssociations = pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"associations", L"http://www.kurumi.com.cn/xsd/study");
                 pXMLDom->documentElement->appendChild(pAssociations);
             }
-            MSXML2::IXMLDOMDocument *pdom = pXMLDom.Detach();
+            MSXML2::IXMLDOMDocument2 *pdom = pXMLDom.Detach();
             return pdom;
         }
         return NULL;
@@ -60,7 +60,7 @@ static MSXML2::IXMLDOMDocument* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
 	}
 }
 
-static void add_association(MSXML2::IXMLDOMDocument *pXMLDom)
+static void add_association(MSXML2::IXMLDOMDocument2 *pXMLDom)
 {
     if(pXMLDom == NULL) return;
     try
@@ -70,8 +70,8 @@ static void add_association(MSXML2::IXMLDOMDocument *pXMLDom)
         while(MSXML2::IXMLDOMNodePtr assoc = pAssociations->nextNode())
         {
             string assoc_id((LPCSTR)assoc->attributes->getNamedItem(L"id")->text);
-            MSXML2::IXMLDOMDocument *pa = association_map[assoc_id];
-            MSXML2::IXMLDOMDocumentPtr pDomAssoc;
+            MSXML2::IXMLDOMDocument2 *pa = association_map[assoc_id];
+            MSXML2::IXMLDOMDocument2Ptr pDomAssoc;
             MSXML2::IXMLDOMNodePtr rec_assoc;
             bool insert_new = false;
             if(pa == NULL)
@@ -115,26 +115,45 @@ static void add_association(MSXML2::IXMLDOMDocument *pXMLDom)
 
 #define CLUSTER_SIZE 4096LL
 #define ALIGNED_SIZE(x) (((x) & ~(CLUSTER_SIZE - 1LL)) + CLUSTER_SIZE)
-void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument *pXMLDom)
+static void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument2 *pXMLDom)
 {
-    MSXML2::IXMLDOMNodeListPtr instances = pXMLDom->documentElement->selectNodes(L"//instance[@state='off_in' or @state='on_in']");
+    size_t series_count = 0, instance_count = 0;
     __int64 size_aligned = 0;
-    while(MSXML2::IXMLDOMNodePtr n = instances->nextNode())
+    MSXML2::IXMLDOMNodeListPtr seriesNodes = pXMLDom->documentElement->selectNodes(L"series");
+    while(MSXML2::IXMLDOMNodePtr s = seriesNodes->nextNode())
     {
-        __int64 fs = _atoi64((LPCSTR)n->attributes->getNamedItem(L"file_size")->text);
-        size_aligned += ALIGNED_SIZE(fs);
+        size_t current_instance_count = 0;
+        MSXML2::IXMLDOMNodeListPtr instances = s->selectNodes(L"instance[@state='off_in' or @state='on_in']");
+        while(MSXML2::IXMLDOMNodePtr n = instances->nextNode())
+        {
+            __int64 fs = _atoi64((LPCSTR)n->attributes->getNamedItem(L"file_size")->text);
+            size_aligned += ALIGNED_SIZE(fs);
+            ++current_instance_count;
+        }
+        MSXML2::IXMLDOMAttributePtr attr = pXMLDom->createAttribute(L"collection_state");
+        if(current_instance_count)
+        {
+            ++series_count;
+            instance_count += current_instance_count;
+            attr->PutnodeValue(L"include");
+        }
+        else
+            attr->PutnodeValue(L"exclude");
+        s->attributes->setNamedItem(attr);
     }
     pXMLDom->documentElement->setAttribute(L"study_size_cluster_aligned", size_aligned);
+    pXMLDom->documentElement->setAttribute(L"series_count", series_count);
+    pXMLDom->documentElement->setAttribute(L"instance_count", instance_count);
 }
 
 void clear_map()
 {
-    for(map<string, MSXML2::IXMLDOMDocument*>::iterator it = study_map.begin(); it != study_map.end(); ++it)
+    for(map<string, MSXML2::IXMLDOMDocument2*>::iterator it = study_map.begin(); it != study_map.end(); ++it)
     {
         try
         {
             char studyHash[9], xmlpath[MAX_PATH];
-            MSXML2::IXMLDOMDocument *pXMLDom = it->second;
+            MSXML2::IXMLDOMDocument2 *pXMLDom = it->second;
             if(pXMLDom)
             {
                 _bstr_t hash_prefix(pXMLDom->documentElement->getAttribute(L"hash_prefix").bstrVal);
@@ -175,9 +194,9 @@ void clear_map()
     }
     study_map.clear();
 
-    for(map<string, MSXML2::IXMLDOMDocument*>::iterator it = association_map.begin(); it != association_map.end(); ++it)
+    for(map<string, MSXML2::IXMLDOMDocument2*>::iterator it = association_map.begin(); it != association_map.end(); ++it)
     {
-        MSXML2::IXMLDOMDocument *pDomAssoc = it->second;
+        MSXML2::IXMLDOMDocument2 *pDomAssoc = it->second;
         if(pDomAssoc == NULL) continue;
         try
         {
@@ -219,7 +238,7 @@ void clear_map()
         cerr << "N FFFFFFF0" << endl;
 }
 
-static void add_instance(MSXML2::IXMLDOMDocument *pXMLDom, const CMOVE_LOG_CONTEXT &clc)
+static void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const CMOVE_LOG_CONTEXT &clc)
 {
     try
     {
@@ -428,7 +447,7 @@ static int line_num = 0;
 errno_t make_index(const CMOVE_LOG_CONTEXT &clc)
 {
     const string study_uid(clc.file.studyUID);
-    MSXML2::IXMLDOMDocument *pXMLDom = study_map[study_uid];
+    MSXML2::IXMLDOMDocument2 *pXMLDom = study_map[study_uid];
     if(pXMLDom == NULL)
         pXMLDom = create_xmldom(clc);
     if(pXMLDom)
@@ -444,7 +463,7 @@ errno_t make_index(const CMOVE_LOG_CONTEXT &clc)
 
 static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML2::IXMLDOMNode *nodeDest)
 {
-    //cerr << (LPCSTR)xpath << endl;
+    if(opt_verbose) cerr << (LPCSTR)xpath << endl;
 
     if(nodeSrc->nodeName != nodeDest->nodeName)
     {
@@ -510,7 +529,7 @@ static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML
             }
             else if(child->nodeType != MSXML2::DOMNodeType::NODE_ELEMENT)
             {
-                cerr << "ignore " << (LPCSTR)currentNodeXPath << " : " << child->nodeTypeString << endl;
+                if(opt_verbose) cerr << "ignore " << (LPCSTR)currentNodeXPath << " : " << child->nodeTypeString << endl;
                 continue;
             }
             //else ergodic attributes and child nodes
@@ -558,7 +577,7 @@ static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML
         if(textNodeSrc)
         {
             _bstr_t node_value(textNodeSrc->nodeValue.bstrVal);
-            //cerr << (LPCSTR)xpath << "/#text" << " : " << (LPCSTR)node_value << endl;
+            if(opt_verbose) cerr << (LPCSTR)xpath << "/#text" << " : " << (LPCSTR)node_value << endl;
             if(textNodeDest == NULL)
                 nodeDest->appendChild(nodeDest->ownerDocument->createTextNode(node_value));
             else
@@ -584,7 +603,7 @@ static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML
     return true;
 }
 
-void merge_study_index(const char *pacs_base, bool overwrite, std::map<std::string, LARGE_INTEGER> &map_move_study_status)
+void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::string, LARGE_INTEGER> &map_move_study_status)
 {
     for(map<string, LARGE_INTEGER>::iterator it = map_move_study_status.begin(); it != map_move_study_status.end(); ++it)
     {
@@ -599,7 +618,7 @@ void merge_study_index(const char *pacs_base, bool overwrite, std::map<std::stri
             HRESULT hr = pSrc.CreateInstance(__uuidof(MSXML2::DOMDocument30));
             if(VARIANT_FALSE == pSrc->load(src_path))
             {
-                cerr << "overwrite_index_study() can't load src xml " << src_path << endl;
+                cerr << "merge_index_study() can't load src xml " << src_path << endl;
                 it->second.LowPart = ERROR_FILE_NOT_FOUND;
                 continue;
             }
@@ -612,7 +631,7 @@ void merge_study_index(const char *pacs_base, bool overwrite, std::map<std::stri
 
             if(!PrepareFileDir(dest_path))
             {
-                cerr << "overwrite_index_study() can't PrepareFileDir(" << dest_path << ")" << endl;
+                cerr << "merge_index_study() can't PrepareFileDir(" << dest_path << ")" << endl;
                 it->second.LowPart = ERROR_PATH_NOT_FOUND;
                 continue;
             }
@@ -624,7 +643,7 @@ void merge_study_index(const char *pacs_base, bool overwrite, std::map<std::stri
                 if(VARIANT_FALSE == pDest->load(dest_path))
                 {
                     it->second.LowPart = ERROR_FILE_NOT_FOUND;
-                    cerr << "overwrite_index_study() can't load dest xml " << src_path << endl;
+                    cerr << "merge_index_study() can't load dest xml " << src_path << endl;
                     continue;
                 }
                 pDest->preserveWhiteSpace = VARIANT_FALSE;
@@ -653,7 +672,7 @@ void merge_study_index(const char *pacs_base, bool overwrite, std::map<std::stri
                 else
                 {
                     it->second.LowPart = ERROR_FILE_NOT_FOUND;
-                    cerr << "overwrite_index_study() merge study node failed" << endl;
+                    cerr << "merge_index_study() merge study node failed" << endl;
                     continue;
                 }
                 
@@ -669,10 +688,10 @@ void merge_study_index(const char *pacs_base, bool overwrite, std::map<std::stri
                     DWORD gle = GetLastError();
                     errno_t en = errno;
                     it->second.LowPart = ERROR_FILE_NOT_FOUND;
-                    sprintf_s(msg, "merge_study_index() save %s failed", dest_path);
+                    sprintf_s(msg, "merge_index_study() save %s failed", dest_path);
                     displayErrorToCerr(msg, gle);
                     strerror_s(msg, en);
-                    cerr << "merge_study_index() save " << dest_path << " failed: " << msg << endl;
+                    cerr << "merge_index_study() save " << dest_path << " failed: " << msg << endl;
                 }
                 it->second.LowPart = 0;
             }
@@ -699,7 +718,7 @@ void merge_study_index(const char *pacs_base, bool overwrite, std::map<std::stri
                         {
                             fclose(dest_fp);
                             it->second.LowPart = ERROR_FILE_NOT_FOUND;
-                            cerr << "merge_study_index() strcpy_s(xml) from " << dest_path << ": buffer size error." << endl;
+                            cerr << "merge_index_study() strcpy_s(xml) from " << dest_path << ": buffer size error." << endl;
                         }
                     }
                     else
@@ -708,21 +727,21 @@ void merge_study_index(const char *pacs_base, bool overwrite, std::map<std::stri
                         fclose(dest_fp);
                         it->second.LowPart = ERROR_FILE_NOT_FOUND;
                         strerror_s(msg, en);
-                        cerr << "merge_study_index() strcpy_s(xml) from " << dest_path << " failed: " << msg << endl;
+                        cerr << "merge_index_study() strcpy_s(xml) from " << dest_path << " failed: " << msg << endl;
                     }
                 }
                 else
                 {
                     char msg[1024];
                     strerror_s(msg, en);
-                    cerr << "overwrite_index_study() can't fopen_s(" << dest_path << ", w+): " << msg << endl;
+                    cerr << "merge_index_study() can't fopen_s(" << dest_path << ", w+): " << msg << endl;
                     it->second.LowPart = ERROR_FILE_NOT_FOUND;
                 }
             }
         }
         catch(_com_error & come)
         {
-            cerr << "overwrite_index_study() COM error: " << come.ErrorMessage();
+            cerr << "merge_index_study() COM error: " << come.ErrorMessage();
             _bstr_t desc = come.Description();
             if(desc.length())
                 cerr << ", " << (LPCSTR)desc;
@@ -730,7 +749,29 @@ void merge_study_index(const char *pacs_base, bool overwrite, std::map<std::stri
         }
         catch(...)
         {
-            cerr << "overwrite_index_study() unknown error" << endl;
+            cerr << "merge_index_study() unknown error" << endl;
         }
     }
 }
+
+#ifdef _DEBUG
+
+COMMONLIB_API int test_for_make_index(const char *pacs_base, bool verbose)
+{
+    opt_verbose = verbose;
+
+    map<string, LARGE_INTEGER> map_move_study_status;
+    LARGE_INTEGER state = {0, 0};
+    map_move_study_status["CL\\6F\\47\\0L\\1.2.840.113619.2.55.3.2831208458.63.1326435165.930"] = state;
+    map_move_study_status["J9\\DD\\O9\\GS\\1.2.840.113619.2.55.3.2831208458.315.1336457410.39"] = state;
+    map_move_study_status["N3\\LE\\BX\\J5\\1.2.840.113619.2.55.3.2831208458.335.1327645840.955"] = state;
+
+    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
+
+    merge_index_study(pacs_base, true, map_move_study_status);
+
+    CoUninitialize();
+    return 0;
+}
+
+#endif //_DEBUG
