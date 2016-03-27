@@ -74,54 +74,119 @@ static bool save_index_study_date(MSXML2::IXMLDOMDocument2 *pDomStudy)
         _bstr_t attr_value;
         if(dateNode && dateNode->text.length()) attr_value = dateNode->text;
         else attr_value = L"19700102";
-        string date((LPCSTR)attr_value);
-        date.insert(6, 1, '\\').insert(4, 1, '\\')
+        string xml_path((LPCSTR)attr_value);
+        xml_path.insert(6, 1, '\\').insert(4, 1, '\\')
             .insert(0, "\\pacs\\indexdir\\00080020\\")
             .insert(0, pacs_base).append(".xml");
-        if(!PrepareFileDir(date.c_str())) throw logic_error(date.insert(0, "PrepareFileDir ").append(" failed"));
-        MSXML2::IXMLDOMDocument2Ptr pDomDate;
-        pDomDate.CreateInstance(__uuidof(MSXML2::DOMDocument30));
-        errno_t en = _access_s(date.c_str(), 6);
+        if(!PrepareFileDir(xml_path.c_str())) throw logic_error(xml_path.insert(0, "PrepareFileDir ").append(" failed"));
+        MSXML2::IXMLDOMDocument2Ptr pDom;
+        pDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        errno_t en = _access_s(xml_path.c_str(), 6);
         if(en == ENOENT)
         {   // not exist
-            pDomDate->appendChild(pDomDate->createNode(MSXML2::NODE_ELEMENT, L"study_date", L"http://www.kurumi.com.cn/xsd/study"));
+            pDom->appendChild(pDom->createNode(MSXML2::NODE_ELEMENT, L"study_date", L"http://www.kurumi.com.cn/xsd/study"));
         }
         else if(en == 0)
         {   // exist, rw OK
-            if(VARIANT_FALSE == pDomDate->load(date.c_str()))
-                throw logic_error(date.insert(0, "load exist xml ").append(" failed"));
+            if(VARIANT_FALSE == pDom->load(xml_path.c_str()))
+                throw logic_error(xml_path.insert(0, "load exist xml ").append(" failed"));
         }
         else
         {   // other error: EACCES EINVAL
             char msg[1024] = " ";
             strerror_s(msg + 1, sizeof(msg) - 1, en);
-            throw logic_error(date.insert(0, "open xml ").append(msg));
+            throw logic_error(xml_path.insert(0, "open xml ").append(msg));
         }
-        if(pDomDate == NULL || pDomDate->documentElement == NULL)
-            throw logic_error(date.insert(0, "open xml ").append(" failed"));
+        if(pDom == NULL || pDom->documentElement == NULL)
+            throw logic_error(xml_path.insert(0, "open xml ").append(" failed"));
         
         _bstr_t query_exist_study(L"study[@id='");
         query_exist_study += pDomStudy->documentElement->getAttribute(L"id").bstrVal;
         query_exist_study += "']";
-        if(MSXML2::IXMLDOMNodePtr exist_study = pDomDate->documentElement->selectSingleNode(query_exist_study))
-            pDomDate->documentElement->removeChild(exist_study);
-        pDomDate->documentElement->appendChild(shallow_copy_study(pDomStudy->documentElement));
+        if(MSXML2::IXMLDOMNodePtr exist_study = pDom->documentElement->selectSingleNode(query_exist_study))
+            pDom->documentElement->removeChild(exist_study);
+        pDom->documentElement->appendChild(study);
 
-        ofstream fxml(date.c_str(), ios_base::trunc | ios_base::out, _SH_DENYNO);
+        ofstream fxml(xml_path.c_str(), ios_base::trunc | ios_base::out, _SH_DENYNO);
         if(fxml.good())
         {
-            fxml << XML_HEADER << (LPCSTR)pDomDate->documentElement->xml << endl;
+            fxml << XML_HEADER << (LPCSTR)pDom->documentElement->xml << endl;
             fxml.close();
+            cout << "trigger index_study_date " << xml_path << endl;
         }
-        else
-        {
-            char msg[1024];
-            sprintf_s(msg, "save %s error", date.c_str());
-            throw runtime_error(msg);
-        }
+        else throw runtime_error(xml_path.insert(0, "save ").append(" error"));
         return true;
     }
     CATCH_COM_ERROR("save_index_study_date()")
+    return false;
+}
+
+static bool save_index_patient(MSXML2::IXMLDOMDocument2 *pDomStudy)
+{
+    try
+    {
+        MSXML2::IXMLDOMNodePtr study = shallow_copy_study(pDomStudy->documentElement);
+        if(study == NULL) throw logic_error("shallow_copy_study() return NULL");
+        MSXML2::IXMLDOMNodePtr patient = study->selectSingleNode(L"patient");
+        if(patient == NULL) throw logic_error("shallow_copy_study()'s patient node is NULL");
+
+        _bstr_t hash_prefix, encoded;
+        MSXML2::IXMLDOMNodePtr hash_prefix_attr = patient->attributes->getNamedItem(L"hash_prefix");
+        if(hash_prefix_attr == NULL) throw logic_error("shallow_copy_study()'s patient[prefix] attr is NULL");
+        hash_prefix = hash_prefix_attr->text;
+        if(hash_prefix.length() == 0) throw logic_error("shallow_copy_study()'s patient[prefix] value is NULL");
+        string hash_prefix_str((LPCSTR)hash_prefix);
+        replace(hash_prefix_str.begin(), hash_prefix_str.end(), '/', '\\');
+
+        MSXML2::IXMLDOMNodePtr encoded_attr = patient->attributes->getNamedItem(L"encoded");
+        if(encoded_attr == NULL) throw logic_error("shallow_copy_study()'s patient[encoded] attr is NULL");
+        encoded = encoded_attr->text;
+        if(encoded.length() == 0) throw logic_error("shallow_copy_study()'s patient[encoded] value is NULL");
+
+        string xml_path(pacs_base);
+        xml_path.append("\\pacs\\indexdir\\00100020\\").append(hash_prefix_str)
+            .append(1, '\\').append((LPCSTR)encoded).append(".xml");
+        if(!PrepareFileDir(xml_path.c_str())) throw logic_error(xml_path.insert(0, "PrepareFileDir ").append(" failed"));
+
+        MSXML2::IXMLDOMDocument2Ptr pDom;
+        pDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        errno_t en = _access_s(xml_path.c_str(), 6);
+        if(en == ENOENT)
+        {   // not exist
+            pDom->appendChild(pDom->createNode(MSXML2::NODE_ELEMENT, L"patient_all_study", L"http://www.kurumi.com.cn/xsd/study"));
+        }
+        else if(en == 0)
+        {   // exist, rw OK
+            if(VARIANT_FALSE == pDom->load(xml_path.c_str()))
+                throw logic_error(xml_path.insert(0, "load exist xml ").append(" failed"));
+        }
+        else
+        {   // other error: EACCES EINVAL
+            char msg[1024] = " ";
+            strerror_s(msg + 1, sizeof(msg) - 1, en);
+            throw logic_error(xml_path.insert(0, "open xml ").append(msg));
+        }
+        if(pDom == NULL || pDom->documentElement == NULL)
+            throw logic_error(xml_path.insert(0, "open xml ").append(" failed"));
+        
+        _bstr_t query_exist_study(L"study[@id='");
+        query_exist_study += pDomStudy->documentElement->getAttribute(L"id").bstrVal;
+        query_exist_study += "']";
+        if(MSXML2::IXMLDOMNodePtr exist_study = pDom->documentElement->selectSingleNode(query_exist_study))
+            pDom->documentElement->removeChild(exist_study);
+        pDom->documentElement->appendChild(study);
+
+        ofstream fxml(xml_path.c_str(), ios_base::trunc | ios_base::out, _SH_DENYNO);
+        if(fxml.good())
+        {
+            fxml << XML_HEADER << (LPCSTR)pDom->documentElement->xml << endl;
+            fxml.close();
+            cout << "trigger index_patient " << xml_path << endl;
+        }
+        else throw runtime_error(xml_path.insert(0, "save ").append(" error"));
+        return true;
+    }
+    CATCH_COM_ERROR("save_index_patient()")
     return false;
 }
 
@@ -208,14 +273,14 @@ static void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument2 *pXMLDom)
 }
 
 // ref static: study_map
-void save_index_study_and_receive()
+void save_index_study_receive_to_session()
 {
     map<string, MSXML2::IXMLDOMDocument2*> association_map;
     for(map<string, MSXML2::IXMLDOMDocument2*>::iterator it = study_map.begin(); it != study_map.end(); ++it)
     {
         if(it->second == NULL)
         {
-            cerr << "save_index_study_and_receive() study phase" << " failed at " << it->first << "'s DOM pointer is NULL" << endl;
+            cerr << "save_index_study_receive_to_session() study phase" << " failed at " << it->first << "'s DOM pointer is NULL" << endl;
             continue;
         }
         try
@@ -246,7 +311,6 @@ void save_index_study_and_receive()
                     fxml << XML_HEADER << (LPCSTR)pXMLDom->xml << endl;
                     fxml.close();
                     add_association(association_map, pXMLDom);
-                    save_index_study_date(pXMLDom);
                 }
                 else
                 {
@@ -262,7 +326,7 @@ void save_index_study_and_receive()
                 throw logic_error(msg);
             }
         }
-        CATCH_COM_ERROR("save_index_study_and_receive() study phase")
+        CATCH_COM_ERROR("save_index_study_receive_to_session() study phase")
     }
     study_map.clear();
 
@@ -290,21 +354,9 @@ void save_index_study_and_receive()
             }
             pDomAssoc->Release();
         }
-        CATCH_COM_ERROR("save_index_study_and_receive() association phase")
+        CATCH_COM_ERROR("save_index_study_receive_to_session() association phase")
     }
     association_map.clear();
-
-    char notify_file_name[MAX_PATH];
-    GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
-    strcat_s(notify_file_name, "_N.dfc");
-    ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
-    if(ntf.good())
-    {
-        ntf << "N FFFFFFF0" << endl;
-        ntf.close();
-    }
-    else
-        cerr << "N FFFFFFF0" << endl;
 }
 
 static void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const CMOVE_LOG_CONTEXT &clc)
@@ -632,7 +684,7 @@ static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML
     return true;
 }
 
-void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::string, LARGE_INTEGER> &map_move_study_status)
+void merge_index_study_patient_date(const char *pacs_base, bool overwrite, std::map<std::string, LARGE_INTEGER> &map_move_study_status)
 {
     for(map<string, LARGE_INTEGER>::iterator it = map_move_study_status.begin(); it != map_move_study_status.end(); ++it)
     {
@@ -647,7 +699,7 @@ void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::stri
             HRESULT hr = pSrc.CreateInstance(__uuidof(MSXML2::DOMDocument30));
             if(VARIANT_FALSE == pSrc->load(src_path))
             {
-                cerr << "merge_index_study() can't load src xml " << src_path << endl;
+                cerr << "merge_index_study_patient_date() can't load src xml " << src_path << endl;
                 it->second.LowPart = ERROR_FILE_NOT_FOUND;
                 continue;
             }
@@ -660,7 +712,7 @@ void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::stri
 
             if(!PrepareFileDir(dest_path))
             {
-                cerr << "merge_index_study() can't PrepareFileDir(" << dest_path << ")" << endl;
+                cerr << "merge_index_study_patient_date() can't PrepareFileDir(" << dest_path << ")" << endl;
                 it->second.LowPart = ERROR_PATH_NOT_FOUND;
                 continue;
             }
@@ -672,7 +724,7 @@ void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::stri
                 if(VARIANT_FALSE == pDest->load(dest_path))
                 {
                     it->second.LowPart = ERROR_FILE_NOT_FOUND;
-                    cerr << "merge_index_study() can't load dest xml " << src_path << endl;
+                    cerr << "merge_index_study_patient_date() can't load dest xml " << src_path << endl;
                     continue;
                 }
                 pDest->preserveWhiteSpace = VARIANT_FALSE;
@@ -701,7 +753,7 @@ void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::stri
                 else
                 {
                     it->second.LowPart = ERROR_FILE_NOT_FOUND;
-                    cerr << "merge_index_study() merge study node failed" << endl;
+                    cerr << "merge_index_study_patient_date() merge study node failed" << endl;
                     continue;
                 }
                 
@@ -710,6 +762,9 @@ void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::stri
                 {
                     merged_xml << XML_HEADER << (LPCSTR)pDest->documentElement->xml << endl;
                     merged_xml.close();
+                    cout << "trigger index_study " << dest_path << endl;
+                    save_index_study_date(pDest);
+                    save_index_patient(pDest);
                 }
                 else
                 {
@@ -717,10 +772,10 @@ void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::stri
                     DWORD gle = GetLastError();
                     errno_t en = errno;
                     it->second.LowPart = ERROR_FILE_NOT_FOUND;
-                    sprintf_s(msg, "merge_index_study() save %s failed", dest_path);
+                    sprintf_s(msg, "merge_index_study_patient_date() save %s failed", dest_path);
                     displayErrorToCerr(msg, gle);
                     strerror_s(msg, en);
-                    cerr << "merge_index_study() save " << dest_path << " failed: " << msg << endl;
+                    cerr << "merge_index_study_patient_date() save " << dest_path << " failed: " << msg << endl;
                 }
                 it->second.LowPart = 0;
             }
@@ -742,12 +797,14 @@ void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::stri
                             fwrite(buff, 1, xml_len + 1, dest_fp);
                             fclose(dest_fp);
                             cout << "trigger index_study " << dest_path << endl;
+                            save_index_study_date(pSrc);
+                            save_index_patient(pSrc);
                         }
                         else
                         {
                             fclose(dest_fp);
                             it->second.LowPart = ERROR_FILE_NOT_FOUND;
-                            cerr << "merge_index_study() strcpy_s(xml) from " << dest_path << ": buffer size error." << endl;
+                            cerr << "merge_index_study_patient_date() strcpy_s(xml) from " << dest_path << ": buffer size error." << endl;
                         }
                     }
                     else
@@ -756,19 +813,19 @@ void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::stri
                         fclose(dest_fp);
                         it->second.LowPart = ERROR_FILE_NOT_FOUND;
                         strerror_s(msg, en);
-                        cerr << "merge_index_study() strcpy_s(xml) from " << dest_path << " failed: " << msg << endl;
+                        cerr << "merge_index_study_patient_date() strcpy_s(xml) from " << dest_path << " failed: " << msg << endl;
                     }
                 }
                 else
                 {
                     char msg[1024];
                     strerror_s(msg, en);
-                    cerr << "merge_index_study() can't fopen_s(" << dest_path << ", w+): " << msg << endl;
+                    cerr << "merge_index_study_patient_date() can't fopen_s(" << dest_path << ", w+): " << msg << endl;
                     it->second.LowPart = ERROR_FILE_NOT_FOUND;
                 }
             }
         }
-        CATCH_COM_ERROR("merge_index_study()")
+        CATCH_COM_ERROR("merge_index_study_patient_date()")
     }
 }
 
@@ -795,7 +852,7 @@ COMMONLIB_API int test_for_make_index(const char *pb, bool verbose)
         MSXML2::IXMLDOMDocument2Ptr pXMLDom;
         pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
         pXMLDom->load(study_path.c_str());
-        save_index_study_date(pXMLDom);
+        save_index_patient(pXMLDom);
     }
 
     CoUninitialize();

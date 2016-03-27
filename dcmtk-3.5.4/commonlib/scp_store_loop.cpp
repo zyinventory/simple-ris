@@ -121,7 +121,7 @@ static bool make_relate_dir(const char *dir_name)
     return true;
 }
 
-static void find_all_study(map<string, string> &map_studies_dicomdir)
+static void find_all_study_dir(map<string, string> &map_studies_dicomdir)
 {
     list<string> study_dirs, dir_files;
     struct _finddata_t wfd;
@@ -186,20 +186,35 @@ static void overwrite_study_archdir(const char *pacs_base, const map<string, str
             {
                 if(rename(src_path, dest_path))
                 {
-                    perror("move_study_dir() rename study dir failed");
+                    perror("overwrite_study_archdir() rename study dir failed");
                     cerr << "\t" << src_path << " -> " << dest_path << endl;
                 }
                 else
                 {
                     study_moved = true;
                     cout << "trigger archive " << it->first << " " << dest_path << endl;
+
+                    // send archive ok notification
+                    char notify_file_name[MAX_PATH];
+                    GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+                    strcat_s(notify_file_name, "_N.dfc");
+                    ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
+                    if(ntf.good())
+                    {
+                        ntf << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE 
+                            << " " << it->first << " " << dest_path << endl;
+                        ntf.close();
+                    }
+                    else
+                        cerr << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE 
+                            << " " << it->first << " " << dest_path << endl;
                 }
             }
             else
-                cerr << "move_study_dir() can't PrepareFileDir(" << dest_path << ")" << endl;
+                cerr << "overwrite_study_archdir() can't PrepareFileDir(" << dest_path << ")" << endl;
         }
         else
-            cerr << "move_study_dir() can't delete dir " << dest_path << endl;
+            cerr << "overwrite_study_archdir() can't delete dir " << dest_path << endl;
 
         if(!study_moved)
         {
@@ -216,17 +231,32 @@ static void overwrite_study_archdir(const char *pacs_base, const map<string, str
         {
             if(rename(src_path, dest_path))
             {
-                perror("move_study_dir() rename dicomdir failed");
+                perror("overwrite_study_archdir() rename dicomdir failed");
                 cerr << "\t" << src_path << " -> " << dest_path << endl;
             }
             else
             {
                 dicomdir_moved = true;
                 cout << "trigger dicomdir " << it->first << ".dir " << dest_path << endl;
+
+                // send dicomdir ok notification
+                char notify_file_name[MAX_PATH];
+                GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+                strcat_s(notify_file_name, "_N.dfc");
+                ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
+                if(ntf.good())
+                {
+                    ntf << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_DICOMDIR 
+                        << " " << it->first << " " << dest_path << endl;
+                    ntf.close();
+                }
+                else
+                    cerr << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_DICOMDIR 
+                        << " " << it->first << " " << dest_path << endl;
             }
         }
         else
-            cerr << "move_study_dir() can't delete dicomdir " << dest_path << endl;
+            cerr << "overwrite_study_archdir() can't delete dicomdir " << dest_path << endl;
 
         if(!dicomdir_moved) state.LowPart = ERROR_FILE_NOT_FOUND;
 
@@ -400,7 +430,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         cbs[0] = read_cmd_continous;
     }
 
-    // hEventPipe must be alive, hDirNotify is the first exit signal.
+    // hPipeEvent must be alive, hDirNotify is the first exit signal.
     // so worker_num must be 1, all_queue_size must be 0.
     while(worker_num + all_queue_size > 1)
     {
@@ -453,20 +483,35 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     if(objs) delete[] objs;
     if(cbs) delete[] cbs;
     NamedPipe_CloseHandle(true);
-    save_index_study_and_receive();
+
     for(list<string>::iterator it = delay_dfc.begin(); it != delay_dfc.end(); ++it)
     {
         cerr << "scp_store_main_loop(): remain delay file " << *it << endl;
     }
 
-    map<string, string> map_studies_dicomdir;
-    find_all_study(map_studies_dicomdir);
+    // send compress and dicomdir ok notification
+    char notify_file_name[MAX_PATH];
+    GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+    strcat_s(notify_file_name, "_N.dfc");
+    ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
+    if(ntf.good())
+    {
+        ntf << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_COMPR_OK << endl;
+        ntf.close();
+    }
+    else
+        cerr << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_COMPR_OK << endl;
 
-    // LARGE_INTEGER: HighPart is vol id, LowPart is last error state.
+    save_index_study_receive_to_session();
+
+    map<string, string> map_studies_dicomdir;
+    find_all_study_dir(map_studies_dicomdir);
+
+    // LARGE_INTEGER: HighPart is volume id, LowPart is last error state.
     map<string, LARGE_INTEGER> map_move_study_status;
     overwrite_study_archdir(pacs_base, map_studies_dicomdir, map_move_study_status);
 
-    merge_index_study(pacs_base, true, map_move_study_status);
+    merge_index_study_patient_date(pacs_base, true, map_move_study_status);
 
     map<string, errno_t> map_receive_index;
     move_index_receive(pacs_base, map_receive_index);
@@ -476,11 +521,23 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
             cerr << "scp_store_main_loop() move_index_receive() error " << p.second << " at " << p.first << endl;
     });
 
+    // send xml ok notification
+    GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+    strcat_s(notify_file_name, "_N.dfc");
+    ofstream ntf_final(notify_file_name, ios_base::app | ios_base::out);
+    if(ntf_final.good())
+    {
+        ntf_final << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_XML_OK << endl;
+        ntf_final.close();
+    }
+    else
+        cerr << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_XML_OK << endl;
+
     CoUninitialize();
 #ifdef _DEBUG
     //DeleteSubTree("archdir");
     //DeleteSubTree("indexdir");
-    DeleteSubTree("state");
+    //DeleteSubTree("state");
 #endif
     return gle;
 }

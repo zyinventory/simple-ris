@@ -132,16 +132,7 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
     {
         //test_consume_log(sessionId.c_str());
         scp_store_main_loop(sessionId.c_str(), false);
-
         //test_for_make_index("C:\\usr\\local\\dicom", true);
-
-        // todo: add study xml to patient xml and study date xml
-        /*
-        CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
-        
-        
-        CoUninitialize();
-        */
     }
 }
 
