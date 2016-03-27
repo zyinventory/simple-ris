@@ -46,18 +46,83 @@ static MSXML2::IXMLDOMDocument2* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
             MSXML2::IXMLDOMDocument2 *pdom = pXMLDom.Detach();
             return pdom;
         }
-        return NULL;
     }
-	catch(_com_error &ex) 
-	{
-		cerr << "create_xmldom() failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
-		return NULL;
-	}
-	catch(char * message)
-	{
-		cerr << "create_xmldom() failed: " << message << endl;
-		return NULL;
-	}
+    CATCH_COM_ERROR("create_xmldom()")
+    return NULL;
+}
+
+static MSXML2::IXMLDOMNode *shallow_copy_study(MSXML2::IXMLDOMNode *root)
+{
+    MSXML2::IXMLDOMNodePtr study = root->cloneNode(VARIANT_FALSE);
+    if(study)
+    {
+        MSXML2::IXMLDOMNodePtr patient = root->selectSingleNode(L"patient");
+        if(patient) study->appendChild(patient->cloneNode(VARIANT_TRUE));
+        return study.Detach();
+    }
+    else
+        return NULL;
+}
+
+static bool save_index_study_date(MSXML2::IXMLDOMDocument2 *pDomStudy)
+{
+    try
+    {
+        MSXML2::IXMLDOMNodePtr study = shallow_copy_study(pDomStudy->documentElement);
+        if(study == NULL) throw logic_error("shallow_copy_study() return NULL");
+        MSXML2::IXMLDOMNodePtr dateNode = study->attributes->getNamedItem(L"date");
+        _bstr_t attr_value;
+        if(dateNode && dateNode->text.length()) attr_value = dateNode->text;
+        else attr_value = L"19700102";
+        string date((LPCSTR)attr_value);
+        date.insert(6, 1, '\\').insert(4, 1, '\\')
+            .insert(0, "\\pacs\\indexdir\\00080020\\")
+            .insert(0, pacs_base).append(".xml");
+        if(!PrepareFileDir(date.c_str())) throw logic_error(date.insert(0, "PrepareFileDir ").append(" failed"));
+        MSXML2::IXMLDOMDocument2Ptr pDomDate;
+        pDomDate.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        errno_t en = _access_s(date.c_str(), 6);
+        if(en == ENOENT)
+        {   // not exist
+            pDomDate->appendChild(pDomDate->createNode(MSXML2::NODE_ELEMENT, L"study_date", L"http://www.kurumi.com.cn/xsd/study"));
+        }
+        else if(en == 0)
+        {   // exist, rw OK
+            if(VARIANT_FALSE == pDomDate->load(date.c_str()))
+                throw logic_error(date.insert(0, "load exist xml ").append(" failed"));
+        }
+        else
+        {   // other error: EACCES EINVAL
+            char msg[1024] = " ";
+            strerror_s(msg + 1, sizeof(msg) - 1, en);
+            throw logic_error(date.insert(0, "open xml ").append(msg));
+        }
+        if(pDomDate == NULL || pDomDate->documentElement == NULL)
+            throw logic_error(date.insert(0, "open xml ").append(" failed"));
+        
+        _bstr_t query_exist_study(L"study[@id='");
+        query_exist_study += pDomStudy->documentElement->getAttribute(L"id").bstrVal;
+        query_exist_study += "']";
+        if(MSXML2::IXMLDOMNodePtr exist_study = pDomDate->documentElement->selectSingleNode(query_exist_study))
+            pDomDate->documentElement->removeChild(exist_study);
+        pDomDate->documentElement->appendChild(shallow_copy_study(pDomStudy->documentElement));
+
+        ofstream fxml(date.c_str(), ios_base::trunc | ios_base::out, _SH_DENYNO);
+        if(fxml.good())
+        {
+            fxml << XML_HEADER << (LPCSTR)pDomDate->documentElement->xml << endl;
+            fxml.close();
+        }
+        else
+        {
+            char msg[1024];
+            sprintf_s(msg, "save %s error", date.c_str());
+            throw runtime_error(msg);
+        }
+        return true;
+    }
+    CATCH_COM_ERROR("save_index_study_date()")
+    return false;
 }
 
 static void add_association(map<string, MSXML2::IXMLDOMDocument2*> &association_map, MSXML2::IXMLDOMDocument2 *pXMLDom)
@@ -96,26 +161,17 @@ static void add_association(map<string, MSXML2::IXMLDOMDocument2*> &association_
 
             if(rec_assoc)
             {
-                MSXML2::IXMLDOMNodePtr study = pXMLDom->documentElement->cloneNode(VARIANT_FALSE);
+                MSXML2::IXMLDOMNodePtr study = shallow_copy_study(pXMLDom->documentElement);
                 if(study)
-                {
-                    MSXML2::IXMLDOMNodePtr patient = pXMLDom->documentElement->selectSingleNode(L"patient");
-                    if(patient) study->appendChild(patient->cloneNode(VARIANT_TRUE));
                     rec_assoc->appendChild(study);
-                }
+                else
+                    cerr << "add_association() shallow_copy_study() failed, return NULL" << endl;
                 pa = pDomAssoc.Detach();
                 if(insert_new) association_map[assoc_id] = pa;
             }
         }
     }
-    catch(_com_error &ex) 
-	{
-        cerr << "add_association() failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
-	}
-	catch(char * message)
-	{
-		cerr << "add_association() failed: " << message << endl;
-	}
+    CATCH_COM_ERROR("add_association()")
 }
 
 #define CLUSTER_SIZE 4096LL
@@ -157,47 +213,56 @@ void save_index_study_and_receive()
     map<string, MSXML2::IXMLDOMDocument2*> association_map;
     for(map<string, MSXML2::IXMLDOMDocument2*>::iterator it = study_map.begin(); it != study_map.end(); ++it)
     {
+        if(it->second == NULL)
+        {
+            cerr << "save_index_study_and_receive() study phase" << " failed at " << it->first << "'s DOM pointer is NULL" << endl;
+            continue;
+        }
         try
         {
             char studyHash[9], xmlpath[MAX_PATH];
-            MSXML2::IXMLDOMDocument2 *pXMLDom = it->second;
-            if(pXMLDom)
+            MSXML2::IXMLDOMDocument2Ptr pXMLDom;
+            pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+            pXMLDom.Attach(it->second);
+            _bstr_t hash_prefix(pXMLDom->documentElement->getAttribute(L"hash_prefix").bstrVal);
+            if(hash_prefix.length() > 0)
+                sprintf_s(xmlpath, "indexdir/000d0020/%s/", (LPCSTR)hash_prefix);
+            else
             {
-                _bstr_t hash_prefix(pXMLDom->documentElement->getAttribute(L"hash_prefix").bstrVal);
-                if(hash_prefix.length() > 0)
-                    sprintf_s(xmlpath, "indexdir/000d0020/%s/", (LPCSTR)hash_prefix);
-                else
-                {
-                    HashStr(it->first.c_str(), studyHash, sizeof(studyHash));
-                    sprintf_s(xmlpath, "indexdir/000d0020/%c%c/%c%c/%c%c/%c%c/", studyHash[0], studyHash[1],
-                        studyHash[2], studyHash[3], studyHash[4], studyHash[5], studyHash[6], studyHash[7]);
-                }
+                HashStr(it->first.c_str(), studyHash, sizeof(studyHash));
+                sprintf_s(xmlpath, "indexdir/000d0020/%c%c/%c%c/%c%c/%c%c/", studyHash[0], studyHash[1],
+                    studyHash[2], studyHash[3], studyHash[4], studyHash[5], studyHash[6], studyHash[7]);
+            }
 
-                calculate_size_cluster_aligned(pXMLDom);
+            calculate_size_cluster_aligned(pXMLDom);
 
-                if(MkdirRecursive(xmlpath))
+            if(MkdirRecursive(xmlpath))
+            {
+                strcat_s(xmlpath, it->first.c_str());
+                strcat_s(xmlpath, ".xml");
+                ofstream fxml(xmlpath, ios_base::trunc | ios_base::out, _SH_DENYNO);
+                if(fxml.good())
                 {
-                    strcat_s(xmlpath, it->first.c_str());
-                    strcat_s(xmlpath, ".xml");
-                    ofstream fxml(xmlpath, ios_base::trunc | ios_base::out, _SH_DENYNO);
-                    if(fxml.good())
-                    {
-                        fxml << XML_HEADER << (LPCSTR)pXMLDom->xml << endl;
-                        fxml.close();
-                        add_association(association_map, pXMLDom);
-                    }
+                    fxml << XML_HEADER << (LPCSTR)pXMLDom->xml << endl;
+                    fxml.close();
+                    add_association(association_map, pXMLDom);
+                    save_index_study_date(pXMLDom);
                 }
                 else
                 {
-                    cerr << "save_index_study_and_receive() can't save " << xmlpath << endl;
+                    char msg[1024];
+                    sprintf_s(msg, "save %s error", xmlpath);
+                    throw runtime_error(msg);
                 }
-                pXMLDom->Release();
+            }
+            else
+            {
+                char msg[1024];
+                sprintf_s(msg, "can't MkdirRecursive(%s)", xmlpath);
+                throw logic_error(msg);
             }
         }
-	    catch(_com_error &ex) 
-	    {
-		    cerr << "save_index_study_and_receive() clear study failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
-	    }
+        CATCH_COM_ERROR("save_index_study_and_receive() study phase")
     }
     study_map.clear();
 
@@ -225,10 +290,7 @@ void save_index_study_and_receive()
             }
             pDomAssoc->Release();
         }
-        catch(_com_error &ex) 
-	    {
-		    cerr << "save_index_study_and_receive() clear association failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
-	    }
+        CATCH_COM_ERROR("save_index_study_and_receive() association phase")
     }
     association_map.clear();
 
@@ -440,14 +502,7 @@ static void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const CMOVE_LOG_CONT
             }
         }
     }
-	catch(_com_error &ex) 
-	{
-		cerr << "add_instance() failed: " << ex.ErrorMessage() << ", " <<ex.Description() << endl;
-	}
-	catch(char * message)
-	{
-		cerr << "add_instance() failed: " << message << endl;
-	}
+    CATCH_COM_ERROR("add_instance()")
 }
 
 static int line_num = 0;
@@ -508,18 +563,7 @@ static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML
             cerr << endl;
             */
         }
-        catch(_com_error & come)
-        {
-            cerr << "merge_node() node " << (LPCSTR)xpath <<(LPCSTR)nodeName << " COM error: " << come.ErrorMessage();
-            _bstr_t desc = come.Description();
-            if(desc.length())
-                cerr << ", " << (LPCSTR)desc;
-            cerr << endl;
-        }
-        catch(...)
-        {
-            cerr << "merge_node() node " << (LPCSTR)xpath << (LPCSTR)nodeName << " unknown error" << endl;
-        }
+        CATCH_COM_ERROR("merge_node() node " << (LPCSTR)xpath << (LPCSTR)nodeName)
     }
 
     MSXML2::IXMLDOMNodeListPtr nodes = nodeSrc->childNodes;
@@ -555,18 +599,7 @@ static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML
                 nodeDest->appendChild(child->cloneNode(VARIANT_TRUE));
             }
         }
-        catch(_com_error & come)
-        {
-            cerr << "merge_node() node " << (LPCSTR)currentNodeXPath << " COM error: " << come.ErrorMessage();
-            _bstr_t desc = come.Description();
-            if(desc.length())
-                cerr << ", " << (LPCSTR)desc;
-            cerr << endl;
-        }
-        catch(...)
-        {
-            cerr << "merge_node() node " << (LPCSTR)currentNodeXPath << " unknown error" << endl;
-        }
+        CATCH_COM_ERROR("merge_node() node " << (LPCSTR)currentNodeXPath)
     }
     // process text node
     try
@@ -595,18 +628,7 @@ static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML
             nodeDest->removeChild(textNodeDest);
         }
     }
-    catch(_com_error & come)
-    {
-        cerr << "merge_node() text node " << (LPCSTR)xpath << "/#text COM error: " << come.ErrorMessage();
-        _bstr_t desc = come.Description();
-        if(desc.length())
-            cerr << ", " << (LPCSTR)desc;
-        cerr << endl;
-    }
-    catch(...)
-    {
-        cerr << "merge_node() text node " << (LPCSTR)xpath << "/#text unknown error" << endl;
-    }
+    CATCH_COM_ERROR("merge_node() text node " << (LPCSTR)xpath << "/#text")
     return true;
 }
 
@@ -746,26 +768,16 @@ void merge_index_study(const char *pacs_base, bool overwrite, std::map<std::stri
                 }
             }
         }
-        catch(_com_error & come)
-        {
-            cerr << "merge_index_study() COM error: " << come.ErrorMessage();
-            _bstr_t desc = come.Description();
-            if(desc.length())
-                cerr << ", " << (LPCSTR)desc;
-            cerr << endl;
-        }
-        catch(...)
-        {
-            cerr << "merge_index_study() unknown error" << endl;
-        }
+        CATCH_COM_ERROR("merge_index_study()")
     }
 }
 
 #ifdef _DEBUG
 
-COMMONLIB_API int test_for_make_index(const char *pacs_base, bool verbose)
+COMMONLIB_API int test_for_make_index(const char *pb, bool verbose)
 {
     opt_verbose = verbose;
+    strcpy_s(pacs_base, pb);
 
     map<string, LARGE_INTEGER> map_move_study_status;
     LARGE_INTEGER state = {0, 0};
@@ -775,7 +787,16 @@ COMMONLIB_API int test_for_make_index(const char *pacs_base, bool verbose)
 
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
 
-    merge_index_study(pacs_base, true, map_move_study_status);
+    for(map<string, LARGE_INTEGER>::iterator it = map_move_study_status.begin(); it != map_move_study_status.end(); ++it)
+    {
+        string study_path;
+        study_path.reserve(255);
+        study_path.append(pacs_base).append("\\pacs\\indexdir\\000d0020\\").append(it->first).append(".xml");
+        MSXML2::IXMLDOMDocument2Ptr pXMLDom;
+        pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        pXMLDom->load(study_path.c_str());
+        save_index_study_date(pXMLDom);
+    }
 
     CoUninitialize();
     return 0;

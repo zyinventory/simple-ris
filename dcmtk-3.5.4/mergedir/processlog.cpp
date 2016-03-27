@@ -108,14 +108,14 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
     {
         char msg[1024];
         strerror_s(msg, errno);
-        cerr << "chdir to " << src_name << " failed: " << msg << endl;
+        cerr << "call_process_log() chdir to " << src_name << " failed: " << msg << endl;
         return;
     }
     if(_mkdir("state") && errno != EEXIST)
     {
         char msg[1024];
         strerror_s(msg, errno);
-        cerr << "mkdir state faile: " << msg << endl;
+        cerr << "call_process_log() mkdir state faile: " << msg << endl;
         return;
     }
     HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, NULL);
@@ -133,11 +133,12 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
         //test_consume_log(sessionId.c_str());
         scp_store_main_loop(sessionId.c_str(), false);
 
+        //test_for_make_index("C:\\usr\\local\\dicom", true);
+
         // todo: add study xml to patient xml and study date xml
         /*
         CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
         
-        test_for_make_index("C:\\usr\\local\\dicom", true);
         
         CoUninitialize();
         */

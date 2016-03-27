@@ -37,6 +37,96 @@
 #define TDB_STATUS "..\\orders\\TDBStatus.txt"
 #define PIPE_READY_MESSAGE "PIPE_READY"
 
+#ifdef RETURN_HRESULT
+
+#define CATCH_COM_ERROR(func_name) \
+catch(const _com_error &ex) \
+{\
+    std::cerr << func_name << " failed at " << __FILE__ << " " << __LINE__ << ": " << ex.ErrorMessage();\
+    _bstr_t desc = ex.Description();\
+    if(desc.length()) cerr << ", " << (LPCSTR)desc;\
+    std::cerr << std::endl;\
+    hr = ex.Error();\
+}\
+catch(const runtime_error &re)\
+{\
+    std::cerr << func_name << " failed at " << __FILE__ << " " << __LINE__ << ": " << re.what() << std::endl;\
+    HRESULT hrdw = AtlHresultFromLastError();\
+    if(hrdw != S_OK)\
+    {\
+        _com_error ce(hrdw);\
+        std::cerr << ": " << ce.ErrorMessage();\
+        _bstr_t desc = ce.Description();\
+        if(desc.length()) cerr << ", " << (LPCSTR)desc;\
+        std::cerr << std::endl;\
+        hr = hrdw;\
+    }\
+    else hr = E_FAIL;\
+}\
+catch(const exception &e)\
+{\
+    std::cerr << func_name << " failed at " << __FILE__ << " " << __LINE__ << ": " << e.what() << std::endl;\
+    hr = E_FAIL;\
+}\
+catch(...)\
+{\
+    std::cerr << func_name << " encouter unknown error at " << __FILE__ << " " << __LINE__;\
+    HRESULT hrdw = AtlHresultFromLastError();\
+    if(hrdw != S_OK)\
+    {\
+        _com_error ce(hrdw);\
+        std::cerr << ": " << ce.ErrorMessage();\
+        _bstr_t desc = ce.Description();\
+        if(desc.length()) cerr << ", " << (LPCSTR)desc;\
+        hr = hrdw;\
+    }\
+    else hr = E_FAIL;\
+    std::cerr << std::endl;\
+}\
+
+#else
+
+#define CATCH_COM_ERROR(func_name) \
+catch(const _com_error &ex) \
+{\
+    std::cerr << func_name << " failed at " << __FILE__ << " " << __LINE__ << ": " << ex.ErrorMessage();\
+    _bstr_t desc = ex.Description();\
+    if(desc.length()) cerr << ", " << (LPCSTR)desc;\
+    std::cerr << std::endl;\
+}\
+catch(const runtime_error &re)\
+{\
+    std::cerr << func_name << " failed at " << __FILE__ << " " << __LINE__ << ": " << re.what() << std::endl;\
+    HRESULT hrdw = AtlHresultFromLastError();\
+    if(hrdw != S_OK)\
+    {\
+        _com_error ce(hrdw);\
+        std::cerr << ": " << ce.ErrorMessage();\
+        _bstr_t desc = ce.Description();\
+        if(desc.length()) cerr << ", " << (LPCSTR)desc;\
+        std::cerr << std::endl;\
+    }\
+}\
+catch(const exception &e)\
+{\
+    std::cerr << func_name << " failed at " << __FILE__ << " " << __LINE__ << ": " << e.what() << std::endl;\
+}\
+catch(...)\
+{\
+    std::cerr << func_name << " encouter unknown error at " << __FILE__ << " " << __LINE__;\
+    HRESULT hrdw = AtlHresultFromLastError();\
+    if(hrdw != S_OK)\
+    {\
+        _com_error ce(hrdw);\
+        std::cerr << ": " << ce.ErrorMessage();\
+        _bstr_t desc = ce.Description();\
+        if(desc.length()) cerr << ", " << (LPCSTR)desc;\
+    }\
+    std::cerr << std::endl;\
+}\
+
+#endif
+
 const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
   ADD_DEFAULT_CHARSET[] = "Add default character set ", UNKNOWN_CHARSET[] = "Unknown character set ", OVERRIDE_BY[] = " is override by ";
 
