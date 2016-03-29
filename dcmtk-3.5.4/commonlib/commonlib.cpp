@@ -227,7 +227,10 @@ COMMONLIB_API int ChangeToPacsWebSub(char *pPacsBase, size_t buff_size, const ch
     errno_t en = _chdir(static_buf);
     static_buf[requiredSize - 1] = '\0';
     if(en) return en;
-    return strcpy_s(pPacsBase, buff_size, static_buf);
+    if(pPacsBase)
+        return strcpy_s(pPacsBase, buff_size, static_buf);
+    else
+        return 0;
 }
 
 COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
