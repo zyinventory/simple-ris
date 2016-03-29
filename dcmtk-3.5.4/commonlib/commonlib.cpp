@@ -238,20 +238,22 @@ COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
 	if(argc > 0)
 	{
 		char **endPos = argv + argc;
-		char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
-		if(pos == endPos) pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "--working-directory")));
+		//char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
+        char **pos = find_if(argv, endPos, [](const char *p) { return strcmp("-wd", p) == 0 || strcmp("--working-directory", p) == 0; });
 		if(pos != endPos)
 		{
 			if(! _chdir(*++pos))
 			{
-				if(pPacsBase) strcpy_s(pPacsBase, MAX_PATH, *++pos);
-				return -2;
+				if(pPacsBase)
+                    return strcpy_s(pPacsBase, MAX_PATH, *pos);
+                else
+				    return 0;
 			}
 			else
-				return 0;
+				return errno;
 		}
-		// else get working dir from PACS_BASE in env
 	}
+	// get working dir from PACS_BASE in env
     return ChangeToPacsWebSub(pPacsBase, MAX_PATH);
 }
 
