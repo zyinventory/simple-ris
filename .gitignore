@@ -8,3 +8,5 @@ dcmtk-3.5.4-win32-i386/
 *.opensdf
 *.ipch
 dcmtk-3.5.4/install_manifest.txt
+*.user
+*.ncb

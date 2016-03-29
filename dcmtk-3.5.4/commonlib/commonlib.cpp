@@ -220,15 +220,17 @@ COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
 		{
 			if(! _chdir(*++pos))
 			{
-				if(pPacsBase) strcpy_s(pPacsBase, MAX_PATH, *++pos);
-				return -2;
+				if(pPacsBase)
+                    return strcpy_s(pPacsBase, MAX_PATH, *pos);
+                else
+				    return 0;
 			}
 			else
-				return 0;
+				return errno;
 		}
-		// else get working dir from PACS_BASE in env
 	}
-
+	
+    // get working dir from PACS_BASE in env
 	char* workingDirBuffer;
 	size_t requiredSize;
 	getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
@@ -246,13 +248,9 @@ COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
 	}
 	else
 	{
-		if(!_chdir("C:\\usr\\local\\dicom\\pacs"))
-			return -3;
+		if(_chdir("C:\\usr\\local\\dicom\\pacs")) return errno;
 		if(pPacsBase)
-		{
-			char base[] = "C:\\usr\\local\\dicom";
-			strcpy_s(pPacsBase, sizeof(base), base);
-		}
+			strcpy_s(pPacsBase, MAX_PATH, "C:\\usr\\local\\dicom");
 	}
 	return 0;
 }
