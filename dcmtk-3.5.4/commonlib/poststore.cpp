@@ -564,7 +564,7 @@ static int create_map_fields(map<string, string> &map_field, istream &ff, ostrea
         {
             map_field[line] = string();
         }
-        index_log << "create_map_fields() " << line << " " << p << endl;
+        //index_log << "create_map_fields() " << line << " " << p << endl;
         ++cnt;
 next_line:
         ff.getline(line, sizeof(line));
@@ -631,7 +631,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
                         ffi.close();
                         for(map<string, string>::iterator it = map_field_i.begin(); it != map_field_i.end(); ++it)
                         {
-                            index_log << "generateStudyJDF() merge fields " << it->first << " " << it->second << endl;
+                            //index_log << "generateStudyJDF() merge fields " << it->first << " " << it->second << endl;
                             map_field_io[it->first] = it->second;
                         }
                     }
@@ -643,7 +643,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
                     {
                         for(map<string, string>::iterator it = map_field_io.begin(); it != map_field_io.end(); ++it)
                         {
-                            index_log << "generateStudyJDF() write fields " << it->first << " " << it->second << endl;
+                            //index_log << "generateStudyJDF() write fields " << it->first << " " << it->second << endl;
                             ofs << it->first << "=" << it->second << endl;
                         }
                         ofs.close();
