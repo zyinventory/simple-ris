@@ -915,6 +915,12 @@ traversal_restart:
 		CommonlibInstanceUniquePath = opt_instanceUniquePath;
 		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
 		if(readyToBurn && !CommonlibBurnOnce) decreaseCount(rw_passwd);
+        const char *errstrm = GetGenerateIndexLog();
+        if(errstrm)
+        {
+            cerr << errstrm << endl;
+            ClearGenerateIndexLog();
+        }
 	}
 /*
 	PROCESS_INFORMATION procinfo;

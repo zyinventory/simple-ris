@@ -21,6 +21,22 @@ static string baseurl, downloadUrl, studyDatePath;
 
 COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
+static stringstream errstrm;
+static string generateIndexLog;
+COMMONLIB_API const char *GetGenerateIndexLog()
+{
+    generateIndexLog = errstrm.str();
+    if(generateIndexLog.length())
+        return generateIndexLog.c_str();
+    else
+        return NULL;
+}
+COMMONLIB_API void ClearGenerateIndexLog()
+{
+    generateIndexLog.clear();
+    errstrm.str(generateIndexLog);
+}
+
 static string parsePatientName(string &patient)
 {
 	char outbuf[64];
@@ -530,7 +546,33 @@ COMMONLIB_API const char* detectMediaType(size_t *pSize)
 	}
 }
 
-COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, const char *media)
+static int create_map_fields(map<string, string> &map_field, istream &ff, ostream &index_log)
+{
+    char line[1024];
+    ff.getline(line, sizeof(line));
+    int cnt = 0;
+    while(ff.good())
+    {
+        if(strlen(line) <= 0) goto next_line;
+        char *p = strchr(line, '=');
+        if(p)
+        {
+            *p++ = '\0';
+            map_field[line] = p;
+        }
+        else
+        {
+            map_field[line] = string();
+        }
+        index_log << "create_map_fields() " << line << " " << p << endl;
+        ++cnt;
+next_line:
+        ff.getline(line, sizeof(line));
+    }
+    return cnt;
+}
+
+COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostream &index_log, const char *media)
 {
 	if(!strcmp(tag, "0020000d"))
 	{
@@ -552,18 +594,66 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 			__int64 hashStudy = uidHash(tagValue, hashBuf, sizeof(hashBuf));
             GetNextUniqueNo("job_", jobIdBuf, sizeof(jobIdBuf));
 			sprintf_s(buffer, BUFF_SIZE, "%s\\tdd\\%s.jdf", pacsBase.c_str(), jobIdBuf);
-
 			string jdfPath(buffer);
-			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s.txt", pacsBase.c_str(), indexBase.c_str(), tag,
+
+            sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s.txt", pacsBase.c_str(), indexBase.c_str(), tag,
 				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tagValue);
 			string fieldsPath(buffer);
-			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s", pacsBase.c_str(), archivePath.c_str(),
+
+            sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s", pacsBase.c_str(), archivePath.c_str(),
 				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tagValue);
 			if (_access_s( buffer, 4 ))
 			{
-				errstrm << "data don't exist: " << buffer << endl;
+				index_log << "generateStudyJDF() data don't exist: " << buffer << endl;
 				return -4;
 			}
+
+            index_log << "generateStudyJDF() open fields: " << fieldsPath << endl;
+            ifstream ifs(fieldsPath);
+            if(ifs.good())
+            {
+                map<string, string> map_field_io;
+                create_map_fields(map_field_io, ifs, index_log);
+                ifs.close();
+
+                char hash[12], chs_path[MAX_PATH];
+                string pid = map_field_io["PatientID"];
+                if(pid.length())
+                {
+                    uidHash(pid.c_str(), hash, sizeof(hash));
+                    sprintf_s(chs_path, "%s\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s_ris.txt", indexBase.c_str(),
+                        hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], pid.c_str());
+                    ifstream ffi(chs_path, ios_base::in);
+                    if(ffi.good())
+                    {
+                        map<string, string> map_field_i;
+                        create_map_fields(map_field_i, ffi, index_log);
+                        ffi.close();
+                        for(map<string, string>::iterator it = map_field_i.begin(); it != map_field_i.end(); ++it)
+                        {
+                            index_log << "generateStudyJDF() merge fields " << it->first << " " << it->second << endl;
+                            map_field_io[it->first] = it->second;
+                        }
+                    }
+                    else
+                        index_log << "generateStudyJDF() can't open " << chs_path << endl;
+
+                    ofstream ofs(fieldsPath, ios_base::out | ios_base::trunc);
+                    if(ofs.good())
+                    {
+                        for(map<string, string>::iterator it = map_field_io.begin(); it != map_field_io.end(); ++it)
+                        {
+                            index_log << "generateStudyJDF() write fields " << it->first << " " << it->second << endl;
+                            ofs << it->first << "=" << it->second << endl;
+                        }
+                        ofs.close();
+                    }
+                }
+                else
+                    index_log << "generateStudyJDF() no PatientID: " << pid << endl;
+            }
+            else
+                index_log << "generateStudyJDF() open " << fieldsPath << " error" << endl;
 
 			try
 			{
@@ -595,19 +685,19 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 			}
 			catch(string &outPath)
 			{
-				errstrm << "create file failed: " << outPath << endl;
+				index_log << "create file failed: " << outPath << endl;
 				return -2;
 			}
 			catch(...)
 			{
-				errstrm << "write jdf error" << endl;
+				index_log << "write jdf error" << endl;
 				return -3;
 			}
 			sprintf_s(buffer, BUFF_SIZE, "%s\\orders\\%s.jdf", pacsBase.c_str(), jobIdBuf);
 			if(!rename(jdfPath.c_str(), buffer))
 				return 0;
 			else
-				errstrm << "move " << jdfPath << " to " << buffer << " failed" << endl;
+				index_log << "move " << jdfPath << " to " << buffer << " failed" << endl;
 		}
 	}
 	return -1;
@@ -773,7 +863,7 @@ static HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const cha
 			pXsl->async = VARIANT_FALSE;
 			if(pXsl->load(xslFile) == VARIANT_FALSE)
 			{
-				cerr << "Failed to load XSL DOM: " << xslFile << endl;
+				errstrm << "Failed to load XSL DOM: " << xslFile << endl;
 			}
 			else
 			{
@@ -781,13 +871,13 @@ static HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const cha
 				ofstream ofs(fieldsPath.c_str(), ios_base::out | ios_base::trunc);
 				string istr((LPCSTR)textFields);
 				istr.erase(remove(istr.begin(), istr.end(), '\r'), istr.end());
-				ofs << istr;
+                ofs << istr;
 				ofs.close();
 			}
 
 			// jdf file
 			if(CommonlibBurnOnce)
-				CommonlibBurnOnce = (0 != generateStudyJDF(tag, (const char*)tagValue, cerr));
+				CommonlibBurnOnce = (0 != generateStudyJDF(tag, (const char*)tagValue, errstrm));
 		}
 		else
 		{
@@ -797,14 +887,14 @@ static HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const cha
 	catch(_com_error &ex) 
 	{
 		if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
-		cerr << "Failed to transform XML+XSLT: " << ex.ErrorMessage() << '\n';
+		errstrm << "Failed to transform XML+XSLT: " << ex.ErrorMessage() << '\n';
 		return ex.Error();
 	}
 	catch(char * message)
 	{
 		if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
 		if(fh != INVALID_HANDLE_VALUE) ::CloseHandle(fh);
-		cerr << message << indexPath << '\n';
+		errstrm << message << indexPath << '\n';
 		return E_FAIL;
 	}
 	if(fileMutex) { ReleaseMutex(fileMutex); CloseHandle(fileMutex); }
@@ -816,7 +906,7 @@ static HRESULT processInputStream(istream& istrm)
 	istrm.getline(buffer, BUFF_SIZE);
 	if( ! istrm.good() )
 	{
-		cerr << "Failed to read input file\n";
+		errstrm << "Failed to read input file\n";
 		return E_FAIL;
 	}
 
@@ -827,7 +917,7 @@ static HRESULT processInputStream(istream& istrm)
 	hr = getStudyNode(buffer, pXMLDom, study);
 	if (FAILED(hr)) 
 	{
-		cerr << "Failed to create DOM\n";
+		errstrm << "Failed to create DOM\n";
 		return hr;
 	}
 
@@ -844,7 +934,7 @@ static HRESULT processInputStream(istream& istrm)
 	hr = createKeyValueIndex(pXMLDom, TAG_StudyInstanceUID, "/wado_query/Patient/Study/@StudyInstanceUID");
 	if (FAILED(hr))
 	{
-		cerr << "Failed to save StudyInstanceUID index\n";
+		errstrm << "Failed to save StudyInstanceUID index\n";
 		return hr;
 	}
 	
@@ -852,7 +942,7 @@ static HRESULT processInputStream(istream& istrm)
 	hr = createKeyValueIndex(pXMLDom, TAG_PatientID, "/wado_query/Patient/@PatientID");
 	if (FAILED(hr) && hr != FWP_E_NULL_POINTER)
 	{
-		cerr << "Failed to save PatientID index\n";
+		errstrm << "Failed to save PatientID index\n";
 		return hr;
 	}
 
@@ -863,7 +953,7 @@ static HRESULT processInputStream(istream& istrm)
 	string dayIndexFilePath = buffer;
 	hr = createDateIndex(pXMLDom, "xslt\\receive.xsl", dayIndexFilePath, true);
 	if (FAILED(hr))
-		cerr << "Failed to create study date index: " << dayIndexFilePath << endl;
+		errstrm << "Failed to create study date index: " << dayIndexFilePath << endl;
 
 	// receive date index
 	time_t t = time( NULL );
@@ -874,7 +964,7 @@ static HRESULT processInputStream(istream& istrm)
 	receiveIndexFilePath.append(buffer);
 	hr = createDateIndex(pXMLDom, "xslt\\receive.xsl", receiveIndexFilePath, false);
 	if (FAILED(hr))
-		cerr << "Failed to create receive date index: " << receiveIndexFilePath << endl;
+		errstrm << "Failed to create receive date index: " << receiveIndexFilePath << endl;
 
 	return S_OK;
 }

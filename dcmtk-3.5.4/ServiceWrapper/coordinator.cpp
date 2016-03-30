@@ -12,6 +12,7 @@ using namespace MSMQ;
 extern const char *dirmakerCommand;
 extern bool opt_verbose;
 IMSMQQueuePtr OpenOrCreateQueue(const char *queueName, MQACCESS access = MQ_SEND_ACCESS) throw(...);
+static void verifyPatientInfo();
 
 static SECURITY_ATTRIBUTES logSA;
 static size_t procnum;
@@ -101,6 +102,11 @@ static void closeProcHandle(WorkerProcess &wp)
 	{
 		if(opt_verbose) cout << ", csv = NULL";
 	}
+    if(wp.patientId)
+    {
+        delete wp.patientId;
+        wp.patientId = NULL;
+    }
 	/*
 	bool hasStudyUid = false;
 	if(wp.studyUid)
@@ -440,6 +446,9 @@ static DWORD findIdleOrCompelete()
 		else
 			time_header_out(cerr) << "findIdleOrCompelete error: worker process " << result << " has no study uid" << endl;
 	}
+
+    verifyPatientInfo(); // check patient info download process
+
 	return result;
 }
 
@@ -638,6 +647,117 @@ static void checkStudyAccomplished()
 	}
 }
 
+static size_t file_length(const char *chs_path)
+{
+    size_t flen = 0;
+    int fd;
+    errno_t en = _sopen_s(&fd, chs_path, _O_RDWR, _SH_DENYNO, _S_IREAD | _S_IWRITE);
+    if(en == 0)
+    {
+        flen = _filelength(fd);
+        _close(fd);
+    }
+    return flen;
+}
+
+static map<HANDLE, WorkerProcess> mapDownloadingProc; // working downloading process
+static map<string, HANDLE> mapPatientIdHandle; // handle = INVALID_HANDLE_VALUE: download OK, 0 < handle < INVALID_HANDLE_VALUE: downloading
+
+static void downloadPatientInfo(const string &patId)
+{
+    HANDLE hp = mapPatientIdHandle[patId];
+    if(hp == 0)
+    {   // no process is downloaded or downloading, create new process
+        char hash[16], chs_path[MAX_PATH];
+        uidHash(patId.c_str(), hash, sizeof(hash));
+        sprintf_s(chs_path, "indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s_ris.txt", 
+            hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], patId.c_str());
+
+        if(file_length(chs_path) > 0)
+        {
+            mapPatientIdHandle[patId] = INVALID_HANDLE_VALUE; // this patient id downloaded
+            return;
+        }
+        PROCESS_INFORMATION procinfo;
+	    STARTUPINFO sinfo;
+	    memset(&procinfo, 0, sizeof(PROCESS_INFORMATION));
+	    memset(&sinfo, 0, sizeof(STARTUPINFO));
+	    sinfo.cb = sizeof(STARTUPINFO);
+        char downloadCmd[MAX_PATH];
+        sprintf_s(downloadCmd, "..\\mr\\RisIntegration.exe %s", patId.c_str());
+        if(opt_verbose) time_header_out(cerr) << "downloadPatientInfo(): start process " << downloadCmd << endl;
+        if( CreateProcess(NULL, downloadCmd, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
+	    {
+            WorkerProcess wp;
+            memset(&wp, 0, sizeof(WorkerProcess));
+            wp.hProcess = procinfo.hProcess;
+            wp.hThread = procinfo.hThread;
+            wp.patientId = new string(patId);
+            wp.csvPath = new string(chs_path);
+
+            mapDownloadingProc[wp.hProcess] = wp;
+            mapPatientIdHandle[patId] = wp.hProcess;
+            if(opt_verbose) time_header_out(cerr) << "downloadPatientInfo(): downloading patient id: " << patId << endl;
+        }
+        else
+            time_header_out(cerr) << "downloadPatientInfo(): bad patient id: " << patId << endl;
+    }
+    else if(hp == INVALID_HANDLE_VALUE)
+    {
+        if(opt_verbose) time_header_out(cerr) << "downloadPatientInfo(): patient id has been downloaded: " << patId << endl;
+    }
+    else
+    {
+        if(opt_verbose) time_header_out(cerr) << "downloadPatientInfo(): patient id has been downloading: " << patId << endl;
+    }
+}
+
+static void verifyPatientInfo()
+{
+    HANDLE *h_array = NULL;
+    size_t working = mapDownloadingProc.size();
+    if(!working) return;
+    h_array = new HANDLE[working];
+    int hlen = 0;
+    for(map<HANDLE, WorkerProcess>::iterator it = mapDownloadingProc.begin(); hlen < working, it != mapDownloadingProc.end(); ++hlen, ++it)
+        h_array[hlen] = it->first;
+    DWORD wr = WaitForMultipleObjects(working, h_array, FALSE, 0);
+    int index = -1;
+    if(wr == WAIT_TIMEOUT)
+    {
+        goto exit_verifyPatientInfo;
+    }
+    else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + hlen)
+    {
+        index = wr - WAIT_OBJECT_0;
+    }
+    else if(wr >= WAIT_ABANDONED_0 && wr < WAIT_ABANDONED_0 + hlen)
+    {
+        index = wr - WAIT_ABANDONED_0;
+    }
+    else
+    {
+        time_header_out(cerr) << "verifyPatientInfo(): WaitForMultipleObjects return " << wr << endl;
+    }
+    if(index >= 0 && index < hlen)
+    {
+        WorkerProcess wp = mapDownloadingProc[h_array[index]];
+        mapDownloadingProc.erase(wp.hProcess);
+        DWORD exitCode = -1;
+        if(GetExitCodeProcess(wp.hProcess, &exitCode) && exitCode == 0)
+            mapPatientIdHandle[*wp.patientId] = INVALID_HANDLE_VALUE; // this patient info download OK
+        else
+            mapPatientIdHandle.erase(*wp.patientId);
+        closeProcHandle(wp);
+    }
+    else
+        time_header_out(cerr) << "verifyPatientInfo(): invalid entry id: " << index << endl;
+
+exit_verifyPatientInfo:
+    delete h_array;
+    return;
+}
+
 static void processMessage(IMSMQMessagePtr pMsg)
 {
 	HRESULT hr;
@@ -664,6 +784,12 @@ static void processMessage(IMSMQMessagePtr pMsg)
 				throw "bad study uid";
 			}
 			string studyUid((LPCSTR)attrStudyUid->text);
+
+            MSXML2::IXMLDOMNodePtr attrPatientId = pXml->selectSingleNode("/wado_query/Patient/@PatientID");
+			if(attrPatientId == NULL)
+				time_header_out(cerr) << "processMessage: bad patient id: " << pXml->xml << endl;
+            else
+                downloadPatientInfo((LPCSTR)attrPatientId->text);
 
 			if(pMsg->Label == _bstr_t(ARCHIVE_INSTANCE))
 			{

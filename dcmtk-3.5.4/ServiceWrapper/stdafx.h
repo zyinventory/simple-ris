@@ -19,10 +19,12 @@
 // TODO: 在此处引用程序需要的其他头文件
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <io.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <list>
+#include <map>
 #include <iterator>
 #include <algorithm>
 #include <functional>
@@ -30,7 +32,7 @@
 #define MAX_CORE 16
 
 typedef struct _WorkerProcess {
-	std::string *instancePath, *csvPath, *studyUid; // command level
+	std::string *instancePath, *csvPath, *studyUid, *patientId; // command level
 	bool integrityStudy;  // Is study integrity?
     HANDLE hProcess, hThread, mutexIdle, mutexRec, hChildStdInWrite; // process level
 	HANDLE hLogFile; std::string *logFilePath; // slot level
