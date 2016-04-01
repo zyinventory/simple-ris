@@ -245,7 +245,15 @@ int _tmain(int argc, _TCHAR* argv[])
 	
 	setEnvParentPID();
 
-	if(changeWorkingDirectory(argc, argv)) return -3;
+    char *pacs_base = new char[MAX_PATH];
+	if(changeWorkingDirectory(argc, argv, pacs_base)) return -3;
+    if(pacs_base)
+    {
+        strcat_s(pacs_base, MAX_PATH, "\\etc\\settings.ini");
+        LoadSettings(pacs_base, cerr);
+    }
+    delete[] pacs_base;
+    pacs_base = NULL;
 
 	ofstream flog;
 	generateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", timeBuffer, sizeof(timeBuffer));

@@ -663,7 +663,7 @@ static size_t file_length(const char *chs_path)
 static map<HANDLE, WorkerProcess> mapDownloadingProc; // working downloading process
 static map<string, HANDLE> mapPatientIdHandle; // handle = INVALID_HANDLE_VALUE: download OK, 0 < handle < INVALID_HANDLE_VALUE: downloading
 
-static void downloadPatientInfo(const string &patId)
+static void downloadPatientInfo(const char *riExecPath, const string &patId)
 {
     HANDLE hp = mapPatientIdHandle[patId];
     if(hp == 0)
@@ -684,7 +684,7 @@ static void downloadPatientInfo(const string &patId)
 	    memset(&sinfo, 0, sizeof(STARTUPINFO));
 	    sinfo.cb = sizeof(STARTUPINFO);
         char downloadCmd[MAX_PATH];
-        sprintf_s(downloadCmd, "..\\mr\\RisIntegration.exe %s", patId.c_str());
+        sprintf_s(downloadCmd, "..\\%s %s", riExecPath, patId.c_str());
         if(opt_verbose) time_header_out(cerr) << "downloadPatientInfo(): start process " << downloadCmd << endl;
         if( CreateProcess(NULL, downloadCmd, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
 	    {
@@ -700,7 +700,10 @@ static void downloadPatientInfo(const string &patId)
             if(opt_verbose) time_header_out(cerr) << "downloadPatientInfo(): downloading patient id: " << patId << endl;
         }
         else
-            time_header_out(cerr) << "downloadPatientInfo(): bad patient id: " << patId << endl;
+        {
+            displayErrorToCerr("downloadPatientInfo(): can't start process ");
+            time_header_out(cerr) << downloadCmd << " start failed" << endl;
+        }
     }
     else if(hp == INVALID_HANDLE_VALUE)
     {
@@ -789,7 +792,16 @@ static void processMessage(IMSMQMessagePtr pMsg)
 			if(attrPatientId == NULL)
 				time_header_out(cerr) << "processMessage: bad patient id: " << pXml->xml << endl;
             else
-                downloadPatientInfo((LPCSTR)attrPatientId->text);
+            {
+                size_t required = GetSetting("RisIntegration", NULL, 0);
+                if(required)
+                {
+                    char *ris_value = new char[required];
+                    if(GetSetting("RisIntegration", ris_value, required))
+                        downloadPatientInfo(ris_value, (LPCSTR)attrPatientId->text);
+                    if(ris_value) delete ris_value;
+                }
+            }
 
 			if(pMsg->Label == _bstr_t(ARCHIVE_INSTANCE))
 			{
@@ -1040,7 +1052,11 @@ int commandDispatcher(const char *queueName, int processorNumber)
 	int ret = pollQueue(queueName);
 
 	waitAll();
-	if(opt_verbose) time_header_out(cout) << "commandDispatcher: all process signaled" << endl;
+
+    for(map<HANDLE, WorkerProcess>::iterator it = mapDownloadingProc.begin(); it != mapDownloadingProc.end(); ++it)
+        closeProcHandle(it->second);
+
+    if(opt_verbose) time_header_out(cout) << "commandDispatcher: all process signaled" << endl;
 	for(size_t i = 0; i < procnum; ++i)
 	{
 		closeProcHandle(workers[i]);

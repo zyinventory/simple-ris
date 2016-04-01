@@ -591,6 +591,23 @@ int main(int argc, char *argv[])
 	const char *param = NULL;
 	bool readQueue = false;
 	const int count = cmd.getParamCount();
+
+    OFString iniPath;
+    size_t requiredSize;
+	getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
+	if(requiredSize > 0)
+	{
+		char* pPacsBase = NULL;
+		pPacsBase = new char[requiredSize];
+		getenv_s( &requiredSize, pPacsBase, requiredSize, "PACS_BASE");
+		iniPath = pPacsBase;
+		delete pPacsBase;
+	}
+    else
+        iniPath = "C:\\usr\\local\\dicom";
+    iniPath.append("\\etc\\settings.ini");
+    LoadSettings(iniPath.c_str(), cerr, ddir.verboseMode());
+
 	if (opt_recurse && ddir.verboseMode()) time_header_out(COUT) << "determining input files ..." << endl;
 	/* no parameters? */
 	if (count == 0)
@@ -913,7 +930,7 @@ traversal_restart:
 		}
 
 		CommonlibInstanceUniquePath = opt_instanceUniquePath;
-		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV);
+		long hr = generateIndex(buffer, opt_weburl, "archdir", opt_index, opt_deleteSourceCSV, ddir.verboseMode());
 		if(readyToBurn && !CommonlibBurnOnce) decreaseCount(rw_passwd);
         const char *errstrm = GetGenerateIndexLog();
         if(errstrm)

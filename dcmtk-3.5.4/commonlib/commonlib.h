@@ -54,7 +54,7 @@ COMMONLIB_API int GenerateLogPath(char *buf, size_t bufLen, const char *appName,
 COMMONLIB_API BOOL DeleteEmptyFile(const char *filePath);
 COMMONLIB_API const char* detectMediaType(size_t *pSize);
 COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, std::ostream &index_log, const char *media = MEDIA_AUTO);
-COMMONLIB_API long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV = false);
+COMMONLIB_API long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV = false, bool opt_verbose = false);
 COMMONLIB_API const char *GetGenerateIndexLog();
 COMMONLIB_API void ClearGenerateIndexLog();
 COMMONLIB_API time_t dcmdate2tm(int dcmdate);
@@ -76,3 +76,5 @@ COMMONLIB_API errno_t SeriesInstancePath(const char *series, const std::string &
 COMMONLIB_API bool SelectValidPublisher(const char *ini_path, std::string &valid_publisher);
 COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int licenseCnt, std::ostream &outputbuf);
 COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t buf_size);
+COMMONLIB_API int LoadSettings(const char *iniPath, std::ostream &oslog, bool opt_verbose = false);
+COMMONLIB_API size_t GetSetting(const std::string &key, char *buff, size_t buff_size);

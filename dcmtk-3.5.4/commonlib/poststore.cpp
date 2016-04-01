@@ -25,7 +25,11 @@ static stringstream errstrm;
 static string generateIndexLog;
 COMMONLIB_API const char *GetGenerateIndexLog()
 {
-    generateIndexLog = errstrm.str();
+    if(generateIndexLog.length() == 0)
+    {
+        generateIndexLog = errstrm.str();
+        errstrm.str(string());
+    }
     if(generateIndexLog.length())
         return generateIndexLog.c_str();
     else
@@ -34,7 +38,7 @@ COMMONLIB_API const char *GetGenerateIndexLog()
 COMMONLIB_API void ClearGenerateIndexLog()
 {
     generateIndexLog.clear();
-    errstrm.str(generateIndexLog);
+    errstrm.str(string());
 }
 
 static string parsePatientName(string &patient)
@@ -546,7 +550,7 @@ COMMONLIB_API const char* detectMediaType(size_t *pSize)
 	}
 }
 
-static int create_map_fields(map<string, string> &map_field, istream &ff, ostream &index_log)
+static int CreateMapFields(map<string, string> &map_field, istream &ff, ostream &index_log, bool opt_verbose)
 {
     char line[1024];
     ff.getline(line, sizeof(line));
@@ -564,12 +568,42 @@ static int create_map_fields(map<string, string> &map_field, istream &ff, ostrea
         {
             map_field[line] = string();
         }
-        //index_log << "create_map_fields() " << line << " " << p << endl;
+        if(opt_verbose) index_log << "CreateMapFields() " << line << " " << p << endl;
         ++cnt;
 next_line:
         ff.getline(line, sizeof(line));
     }
     return cnt;
+}
+
+static map<string, string> settings;
+COMMONLIB_API int LoadSettings(const char *iniPath, ostream &oslog, bool opt_verbose)
+{
+    int lineCnt = 0;
+    ifstream fsetting(iniPath);
+    if(fsetting.good())
+    {
+        lineCnt = CreateMapFields(settings, fsetting, cerr, opt_verbose);
+        fsetting.close();
+    }
+    else if(opt_verbose)
+    {
+        char msg[MAX_PATH];
+        sprintf_s(msg, "LoadSettings() can't open %s", iniPath);
+        displayErrorToCerr(msg);
+    }
+    return lineCnt;
+}
+
+COMMONLIB_API size_t GetSetting(const string &key, char *buff, size_t buff_size)
+{
+    map<string, string>::iterator it = settings.find(key);
+    if(it == settings.end() || it->second.length() == 0) return 0;
+    if(buff == NULL) return it->second.length() + 1;
+    if(strcpy_s(buff, buff_size, it->second.c_str()))
+        return 0;
+    else
+        return it->second.length();
 }
 
 COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostream &index_log, const char *media)
@@ -607,53 +641,6 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 				index_log << "generateStudyJDF() data don't exist: " << buffer << endl;
 				return -4;
 			}
-
-            index_log << "generateStudyJDF() open fields: " << fieldsPath << endl;
-            ifstream ifs(fieldsPath);
-            if(ifs.good())
-            {
-                map<string, string> map_field_io;
-                create_map_fields(map_field_io, ifs, index_log);
-                ifs.close();
-
-                char hash[12], chs_path[MAX_PATH];
-                string pid = map_field_io["PatientID"];
-                if(pid.length())
-                {
-                    uidHash(pid.c_str(), hash, sizeof(hash));
-                    sprintf_s(chs_path, "%s\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s_ris.txt", indexBase.c_str(),
-                        hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], pid.c_str());
-                    ifstream ffi(chs_path, ios_base::in);
-                    if(ffi.good())
-                    {
-                        map<string, string> map_field_i;
-                        create_map_fields(map_field_i, ffi, index_log);
-                        ffi.close();
-                        for(map<string, string>::iterator it = map_field_i.begin(); it != map_field_i.end(); ++it)
-                        {
-                            //index_log << "generateStudyJDF() merge fields " << it->first << " " << it->second << endl;
-                            map_field_io[it->first] = it->second;
-                        }
-                    }
-                    else
-                        index_log << "generateStudyJDF() can't open " << chs_path << endl;
-
-                    ofstream ofs(fieldsPath, ios_base::out | ios_base::trunc);
-                    if(ofs.good())
-                    {
-                        for(map<string, string>::iterator it = map_field_io.begin(); it != map_field_io.end(); ++it)
-                        {
-                            //index_log << "generateStudyJDF() write fields " << it->first << " " << it->second << endl;
-                            ofs << it->first << "=" << it->second << endl;
-                        }
-                        ofs.close();
-                    }
-                }
-                else
-                    index_log << "generateStudyJDF() no PatientID: " << pid << endl;
-            }
-            else
-                index_log << "generateStudyJDF() open " << fieldsPath << " error" << endl;
 
 			try
 			{
@@ -800,7 +787,7 @@ COMMONLIB_API bool deleteStudyFromIndex(const char *mode, const char *modeValue,
 	return true;
 }
 
-static HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag, const char *queryValue)
+static HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const char *tag, const char *queryValue, bool opt_verbose)
 {
 	HRESULT hr;
 	_bstr_t tagValue = pXMLDom->selectSingleNode(queryValue)->Gettext();
@@ -875,6 +862,61 @@ static HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const cha
 				ofs.close();
 			}
 
+            if(GetSetting("RisIntegration", NULL, 0))
+            {
+                if(opt_verbose) errstrm << "createKeyValueIndex() open fields: " << fieldsPath << endl;
+                ifstream ifs(fieldsPath);
+                if(ifs.good())
+                {
+                    map<string, string> map_field_io;
+                    CreateMapFields(map_field_io, ifs, errstrm, opt_verbose);
+                    ifs.close();
+
+                    char hash[12], chs_path[MAX_PATH];
+                    string pid = map_field_io["PatientID"];
+                    if(pid.length())
+                    {
+                        uidHash(pid.c_str(), hash, sizeof(hash));
+                        sprintf_s(chs_path, "%s\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s_ris.txt", indexBase.c_str(),
+                            hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], pid.c_str());
+                        ifstream ffi(chs_path, ios_base::in);
+                        if(ffi.good())
+                        {
+                            if(opt_verbose) errstrm << "createKeyValueIndex() open fields: " << chs_path << endl;
+                            map<string, string> map_field_i;
+                            CreateMapFields(map_field_i, ffi, errstrm, opt_verbose);
+                            ffi.close();
+                            for(map<string, string>::iterator it = map_field_i.begin(); it != map_field_i.end(); ++it)
+                            {
+                                if(opt_verbose) errstrm << "createKeyValueIndex() merge fields " << it->first << " " << it->second << endl;
+                                map_field_io[it->first] = it->second;
+                            }
+                        }
+                        else
+                            errstrm << "createKeyValueIndex() can't open " << chs_path << endl;
+
+                        ofstream ofs(fieldsPath, ios_base::out | ios_base::trunc);
+                        if(ofs.good())
+                        {
+                            if(opt_verbose) errstrm << "createKeyValueIndex() write fields to " << fieldsPath << endl;
+                            for(map<string, string>::iterator it = map_field_io.begin(); it != map_field_io.end(); ++it)
+                            {
+                                if(opt_verbose) errstrm << "createKeyValueIndex() write fields " << it->first << " " << it->second << endl;
+                                ofs << it->first << "=" << it->second << endl;
+                            }
+                            ofs.close();
+                        }
+                        else
+                            errstrm << "createKeyValueIndex() can't write fields to " << fieldsPath << endl;
+                    }
+                    else
+                        errstrm << "createKeyValueIndex() no PatientID: " << pid << endl;
+                }
+                else
+                    errstrm << "createKeyValueIndex() open " << fieldsPath << " error" << endl;
+            }
+            else if(opt_verbose) errstrm << "createKeyValueIndex() settings[RisIntegration] is NULL" << endl;
+
 			// jdf file
 			if(CommonlibBurnOnce)
 				CommonlibBurnOnce = (0 != generateStudyJDF(tag, (const char*)tagValue, errstrm));
@@ -901,7 +943,7 @@ static HRESULT createKeyValueIndex(MSXML2::IXMLDOMDocumentPtr pXMLDom, const cha
 	return hr;
 }
 
-static HRESULT processInputStream(istream& istrm)
+static HRESULT processInputStream(istream& istrm, bool opt_verbose)
 {
 	istrm.getline(buffer, BUFF_SIZE);
 	if( ! istrm.good() )
@@ -931,7 +973,7 @@ static HRESULT processInputStream(istream& istrm)
 	if( ! successOnce ) return E_FAIL;
 
 	// study instance uid
-	hr = createKeyValueIndex(pXMLDom, TAG_StudyInstanceUID, "/wado_query/Patient/Study/@StudyInstanceUID");
+	hr = createKeyValueIndex(pXMLDom, TAG_StudyInstanceUID, "/wado_query/Patient/Study/@StudyInstanceUID", opt_verbose);
 	if (FAILED(hr))
 	{
 		errstrm << "Failed to save StudyInstanceUID index\n";
@@ -939,7 +981,7 @@ static HRESULT processInputStream(istream& istrm)
 	}
 	
 	// patient id index
-	hr = createKeyValueIndex(pXMLDom, TAG_PatientID, "/wado_query/Patient/@PatientID");
+	hr = createKeyValueIndex(pXMLDom, TAG_PatientID, "/wado_query/Patient/@PatientID", opt_verbose);
 	if (FAILED(hr) && hr != FWP_E_NULL_POINTER)
 	{
 		errstrm << "Failed to save PatientID index\n";
@@ -999,7 +1041,7 @@ static bool operationRetry(int(*fn)(const char *), const char *param, int state,
 	return ! opFail;
 }
 
-COMMONLIB_API HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV)
+COMMONLIB_API HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV, bool opt_verbose)
 {
 	HRESULT hr;
 	if(paramBaseUrl) baseurl = paramBaseUrl;
@@ -1009,7 +1051,7 @@ COMMONLIB_API HRESULT generateIndex(char *inputFile, const char *paramBaseUrl, c
 	if(infile.good())
 	{
 		CoInitialize(NULL);
-		hr = processInputStream(infile);
+		hr = processInputStream(infile, opt_verbose);
 		CoUninitialize();
 		infile.close();
 		if(SUCCEEDED(hr))
