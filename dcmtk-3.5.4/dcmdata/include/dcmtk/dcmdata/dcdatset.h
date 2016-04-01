@@ -266,6 +266,18 @@ class DcmDataset
     E_TransferSyntax Xfer;
 };
 
+#define NOTIFY_STORE_BEGIN     "T 00010010"
+#define NOTIFY_STORE_RELEASE   "T FFFFFFFF"
+#define NOTIFY_STORE_ABORT     "T FFFFFFFD"
+#define NOTIFY_MOVE_BEGIN      "M 00010010"
+#define NOTIFY_MOVE_RELEASE    "M FFFFFFFF"
+#define NOTIFY_MOVE_ABORT      "M FFFFFFFD"
+
+#define STATE_DIR_NO_SP "state"
+#define STATE_DIR       "state\\"
+
+size_t in_process_sequence(char *buff, size_t buff_size, const char *prefix);
+void datasetToNotify(const char* fileName, DcmDataset **imageDataSet);
 
 #endif // DCDATSET_H
 

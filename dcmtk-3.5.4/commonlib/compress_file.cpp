@@ -266,9 +266,9 @@ DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid)
         return -1;
     }
     if(strcmp(".", dot_or_study_uid))
-        sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "+id %s +D %s.dir --viewer GE -pn %s #", dot_or_study_uid, dot_or_study_uid, sessionId);
+        sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +id %s +D %s.dir --viewer GE -pn %s #", opt_verbose ? "-v" : "", dot_or_study_uid, dot_or_study_uid, sessionId);
     else
-        sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "+D DICOMDIR --viewer GE -pn %s #", sessionId);
+        sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +D DICOMDIR --viewer GE -pn %s #", opt_verbose ? "-v" : "", sessionId);
 
     string logfile("_");
     logfile.append(strcmp(".", dot_or_study_uid) ? dot_or_study_uid : "dicomdir").append(".txt");

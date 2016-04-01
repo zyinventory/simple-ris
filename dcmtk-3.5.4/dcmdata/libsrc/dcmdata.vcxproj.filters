@@ -231,6 +231,9 @@
     <ClCompile Include="dcxfer.cxx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="dconotify.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcmtk\dcmdata\cmdlnarg.h">

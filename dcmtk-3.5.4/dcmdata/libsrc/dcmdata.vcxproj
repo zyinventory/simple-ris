@@ -242,6 +242,7 @@
     <ClCompile Include="dclist.cxx" />
     <ClCompile Include="dcmetinf.cxx" />
     <ClCompile Include="dcobject.cxx" />
+    <ClCompile Include="dconotify.cpp" />
     <ClCompile Include="dcostrma.cxx" />
     <ClCompile Include="dcostrmb.cxx" />
     <ClCompile Include="dcostrmf.cxx" />

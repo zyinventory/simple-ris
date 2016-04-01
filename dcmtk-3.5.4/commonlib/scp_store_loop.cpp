@@ -53,8 +53,12 @@ static DWORD refresh_files(bool timeout)
 
     for(it = dfc_files.begin(); it != dfc_files.end(); ++it)
     {
-        if(end_of_move && strstr(it->c_str(), "_N.dfc")) continue;  // skip notify file after end_of_move
-
+        if(opt_verbose) cerr << "refresh_files() loop start: " << *it << endl;
+        if(end_of_move && strstr(it->c_str(), "_N.dfc"))
+        {
+            if(opt_verbose) cerr << "refresh_files(): ignore notify " << *it << " after end of move." << endl;
+            continue;  // skip notify file after end_of_move
+        }
         list<string>::iterator dlit = find_if(delay_dfc.begin(), delay_dfc.end(),
             [&it](const string &dlfn) { return it->compare(dlfn) == 0; });
 
@@ -537,7 +541,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 #ifdef _DEBUG
     //DeleteSubTree("archdir");
     //DeleteSubTree("indexdir");
-    //DeleteSubTree("state");
+    DeleteSubTree("state");
 #endif
     return gle;
 }

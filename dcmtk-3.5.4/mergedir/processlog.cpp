@@ -16,89 +16,87 @@ static void close_cmdfile(ofstream &cmdfile)
 
 static void test_sim_slow_log_writer(void*)
 {
-    ifstream strmlog("cmove.txt", ios_base::in, _SH_DENYNO);
-    if(strmlog.fail())
+    WIN32_FIND_DATA wfd;
+    char fileFilter[MAX_PATH] = "state.move\\*.dfc";
+
+    HANDLE hDiskSearch = FindFirstFile(fileFilter, &wfd);
+    if(hDiskSearch == INVALID_HANDLE_VALUE)
     {
-        start_write_log = -1;
         displayErrorToCerr("test_sim_slow_log_writer()", GetLastError());
         return;
     }
-    char buf[1024];
-    int fnpos = 0;
-    ofstream cmdfile;
-    do {
-        char fn[MAX_PATH];
-        strmlog.getline(buf, sizeof(buf));
-        if(strmlog.eof()) break;
-        switch(buf[0])
-        {
-        case 'M':
-        case 'T':
-            fnpos = GetNextUniqueNo("state\\", fn, sizeof(fn));
-            sprintf_s(fn + fnpos, sizeof(fn) - fnpos, "_%c.dfc", buf[0]);
-            if(inFile) close_cmdfile(cmdfile);
-            cmdfile.open(fn, ios_base::out | ios_base::trunc, _SH_DENYRW);
-            inFile = !cmdfile.fail();
-            if(inFile)
-            {
-                cmdfile << buf << endl;
-                close_cmdfile(cmdfile);
-            }
-            else cerr << "can't understand how to write " << buf << " to file " << fn << endl;
-            break;
-        case 'F': // F tag must be coupled !!!
-        case 'N': // N tag must be coupled !!!
-            if(inFile)
-            {
-                cmdfile << buf << endl;
-                close_cmdfile(cmdfile);
-                inFile = false;
-            }
-            else
-            {
-                int fnpos = GetNextUniqueNo("state\\", fn, sizeof(fn));
-                sprintf_s(fn + fnpos, sizeof(fn) - fnpos, "_%c.dfc", buf[0]);
-                if(inFile) close_cmdfile(cmdfile);
-                cmdfile.open(fn, ios_base::out | ios_base::trunc, _SH_DENYRW);
-                inFile = !cmdfile.fail();
-                if(inFile) cmdfile << buf << endl;
-                else cerr << "can't understand how to write " << buf << " to file " << fn << endl;
-            }
-            break;
-        default:
-            if(inFile) cmdfile << buf << endl;
-            else cerr << "can't understand how to write " << buf << " to file " << fn << endl;
-        }
-    } while(!strmlog.eof());
-    if(inFile) cmdfile.close();
-    strmlog.close();
-}
-/*
-static void test_consume_log(const char *sid)
-{
-    char log_name[MAX_PATH];
-    sprintf_s(log_name, "%s\\cmove.txt", sid);
+    list<string> dfc_files;
+    do
+	{
+        string dfc(wfd.cFileName);
+        if (dfc.compare(".") == 0 || dfc.compare("..") == 0) 
+			continue; // skip . ..
+        if(0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+            dfc_files.push_back(dfc);
+	} while (FindNextFile(hDiskSearch, &wfd));
+	FindClose(hDiskSearch); // 关闭查找句柄
 
-    ifstream tail(log_name, ios_base::in, _SH_DENYNO);
-    if(tail.fail())
+    dfc_files.sort();
+    LARGE_INTEGER last_time = { 0, 0};
+    char *buff = new char[4096];
+    for(list<string>::iterator it = dfc_files.begin(); it != dfc_files.end(); ++it)
     {
-        cerr << "无法打开文件" << log_name << endl;
-        return;
-    }
+        size_t pos1 = 0;
+        size_t pos2 = it->find('.');
+        if(pos2 == string::npos) { cerr << "invalid dfc file name: " << *it << endl; continue; }
+        string integer_ms_str(it->substr(pos1, pos2 - pos1));
+        if(pos2 == string::npos) { cerr << "invalid dfc file name: " << *it << endl; continue; }
+        
+        pos1 = pos2 + 1;
+        pos2 = it->find('-', pos1);
+        if(pos2 == string::npos) { cerr << "invalid dfc file name: " << *it << endl; continue; }
+        integer_ms_str.append(it->substr(pos1, pos2 - pos1));
 
-    while(true)
-    {
-        if(const char *buff = try_read_line(tail))
+        char *pstop = NULL;
+        LARGE_INTEGER ms_number;
+        ms_number.QuadPart = _atoi64(integer_ms_str.c_str());
+        if(pstop == integer_ms_str.c_str()) { cerr << "invalid ms number: " << integer_ms_str << endl; continue; }
+
+        pos1 = pos2 + 1;
+        pos2 = it->find('-', pos1);
+        if(pos2 == string::npos) { cerr << "invalid dfc file name: " << *it << endl; continue; }
+        string diff_number(it->substr(pos1, pos2 - pos1).c_str());
+        LARGE_INTEGER diff;
+        diff.QuadPart = _strtoi64(diff_number.c_str(), &pstop, 10);
+        if(pstop == diff_number.c_str()) { cerr << "invalid diff number: " << diff_number << endl; continue; }
+
+        ms_number.QuadPart -= diff.QuadPart;
+
+        if(last_time.QuadPart) diff.QuadPart = ms_number.QuadPart - last_time.QuadPart;
+        else diff.QuadPart = 0LL;
+
+        last_time = ms_number;
+
+        Sleep(diff.LowPart);
+
+        string ipath("state.move\\");
+        ipath.append(*it);
+        ifstream idfc(ipath);
+        if(idfc.fail()) { cerr << "can't open src dfc: " << ipath << endl; continue; }
+        ostringstream ostrm;
+        while(!idfc.fail())
         {
-            cout << buff << endl;
-            if(buff[0] == 'M') break;
+            size_t rlen = idfc.read(buff, 4096).gcount();
+            ostrm.write(buff, rlen);
         }
-        else
-            Sleep(1);
+        idfc.close();
+
+        string content = ostrm.str();
+
+        string opath("state\\");
+        opath.append(*it);
+        ofstream odfc(opath, ios_base::out | ios_base::trunc);
+        if(odfc.fail()) { cerr << "can't open dest dfc: " << opath << endl; continue; }
+        odfc.write(content.c_str(), content.length());
+        odfc.close();
     }
-    tail.close();
+    if(buff) delete[] buff;
 }
-*/
 
 void call_process_log(const std::string &storedir, const std::string &sessionId)
 {
@@ -119,19 +117,11 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
         return;
     }
     HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, NULL);
-    //test_sim_slow_log_writer((void*)sessionId.c_str());
-    /*
-    int i = 10;
-    while(start_write_log == 0 && i < 1000)
-    {
-        Sleep(i);
-        i += 10;
-    }
-    */
+    //test_sim_slow_log_writer(NULL);
     if(start_write_log >= 0) // start_write_log == 0, start immediately
     {
         //test_consume_log(sessionId.c_str());
-        scp_store_main_loop(sessionId.c_str(), false);
+        scp_store_main_loop(sessionId.c_str(), true);
         //test_for_make_index("C:\\usr\\local\\dicom", true);
     }
 }

@@ -291,11 +291,11 @@ void save_index_study_receive_to_session()
             pXMLDom.Attach(it->second);
             _bstr_t hash_prefix(pXMLDom->documentElement->getAttribute(L"hash_prefix").bstrVal);
             if(hash_prefix.length() > 0)
-                sprintf_s(xmlpath, "indexdir/000d0020/%s/", (LPCSTR)hash_prefix);
+                sprintf_s(xmlpath, "indexdir/0020000d/%s/", (LPCSTR)hash_prefix);
             else
             {
                 HashStr(it->first.c_str(), studyHash, sizeof(studyHash));
-                sprintf_s(xmlpath, "indexdir/000d0020/%c%c/%c%c/%c%c/%c%c/", studyHash[0], studyHash[1],
+                sprintf_s(xmlpath, "indexdir/0020000d/%c%c/%c%c/%c%c/%c%c/", studyHash[0], studyHash[1],
                     studyHash[2], studyHash[3], studyHash[4], studyHash[5], studyHash[6], studyHash[7]);
             }
 

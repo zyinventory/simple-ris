@@ -121,8 +121,6 @@ int               opt_dimse_timeout = 0;
 int               opt_acse_timeout = 30;
 OFBool            opt_ignorePendingDatasets = OFTrue;
 OFString          opt_sessionId;
-OFList<OFString>  patients, studies, series;
-size_t            instances = 0x00011000;
 
 static T_ASC_Network *net = NULL; /* the global DICOM network */
 static DcmDataset *overrideKeys = NULL;
@@ -135,13 +133,6 @@ static QuerySyntax querySyntax[3] = {
       UID_MOVEPatientStudyOnlyQueryRetrieveInformationModel }
 };
 
-#define STATE_DIR_NO_SP "state"
-#define STATE_DIR       "state\\"
-#define STORE_RELEASE   "T FFFFFFFF"
-#define STORE_ABORT     "T FFFFFFFD"
-#define MOVE_RELEASE    "M FFFFFFFF"
-#define MOVE_ABORT      "M FFFFFFFD"
-
 static void
 errmsg(const char *msg,...)
 {
@@ -152,46 +143,6 @@ errmsg(const char *msg,...)
     vfprintf(stderr, msg, args);
     va_end(args);
     fprintf(stderr, "\n");
-}
-
-static _timeb current_sequence_val = {0LL, 0, 0, 0};
-static __time64_t current_sequence_val_diff;
-static size_t in_process_sequence(char *buff, size_t buff_size, const char *prefix)
-{
-    if(strcpy_s(buff, buff_size, prefix)) return 0;
-    size_t buff_used = strlen(buff);
-
-    struct _timeb storeTimeThis;
-    struct tm localtime;
-    _ftime_s(&storeTimeThis);
-    if(storeTimeThis.time < current_sequence_val.time || (storeTimeThis.time == current_sequence_val.time && storeTimeThis.millitm <= current_sequence_val.millitm))
-    {
-        if(current_sequence_val.millitm == 999)
-        {
-            ++current_sequence_val.time;
-            current_sequence_val.millitm = 0;
-        }
-        else
-            ++current_sequence_val.millitm;
-
-        current_sequence_val_diff = (current_sequence_val.time - storeTimeThis.time) * 1000 + current_sequence_val.millitm - storeTimeThis.millitm;
-        storeTimeThis = current_sequence_val;
-    }
-    else
-    {
-        current_sequence_val = storeTimeThis;
-        current_sequence_val_diff = 0;
-    }
-
-    localtime_s(&localtime, &storeTimeThis.time);
-    size_t sf_size = strftime(buff + buff_used, buff_size - buff_used, "%Y%m%d%H%M%S", &localtime);
-    if(sf_size == 0) return 0;
-    buff_used += sf_size;
-    int sp_size = sprintf_s(buff + buff_used, buff_size - buff_used, ".%03hd-%lld-%x", 
-        storeTimeThis.millitm, current_sequence_val_diff, _getpid());
-    if(sp_size == -1) return 0;
-    buff_used += sp_size;
-    return buff_used;
 }
 
 static void exitHook()
@@ -1161,52 +1112,7 @@ storeSCPCallback(
         {
             StoreCallbackData *cbdata = (StoreCallbackData*) callbackData;
             const char* fileName = cbdata->imageFileName;
-
-            OFString patientID, studyUID, seriesUID;
-            std::stringstream strmbuf;
-            strmbuf << "F " << hex << setw(8) << setfill('0') << uppercase << instances << " " << fileName << endl;
-            (*imageDataSet)->briefToStream(strmbuf, 'I');
-
-            (*imageDataSet)->findAndGetOFString(DCM_PatientID, patientID);
-            if(patients.end() == find(patients.begin(), patients.end(), patientID))
-            {
-                (*imageDataSet)->briefToStream(strmbuf, 'P');
-                patients.push_back(patientID);
-            }
-            (*imageDataSet)->findAndGetOFString(DCM_StudyInstanceUID, studyUID);
-            if(studies.end() == find(studies.begin(), studies.end(), studyUID))
-            {
-                (*imageDataSet)->briefToStream(strmbuf, 'S');
-                studies.push_back(studyUID);
-            }
-            (*imageDataSet)->findAndGetOFString(DCM_SeriesInstanceUID, seriesUID);
-            if(series.end() == find(series.begin(), series.end(), seriesUID))
-            {
-                (*imageDataSet)->briefToStream(strmbuf, 'E');
-                series.push_back(seriesUID);
-            }
-            strmbuf << "F " << hex << setw(8) << setfill('0') << uppercase << instances << endl;
-            ++instances;
-            OFString sw = strmbuf.str();
-
-            char filename[MAX_PATH];
-            size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
-            if(used > 0 && 0 == strcpy_s(filename + used, sizeof(filename) - used, "_F.dfc"))
-            {
-                FILE *fplog = fopen(filename, "a");
-                if(fplog != NULL)
-                {
-                    fwrite(sw.c_str(), 1, sw.length(), fplog); fflush(fplog);
-                    fclose(fplog);
-                }
-            }
-            else
-            {
-                cerr << "can't create sequence file name, missing command: " << sw.c_str() << endl;
-            }
-
-            sw.clear();
-            strmbuf.str(sw);
+            datasetToNotify(fileName, imageDataSet);
 
             E_TransferSyntax xfer = opt_writeTransferSyntax;
             if (xfer == EXS_Unknown) xfer = (*imageDataSet)->getOriginalXfer();
@@ -1344,9 +1250,9 @@ subOpSCP(T_ASC_Association **subAssoc)
     {
         char filename[MAX_PATH], term[16];
         if(cond == DUL_PEERREQUESTEDRELEASE)
-            strcpy_s(term, STORE_RELEASE);
+            strcpy_s(term, NOTIFY_STORE_RELEASE);
         else
-            strcpy_s(term, STORE_ABORT);
+            strcpy_s(term, NOTIFY_STORE_ABORT);
 
         size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
         if(used > 0 && 0 == strcpy_s(filename + used, sizeof(filename) - used, "_T.dfc"))
@@ -1406,7 +1312,7 @@ subOpCallback(void * /*subOpCallbackData*/ ,
         char filename[MAX_PATH], seq[64], content[1024];
         in_process_sequence(seq, sizeof(seq), "");
         int fn_used = sprintf_s(filename, "%s%s_T.dfc", STATE_DIR, seq);
-        int content_used = sprintf_s(content, "T 00010010 %s %s %s %s %d %s\n", seq,
+        int content_used = sprintf_s(content, "%s %s %s %s %s %d %s\n", NOTIFY_STORE_BEGIN, seq,
             (*subAssoc)->params->DULparams.callingAPTitle, 
             (*subAssoc)->params->DULparams.callingPresentationAddress,
             (*subAssoc)->params->DULparams.calledAPTitle, aNet->acceptorPort, 
@@ -1584,7 +1490,7 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
     char filename[MAX_PATH], seq[64], content[1024];
     in_process_sequence(seq, sizeof(seq), "");
     int fn_used = sprintf_s(filename, "%s%s_M.dfc", STATE_DIR, seq);
-    int content_used = sprintf_s(content, "M 00010010 %s %s %s %s %s\n", seq,
+    int content_used = sprintf_s(content, "%s %s %s %s %s %s\n", NOTIFY_MOVE_BEGIN, seq,
         assoc->params->DULparams.callingAPTitle, 
         assoc->params->DULparams.callingPresentationAddress,
         assoc->params->DULparams.calledAPTitle,
@@ -1607,7 +1513,7 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
 
     char term[16];
     if (cond == EC_Normal) {
-        strcpy_s(term, MOVE_RELEASE);  // assoc normal term
+        strcpy_s(term, NOTIFY_MOVE_RELEASE);  // assoc normal term
         if (opt_verbose) {
             DIMSE_printCMoveRSP(stdout, &rsp);
             if (rspIds != NULL) {
@@ -1616,7 +1522,7 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
             }
         }
     } else {
-        strcpy_s(term, MOVE_ABORT);  // assoc abort
+        strcpy_s(term, NOTIFY_MOVE_ABORT);  // assoc abort
         errmsg("Move Failed:");
         DimseCondition::dump(cond);
     }
