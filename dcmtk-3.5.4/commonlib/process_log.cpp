@@ -5,22 +5,6 @@
 
 using namespace std;
 
-static CMOVE_LOG_CONTEXT  lc;
-
-void clear_log_context(CMOVE_LOG_CONTEXT *plc)
-{
-    if(plc == NULL) plc = &lc;
-    plc->hprocess = INVALID_HANDLE_VALUE;
-    plc->hthread = INVALID_HANDLE_VALUE;
-    plc->log = INVALID_HANDLE_VALUE;
-    memset(&plc->file, 0, sizeof(CMOVE_FILE_SECTION));
-    memset(&plc->patient, 0, sizeof(CMOVE_PATIENT_SECTION));
-    plc->patient.sex[0] = ' ';
-    plc->patient.sex[1] = '\0';
-    memset(&plc->study, 0, sizeof(CMOVE_STUDY_SECTION));
-    memset(&plc->series, 0, sizeof(CMOVE_SERIES_SECTION));
-}
-
 static int cmd_series(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
@@ -214,7 +198,7 @@ static void print_error_file_section(unsigned int tag, string &filename, CMOVE_F
         cerr << "Unexpected commit F " << hex << uppercase << setw(8) << setfill('0') << tag << " " << filename << ", old value:" << endl;
     else
         cerr << "Unexpected new F " << hex << uppercase << setw(8) << setfill('0') << tag << " " << filename << ", old value:" << endl;
-    cerr << "\tinFile: " << fs.inFile << endl;
+
     cerr << "\ttag: " << hex << uppercase << setw(8) << setfill('0') << fs.tag << endl;
     cerr << "\tfileName: " << fs.filename << endl;
     cerr << "\tpatientID: " << fs.patientID << endl;
@@ -229,48 +213,39 @@ static int cmd_file(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT 
     unsigned int tag = 0;
     string filename;
     cmdstrm >> hex >> tag >> filename;
-    if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << filename << endl;
-    if(filename.empty())
-    {   // test before commit file section 
-        if(!lc.file.inFile || tag != lc.file.tag || strlen(lc.file.filename) == 0 || strlen(lc.file.patientID) == 0
-            || strlen(lc.file.studyUID) == 0 || strlen(lc.file.seriesUID) == 0 || strlen(lc.file.instanceUID) == 0
-            || strlen(lc.file.xfer) == 0) // error, print unexpected value
-            print_error_file_section(tag, filename, lc.file);
-        else // OK, commit file section
-        {
-            if(strlen(lc.file.unique_filename) == 0) lc.file.StorePath('\\');
-            compress_queue_to_workers(&lc);
-        }
-        lc.file.inFile = false;
+    if(tag >= NOTIFY_FILE_SEQ_START)
+    {
+        if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << filename << endl;
+        lc.file.tag = tag;
+        if(!filename.empty()) filename._Copy_s(lc.file.filename, sizeof(lc.file.filename), filename.length());
     }
     else
-    {   // new filename
-        if(lc.file.inFile) // error, print unexpected value
-            print_error_file_section(tag, filename, lc.file);
-        // enter file section, clear all UID
-        clear_log_context();
-        filename._Copy_s(lc.file.filename, sizeof(lc.file.filename), filename.length());
-        lc.file.filename[filename.length()] = '\0';
-        lc.file.tag = tag;
-        lc.file.inFile = true;
-    }
+        cerr << "cmd_file() invalid file cmd: " << cmdstrm.str() << endl;
+
     return 1;
 }
 
-static int cmd_assoc(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
+static int cmd_assoc_store(const char *type, stringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     cmdstrm >> hex >> tag;
     if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag;
+    int status = 1;
     switch(tag)
     {
     case NOTIFY_ASSOC_ESTA:
         cmdstrm >> lc.assoc.id >> lc.assoc.callingAE >> lc.assoc.callingAddr >> lc.assoc.calledAE >> dec >> lc.assoc.port >> lc.assoc.calledAddr;
+        lc.assoc.assoc_disconn = false;
         if(opt_verbose) cerr << " " << lc.assoc.callingAE << " " << lc.assoc.callingAddr<< " " << lc.assoc.calledAE<< " " << dec << lc.assoc.port << " " << lc.assoc.calledAddr << endl;
         break;
     case NOTIFY_ASSOC_RELEASE:
+        lc.assoc.assoc_disconn = true;
+        lc.assoc.releaseOK = true;
+        break;
     case NOTIFY_ASSOC_ABORT:
-        if(opt_verbose) cerr << endl;
+        lc.assoc.assoc_disconn = true;
+        lc.assoc.releaseOK = false;
+        status = 0;
         break;
     default:
         {
@@ -281,45 +256,123 @@ static int cmd_assoc(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT
         }
         break;
     }
-    return 1;
+    return status;
 }
 
-static int cmd_move(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
+static int cmd_move(const char *type, stringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     cmdstrm >> hex >> tag;
-    if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag;
-    if(tag == NOTIFY_ASSOC_RELEASE || tag == NOTIFY_ASSOC_ABORT)
-        return 0;
-    else
-        return 1;
+    if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
+    switch(tag)
+    {
+    case NOTIFY_ASSOC_ESTA:
+        lc.is_move = true;
+        lc.move_disconn = false;
+        break;
+    case NOTIFY_ASSOC_RELEASE:
+        lc.move_disconn = true;
+        lc.moveOK = true;
+        break;
+    case NOTIFY_ASSOC_ABORT:
+        lc.move_disconn = true;
+        lc.moveOK = false;
+        cerr << "cmd_move() move association abort" << endl;
+        break;
+    default:
+        cerr << "cmd_move() failed: " << cmdstrm.str() << endl;
+    }
+    return lc.move_disconn ? 0 : 1;
 }
 
-int process_cmd(const string &buf)
-{
-    string type;
-    istringstream cmdstrm(buf);
-    cmdstrm >> type;
+static CMOVE_LOG_CONTEXT  static_lc;
 
-    if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_FILE_TAG))
-        cmd_file(type.c_str(), cmdstrm, lc);
-    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_STORE_TAG))
-        cmd_assoc(type.c_str(), cmdstrm, lc);
-    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_PATIENT))
-    {   if(lc.file.inFile) cmd_patient(type.c_str(), cmdstrm, lc); }
-    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_STUDY))
-    {   if(lc.file.inFile) cmd_study(type.c_str(), cmdstrm, lc); }
-    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_SERIES))
-    {   if(lc.file.inFile) cmd_series(type.c_str(), cmdstrm, lc); }
-    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_INSTANCE))
-    {   if(lc.file.inFile) cmd_instance(type.c_str(), cmdstrm, lc); }
-    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_MOVE_TAG))
-        return cmd_move(type.c_str(), cmdstrm, lc);
-    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_ACKN_TAG))
-        ;
-    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_ACKN_ITEM))
-        ;
+void clear_log_context(CMOVE_LOG_CONTEXT *plc)
+{
+    if(plc == NULL) plc = &static_lc;
+    plc->hprocess = INVALID_HANDLE_VALUE;
+    plc->hthread = INVALID_HANDLE_VALUE;
+    plc->log = INVALID_HANDLE_VALUE;
+    plc->is_move = false;
+    plc->moveOK = false;
+    memset(&plc->file, 0, sizeof(CMOVE_FILE_SECTION));
+    memset(&plc->patient, 0, sizeof(CMOVE_PATIENT_SECTION));
+    plc->patient.sex[0] = ' ';
+    plc->patient.sex[1] = '\0';
+    memset(&plc->study, 0, sizeof(CMOVE_STUDY_SECTION));
+    memset(&plc->series, 0, sizeof(CMOVE_SERIES_SECTION));
+}
+
+int process_cmd(stringstream &cmdstrm, int ftype, const string &filename)
+{
+    if(ftype == CHAR4_TO_INT(NOTIFY_FILE_TAG))
+    {
+        char *cmd = new char[1024];
+        do{
+            cmdstrm.getline(cmd, 1024);
+            if(cmdstrm.gcount())
+            {
+                istringstream linestrm(cmd);
+                string type;
+                linestrm >> type;
+                if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_INSTANCE))
+                    cmd_instance(type.c_str(), linestrm, static_lc);
+                else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_PATIENT))
+                    cmd_patient(type.c_str(), linestrm, static_lc);
+                else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_STUDY))
+                    cmd_study(type.c_str(), linestrm, static_lc);
+                else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_SERIES))
+                    cmd_series(type.c_str(), linestrm, static_lc);
+                else if(STRING_PRE4_TO_INT(type) == ftype)
+                    cmd_file(type.c_str(), linestrm, static_lc);
+                else 
+                    cerr << "process_cmd() can't recognize line: " << linestrm.str() << endl;
+            }
+        } while(cmdstrm.good());
+        if(cmd) delete[] cmd;
+
+        // test before commit file section 
+        if(strlen(static_lc.file.filename) == 0 || strlen(static_lc.file.patientID) == 0
+            || strlen(static_lc.file.studyUID) == 0 || strlen(static_lc.file.seriesUID) == 0 || strlen(static_lc.file.instanceUID) == 0
+            || strlen(static_lc.file.xfer) == 0) // error, print unexpected value
+            cerr << "process_cmd() this file is not file_notify:" << endl << cmdstrm.str();
+        else // OK, commit file section
+        {
+            if(strlen(static_lc.file.unique_filename) == 0) static_lc.file.StorePath('\\');
+            cerr << "process_cmd() file " << static_lc.file.tag - NOTIFY_FILE_SEQ_START << " OK: " << filename << endl;
+            //compress_queue_to_workers(&lc);
+        }
+        clear_log_context();
+    }
+    else if(ftype == CHAR4_TO_INT(NOTIFY_MOVE_TAG))
+    {
+        string type;
+        cmdstrm >> type;
+        int status = cmd_move(type.c_str(), cmdstrm, static_lc);
+        if(static_lc.move_disconn && static_lc.moveOK)
+            ; // todo: trigger move OK event
+        return status;
+    }
+    else if(ftype == CHAR4_TO_INT(NOTIFY_STORE_TAG))
+    {
+        string type;
+        cmdstrm >> type;
+        cmd_assoc_store(type.c_str(), cmdstrm, static_lc);
+        if(!static_lc.is_move)
+        {
+            if(static_lc.assoc.assoc_disconn)
+            {
+                if(static_lc.assoc.releaseOK)
+                    ;  // todo: trigger store OK event
+                return 0;
+            }
+        }
+    }
+    else if(ftype == CHAR4_TO_INT(NOTIFY_ACKN_TAG))
+    {
+        //if(type == CHAR4_TO_INT(NOTIFY_ACKN_ITEM))
+    }
     else
-        cerr << "can't recognize command: " << buf << endl;
+        cerr << "can't recognize file " << filename << endl << cmdstrm.str() << endl;
     return 1;
 }

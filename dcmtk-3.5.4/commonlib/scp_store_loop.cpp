@@ -11,89 +11,80 @@ char pacs_base[MAX_PATH];
 const char *sessionId;
 HANDLE hDirNotify;
 
-static string last_dfc;
-static list<string> delay_dfc;
+static map<string, bool> inqueue_dfc_files;
 
 static DWORD refresh_files(bool timeout)
 {
     WIN32_FIND_DATA wfd;
-    char fileFilter[MAX_PATH] = "state\\*.dfc";
+    char buff[1024] = "state\\*.dfc";
     int pathLen = 4;
 
     if(timeout && hDirNotify == NULL) return ERROR_BAD_ARGUMENTS;;
 
-    HANDLE hDiskSearch = FindFirstFile(fileFilter, &wfd);
+    HANDLE hDiskSearch = FindFirstFile(buff, &wfd);
     if(hDiskSearch == INVALID_HANDLE_VALUE) return GetLastError();
+
+    char *buff_ptr = strchr(buff, '\\');
+    size_t buff_size = sizeof(buff);
+    if(buff_ptr)
+    {
+        ++buff_ptr;
+        buff_size -= (buff_ptr - buff);
+    }
+    else
+    {
+        buff_ptr = buff;
+    }
     list<string> dfc_files;
     do
 	{
-        string dfc(wfd.cFileName);
-        if (dfc.compare(".") == 0 || dfc.compare("..") == 0) 
+        if (strcmp(".", wfd.cFileName) == 0 || strcmp("..", wfd.cFileName) == 0) 
 			continue; // skip . ..
-        if(0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && dfc.compare(last_dfc) > 0)
+        strcpy_s(buff_ptr, buff_size, wfd.cFileName);
+        string dfc(buff);
+        if(0 == (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && inqueue_dfc_files.find(dfc) == inqueue_dfc_files.end())
             dfc_files.push_back(dfc);
 	} while (FindNextFile(hDiskSearch, &wfd));
 	FindClose(hDiskSearch); // ¹Ø±Õ²éÕÒ¾ä±ú
 
-    dfc_files.sort();
     bool end_of_move = false;
     list<string>::iterator it = dfc_files.end();
-
-    char *buff_ptr = strchr(fileFilter, '\\');
-    size_t buff_size = sizeof(fileFilter);
-    if(buff_ptr)
-    {
-        ++buff_ptr;
-        buff_size -= (buff_ptr - fileFilter);
-    }
-    else
-    {
-        buff_ptr = fileFilter;
-    }
 
     for(it = dfc_files.begin(); it != dfc_files.end(); ++it)
     {
         if(opt_verbose) cerr << "refresh_files() loop start: " << *it << endl;
-        if(end_of_move && strstr(it->c_str(), "_N.dfc"))
+        const char *pos = strrchr(it->c_str(), '_');
+        if(pos == NULL)
         {
-            if(opt_verbose) cerr << "refresh_files(): ignore notify " << *it << " after end of move." << endl;
-            continue;  // skip notify file after end_of_move
+            cerr << "refresh_files(): file name is not notify: " << *it << endl;
+            continue;
         }
-        list<string>::iterator dlit = find_if(delay_dfc.begin(), delay_dfc.end(),
-            [&it](const string &dlfn) { return it->compare(dlfn) == 0; });
+        int type = CHAR4_TO_INT(++pos);
+        if(type != CHAR4_TO_INT(NOTIFY_STORE_TAG) && type != CHAR4_TO_INT(NOTIFY_MOVE_TAG)
+             && type != CHAR4_TO_INT(NOTIFY_FILE_TAG) && type != CHAR4_TO_INT(NOTIFY_ACKN_TAG))
+        {
+            cerr << "refresh_files(): file type is not notify: " << *it << endl;
+            continue;
+        }
 
-        strcpy_s(buff_ptr, buff_size, it->c_str());
-        ifstream ifcmd(fileFilter, ios_base::in, _SH_DENYRW);
+        ifstream ifcmd(*it, ios_base::in, _SH_DENYRW);
         if(ifcmd.fail())
         {
-            if(opt_verbose) cerr << "refresh_files(): open file " << fileFilter << " failed, OS close file delay." << endl;
-            if(dlit == delay_dfc.end()) delay_dfc.push_back(*it);
-            break;
+            if(opt_verbose)
+                cerr << "refresh_files(): open file " << *it << " failed, OS close file delay." << endl;
+            continue;
         }
-        else if(dlit != delay_dfc.end())
-        {
-            if(opt_verbose) cerr << "refresh_files(): retry file " << fileFilter << " OK." << endl;
-            delay_dfc.erase(dlit);
-        }
+        stringstream content;
+        do {
+            ifcmd.getline(buff, sizeof(buff));
+            streamsize read = ifcmd.gcount();
+            if(read) content << buff << "\n";
+        } while(!ifcmd.eof());
 
-        char cmd[1024];
-        ifcmd.getline(cmd, sizeof(cmd));
-        while(!ifcmd.fail())
-        {
-            if(strlen(cmd))
-            {
-                if(end_of_move)
-                    fprintf_s(stderr, "Commands is after end-of-move: %s\n", cmd);
-                else if(0 == process_cmd(cmd))
-                    end_of_move = true;
-            }
-            ifcmd.getline(cmd, sizeof(cmd));
-        }
-        ifcmd.close();
-        last_dfc = *it;
+        end_of_move = (process_cmd(content, type, *it) == 0);
+        inqueue_dfc_files[*it] = true;
+        if(end_of_move) break;
     }
-
-    if(timeout) return ERROR_SUCCESS;
 
     if(end_of_move)
     {
@@ -394,7 +385,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     
     fn = _getcwd(NULL, 0);
     fn.append("\\state");
-    hDirNotify = FindFirstChangeNotification(fn.c_str(), FALSE, FILE_NOTIFY_CHANGE_SIZE);
+    hDirNotify = FindFirstChangeNotification(fn.c_str(), FALSE, FILE_NOTIFY_CHANGE_FILE_NAME);
     if(hDirNotify == INVALID_HANDLE_VALUE)
     {
         displayErrorToCerr("scp_store_main_loop(): FindFirstChangeNotification()", GetLastError());
@@ -488,11 +479,6 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     if(cbs) delete[] cbs;
     NamedPipe_CloseHandle(true);
 
-    for(list<string>::iterator it = delay_dfc.begin(); it != delay_dfc.end(); ++it)
-    {
-        cerr << "scp_store_main_loop(): remain delay file " << *it << endl;
-    }
-
     // send compress and dicomdir ok notification
     char notify_file_name[MAX_PATH];
     int seq_len = GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
@@ -541,7 +527,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 #ifdef _DEBUG
     //DeleteSubTree("archdir");
     //DeleteSubTree("indexdir");
-    DeleteSubTree("state");
+    //DeleteSubTree("state");
 #endif
     return gle;
 }

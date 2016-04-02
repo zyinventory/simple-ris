@@ -8,12 +8,13 @@ FILE *create_transaction_append_file(const char *fn);
 typedef struct {
     char id[32], callingAE[65], callingAddr[65], calledAE[65], calledAddr[65];
     unsigned short port;
+    bool assoc_disconn, releaseOK;
 } CMOVE_ASSOC_SECTION;
 
 typedef struct {
     unsigned int tag;
     char filename[MAX_PATH], hash[12], unique_filename[65], patientID[65], studyUID[65], seriesUID[65], instanceUID[65], xfer[16], xfer_new[16];
-    bool inFile, isEncapsulated;
+    bool isEncapsulated;
     const char* StorePath(char sp = '/');
     char PathSeparator() const { return unique_filename[8]; }
 } CMOVE_FILE_SECTION;
@@ -32,6 +33,7 @@ typedef struct {
 
 typedef struct {
     HANDLE hprocess, hthread, log;
+    bool is_move, move_disconn, moveOK;
     CMOVE_ASSOC_SECTION assoc;
     CMOVE_FILE_SECTION file;
     CMOVE_PATIENT_SECTION patient;
@@ -47,7 +49,7 @@ extern char pacs_base[MAX_PATH];
 extern const char *sessionId;
 extern HANDLE hDirNotify;
 
-int process_cmd(const std::string &buf);
+int process_cmd(std::stringstream &content, int ftype, const std::string &filename);
 void clear_log_context(CMOVE_LOG_CONTEXT *lc = NULL);
 int compress_queue_to_workers(CMOVE_LOG_CONTEXT *lc);
 bool is_idle(const char *studyUID = NULL);

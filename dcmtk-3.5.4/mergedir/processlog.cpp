@@ -121,7 +121,7 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
     if(start_write_log >= 0) // start_write_log == 0, start immediately
     {
         //test_consume_log(sessionId.c_str());
-        scp_store_main_loop(sessionId.c_str(), true);
+        scp_store_main_loop(sessionId.c_str(), false);
         //test_for_make_index("C:\\usr\\local\\dicom", true);
     }
 }

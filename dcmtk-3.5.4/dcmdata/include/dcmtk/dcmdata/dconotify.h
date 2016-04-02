@@ -16,7 +16,6 @@
 #define STRING_PRE4_TO_INT(pc) (*reinterpret_cast<const int*>(pc.c_str()))
 
 #define NOTIFY_STORE_TAG        "STOR"
-#define NOTIFY_STORE_TAG_I      CHAR4_TO_INT(NOTIFY_STORE_TAG)
 #define NOTIFY_MOVE_TAG         "MOVE"
 #define NOTIFY_FILE_TAG         "FILE"
 #define NOTIFY_FILE_SEQ_START   0x00011000
