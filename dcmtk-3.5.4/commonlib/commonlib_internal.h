@@ -1,32 +1,7 @@
 #ifndef COMMONLIB_INTERNAL
 #define COMMONLIB_INTERNAL
 
-#define TYPE_MOVE       'M'
-#define TYPE_ASSOC      'T'
-#define TYPE_FILE       'F'
-#define TYPE_PATIENT    'P'
-#define TYPE_STUDY      'S'
-#define TYPE_SERIES     'E'
-#define TYPE_INSTANCE   'I'
-#define TYPE_NOTIFY     'N'
-#define TYPE_ACK        'A'
-
-#define ASSOC_ESTA  0x00010010
-#define FILE_START  0x00011000
-#define ASSOC_TERM  0xFFFFFFFF
-#define ASSOC_ABORT 0xFFFFFFFD
-
-#define NOTIFY_START    0xFFFFFFFB
-#define NOTIFY_REMAIN   0x00001020
-#define NOTIFY_COMPLETE 0x00001021
-#define NOTIFY_FAILED   0x00001022
-#define NOTIFY_WARNING  0x00001023
-#define NOTIFY_END      0xFFFFFFFE
-#define NOTIFY_CANCEL   0xFFFFFFFC
-#define NOTIFY_COMPR_OK 0xFFFFFFFA
-#define NOTIFY_ARCHIVE  0xFFFFFFF9
-#define NOTIFY_DICOMDIR 0xFFFFFFF8
-#define NOTIFY_XML_OK   0xFFFFFFF0
+#include "../dcmdata/include/dcmtk/dcmdata/dconotify.h"
 
 FILE *create_transaction_append_file(const char *fn);
 

@@ -1112,7 +1112,7 @@ storeSCPCallback(
         {
             StoreCallbackData *cbdata = (StoreCallbackData*) callbackData;
             const char* fileName = cbdata->imageFileName;
-            datasetToNotify(fileName, imageDataSet);
+            datasetToNotify(fileName, imageDataSet, true);
 
             E_TransferSyntax xfer = opt_writeTransferSyntax;
             if (xfer == EXS_Unknown) xfer = (*imageDataSet)->getOriginalXfer();
@@ -1250,12 +1250,12 @@ subOpSCP(T_ASC_Association **subAssoc)
     {
         char filename[MAX_PATH], term[16];
         if(cond == DUL_PEERREQUESTEDRELEASE)
-            strcpy_s(term, NOTIFY_STORE_RELEASE);
+            sprintf_s(term, "%s %08X", NOTIFY_STORE_TAG, NOTIFY_ASSOC_RELEASE);
         else
-            strcpy_s(term, NOTIFY_STORE_ABORT);
+            sprintf_s(term, "%s %08X", NOTIFY_STORE_TAG, NOTIFY_ASSOC_ABORT);
 
         size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
-        if(used > 0 && 0 == strcpy_s(filename + used, sizeof(filename) - used, "_T.dfc"))
+        if(used > 0 && -1 != sprintf_s(filename + used, sizeof(filename) - used, "_%s.dfc", NOTIFY_STORE_TAG))
         {
             FILE *fplog = fopen(filename, "a");
             if(fplog != NULL)
@@ -1267,7 +1267,7 @@ subOpSCP(T_ASC_Association **subAssoc)
         }
         else
         {
-            cerr << "can't create sequence file name, missing command: " << term << endl;
+            cerr << "can't create sequence file name " << filename << ", missing command: " << term << endl;
         }
     }
     /* clean up on association termination */
@@ -1311,8 +1311,8 @@ subOpCallback(void * /*subOpCallbackData*/ ,
         FILE *fplog = NULL;
         char filename[MAX_PATH], seq[64], content[1024];
         in_process_sequence(seq, sizeof(seq), "");
-        int fn_used = sprintf_s(filename, "%s%s_T.dfc", STATE_DIR, seq);
-        int content_used = sprintf_s(content, "%s %s %s %s %s %d %s\n", NOTIFY_STORE_BEGIN, seq,
+        int fn_used = sprintf_s(filename, "%s%s_%s.dfc", STATE_DIR, seq, NOTIFY_STORE_TAG);
+        int content_used = sprintf_s(content, "%s %08X %s %s %s %s %d %s\n", NOTIFY_STORE_TAG, NOTIFY_ASSOC_ESTA, seq,
             (*subAssoc)->params->DULparams.callingAPTitle, 
             (*subAssoc)->params->DULparams.callingPresentationAddress,
             (*subAssoc)->params->DULparams.calledAPTitle, aNet->acceptorPort, 
@@ -1324,7 +1324,7 @@ subOpCallback(void * /*subOpCallbackData*/ ,
         }
         else
         {
-            cerr << "can't create sequence file name, missing command: " << content << endl;
+            cerr << "can't create sequence file name " << filename << ", missing command: " << content << endl;
         }
     } else {
         /* be a service class provider */
@@ -1347,36 +1347,48 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
     }
 
     std::stringstream strmbuf;
-    strmbuf << "N FFFFFFFB MOVE " << responseCount << endl;
+    // ACKI FFFFFFFB responseCount
+    strmbuf << NOTIFY_ACKN_ITEM << " " << hex << setfill('0') << setw(8) << uppercase << NOTIFY_ACKI_MV_STAT 
+        << " " << dec << responseCount << endl;
 
     // report progress
 	printf("trigger move progress:");
 	if (response->opts & O_MOVE_NUMBEROFREMAININGSUBOPERATIONS)
     {
 		printf(" Remaining: %d ;", response->NumberOfRemainingSubOperations);
-        strmbuf << "A 00001020 " << response->NumberOfRemainingSubOperations << endl;
+        // ACKI 00001020 response->NumberOfRemainingSubOperations
+        strmbuf << NOTIFY_ACKN_ITEM << " " << hex << setfill('0') << setw(8) << uppercase << NOTIFY_MV_STAT_REMAIN 
+            << " " << dec << response->NumberOfRemainingSubOperations << endl;
     }
     if (response->opts & O_MOVE_NUMBEROFCOMPLETEDSUBOPERATIONS)
     {
 		printf(" Completed: %d ;", response->NumberOfCompletedSubOperations);
-        strmbuf << "A 00001021 " << response->NumberOfCompletedSubOperations << endl;
+        // ACKI 00001021 response->NumberOfCompletedSubOperations
+        strmbuf << NOTIFY_ACKN_ITEM << " " << hex << setfill('0') << setw(8) << uppercase << NOTIFY_MV_STAT_COMPLETE 
+            << " " << dec << response->NumberOfCompletedSubOperations << endl;
     }
     if (response->opts & O_MOVE_NUMBEROFFAILEDSUBOPERATIONS)
     {
 		printf(" Failed: %d ;", response->NumberOfFailedSubOperations);
-        strmbuf << "A 00001022 " << response->NumberOfFailedSubOperations << endl;
+        // ACKI 00001022 response->NumberOfFailedSubOperations
+        strmbuf << NOTIFY_ACKN_ITEM << " " << hex << setfill('0') << setw(8) << uppercase << NOTIFY_MV_STAT_FAILED 
+            << " " << dec << response->NumberOfFailedSubOperations << endl;
     }
     if (response->opts & O_MOVE_NUMBEROFWARNINGSUBOPERATIONS)
     {
 		printf(" Warning: %d ;", response->NumberOfWarningSubOperations);
-        strmbuf << "A 00001023 " << response->NumberOfWarningSubOperations << endl;
+        // ACKI 00001023 response->NumberOfWarningSubOperations
+        strmbuf << NOTIFY_ACKN_ITEM << " " << hex << setfill('0') << setw(8) << uppercase << NOTIFY_MV_STAT_WARNING 
+            << " " << dec << response->NumberOfWarningSubOperations << endl;
     }
 	printf("\n");
 
     /* should we send a cancel back ?? */
     if (opt_cancelAfterNResponses == responseCount) {
 		printf("trigger move cancel after: %d\n", opt_cancelAfterNResponses);
-        strmbuf << "A FFFFFFFC " << opt_cancelAfterNResponses << endl;
+        // ACKI FFFFFFFC opt_cancelAfterNResponses
+        strmbuf << NOTIFY_ACKN_ITEM << " " << hex << setfill('0') << setw(8) << uppercase << NOTIFY_OPER_CANCEL 
+            << " " << dec << opt_cancelAfterNResponses << endl;
         if (opt_verbose) {
             printf("Sending Cancel RQ, MsgId: %d, PresId: %d\n",
                 request->MessageID, myCallbackData->presId);
@@ -1388,13 +1400,11 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
             DimseCondition::dump(cond);
         }
     }
-    
-    strmbuf << "N FFFFFFFE MOVE" << endl;
 
     char filename[MAX_PATH];
     string sw = strmbuf.str();
     size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
-    if(used > 0 && 0 == strcpy_s(filename + used, sizeof(filename) - used, "_N.dfc"))
+    if(used > 0 && -1 != sprintf_s(filename + used, sizeof(filename) - used, "_%s.dfc", NOTIFY_ACKN_TAG))
     {
         FILE *fplog = fopen(filename, "a");
         if(fplog != NULL)
@@ -1405,7 +1415,7 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
     }
     else
     {
-        cerr << "can't create sequence file name, missing command: " << sw.c_str() << endl;
+        cerr << "can't create sequence file name " << filename << ", missing command: " << sw.c_str() << endl;
     }
 }
 
@@ -1489,8 +1499,8 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
     FILE *fplog = NULL;
     char filename[MAX_PATH], seq[64], content[1024];
     in_process_sequence(seq, sizeof(seq), "");
-    int fn_used = sprintf_s(filename, "%s%s_M.dfc", STATE_DIR, seq);
-    int content_used = sprintf_s(content, "%s %s %s %s %s %s\n", NOTIFY_MOVE_BEGIN, seq,
+    int fn_used = sprintf_s(filename, "%s%s_%s.dfc", STATE_DIR, seq, NOTIFY_MOVE_TAG);
+    int content_used = sprintf_s(content, "%s %08X %s %s %s %s %s\n", NOTIFY_MOVE_TAG, NOTIFY_ASSOC_ESTA, seq,
         assoc->params->DULparams.callingAPTitle, 
         assoc->params->DULparams.callingPresentationAddress,
         assoc->params->DULparams.calledAPTitle,
@@ -1503,7 +1513,7 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
     }
     else
     {
-        cerr << "can't create sequence file name, missing command: " << content << endl;
+        cerr << "can't create sequence file name " << filename << ", missing command: " << content << endl;
     }
 
     OFCondition cond = DIMSE_moveUser(assoc, presId, &req, dcmff.getDataset(),
@@ -1513,7 +1523,7 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
 
     char term[16];
     if (cond == EC_Normal) {
-        strcpy_s(term, NOTIFY_MOVE_RELEASE);  // assoc normal term
+        sprintf_s(term, "%s %08X", NOTIFY_MOVE_TAG, NOTIFY_ASSOC_RELEASE);  // assoc normal term
         if (opt_verbose) {
             DIMSE_printCMoveRSP(stdout, &rsp);
             if (rspIds != NULL) {
@@ -1522,13 +1532,13 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
             }
         }
     } else {
-        strcpy_s(term, NOTIFY_MOVE_ABORT);  // assoc abort
+        sprintf_s(term, "%s %08X", NOTIFY_MOVE_TAG, NOTIFY_ASSOC_ABORT);  // assoc abort
         errmsg("Move Failed:");
         DimseCondition::dump(cond);
     }
 
     size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
-    if(used > 0 && 0 == strcpy_s(filename + used, sizeof(filename) - used, "_M.dfc"))
+    if(used > 0 && -1 != sprintf_s(filename + used, sizeof(filename) - used, "_%s.dfc", NOTIFY_MOVE_TAG))
     {
         fplog = fopen(filename, "a");
         if(fplog != NULL)
@@ -1540,7 +1550,7 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
     }
     else
     {
-        cerr << "can't create sequence file name, missing command: " << term << endl;
+        cerr << "can't create sequence file name " << filename << ", missing command: " << term << endl;
     }
 
     if (statusDetail != NULL) {

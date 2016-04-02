@@ -482,5 +482,8 @@
     <ClInclude Include="..\apps\mdfdsman.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmdata\dconotify.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

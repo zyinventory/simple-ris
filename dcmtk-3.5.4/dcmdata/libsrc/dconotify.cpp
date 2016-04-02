@@ -58,40 +58,45 @@ size_t in_process_sequence(char *buff, size_t buff_size, const char *prefix)
 #define MAX_PATH    260
 
 static OFList<OFString>  patients, studies, series;
-static size_t            instances = 0x00011000;
+static size_t            instances = NOTIFY_FILE_SEQ_START;
 
-void datasetToNotify(const char* fileName, DcmDataset **imageDataSet)
+void datasetToNotify(const char* fileName, DcmDataset **imageDataSet, bool isFull)
 {
     OFString patientID, studyUID, seriesUID;
     std::stringstream strmbuf;
-    strmbuf << "F " << hex << setw(8) << setfill('0') << uppercase << instances << " " << fileName << endl;
-    (*imageDataSet)->briefToStream(strmbuf, 'I');
+    strmbuf << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << instances << " " << fileName << endl;
+    if(isFull)
+        (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_FULL);
+    else
+    {
+        (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_INSTANCE);
 
-    (*imageDataSet)->findAndGetOFString(DCM_PatientID, patientID);
-    if(patients.end() == find(patients.begin(), patients.end(), patientID))
-    {
-        (*imageDataSet)->briefToStream(strmbuf, 'P');
-        patients.push_back(patientID);
+        (*imageDataSet)->findAndGetOFString(DCM_PatientID, patientID);
+        if(patients.end() == find(patients.begin(), patients.end(), patientID))
+        {
+            (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_PATIENT);
+            patients.push_back(patientID);
+        }
+        (*imageDataSet)->findAndGetOFString(DCM_StudyInstanceUID, studyUID);
+        if(studies.end() == find(studies.begin(), studies.end(), studyUID))
+        {
+            (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_STUDY);
+            studies.push_back(studyUID);
+        }
+        (*imageDataSet)->findAndGetOFString(DCM_SeriesInstanceUID, seriesUID);
+        if(series.end() == find(series.begin(), series.end(), seriesUID))
+        {
+            (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_SERIES);
+            series.push_back(seriesUID);
+        }
     }
-    (*imageDataSet)->findAndGetOFString(DCM_StudyInstanceUID, studyUID);
-    if(studies.end() == find(studies.begin(), studies.end(), studyUID))
-    {
-        (*imageDataSet)->briefToStream(strmbuf, 'S');
-        studies.push_back(studyUID);
-    }
-    (*imageDataSet)->findAndGetOFString(DCM_SeriesInstanceUID, seriesUID);
-    if(series.end() == find(series.begin(), series.end(), seriesUID))
-    {
-        (*imageDataSet)->briefToStream(strmbuf, 'E');
-        series.push_back(seriesUID);
-    }
-    strmbuf << "F " << hex << setw(8) << setfill('0') << uppercase << instances << endl;
+    strmbuf << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << instances << endl;
     ++instances;
     OFString sw = strmbuf.str();
 
     char filename[MAX_PATH];
     size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
-    if(used > 0 && 0 == strcpy_s(filename + used, sizeof(filename) - used, "_F.dfc"))
+    if(used > 0 && -1 != sprintf_s(filename + used, sizeof(filename) - used, "_%s.dfc", NOTIFY_FILE_TAG))
     {
         FILE *fplog = fopen(filename, "a");
         if(fplog != NULL)
@@ -102,7 +107,7 @@ void datasetToNotify(const char* fileName, DcmDataset **imageDataSet)
     }
     else
     {
-        cerr << "can't create sequence file name, missing command: " << sw.c_str() << endl;
+        cerr << "can't create sequence file name " << filename << ", missing command: " << sw.c_str() << endl;
     }
 
     sw.clear();

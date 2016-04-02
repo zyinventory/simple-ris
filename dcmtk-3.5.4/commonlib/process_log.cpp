@@ -21,7 +21,7 @@ void clear_log_context(CMOVE_LOG_CONTEXT *plc)
     memset(&plc->series, 0, sizeof(CMOVE_SERIES_SECTION));
 }
 
-static int cmd_series(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
+static int cmd_series(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     string temp;
@@ -53,7 +53,7 @@ static int cmd_series(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     return 1;
 }
 
-static int cmd_study(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
+static int cmd_study(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     string temp;
@@ -92,7 +92,7 @@ static int cmd_study(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     return 1;
 }
 
-static int cmd_patient(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
+static int cmd_patient(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     string temp_patients_name;
@@ -150,7 +150,7 @@ static int cmd_patient(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     return 1;
 }
 
-static int cmd_instance(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
+static int cmd_instance(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     string temp;
@@ -224,7 +224,7 @@ static void print_error_file_section(unsigned int tag, string &filename, CMOVE_F
     cerr << "\txfer: " << fs.xfer << endl;
 }
 
-static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
+static int cmd_file(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     string filename;
@@ -257,19 +257,19 @@ static int cmd_file(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     return 1;
 }
 
-static int cmd_assoc(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
+static int cmd_assoc(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     cmdstrm >> hex >> tag;
     if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag;
     switch(tag)
     {
-    case ASSOC_ESTA:
+    case NOTIFY_ASSOC_ESTA:
         cmdstrm >> lc.assoc.id >> lc.assoc.callingAE >> lc.assoc.callingAddr >> lc.assoc.calledAE >> dec >> lc.assoc.port >> lc.assoc.calledAddr;
         if(opt_verbose) cerr << " " << lc.assoc.callingAE << " " << lc.assoc.callingAddr<< " " << lc.assoc.calledAE<< " " << dec << lc.assoc.port << " " << lc.assoc.calledAddr << endl;
         break;
-    case ASSOC_TERM:
-    case ASSOC_ABORT:
+    case NOTIFY_ASSOC_RELEASE:
+    case NOTIFY_ASSOC_ABORT:
         if(opt_verbose) cerr << endl;
         break;
     default:
@@ -284,12 +284,12 @@ static int cmd_assoc(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
     return 1;
 }
 
-static int cmd_move(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
+static int cmd_move(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
     cmdstrm >> hex >> tag;
     if(opt_verbose) cerr << type << " " << hex << uppercase << setw(8) << setfill('0') << tag;
-    if(tag == ASSOC_TERM || tag == ASSOC_ABORT)
+    if(tag == NOTIFY_ASSOC_RELEASE || tag == NOTIFY_ASSOC_ABORT)
         return 0;
     else
         return 1;
@@ -297,37 +297,29 @@ static int cmd_move(char type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 
 int process_cmd(const string &buf)
 {
-    char type = '\0';
+    string type;
     istringstream cmdstrm(buf);
     cmdstrm >> type;
 
-    switch(type)
-    {
-    case TYPE_ASSOC:
-        cmd_assoc(type, cmdstrm, lc);
-        break;
-    case TYPE_FILE:
-        cmd_file(type, cmdstrm, lc);
-        break;
-    case TYPE_PATIENT:
-        if(lc.file.inFile) cmd_patient(type, cmdstrm, lc);
-        break;
-    case TYPE_STUDY:
-        if(lc.file.inFile) cmd_study(type, cmdstrm, lc);
-        break;
-    case TYPE_SERIES:
-        if(lc.file.inFile) cmd_series(type, cmdstrm, lc);
-        break;
-    case TYPE_INSTANCE:
-        if(lc.file.inFile) cmd_instance(type, cmdstrm, lc);
-        break;
-    case TYPE_NOTIFY:
-    case TYPE_ACK:
-        break;
-    case TYPE_MOVE:
-        return cmd_move(type, cmdstrm, lc);
-    default:
+    if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_FILE_TAG))
+        cmd_file(type.c_str(), cmdstrm, lc);
+    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_STORE_TAG))
+        cmd_assoc(type.c_str(), cmdstrm, lc);
+    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_PATIENT))
+    {   if(lc.file.inFile) cmd_patient(type.c_str(), cmdstrm, lc); }
+    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_STUDY))
+    {   if(lc.file.inFile) cmd_study(type.c_str(), cmdstrm, lc); }
+    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_SERIES))
+    {   if(lc.file.inFile) cmd_series(type.c_str(), cmdstrm, lc); }
+    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_INSTANCE))
+    {   if(lc.file.inFile) cmd_instance(type.c_str(), cmdstrm, lc); }
+    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_MOVE_TAG))
+        return cmd_move(type.c_str(), cmdstrm, lc);
+    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_ACKN_TAG))
+        ;
+    else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_ACKN_ITEM))
+        ;
+    else
         cerr << "can't recognize command: " << buf << endl;
-    }
     return 1;
 }

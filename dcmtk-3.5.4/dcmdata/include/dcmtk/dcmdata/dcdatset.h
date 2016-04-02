@@ -41,7 +41,7 @@
 #include "dcmtk/dcmdata/dcerror.h"
 #include "dcmtk/dcmdata/dctypes.h"
 #include "dcmtk/dcmdata/dcitem.h"
-
+#include "dconotify.h"
 
 // forward declarations
 class DcmInputStream;
@@ -254,8 +254,8 @@ class DcmDataset
     /** write brief info to ostream, such as OriginalXfer, DCM_PatientID, 
      *  DCM_SOPInstanceUID, DCM_Modality, DCM_StudyDate, etc.
      */
-    OFBool briefToStream(ostream &strm, char level = 'A');
-    OFBool briefToStream(FILE *fp, char level = 'A');
+    OFBool briefToStream(ostream &strm, const char *level = NOTIFY_LEVEL_FULL);
+    OFBool briefToStream(FILE *fp, const char *level = NOTIFY_LEVEL_FULL);
 
   private:
 
@@ -265,19 +265,6 @@ class DcmDataset
     /// current transfer syntax of the dataset
     E_TransferSyntax Xfer;
 };
-
-#define NOTIFY_STORE_BEGIN     "T 00010010"
-#define NOTIFY_STORE_RELEASE   "T FFFFFFFF"
-#define NOTIFY_STORE_ABORT     "T FFFFFFFD"
-#define NOTIFY_MOVE_BEGIN      "M 00010010"
-#define NOTIFY_MOVE_RELEASE    "M FFFFFFFF"
-#define NOTIFY_MOVE_ABORT      "M FFFFFFFD"
-
-#define STATE_DIR_NO_SP "state"
-#define STATE_DIR       "state\\"
-
-size_t in_process_sequence(char *buff, size_t buff_size, const char *prefix);
-void datasetToNotify(const char* fileName, DcmDataset **imageDataSet);
 
 #endif // DCDATSET_H
 

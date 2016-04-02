@@ -321,6 +321,7 @@
     <ClInclude Include="..\include\dcmtk\dcmdata\dcmetinf.h" />
     <ClInclude Include="..\include\dcmtk\dcmdata\dcobject.h" />
     <ClInclude Include="..\include\dcmtk\dcmdata\dcofsetl.h" />
+    <ClInclude Include="..\include\dcmtk\dcmdata\dconotify.h" />
     <ClInclude Include="..\include\dcmtk\dcmdata\dcostrma.h" />
     <ClInclude Include="..\include\dcmtk\dcmdata\dcostrmb.h" />
     <ClInclude Include="..\include\dcmtk\dcmdata\dcostrmf.h" />

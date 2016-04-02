@@ -95,5 +95,8 @@
     <ClInclude Include="commonlib_internal.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\dcmdata\include\dcmtk\dcmdata\dconotify.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

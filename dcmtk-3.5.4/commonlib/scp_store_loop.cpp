@@ -200,17 +200,17 @@ static void overwrite_study_archdir(const char *pacs_base, const map<string, str
 
                     // send archive ok notification
                     char notify_file_name[MAX_PATH];
-                    GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
-                    strcat_s(notify_file_name, "_N.dfc");
+                    int seq_len = GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+                    sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
                     ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
                     if(ntf.good())
                     {
-                        ntf << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE 
+                        ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_STUDY 
                             << " " << it->first << " " << dest_path << endl;
                         ntf.close();
                     }
                     else
-                        cerr << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE 
+                        cerr << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_STUDY 
                             << " " << it->first << " " << dest_path << endl;
                 }
             }
@@ -245,17 +245,17 @@ static void overwrite_study_archdir(const char *pacs_base, const map<string, str
 
                 // send dicomdir ok notification
                 char notify_file_name[MAX_PATH];
-                GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
-                strcat_s(notify_file_name, "_N.dfc");
+                int seq_len = GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+                sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
                 ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
                 if(ntf.good())
                 {
-                    ntf << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_DICOMDIR 
+                    ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_DICOMDIR
                         << " " << it->first << " " << dest_path << endl;
                     ntf.close();
                 }
                 else
-                    cerr << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_DICOMDIR 
+                    cerr << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_DICOMDIR 
                         << " " << it->first << " " << dest_path << endl;
             }
         }
@@ -495,16 +495,16 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 
     // send compress and dicomdir ok notification
     char notify_file_name[MAX_PATH];
-    GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
-    strcat_s(notify_file_name, "_N.dfc");
+    int seq_len = GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+    sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
     ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
     if(ntf.good())
     {
-        ntf << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_COMPR_OK << endl;
+        ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ALL_COMPRESS_OK << endl;
         ntf.close();
     }
     else
-        cerr << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_COMPR_OK << endl;
+        cerr << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ALL_COMPRESS_OK << endl;
 
     save_index_study_receive_to_session();
 
@@ -526,16 +526,16 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     });
 
     // send xml ok notification
-    GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
-    strcat_s(notify_file_name, "_N.dfc");
+    seq_len = GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+    sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
     ofstream ntf_final(notify_file_name, ios_base::app | ios_base::out);
     if(ntf_final.good())
     {
-        ntf_final << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_XML_OK << endl;
+        ntf_final << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_XML_OK << endl;
         ntf_final.close();
     }
     else
-        cerr << "N "<< hex << setw(8) << setfill('0') << uppercase << NOTIFY_XML_OK << endl;
+        cerr << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_XML_OK << endl;
 
     CoUninitialize();
 #ifdef _DEBUG
