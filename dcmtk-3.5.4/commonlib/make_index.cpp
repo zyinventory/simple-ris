@@ -694,7 +694,7 @@ void merge_index_study_patient_date(const char *pacs_base, bool overwrite, std::
             char dest_path[MAX_PATH];
             int offset = sprintf_s(dest_path, "%s\\pacs\\", pacs_base);
             char *src_path = dest_path + offset;
-            sprintf_s(src_path, sizeof(dest_path) - offset, "indexdir\\000d0020\\%s.xml", it->first.c_str());
+            sprintf_s(src_path, sizeof(dest_path) - offset, "indexdir\\0020000d\\%s.xml", it->first.c_str());
             MSXML2::IXMLDOMDocument2Ptr pSrc;
             HRESULT hr = pSrc.CreateInstance(__uuidof(MSXML2::DOMDocument30));
             if(VARIANT_FALSE == pSrc->load(src_path))

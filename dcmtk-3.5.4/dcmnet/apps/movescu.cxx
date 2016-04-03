@@ -1112,7 +1112,12 @@ storeSCPCallback(
         {
             StoreCallbackData *cbdata = (StoreCallbackData*) callbackData;
             const char* fileName = cbdata->imageFileName;
-            datasetToNotify(fileName, imageDataSet, true);
+            char notifyFileName[MAX_PATH];
+            size_t used = in_process_sequence(notifyFileName, sizeof(notifyFileName), STATE_DIR);
+            if(used > 0 && -1 != sprintf_s(notifyFileName + used, sizeof(notifyFileName) - used, "_%s.dfc", NOTIFY_FILE_TAG))
+                datasetToNotify(fileName, notifyFileName, imageDataSet, true);
+            else
+                cerr << "storeSCPCallback() can't generate in_process_sequence file name" << endl;
 
             E_TransferSyntax xfer = opt_writeTransferSyntax;
             if (xfer == EXS_Unknown) xfer = (*imageDataSet)->getOriginalXfer();

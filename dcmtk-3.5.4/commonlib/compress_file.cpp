@@ -4,6 +4,8 @@
 
 using namespace std;
 
+void x_www_form_codec_encode(const char *data, ostream *ostrm);
+
 const char* CMOVE_FILE_SECTION::StorePath(char sp)
 {
     HashStr(studyUID, unique_filename, sizeof(unique_filename));
@@ -511,20 +513,35 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
 
                     // send notification of a file OK to state dir
                     stringstream output;
-                    output << "N " << hex << setw(8) << setfill('0') << uppercase << it_clc->file.tag
+                    output << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_COMPRESS_OK << endl;
+                    output << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << it_clc->file.tag
                         << " " << it_clc->file.filename << " " << it_clc->file.unique_filename << endl;
-                    output << "N 00100020 " << it_clc->file.patientID << endl;
-                    output << "N 0020000D " << it_clc->file.studyUID << endl;
-                    output << "N 0020000E " << it_clc->file.seriesUID << endl;
-                    output << "N 00080018 " << it_clc->file.instanceUID << endl;
-                    output << "N 00020010 " << it_clc->file.xfer << " " << it_clc->file.isEncapsulated << " " << it_clc->file.xfer_new << endl;
-                    output << "N " << hex << setw(8) << setfill('0') << uppercase << it_clc->file.tag << endl;
+                    output << NOTIFY_LEVEL_INSTANCE << " 00100020 ";
+                    x_www_form_codec_encode(it_clc->file.patientID, &output);
+                    output << endl;
+                    output << NOTIFY_LEVEL_INSTANCE << " 0020000D " << it_clc->file.studyUID << endl;
+                    output << NOTIFY_LEVEL_INSTANCE << " 0020000E " << it_clc->file.seriesUID << endl;
+                    output << NOTIFY_LEVEL_INSTANCE << " 00080018 " << it_clc->file.instanceUID << endl;
+                    output << NOTIFY_LEVEL_INSTANCE << " 00020010 " << it_clc->file.xfer << " " << it_clc->file.isEncapsulated << " " << it_clc->file.xfer_new << endl;
+                    output << NOTIFY_LEVEL_PATIENT << " 00100010 ";
+                    x_www_form_codec_encode(it_clc->patient.patientsName, &output);
+                    output << endl;
+                    output << NOTIFY_LEVEL_PATIENT << " 00100030 " << it_clc->patient.birthday << endl;
+                    output << NOTIFY_LEVEL_PATIENT << " 00100040 " << it_clc->patient.sex << endl;
+                    output << NOTIFY_LEVEL_PATIENT << " 00101020 " << it_clc->patient.height << endl;
+                    output << NOTIFY_LEVEL_PATIENT << " 00101030 " << it_clc->patient.weight << endl;
+                    output << NOTIFY_LEVEL_STUDY << " 00080020 " << it_clc->study.studyDate << endl;
+                    output << NOTIFY_LEVEL_STUDY << " 00080030 " << it_clc->study.studyTime << endl;
+                    output << NOTIFY_LEVEL_STUDY << " 00080050 ";
+                    x_www_form_codec_encode(it_clc->study.accessionNumber, &output);
+                    output << endl;
+                    output << NOTIFY_LEVEL_SERIES << " 00080060 " << it_clc->series.modality << endl;
                     string notify = output.str();
                     output.str("");
 
                     char notify_file_name[MAX_PATH];
-                    GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
-                    strcat_s(notify_file_name, "_N.dfc");
+                    size_t pos = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
+                    sprintf_s(notify_file_name + pos, sizeof(notify_file_name) - pos, "_%s.dfc", NOTIFY_ACKN_TAG);
                     ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
                     if(ntf.good())
                     {

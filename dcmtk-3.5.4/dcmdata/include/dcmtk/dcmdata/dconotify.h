@@ -10,6 +10,7 @@
 #define NOTIFY_MV_STAT_COMPLETE 0x00001021
 #define NOTIFY_MV_STAT_FAILED   0x00001022
 #define NOTIFY_MV_STAT_WARNING  0x00001023
+#define NOTIFY_COMPRESS_OK      0xFFFFFFFA
 
 #define INT_TO_CHAR4(pi) reinterpret_cast<const char*>(pi)
 #define CHAR4_TO_INT(pc) (*reinterpret_cast<const int*>(pc))
@@ -28,9 +29,9 @@
 #define NOTIFY_LEVEL_STUDY      "STUD"
 #define NOTIFY_LEVEL_SERIES     "SERI"
 
-#define NOTIFY_ALL_COMPRESS_OK  0xFFFFFFFA
-#define NOTIFY_ARCHIVE_STUDY    0xFFFFFFF9
-#define NOTIFY_ARCHIVE_DICOMDIR 0xFFFFFFF8
+#define NOTIFY_ALL_COMPRESS_OK  0xFFFFFFF3
+#define NOTIFY_ARCHIVE_STUDY    0xFFFFFFF2
+#define NOTIFY_ARCHIVE_DICOMDIR 0xFFFFFFF1
 #define NOTIFY_XML_OK           0xFFFFFFF0
 
 #define STATE_DIR_NO_SP "state"
@@ -39,6 +40,6 @@
 class DcmDataset;
 
 unsigned int in_process_sequence(char *buff, size_t buff_size, const char *prefix);
-void datasetToNotify(const char* fileName, DcmDataset **imageDataSet, bool isFull = false);
+void datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet, bool isFull);
 
 #endif // DCONOTIFY_H

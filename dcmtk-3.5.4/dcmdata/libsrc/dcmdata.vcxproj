@@ -293,6 +293,7 @@
     <ClCompile Include="dcvrus.cxx" />
     <ClCompile Include="dcvrut.cxx" />
     <ClCompile Include="dcxfer.cxx" />
+    <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcmtk\dcmdata\cmdlnarg.h" />

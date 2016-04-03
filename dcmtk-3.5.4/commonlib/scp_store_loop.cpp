@@ -191,7 +191,7 @@ static void overwrite_study_archdir(const char *pacs_base, const map<string, str
 
                     // send archive ok notification
                     char notify_file_name[MAX_PATH];
-                    int seq_len = GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+                    int seq_len = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
                     sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
                     ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
                     if(ntf.good())
@@ -236,7 +236,7 @@ static void overwrite_study_archdir(const char *pacs_base, const map<string, str
 
                 // send dicomdir ok notification
                 char notify_file_name[MAX_PATH];
-                int seq_len = GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+                int seq_len = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
                 sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
                 ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
                 if(ntf.good())
@@ -481,7 +481,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 
     // send compress and dicomdir ok notification
     char notify_file_name[MAX_PATH];
-    int seq_len = GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+    int seq_len = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
     sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
     ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
     if(ntf.good())
@@ -512,7 +512,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     });
 
     // send xml ok notification
-    seq_len = GetNextUniqueNo("state\\", notify_file_name, sizeof(notify_file_name));
+    seq_len = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
     sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
     ofstream ntf_final(notify_file_name, ios_base::app | ios_base::out);
     if(ntf_final.good())

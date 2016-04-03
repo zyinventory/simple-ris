@@ -5,6 +5,11 @@
 
 using namespace std;
 
+void x_www_form_codec_encode(const char *data, ostream *ostrm)
+{
+    x_www_form_codec<ostream>::encode(data, ostrm);
+}
+
 static int cmd_series(const char *type, istringstream &cmdstrm, CMOVE_LOG_CONTEXT &lc)
 {
     unsigned int tag = 0;
@@ -339,8 +344,7 @@ int process_cmd(stringstream &cmdstrm, int ftype, const string &filename)
         else // OK, commit file section
         {
             if(strlen(static_lc.file.unique_filename) == 0) static_lc.file.StorePath('\\');
-            cerr << "process_cmd() file " << static_lc.file.tag - NOTIFY_FILE_SEQ_START << " OK: " << filename << endl;
-            //compress_queue_to_workers(&lc);
+            compress_queue_to_workers(&static_lc);
         }
         clear_log_context();
     }
