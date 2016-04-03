@@ -138,11 +138,9 @@ static OFCommandLine *pCmd = NULL;
 static DcmQueryRetrieveOptions *optionsPtr = NULL;
 static DcmQueryRetrieveIndexDatabaseHandleFactory *factoryPtr = NULL;
 #endif
-static bool com_is_init = false;
 
 static void exitHook()
 {
-	if(com_is_init) CoUninitialize();
 	if(configPtr) delete configPtr;
 #ifdef _DEBUG
 	dcmDataDict.clear();
@@ -158,27 +156,20 @@ static string associationLable;
 static void generateLabel(DcmQueryRetrieveStoreContext *pc)
 {
 	stringstream strmbuf;
-    strmbuf << "asso " << pc->getAssociationId() << " store " << pc->callingAPTitle << " " << pc->calledAPTitle << " " << configPtr->getAutoPublish(pc->calledAPTitle) << endl;
+    strmbuf << "asso " << pc->pac->associationId << " store " << pc->pac->callingAPTitle 
+        << " " << pc->pac->remoteHostName << " " << pc->pac->port << " " << pc->pac->calledAPTitle 
+        << " " << pc->pac->localHostName << " " << configPtr->getAutoPublish(pc->pac->calledAPTitle) << endl;
 	associationLable = strmbuf.str();
 }
 
 static OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 {
-	if(!com_is_init) com_is_init = SUCCEEDED(CoInitialize(NULL));
-
 	stringstream strmbuf;
 	strmbuf << pc->getFileName() << endl;
 	DcmDataset *pds = pc->getDataset();
     pds->briefToStream(strmbuf);
 	string body = strmbuf.str();
     if(associationLable.empty()) generateLabel(pc);
-	if(!SendCommonMessageToQueue(associationLable.c_str(), body.c_str(), MQ_PRIORITY_RECEIVED, NULL))
-	{
-		cerr << "Send message to queue error:" << endl;
-		cerr << "label: " << associationLable << endl;
-		cerr << "body:" << endl;
-		cerr << body << endl;
-	}
 	return EC_Normal;
 }
 
@@ -662,11 +653,9 @@ main(int argc, char *argv[])
     }
 #endif
 #ifdef _WIN32
-	changeWorkingDirectory(0, NULL, NULL);
-	CoInitialize(NULL);
+	ChangeToPacsWebSub(NULL, 0, NULL);
 	atexit(exitHook);
-	if(! EnsureQueueExist(QUEUE_NAME))
-		return -99;
+	
 	if (options.forkedChild_)
 	{
 		// child process
@@ -760,9 +749,8 @@ main(int argc, char *argv[])
 #endif
 #endif
 
-    DcmQueryRetrieveSCP scp(config, options, factory);
+    DcmQueryRetrieveSCP scp(config, options, factory, triggerReceiveEvent);
     scp.setDatabaseFlags(opt_checkFindIdentifier, opt_checkMoveIdentifier, options.debug_);
-	scp.cbToDcmQueryRetrieveStoreContext = triggerReceiveEvent;
 
 	Capture_Ctrl_C();
     /* loop waiting for associations */
@@ -779,11 +767,6 @@ main(int argc, char *argv[])
                 assoCmdClose.reserve(32);
                 assoCmdClose = associationLable.substr(0, endOfId);  // asso <asso id>
                 assoCmdClose += scp.getStoreResult() == STORE_RELEASE ? " release" : " abort";
-                if(!SendCommonMessageToQueue(assoCmdClose.c_str(), "", MQ_PRIORITY_RECEIVED, NULL))
-	            {
-		            cerr << "Send message to queue error:" << endl;
-		            cerr << "command: " << assoCmdClose << endl;
-	            }
             }
             else
                 cerr << "can't find association ID: " << associationLable << endl;

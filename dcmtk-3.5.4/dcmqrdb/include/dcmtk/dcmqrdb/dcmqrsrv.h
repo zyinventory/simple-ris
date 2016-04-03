@@ -75,13 +75,24 @@ enum STORE_PROCESSING
  */
 #ifndef DCMQR_INDEX_CALLBACK
 #define DCMQR_INDEX_CALLBACK
+
 class DcmQueryRetrieveStoreContext;
 typedef OFCondition(*IndexCallback)(DcmQueryRetrieveStoreContext *pc);
+
+typedef struct {
+    char associationId[40];
+    char callingAPTitle[DUL_LEN_TITLE + 1];
+    char calledAPTitle[DUL_LEN_TITLE + 1];
+    DIC_NODENAME remoteHostName, localHostName;
+    int port;
+    IndexCallback cbToDcmQueryRetrieveStoreContext;
+} ASSOCIATION_CONTEXT;
+
 #endif //DCMQR_INDEX_CALLBACK
+
 class DcmQueryRetrieveSCP
 {
 public:
-  IndexCallback cbToDcmQueryRetrieveStoreContext;
 
   /** constructor
    *  @param config SCP configuration facility
@@ -91,7 +102,8 @@ public:
   DcmQueryRetrieveSCP(
     const DcmQueryRetrieveConfig& config,
     const DcmQueryRetrieveOptions& options,
-    const DcmQueryRetrieveDatabaseHandleFactory& factory);
+    const DcmQueryRetrieveDatabaseHandleFactory& factory,
+    const IndexCallback cbStore= NULL);
 
   /// destructor
   virtual ~DcmQueryRetrieveSCP() { }
@@ -122,6 +134,8 @@ public:
   STORE_PROCESSING getStoreResult() { return storeResult; }
 
 private:
+
+  ASSOCIATION_CONTEXT assoc_context;
 
   /** perform association negotiation for an incoming A-ASSOCIATE request based
    *  on the SCP configuration and option flags. No A-ASSOCIATE response is generated,
@@ -190,7 +204,6 @@ private:
 
   /// result for STORE command result
   STORE_PROCESSING storeResult;
-  char associationId[40];
 
   /// factory object used to create database handles
   const DcmQueryRetrieveDatabaseHandleFactory& factory_;
@@ -199,7 +212,6 @@ private:
   const DcmQueryRetrieveOptions& options_;
 };
 
-int changeWorkingDirectory_internal(int argc, char **argv, char *pPacsBase);
 #endif
 
 /*

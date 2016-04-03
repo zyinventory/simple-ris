@@ -83,9 +83,9 @@ void DcmQueryRetrieveStoreContext::saveImageToDB(
     
     if (status == STATUS_Success)
     {
-		if(cbIndex)
+        if(pac->cbToDcmQueryRetrieveStoreContext)
 		{
-			dbcond = cbIndex(this);
+			dbcond = pac->cbToDcmQueryRetrieveStoreContext(this);
 		}
 		else
 		{

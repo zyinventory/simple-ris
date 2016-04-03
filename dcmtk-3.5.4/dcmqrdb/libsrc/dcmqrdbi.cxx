@@ -33,6 +33,8 @@
 
 #include "dcmtk/config/osconfig.h"    /* make sure OS specific configuration is included first */
 
+#include <direct.h>
+
 BEGIN_EXTERN_C
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -3404,7 +3406,17 @@ DcmQueryRetrieveIndexDatabaseHandle::~DcmQueryRetrieveIndexDatabaseHandle()
     }
 }
 
-size_t GenerateTime_internal(const char *format, char *timeBuffer, size_t bufferSize, time_t *time_now);
+OFCondition DcmQueryRetrieveIndexDatabaseHandle::makeStoreAssociationDir(const char *associationId)
+{
+    char store_path[MAX_PATH];
+    int pos = sprintf_s(store_path, "%s", handle->storageArea);
+    if(_mkdir(store_path) == 0 || errno == EEXIST)
+    {
+        sprintf_s(store_path + pos, sizeof(store_path) - pos, "\\%s", associationId);
+        if(_mkdir(store_path) == 0 || errno == EEXIST) return EC_Normal;
+    }
+    return EC_IllegalParameter;
+}
 
 /**********************************
  *      Provides a storage filename
@@ -3412,29 +3424,32 @@ size_t GenerateTime_internal(const char *format, char *timeBuffer, size_t buffer
 
 OFCondition DcmQueryRetrieveIndexDatabaseHandle::makeNewStoreFileName(
                 const char      *SOPClassUID,
-                const char      * /* SOPInstanceUID */ ,
+                const char      *SOPInstanceUID,
                 char            *newImageFileName,
                 const char *associationId)
-{
+{   /*
     OFString filename;
     char prefix[MAX_PATH];
 	time_t now;
-	size_t time_len = GenerateTime_internal("%Y%m%d%H%M%S", prefix, sizeof(prefix), &now);
-
+    */
+    int ret = 0;
     const char *m = dcmSOPClassUIDToModality(SOPClassUID);
     if (m==NULL) m = "XX";
+    
     if(associationId)
-	    sprintf_s(prefix + time_len, sizeof(prefix) - time_len, "~%s~%s~%s~%s~%s~", associationId, m, handle->callingAE, handle->calledAE, handle->autoPublish);
+	    ret = sprintf_s(newImageFileName, MAXPATHLEN, "%s\\%s\\%s.%s.dcm", handle->storageArea, associationId, m, SOPInstanceUID);
     else
-   	    sprintf_s(prefix + time_len, sizeof(prefix) - time_len, "~%s~%s~%s~%s~", m, handle->callingAE, handle->calledAE, handle->autoPublish);
+   	    ret = sprintf_s(newImageFileName, MAXPATHLEN, "%s\\%s.%s.dcm", handle->storageArea, m, SOPInstanceUID);
 
     // unsigned int seed = fnamecreator.hashString(SOPInstanceUID);
+    /*
     unsigned int seed = (unsigned int)now;
     newImageFileName[0]=0; // return empty string in case of error
     if (! fnamecreator.makeFilename(seed, handle->storageArea, prefix, ".dcm", filename)) return DcmQRIndexDatabaseError;
 
     strcpy(newImageFileName, filename.c_str());
-    return EC_Normal;
+    */
+    return ret == -1 ? EC_IllegalParameter : EC_Normal;
 }
 
 

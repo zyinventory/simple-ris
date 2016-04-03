@@ -107,16 +107,18 @@ static void storeCallback(
 DcmQueryRetrieveSCP::DcmQueryRetrieveSCP(
   const DcmQueryRetrieveConfig& config,
   const DcmQueryRetrieveOptions& options,
-  const DcmQueryRetrieveDatabaseHandleFactory& factory)
+  const DcmQueryRetrieveDatabaseHandleFactory& factory,
+  const IndexCallback cbStore)
 : config_(&config)
 , dbCheckFindIdentifier_(OFFalse)
 , dbCheckMoveIdentifier_(OFFalse)
 , dbDebug_(OFFalse)
 , factory_(factory)
 , options_(options)
-, cbToDcmQueryRetrieveStoreContext(NULL)
 , storeResult(STORE_NONE)
 {
+    memset(&assoc_context, 0, sizeof(ASSOCIATION_CONTEXT));
+    assoc_context.cbToDcmQueryRetrieveStoreContext = cbStore;
 }
 
 
@@ -363,8 +365,6 @@ OFCondition DcmQueryRetrieveSCP::moveSCP(T_ASC_Association * assoc, T_DIMSE_C_Mo
     return cond;
 }
 
-int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_size);
-
 OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_StoreRQ * request,
              T_ASC_PresentationContextID presId,
              DcmQueryRetrieveDatabaseHandle& dbHandle,
@@ -376,12 +376,18 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
     DcmFileFormat dcmff;
 
     if(storeResult == STORE_NONE) storeResult = STORE_BEGIN;
-    DcmQueryRetrieveStoreContext context(dbHandle, options_, STATUS_Success, &dcmff, correctUIDPadding);
-    GetNextUniqueNo_internal("asso_", associationId, sizeof(associationId));
-    context.setAssociationId(associationId);
-	context.cbIndex = cbToDcmQueryRetrieveStoreContext;
-	strcpy_s(context.calledAPTitle, assoc->params->DULparams.calledAPTitle);
-	strcpy_s(context.callingAPTitle, assoc->params->DULparams.callingAPTitle);
+    DcmQueryRetrieveStoreContext context(dbHandle, options_, STATUS_Success, &dcmff, correctUIDPadding, &assoc_context);
+
+    if(strlen(assoc_context.associationId) == 0)
+    {
+        if(in_process_sequence(assoc_context.associationId, sizeof(assoc_context.associationId), ""))
+        {
+            ASC_getPresentationAddresses(assoc->params, assoc_context.remoteHostName, assoc_context.localHostName);
+            ASC_getAPTitles(assoc->params, assoc_context.callingAPTitle, assoc_context.calledAPTitle, NULL);
+            if(dbHandle.makeStoreAssociationDir(assoc_context.associationId).bad())
+                assoc_context.associationId[0] = '\0';
+        }
+    }
 
     if (options_.verbose_) {
         printf("Received Store SCP: ");
@@ -399,7 +405,7 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
         dbcond = dbHandle.makeNewStoreFileName(
             request->AffectedSOPClassUID,
             request->AffectedSOPInstanceUID,
-            imageFileName, context.getAssociationId().c_str());
+            imageFileName, assoc_context.associationId);
         if (dbcond.bad()) {
             DcmQueryRetrieveOptions::errmsg("storeSCP: Database: makeNewStoreFileName Failed");
             // must still receive data
@@ -1065,6 +1071,7 @@ OFCondition DcmQueryRetrieveSCP::waitForAssociation(T_ASC_Network * theNet)
 
 		if (options_.singleProcess_ || options_.forkedChild_)
         {
+            assoc_context.port = theNet->acceptorPort;
             /* don't spawn a sub-process to handle the association */
             cond = handleAssociation(assoc, options_.correctUIDPadding_);
         }

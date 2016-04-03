@@ -48,17 +48,27 @@ class DcmFileFormat;
  */
 #ifndef DCMQR_INDEX_CALLBACK
 #define DCMQR_INDEX_CALLBACK
+
 class DcmQueryRetrieveStoreContext;
 typedef OFCondition(*IndexCallback)(DcmQueryRetrieveStoreContext *pc);
+
+typedef struct {
+    char associationId[40];
+    char callingAPTitle[DUL_LEN_TITLE + 1];
+    char calledAPTitle[DUL_LEN_TITLE + 1];
+    DIC_NODENAME remoteHostName, localHostName;
+    unsigned short port;
+    IndexCallback cbToDcmQueryRetrieveStoreContext;
+} ASSOCIATION_CONTEXT;
+
 #endif //DCMQR_INDEX_CALLBACK
+
 class DcmQueryRetrieveStoreContext
 {
 public:
-	IndexCallback cbIndex;
-	char callingAPTitle[DUL_LEN_TITLE + 1];
-    char calledAPTitle[DUL_LEN_TITLE + 1];
-	
-	DcmDataset *getDataset() { return dcmff->getDataset(); }
+    ASSOCIATION_CONTEXT *pac;
+
+    DcmDataset *getDataset() { return dcmff->getDataset(); }
 	const char *getFileName() { return fileName; }
 
     /** constructor
@@ -73,14 +83,15 @@ public:
       const DcmQueryRetrieveOptions& options,
       DIC_US s,
       DcmFileFormat *ff,
-      OFBool correctuidpadding)         
+      OFBool correctuidpadding,
+      ASSOCIATION_CONTEXT *pAssocCtx = NULL)         
     : dbHandle(handle)
     , options_(options)
     , status(s)
     , fileName(NULL)
     , dcmff(ff)
     , correctUIDPadding(correctuidpadding)
-	, cbIndex(NULL)
+	, pac(pAssocCtx)
     {
     }
 
@@ -96,12 +107,6 @@ public:
      *  @param fn file name. String is not copied.
      */
     void setFileName(const char *fn) { fileName = fn; }
-
-    const string& getAssociationId() const { return associationId; }
-    void setAssociationId(const char *assoId)
-    {
-	    associationId = assoId;
-    }
 
     /** callback handler called by the DIMSE_storeProvider callback function.
      *  @param progress progress state (in)
@@ -159,9 +164,6 @@ private:
 
     /// flag indicating whether space padded UIDs should be silently corrected
     OFBool correctUIDPadding;
-    
-    /// time: [seconds].[milli]
-    OFString associationId;
 };
 
 #endif
