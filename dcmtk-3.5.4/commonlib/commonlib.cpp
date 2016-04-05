@@ -4,7 +4,7 @@
 
 using namespace std;
 
-COMMONLIB_API void displayErrorToCerr(TCHAR *lpszFunction)
+COMMONLIB_API void displayErrorToCerr(TCHAR *lpszFunction, std::ostream *perrstrm)
 {
 	TCHAR *lpMsgBuf;
 	TCHAR *lpDisplayBuf;
@@ -16,7 +16,10 @@ COMMONLIB_API void displayErrorToCerr(TCHAR *lpszFunction)
 	lpDisplayBuf = (TCHAR *)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
 	sprintf_s(lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error %d: %s"), lpszFunction, dw, lpMsgBuf); 
 	//StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error %d: %s"), lpszFunction, dw, lpMsgBuf); 
-	cerr << lpDisplayBuf << endl;
+	if(perrstrm)
+        *perrstrm << lpDisplayBuf << endl;
+    else
+        cerr << lpDisplayBuf << endl;
 	LocalFree(lpMsgBuf);
 	LocalFree(lpDisplayBuf);
 }

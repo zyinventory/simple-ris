@@ -41,7 +41,7 @@ const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
 
 extern COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
-COMMONLIB_API void displayErrorToCerr(TCHAR *lpszFunction);
+COMMONLIB_API void displayErrorToCerr(TCHAR *lpszFunction, std::ostream *perrstrm = NULL);
 COMMONLIB_API int GetSignalInterruptValue();
 COMMONLIB_API void SignalInterruptHandler(int signal);
 COMMONLIB_API void Capture_Ctrl_C();
@@ -73,7 +73,8 @@ COMMONLIB_API bool deleteTree(const char *dirpath, std::ostream *ostrm = NULL);
 COMMONLIB_API bool deleteStudyFromIndex(const char *mode, const char *modeValue, const char *studyUid);
 COMMONLIB_API size_t extractStudyUid(char *buffer, const size_t bufferSize, const wchar_t *body);
 COMMONLIB_API errno_t SeriesInstancePath(const char *series, const std::string &instance, char *outputBuffer, size_t bufLen, char pathSeparator = '\\');
-COMMONLIB_API bool SelectValidPublisher(const char *ini_path, std::string &valid_publisher);
+COMMONLIB_API bool SelectValidPublisher(const char *ini_path, std::string &valid_publisher, bool opt_verbose = false);
+COMMONLIB_API bool TryPublishJDF(bool opt_verbose = false);
 COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int licenseCnt, std::ostream &outputbuf);
 COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t buf_size);
 COMMONLIB_API int LoadSettings(const char *iniPath, std::ostream &oslog, bool opt_verbose = false);
