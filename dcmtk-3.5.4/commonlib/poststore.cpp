@@ -1349,9 +1349,6 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
                 else
                 {
                     errstrm << "SelectValidPublisher() active job " << *it << " has no publisher, status detail: " << (pstatus == psec->end() ? "NULL" : pstatus->second) << endl;
-                    valid_publisher = "error:ÈÎÎñÏêÏ¸×´Ì¬´íÎó";
-                    valid_publisher += (pstatus == psec->end() ? "NULL" : pstatus->second);
-                    return false;
                 }
             }
         }
@@ -1369,7 +1366,17 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
             errstrm << "SelectValidPublisher() publisher " << p.first << " is selected, capacity is " << p.second << endl;
         });
     }
-    valid_publisher = (--ordered_pubs.end())->second;
+    pair<multimap<int, string>::iterator, multimap<int, string>::iterator > range = ordered_pubs.equal_range((--ordered_pubs.end())->first);
+    list<pair<int, string> > idle_list;
+    for(multimap<int, string>::iterator itsrc = range.first; itsrc != range.second; ++itsrc)
+        idle_list.push_back(*itsrc);
+    idle_list.sort([](const pair<int, string> &p1, const pair<int, string> &p2) {
+        return p1.second < p2.second;
+    });
+    if(opt_verbose) for_each(idle_list.begin(), idle_list.end(), [](const pair<int, string> &p) {
+        errstrm << "SelectValidPublisher() idle_list " << p.second << endl;
+    });
+    valid_publisher = idle_list.begin()->second;
     if(opt_verbose) errstrm << "SelectValidPublisher() select publisher " << valid_publisher << endl;;
 	return true;
 }

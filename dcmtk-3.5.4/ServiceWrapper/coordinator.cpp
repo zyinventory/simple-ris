@@ -270,6 +270,9 @@ static void detectDcmmkdirProcessExit()
 	{
 		//if(opt_verbose) time_header_out(cout) << "no dirmaker" << endl;
         TryPublishJDF(opt_verbose);
+        const char *p = GetGenerateIndexLog();
+        if(p) cerr << "detectDcmmkdirProcessExit() TryPublishJDF() error:" << endl << p << endl;
+        ClearGenerateIndexLog();
 		return;
 	}
 	/*
@@ -342,6 +345,9 @@ static void detectDcmmkdirProcessExit()
 	if(workingHandles) delete workingHandles;
 	//if(opt_verbose) time_header_out(cout) << "detectDcmmkdirProcessExit: end" << endl;
     TryPublishJDF(opt_verbose);
+    const char *p = GetGenerateIndexLog();
+    if(p) cerr << "detectDcmmkdirProcessExit() TryPublishJDF()(2nd) error:" << endl << p << endl;
+    ClearGenerateIndexLog();
 }
 
 /*
