@@ -271,7 +271,7 @@ static void detectDcmmkdirProcessExit()
 		//if(opt_verbose) time_header_out(cout) << "no dirmaker" << endl;
         TryPublishJDF(opt_verbose);
         const char *p = GetGenerateIndexLog();
-        if(p) cerr << "detectDcmmkdirProcessExit() TryPublishJDF() error:" << endl << p << endl;
+        if(p) cerr << "detectDcmmkdirProcessExit() TryPublishJDF():" << endl << p << endl;
         ClearGenerateIndexLog();
 		return;
 	}

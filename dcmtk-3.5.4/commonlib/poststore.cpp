@@ -21,6 +21,13 @@ static string baseurl, downloadUrl, studyDatePath;
 
 COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
+static std::ostream& time_header_out(ostream &os)
+{
+	char timeBuffer[32];
+	if(generateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
+	return os;
+}
+
 static stringstream errstrm;
 static string generateIndexLog;
 COMMONLIB_API const char *GetGenerateIndexLog()
@@ -1184,7 +1191,7 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
 	SI_Error rc = ini.LoadFile(ini_path);
 	//instream.close();
     if (rc < 0) {
-        errstrm << "SelectValidPublisher() 无法打开status文件 " << ini_path << endl;
+        time_header_out(errstrm) << "SelectValidPublisher() 无法打开status文件 " << ini_path << endl;
 		valid_publisher = "error:无法打开status文件";
 		return false;
 	}
@@ -1209,7 +1216,7 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
 			continue;
 		}
         
-        if(opt_verbose) errstrm << "SelectValidPublisher() publisher " << pname << " is found" << endl;
+        if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() publisher " << pname << " is found" << endl;
 
         CSimpleIni::TNamesDepend keys;
 		ini.GetAllKeys(sec->pItem, keys);
@@ -1258,25 +1265,25 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
         
 		if(capacity > 0)
         {
-            if(opt_verbose) errstrm << "SelectValidPublisher() publisher " << pname << " is good, capacity is " << capacity << endl;
+            if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() publisher " << pname << " is good, capacity is " << capacity << endl;
             pubs[pname] = capacity;
         }
         else
         {
-            if(opt_verbose) errstrm << "SelectValidPublisher() publisher " << pname << " is bad, capacity is " << capacity << endl;
+            if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() publisher " << pname << " is bad, capacity is " << capacity << endl;
         }
         ++sec;
 	}
     if(pubs.size() == 1)
     {
         valid_publisher = pubs.begin()->first;
-        if(opt_verbose) errstrm << "SelectValidPublisher() only one publisher " << valid_publisher << " is candidate" << endl;
+        if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() only one publisher " << valid_publisher << " is candidate" << endl;
         return true;
     }
     else if(pubs.size() == 0)
     {
         valid_publisher = "error:没有可用的刻录机";
-        if(opt_verbose) errstrm << "SelectValidPublisher() none of publisher is candidate" << endl;
+        if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() none of publisher is candidate" << endl;
         return false;
     }
 
@@ -1300,7 +1307,7 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
                     const char *job_name = ini.GetValue(currentSection.c_str(), currentKey.c_str());
                     if(job_name && strlen(job_name))
                     {
-                        if(opt_verbose) errstrm << "SelectValidPublisher() find active job " << job_name << endl;
+                        if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() find active job " << job_name << endl;
                         active_job.push_back(job_name);
                     }
                 }
@@ -1321,17 +1328,17 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
                 long remain = ini.GetLongValue(it->c_str(), "ESTIMATION_TIME_REMAIN", -1);
                 if(remain == -1)
                 {
-                    errstrm << "SelectValidPublisher() active job " << *it << " has no ESTIMATION_TIME_REMAIN" << endl;
+                    time_header_out(errstrm) << "SelectValidPublisher() active job " << *it << " has no ESTIMATION_TIME_REMAIN" << endl;
                     valid_publisher = "error:任务没有预估剩余时间";
                     return false;
                 }
                 else
                 {
-                    if(opt_verbose) errstrm << "SelectValidPublisher() active job " << *it << " remain " << remain << endl;
+                    if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() active job " << *it << " remain " << remain << endl;
                     map<string, int>::iterator itpub = pubs.find(pkey->second);
                     if(itpub != pubs.end())
                     {
-                        if(opt_verbose) errstrm << "SelectValidPublisher() publisher " << itpub->first << ": " << itpub->second << " - " << remain;
+                        if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() publisher " << itpub->first << ": " << itpub->second << " - " << remain;
                         itpub->second -= remain;
                         if(opt_verbose) errstrm << " = " << itpub->second << endl;
                     }
@@ -1342,13 +1349,13 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
                 CSimpleIni::TKeyVal::const_iterator pstatus = psec->find(CSimpleIni::Entry("DETAIL_STATUS"));
                 if(pstatus != psec->end() && 0 == strcmp("1", pstatus->second))
                 {   // if DETAIL_STATUS == 1, it means job is receiving.
-                    if(opt_verbose) errstrm << "SelectValidPublisher() active job " << *it << " is receiving(status detail: 1)" << endl;
+                    if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() active job " << *it << " is receiving(status detail: 1)" << endl;
                     valid_publisher = "error:正在接受任务";
                     return false;
                 }
                 else
                 {
-                    errstrm << "SelectValidPublisher() active job " << *it << " has no publisher, status detail: " << (pstatus == psec->end() ? "NULL" : pstatus->second) << endl;
+                    time_header_out(errstrm) << "SelectValidPublisher() active job " << *it << " has no publisher, status detail: " << (pstatus == psec->end() ? "NULL" : pstatus->second) << endl;
                 }
             }
         }
@@ -1363,7 +1370,7 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
     if(opt_verbose)
     {
         for_each(ordered_pubs.begin(), ordered_pubs.end(), [](const pair<int, string> &p) {
-            errstrm << "SelectValidPublisher() publisher " << p.first << " is selected, capacity is " << p.second << endl;
+            time_header_out(errstrm) << "SelectValidPublisher() publisher " << p.first << " is selected, capacity is " << p.second << endl;
         });
     }
     pair<multimap<int, string>::iterator, multimap<int, string>::iterator > range = ordered_pubs.equal_range((--ordered_pubs.end())->first);
@@ -1374,10 +1381,10 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publ
         return p1.second < p2.second;
     });
     if(opt_verbose) for_each(idle_list.begin(), idle_list.end(), [](const pair<int, string> &p) {
-        errstrm << "SelectValidPublisher() idle_list " << p.second << endl;
+        time_header_out(errstrm) << "SelectValidPublisher() idle_list " << p.second << endl;
     });
     valid_publisher = idle_list.begin()->second;
-    if(opt_verbose) errstrm << "SelectValidPublisher() select publisher " << valid_publisher << endl;;
+    if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() select publisher " << valid_publisher << endl;
 	return true;
 }
 
@@ -1397,16 +1404,35 @@ static size_t find_jdf(const char *filter, list<string> &collector)
 COMMONLIB_API bool TryPublishJDF(bool opt_verbose)
 {
     list<string> candidate_jdf, exist_jdf;
-    string publisher, filter("..\\orders\\*.jdf");
+    string publisher, filter("..\\orders\\*.rjd");
     if(find_jdf(filter.c_str(), exist_jdf))
     {
-        if(opt_verbose) errstrm << "TryPublishJDF() some jdf has not been processed" << endl;
+        if(opt_verbose)
+        {
+            time_header_out(errstrm) << "TryPublishJDF() some job has not been processed:" << endl;
+            for_each(exist_jdf.begin(), exist_jdf.end(), [](const string &str) {
+                errstrm << "TryPublishJDF() exist rjd: " << str << endl;
+            });
+        }
         return false;
     }
+    filter = "..\\orders\\*.jdf";
+    if(find_jdf(filter.c_str(), exist_jdf))
+    {
+        if(opt_verbose)
+        {
+            time_header_out(errstrm) << "TryPublishJDF() some job has not been processed:" << endl;
+            for_each(exist_jdf.begin(), exist_jdf.end(), [](const string &str) {
+                errstrm << "TryPublishJDF() exist jdf: " << str << endl;
+            });
+        }
+        return false;
+    }
+
     filter = "..\\tdd\\*.jdf";
     if(find_jdf(filter.c_str(), candidate_jdf) == 0)
     {
-        if(opt_verbose) errstrm << "TryPublishJDF() no candidate jdf" << endl;
+        //if(opt_verbose) errstrm << "TryPublishJDF() no candidate jdf" << endl;
         return false;
     }
 
@@ -1429,20 +1455,20 @@ COMMONLIB_API bool TryPublishJDF(bool opt_verbose)
             {
                 char msg[1024];
                 _strerror_s(msg, "");
-                errstrm << "TryPublishJDF() move " << src << " to " << dest << " error " << msg << endl;
+                time_header_out(errstrm) << "TryPublishJDF() move " << src << " to " << dest << " error " << msg << endl;
                 // mark bad jdf
                 dest = "..\\tdd\\";
                 dest.append(*it).append(".bad");
                 if(rename(src.c_str(), dest.c_str()))
                 {
                     _strerror_s(msg, "");
-                    errstrm << "TryPublishJDF() mark bad jdf(" << src << ") to " << dest << " error " << msg << endl;
+                    time_header_out(errstrm) << "TryPublishJDF() mark bad jdf(" << src << ") to " << dest << " error " << msg << endl;
                 }
                 return false;
             }
             else
             {
-                errstrm << "TryPublishJDF() move " << src << " to " << dest << " OK" << endl;
+                if(opt_verbose) time_header_out(errstrm) << "TryPublishJDF() move " << src << " to " << dest << " OK" << endl;
                 return true;
             }
         }
