@@ -683,7 +683,7 @@ static void downloadPatientInfo(const char *riExecPath, const string &patId)
 
         if(file_length(chs_path) > 0)
         {
-            mapPatientIdHandle[patId] = INVALID_HANDLE_VALUE; // this patient id downloaded
+            mapPatientIdHandle[patId] = INVALID_HANDLE_VALUE; // this patient id is downloaded
             return;
         }
         PROCESS_INFORMATION procinfo;
@@ -806,7 +806,33 @@ static void processMessage(IMSMQMessagePtr pMsg)
                 {
                     char *ris_value = new char[required];
                     if(GetSetting("RisIntegration", ris_value, required))
-                        downloadPatientInfo(ris_value, (LPCSTR)attrPatientId->text);
+                    {
+                        string patientId((LPCSTR)attrPatientId->text);
+                        size_t paddingLength = GetSetting("PaddingLength", NULL, 0);
+                        if(paddingLength)
+                        {
+                            char *padding_buff = new char[paddingLength];
+                            if(GetSetting("PaddingLength", padding_buff, paddingLength))
+                            {
+                                int padding_len = atoi(padding_buff);
+                                if(padding_len > patientId.length())
+                                {
+                                    char padding_char = '0';
+                                    size_t paddingCharLength = GetSetting("PaddingChar", NULL, 0);
+                                    if(paddingCharLength)
+                                    {
+                                        char *padding_char_buff = new char[paddingCharLength];
+                                        if(GetSetting("PaddingChar", padding_char_buff, paddingCharLength) && padding_char_buff[0])
+                                            padding_char = padding_char_buff[0];
+                                        if(padding_char_buff) delete padding_char_buff;
+                                    }
+                                    patientId.insert(0, padding_len - patientId.length(), padding_char);
+                                }
+                            }
+                            if(padding_buff) delete padding_buff;
+                        }
+                        downloadPatientInfo(ris_value, patientId);
+                    }
                     if(ris_value) delete ris_value;
                 }
             }

@@ -397,7 +397,9 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_
 		}
         // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\STUDY_UID | [hash]\\PATIENT_ID>
         // prefixLen = strlen(volbuf);
-        sprintf_s(volbuf + prefixLen, MAX_PATH - prefixLen, ".%03d.dir", itv->sequence);
+        int seq_len = sprintf_s(volbuf + prefixLen, MAX_PATH - prefixLen, ".%d.", itv->sequence);
+        // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\STUDY_UID | [hash]\\PATIENT_ID>.seq.
+        strcat_s(volbuf, MAX_PATH, "dir");
         // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\STUDY_UID | [hash]\\PATIENT_ID>.seq.dir
 		if(MergeDicomDir(dirlist, volbuf, "SMART_PUB_SET", index_errlog, false) != 0) 
 		{
@@ -405,7 +407,7 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_
 			continue;
 		}
 
-		volbuf[prefixLen + 5] = '\0';
+		volbuf[prefixLen + seq_len] = '\0';
         // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>.seq.
 
 		if(isPatient)
@@ -413,7 +415,7 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_
             // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>.
 		else
 		{
-			strcpy_s(volbuf + prefixLen + 5, MAX_PATH - prefixLen - 5, "txt");
+			strcpy_s(volbuf + prefixLen + seq_len, MAX_PATH - prefixLen - seq_len, "txt");
             // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>.seq.txt
 			ofstream ofs(volbuf, ios_base::out | ios_base::trunc);
 			if(ofs.good())
@@ -428,7 +430,7 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_
 				index_errlog << "create field file " << volbuf << " failure." << endl;
 				continue;
 			}
-			volbuf[prefixLen + 5] = '\0';
+			volbuf[prefixLen + seq_len] = '\0';
             // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>.seq.
 		}
 		stringstream jdfpathstrm("..\\tdd\\");

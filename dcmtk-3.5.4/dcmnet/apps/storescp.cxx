@@ -2562,7 +2562,7 @@ static void executeOnEndOfStudy()
 	executeCommand( cmd );
   else
   {
-	if(assoReleaseOK && ! opt_disableIntegritySignal)
+	if(assoReleaseOK && ! opt_disableIntegritySignal && calledaetitle != "\"cdpmanual\"")
 	{
 		SendArchiveMessageToQueue(ARCHIVE_STUDY, lastStudyXml.c_str(), cmd.c_str());
 		time_header_out(COUT) << "send message: " << ARCHIVE_STUDY << " : " << lastStudyXml.c_str() << ',' << cmd << endl;
