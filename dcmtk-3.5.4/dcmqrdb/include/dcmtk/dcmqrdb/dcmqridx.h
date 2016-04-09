@@ -215,7 +215,7 @@ struct DB_Private_Handle
     DB_ElementList *findResponseList ;
     DB_LEVEL queryLevel ;
     char indexFilename[DBC_MAXSTRING+1] ;
-    char storageArea[DBC_MAXSTRING+1] ;
+    char storageArea[DUL_LEN_NODE+1] ;
 	char callingAE[DIC_AE_LEN+1] ;
 	char calledAE[DIC_AE_LEN+1] ;
 	char autoPublish[DIC_UI_LEN * 2] ;

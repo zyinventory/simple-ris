@@ -261,6 +261,23 @@ OFCondition DcmQueryRetrieveSCP::handleAssociation(T_ASC_Association * assoc, OF
         DimseCondition::dump(cond);
     }
 
+    if(storeResult == STORE_RELEASE || storeResult == STORE_ABORT)
+    {
+        FILE *fplog = NULL;
+        char filename[MAX_PATH], content[1024];
+        int used = sprintf_s(filename, "%s\\%s\\" STATE_DIR, assoc_context.storageArea, assoc_context.associationId);
+        used += in_process_sequence(filename + used, sizeof(filename) - used, "");
+        strcpy_s(filename + used, sizeof(filename) - used, "_" NOTIFY_STORE_TAG ".dfc");
+        int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s\n", 
+            storeResult == STORE_RELEASE ? NOTIFY_ASSOC_RELEASE : NOTIFY_ASSOC_ABORT, assoc_context.associationId);
+        if(fplog = fopen(filename, "a"))
+        {
+            fwrite(content, content_used, 1, fplog);
+            fclose(fplog);
+        }
+        else
+            cerr << "DcmQueryRetrieveSCP::handleAssociation() can't create sequence file name " << filename << ", missing command:" << endl << content << endl;
+    }
     return cond;
 }
 
@@ -384,8 +401,26 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
         {
             ASC_getPresentationAddresses(assoc->params, assoc_context.remoteHostName, assoc_context.localHostName);
             ASC_getAPTitles(assoc->params, assoc_context.callingAPTitle, assoc_context.calledAPTitle, NULL);
-            if(dbHandle.makeStoreAssociationDir(assoc_context.associationId).bad())
+            const char *storageArea = NULL;
+            if(dbHandle.makeStoreAssociationDir(assoc_context.associationId, assoc_context.storageArea, sizeof(assoc_context.storageArea)).bad())
                 assoc_context.associationId[0] = '\0';
+            else
+            {
+                FILE *fplog = NULL;
+                char filename[MAX_PATH], content[1024];
+                sprintf_s(filename, "%s\\%s\\" STATE_DIR "%s_" NOTIFY_STORE_TAG ".dfc",
+                    assoc_context.storageArea, assoc_context.associationId, assoc_context.associationId);
+                int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d %s\n",
+                    NOTIFY_ASSOC_ESTA, assoc_context.associationId, assoc_context.callingAPTitle, assoc_context.remoteHostName, 
+                    assoc_context.calledAPTitle, assoc_context.port, assoc_context.remoteHostName);
+                if(fplog = fopen(filename, "a"))
+                {
+                    fwrite(content, content_used, 1, fplog);
+                    fclose(fplog);
+                }
+                else
+                    cerr << "DcmQueryRetrieveSCP::storeSCP() can't create sequence file name " << filename << ", missing command:" << endl << content << endl;
+            }
         }
     }
 

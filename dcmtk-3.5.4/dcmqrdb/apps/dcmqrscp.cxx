@@ -150,27 +150,56 @@ static void exitHook()
 	_CrtDumpMemoryLeaks();
 #endif
 }
+/*
+static bool association_established = false;
 
-/// asso <asso_id> <command> <calling> <called> <auto_flag>
-static string associationLable;
-static void generateLabel(DcmQueryRetrieveStoreContext *pc)
+static void association_establishment(DcmQueryRetrieveStoreContext *pc)
 {
-	stringstream strmbuf;
-    strmbuf << "asso " << pc->pac->associationId << " store " << pc->pac->callingAPTitle 
-        << " " << pc->pac->remoteHostName << " " << pc->pac->port << " " << pc->pac->calledAPTitle 
-        << " " << pc->pac->localHostName << " " << configPtr->getAutoPublish(pc->pac->calledAPTitle) << endl;
-	associationLable = strmbuf.str();
-}
+    FILE *fplog = NULL;
+    char filename[MAX_PATH], content[1024];
 
+    association_established = true;
+
+    strcpy_s(filename, pc->getFileName());
+    char * fn_only = strrchr(filename, '\\');
+    if(fn_only)
+    {
+        ++fn_only;
+        sprintf_s(fn_only, sizeof(filename) - (fn_only - filename), STATE_DIR "%s_" NOTIFY_STORE_TAG ".dfc", pc->pac->associationId);
+    
+        int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d %s\n",
+            NOTIFY_ASSOC_ESTA, pc->pac->associationId, pc->pac->callingAPTitle, pc->pac->remoteHostName, 
+            pc->pac->calledAPTitle, pc->pac->port, pc->pac->remoteHostName);
+        if(fplog = fopen(filename, "a"))
+        {
+            fwrite(content, content_used, 1, fplog);
+            fclose(fplog);
+        }
+        else
+            cerr << "association_establishment() can't create sequence file name " << filename << ", missing command: " << content << endl;
+    }
+    else
+        cerr << "association_establishment() can't find storage area's state dir: " << pc->getFileName() << endl;
+}
+*/
 static OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 {
-	stringstream strmbuf;
-	strmbuf << pc->getFileName() << endl;
-	DcmDataset *pds = pc->getDataset();
-    pds->briefToStream(strmbuf);
-	string body = strmbuf.str();
-    if(associationLable.empty()) generateLabel(pc);
-	return EC_Normal;
+    //if(!association_established) association_establishment(pc);
+
+    char notifyFileName[MAX_PATH];
+    strcpy_s(notifyFileName, pc->getFileName());
+    char *fn_only = strrchr(notifyFileName, '\\');
+    if(fn_only)
+    {
+        ++fn_only;
+        OFString instanceName(fn_only);
+        fn_only += in_process_sequence(fn_only, sizeof(notifyFileName) - (fn_only - notifyFileName), STATE_DIR);
+        strcpy_s(fn_only, sizeof(notifyFileName) - (fn_only - notifyFileName), "_" NOTIFY_FILE_TAG ".dfc");
+        DcmDataset * pds = pc->getDataset();
+        datasetToNotify(instanceName.c_str(), notifyFileName, &pds, true);
+	    return EC_Normal;
+    }
+    return EC_IllegalParameter;
 }
 
 #define SHORTCOL 4
@@ -756,20 +785,10 @@ main(int argc, char *argv[])
     /* loop waiting for associations */
     while (cond.good())
     {
-        associationLable.clear();
 		cond = scp.waitForAssociation(options.net_);
         if((options.singleProcess_ || options.forkedChild_) && scp.getStoreResult() != STORE_NONE)
         {
-            string::size_type endOfId = associationLable.find(' ', 5);
-            if(endOfId != string::npos)
-            {
-                string assoCmdClose;
-                assoCmdClose.reserve(32);
-                assoCmdClose = associationLable.substr(0, endOfId);  // asso <asso id>
-                assoCmdClose += scp.getStoreResult() == STORE_RELEASE ? " release" : " abort";
-            }
-            else
-                cerr << "can't find association ID: " << associationLable << endl;
+            scp.cleanAssocContextExceptCallback();
         }
 		if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */
 		if (options.forkedChild_) break;

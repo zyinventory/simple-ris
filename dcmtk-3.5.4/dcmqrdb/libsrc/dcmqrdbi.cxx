@@ -3406,14 +3406,22 @@ DcmQueryRetrieveIndexDatabaseHandle::~DcmQueryRetrieveIndexDatabaseHandle()
     }
 }
 
-OFCondition DcmQueryRetrieveIndexDatabaseHandle::makeStoreAssociationDir(const char *associationId)
+OFCondition DcmQueryRetrieveIndexDatabaseHandle::makeStoreAssociationDir(const char *associationId, char *storageArea, size_t storageAreaBuffSize)
 {
     char store_path[MAX_PATH];
+    if(storageArea && storageAreaBuffSize) strcpy_s(storageArea, storageAreaBuffSize, handle->storageArea);
+    if(associationId == NULL) return EC_IllegalParameter;
+
     int pos = sprintf_s(store_path, "%s", handle->storageArea);
     if(_mkdir(store_path) == 0 || errno == EEXIST)
     {
-        sprintf_s(store_path + pos, sizeof(store_path) - pos, "\\%s", associationId);
-        if(_mkdir(store_path) == 0 || errno == EEXIST) return EC_Normal;
+        pos += sprintf_s(store_path + pos, sizeof(store_path) - pos, "\\%s", associationId);
+        if(_mkdir(store_path) == 0 || errno == EEXIST)
+        {
+            sprintf_s(store_path + pos, sizeof(store_path) - pos, "\\%s", STATE_DIR_NO_SP);
+            if(_mkdir(store_path) == 0 || errno == EEXIST)
+                return EC_Normal;
+        }
     }
     return EC_IllegalParameter;
 }

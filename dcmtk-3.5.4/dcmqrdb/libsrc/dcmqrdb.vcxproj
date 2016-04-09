@@ -232,6 +232,7 @@
     <ClCompile Include="dcmqrtis.cxx" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\dcmtk\dcmqrdb\association_context.h" />
     <ClInclude Include="..\include\dcmtk\dcmqrdb\dcmqrcbf.h" />
     <ClInclude Include="..\include\dcmtk\dcmqrdb\dcmqrcbg.h" />
     <ClInclude Include="..\include\dcmtk\dcmqrdb\dcmqrcbm.h" />

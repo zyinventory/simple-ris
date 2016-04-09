@@ -86,5 +86,8 @@
     <ClInclude Include="..\include\dcmtk\dcmqrdb\dcmqrtis.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\dcmtk\dcmqrdb\association_context.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

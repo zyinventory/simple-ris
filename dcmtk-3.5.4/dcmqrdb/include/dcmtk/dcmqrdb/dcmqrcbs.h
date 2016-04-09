@@ -38,6 +38,7 @@
 #include "dcmtk/config/osconfig.h"    /* make sure OS specific configuration is included first */
 #include "dcmtk/dcmnet/dimse.h"
 #include "dcmtk/dcmdata/dcfilefo.h"
+#include "dcmtk/dcmqrdb/association_context.h"
 
 class DcmQueryRetrieveDatabaseHandle;
 class DcmQueryRetrieveOptions;
@@ -46,22 +47,6 @@ class DcmFileFormat;
 /** this class maintains the context information that is passed to the 
  *  callback function called by DIMSE_storeProvider.
  */
-#ifndef DCMQR_INDEX_CALLBACK
-#define DCMQR_INDEX_CALLBACK
-
-class DcmQueryRetrieveStoreContext;
-typedef OFCondition(*IndexCallback)(DcmQueryRetrieveStoreContext *pc);
-
-typedef struct {
-    char associationId[40];
-    char callingAPTitle[DUL_LEN_TITLE + 1];
-    char calledAPTitle[DUL_LEN_TITLE + 1];
-    DIC_NODENAME remoteHostName, localHostName;
-    unsigned short port;
-    IndexCallback cbToDcmQueryRetrieveStoreContext;
-} ASSOCIATION_CONTEXT;
-
-#endif //DCMQR_INDEX_CALLBACK
 
 class DcmQueryRetrieveStoreContext
 {

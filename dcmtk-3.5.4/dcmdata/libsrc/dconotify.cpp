@@ -12,14 +12,24 @@
 #include "dcmtk/dcmdata/dcdatset.h"
 #include "dcmtk/dcmdata/dcdeftag.h"
 
-
 static OFList<OFString>  patients, studies, series;
 static size_t            instances = NOTIFY_FILE_SEQ_START;
+
+class numpunct_no_gouping : public std::numpunct_byname<char>
+{
+public:
+    numpunct_no_gouping(const char* name) : std::numpunct_byname<char>(name){ };
+protected:
+    virtual std::string do_grouping() const { return ""; } // no grouping
+};
 
 void datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet, bool isFull)
 {
     OFString patientID, studyUID, seriesUID;
-    std::stringstream strmbuf;
+    std::ostringstream strmbuf;
+    std::locale loc_nnp(std::locale::locale(""), ::new numpunct_no_gouping("")); // force ::new, otherwise will encounter DEBUG_NEW bug
+    strmbuf.imbue(loc_nnp);
+
     strmbuf << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << instances << " " << instanceFileName << endl;
     if(isFull)
         (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_FULL);

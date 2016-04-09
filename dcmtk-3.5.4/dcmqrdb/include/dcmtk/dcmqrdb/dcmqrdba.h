@@ -81,7 +81,7 @@ public:
       char *newImageFileName,
       const char *associationId = NULL) = 0;
   
-  virtual OFCondition makeStoreAssociationDir(const char *associationId) = 0;
+  virtual OFCondition makeStoreAssociationDir(const char *associationId, char *storageArea = NULL, size_t storageAreaBuffSize = 0) = 0;
 
   /** register the given DICOM object, which has been received through a C-STORE
    *  operation and stored in a file, in the database.

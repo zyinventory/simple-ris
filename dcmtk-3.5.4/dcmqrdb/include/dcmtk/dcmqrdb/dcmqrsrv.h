@@ -40,6 +40,7 @@
 #include "dcmtk/dcmnet/assoc.h"
 #include "dcmtk/dcmnet/dimse.h"
 #include "dcmtk/dcmqrdb/dcmqrptb.h"
+#include "dcmtk/dcmqrdb/association_context.h"
 
 class DcmQueryRetrieveConfig;
 class DcmQueryRetrieveOptions;
@@ -73,22 +74,6 @@ enum STORE_PROCESSING
 
 /** main class for Query/Retrieve Service Class Provider
  */
-#ifndef DCMQR_INDEX_CALLBACK
-#define DCMQR_INDEX_CALLBACK
-
-class DcmQueryRetrieveStoreContext;
-typedef OFCondition(*IndexCallback)(DcmQueryRetrieveStoreContext *pc);
-
-typedef struct {
-    char associationId[40];
-    char callingAPTitle[DUL_LEN_TITLE + 1];
-    char calledAPTitle[DUL_LEN_TITLE + 1];
-    DIC_NODENAME remoteHostName, localHostName;
-    int port;
-    IndexCallback cbToDcmQueryRetrieveStoreContext;
-} ASSOCIATION_CONTEXT;
-
-#endif //DCMQR_INDEX_CALLBACK
 
 class DcmQueryRetrieveSCP
 {
@@ -130,6 +115,13 @@ public:
    *  @param verbose verbose mode flag
    */
   void cleanChildren(OFBool verbose = OFFalse);
+
+  void cleanAssocContextExceptCallback()
+  {
+    IndexCallback cb = assoc_context.cbToDcmQueryRetrieveStoreContext;
+    memset(&assoc_context, 0, sizeof(ASSOCIATION_CONTEXT));
+    assoc_context.cbToDcmQueryRetrieveStoreContext = cb;
+  }
 
   STORE_PROCESSING getStoreResult() { return storeResult; }
 
