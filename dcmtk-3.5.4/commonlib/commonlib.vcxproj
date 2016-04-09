@@ -67,6 +67,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <UseFullPaths>true</UseFullPaths>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>

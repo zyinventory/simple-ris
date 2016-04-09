@@ -149,7 +149,7 @@ COMMONLIB_API bool MkdirRecursive(const char *subdir)
     // if it is not existent create it
     if( _mkdir(subdir) == -1 && errno != EEXIST)
     {
-        cerr << "Could not create subdirectory " << subdir << endl;
+        cerr << __FUNCSIG__ " Could not create subdirectory " << subdir << endl;
         return false;
     }
     else

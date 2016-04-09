@@ -132,7 +132,7 @@ const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
 
 extern COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
-COMMONLIB_API DWORD displayErrorToCerr(const TCHAR *lpszFunction, DWORD gle);
+COMMONLIB_API DWORD displayErrorToCerr(const TCHAR *lpszFunction, DWORD gle, std::ostream *perrstrm = NULL);
 COMMONLIB_API DWORD DisplayErrorToFileHandle(TCHAR *lpszFunction, DWORD dw, HANDLE fh);
 COMMONLIB_API int GetSignalInterruptValue();
 COMMONLIB_API void SignalInterruptHandler(int signal);

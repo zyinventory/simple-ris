@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <windows.h>
 #include <Aclapi.h>
+#include <iostream>
 
 #ifdef COMMONLIB_EXPORTS
 #define COMMONLIB_API __declspec(dllexport)
@@ -57,10 +58,10 @@ static char* GetPacsBase_internal()
 
 #ifdef COMMONLIB_EXPORTS
 #define displayErrorToCerr_public displayErrorToCerr
-COMMONLIB_API DWORD displayErrorToCerr(const TCHAR *lpszFunction, DWORD dw)
+COMMONLIB_API DWORD displayErrorToCerr(const TCHAR *lpszFunction, DWORD dw, std::ostream *perrstrm)
 #else
 #define displayErrorToCerr_public displayErrorToCerr_internal
-static DWORD displayErrorToCerr_internal(const TCHAR *lpszFunction, DWORD dw)
+static DWORD displayErrorToCerr_internal(const TCHAR *lpszFunction, DWORD dw, std::ostream *perrstrm)
 #endif
 {
 	TCHAR *lpMsgBuf;
@@ -71,7 +72,10 @@ static DWORD displayErrorToCerr_internal(const TCHAR *lpszFunction, DWORD dw)
 	// Display the error message
 	//lpDisplayBuf = (TCHAR *)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
 	//StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error %d: %s"), lpszFunction, dw, lpMsgBuf); 
-	fprintf(stderr, TEXT("%s failed with error %d: %s\n"), lpszFunction, dw, lpMsgBuf); 
+    if(perrstrm)
+        *perrstrm << lpszFunction << " failed with error " << dw << ": " << lpMsgBuf << std::endl;
+    else
+	    fprintf(stderr, TEXT("%s failed with error %d: %s\n"), lpszFunction, dw, lpMsgBuf); 
 	LocalFree(lpMsgBuf);
 	//LocalFree(lpDisplayBuf);
     return dw;
@@ -110,7 +114,7 @@ FILE *create_transaction_append_file(const char *fn)
     {
         char msg[MAX_PATH];
         sprintf_s(msg, "CreateFile(%s)", fn);
-        displayErrorToCerr_public(msg, GetLastError());
+        displayErrorToCerr_public(msg, GetLastError(), NULL);
     }
     else
     {
@@ -231,7 +235,7 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
             dw = GetLastError();
         }
         if(mutex_seq == NULL)
-            displayErrorToCerr_public("OpenMutex()", dw);
+            displayErrorToCerr_public("OpenMutex()", dw, NULL);
     }
 
     if(mutex_seq && WAIT_FAILED != WaitForSingleObject(mutex_seq, INFINITE))
@@ -280,7 +284,7 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
                 {
                     char prefix[MAX_PATH];
                     sprintf_s(prefix, "CreateFile(%s)", sequence_path);
-                    displayErrorToCerr_public(prefix, dw);
+                    displayErrorToCerr_public(prefix, dw, NULL);
                 }
             }
             hmap = CreateFileMapping(hfile, NULL, PAGE_READWRITE | SEC_COMMIT, 0, sizeof(MapHistory), mappingName);
@@ -289,7 +293,7 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
             {
                 char msg[MAX_PATH];
                 sprintf_s(msg, "create mapping %s", mappingName);
-                displayErrorToCerr_public(msg, dw);
+                displayErrorToCerr_public(msg, dw, NULL);
             }
             if(hmap && ownerPrivilege)
             {
@@ -314,7 +318,7 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
                 if(pSD) LocalFree(pSD);
                 if(pNewDacl) LocalFree(pNewDacl);
                 if(dw != ERROR_SUCCESS)
-                    displayErrorToCerr_public("SetSecurityInfo()", dw);
+                    displayErrorToCerr_public("SetSecurityInfo()", dw, NULL);
             }
 hmap_OK:
             if(hmap)
@@ -325,7 +329,7 @@ hmap_OK:
                 dw = GetLastError();
                 if(pMapHistory == NULL)
                 {
-                    displayErrorToCerr_public("MapViewOfFile()", dw);
+                    displayErrorToCerr_public("MapViewOfFile()", dw, NULL);
                     CloseHandle(hmap);
                     hmap = NULL;
                 }
@@ -336,7 +340,7 @@ hmap_OK:
                 }
             }
             else
-                displayErrorToCerr_public("OpenFileMapping() or CreateFileMapping()", dw);
+                displayErrorToCerr_public("OpenFileMapping() or CreateFileMapping()", dw, NULL);
         }
     }
     if(pMapHistory == NULL)

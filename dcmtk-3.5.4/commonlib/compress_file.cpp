@@ -24,10 +24,20 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     lc.hprocess = INVALID_HANDLE_VALUE;
     lc.hthread = INVALID_HANDLE_VALUE;
     const char *verbose_flag = opt_verbose ? "-v" : "";
-    char cmd[1024];
 #ifdef _DEBUG
-    int mkdir_pos = sprintf_s(cmd, "D:\\zy\\docs\\GitHub\\simple-ris\\dcmtk-3.5.4\\Debug\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", verbose_flag, lc.file.filename);
+    int mkdir_pos = 0;
+    char cmd[1024] = __FILE__;
+    char *p = strrchr(cmd, '\\');
+    if(p)
+    {
+        ++p;
+        mkdir_pos = p - cmd;
+        mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", verbose_flag, lc.file.filename);
+    }
+    else
+        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", pacs_base, verbose_flag, lc.file.filename);
 #else
+    char cmd[1024];
 	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", pacs_base, verbose_flag, lc.file.filename);
 #endif
     char *mkdir_ptr = cmd + mkdir_pos;
@@ -37,9 +47,7 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     strcpy_s(cmd + ctn, sizeof(cmd) - ctn, lc.file.unique_filename);
     if(!PrepareFileDir(mkdir_ptr))
     {
-        char msg[1024];
-        strerror_s(msg, errno);
-        cerr << "create_worker_process(): " << msg << endl;
+        cerr << __FUNCSIG__ " PrepareFileDir() error" << endl;
         return 0;
     }
     string logfile(lc.file.instanceUID);
@@ -47,7 +55,7 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     HANDLE log = CreateFile(logfile.c_str(), GENERIC_READ | FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_FLAG_DELETE_ON_CLOSE | FILE_ATTRIBUTE_NORMAL, NULL);
     if(log == INVALID_HANDLE_VALUE)
     {
-        displayErrorToCerr("create_worker_process() ", GetLastError());
+        displayErrorToCerr(__FUNCSIG__ " CreateFile()", GetLastError());
         return 0;
     }
     PROCESS_INFORMATION pi;
@@ -67,7 +75,7 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
     */
     if(0 == CreateProcess(NULL, cmd, NULL, NULL, TRUE, IDLE_PRIORITY_CLASS, NULL, NULL, &si, &pi))
     {
-        displayErrorToCerr("create_worker_process() ", GetLastError());
+        displayErrorToCerr(__FUNCSIG__ " CreateProcess()", GetLastError());
         CloseHandle(si.hStdOutput);
         CloseHandle(si.hStdError);
         return 0;
@@ -114,7 +122,7 @@ static void close_log(HANDLE log)
         else gle = GetLastError();
         delete[] buff;
         if(gle)
-            displayErrorToCerr("close_log()", gle);
+            displayErrorToCerr(__FUNCSIG__, gle);
         if(herr != INVALID_HANDLE_VALUE) CloseHandle(herr);
         CloseHandle(log);
     }
@@ -130,14 +138,14 @@ static DWORD close_dcmmkdir_worker(HANDLE hProc)
         [hProc](DCMMKDIR_CONTEXT &dc) { return hProc == dc.hProcess; });
     if(it != list_dir_workers.end())
     {
-        if(opt_verbose) cout << "close_dcmmkdir_worker(): close dcmmkdir process " << it->hProcess << ", study uid " << it->dot_or_study_uid << endl;
+        if(opt_verbose) cout << __FUNCSIG__ " : close dcmmkdir process " << it->hProcess << ", study uid " << it->dot_or_study_uid << endl;
         CloseHandle(it->hThread);
         CloseHandle(it->hProcess);
         close_log(it->log);
         list_dir_workers.erase(it);
     }
     else
-        cerr << "close_dcmmkdir_worker(): dcmmkdir process " << it->hProcess << " not found, study uid " << it->dot_or_study_uid << endl;
+        cerr << __FUNCSIG__ " : dcmmkdir process " << it->hProcess << " not found, study uid " << it->dot_or_study_uid << endl;
     return ERROR_SUCCESS;
 }
 
@@ -146,7 +154,7 @@ static map<string, list<CMOVE_LOG_CONTEXT> >::iterator create_or_open_dicomdir_q
 {
     if(dot_or_study_uid == NULL || strlen(dot_or_study_uid) == 0)
     {
-        cerr << "create_or_open_dicomdir_queue(): Study UID must be not NULL" << endl;
+        cerr << __FUNCSIG__ " : Study UID must be not NULL" << endl;
         return map_dir_queue_list.end();
     }
     map<string, list<CMOVE_LOG_CONTEXT> >::iterator itlist = map_dir_queue_list.find(dot_or_study_uid);
@@ -184,9 +192,7 @@ DWORD NamedPipe_CreateListening(const char *pipe_name, bool wait)
     if(!hPipeEvent) hPipeEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
     if (hPipeEvent == NULL)
     {
-        gle = GetLastError();
-        displayErrorToCerr("CreateEvent()", gle);
-        return gle;
+        return displayErrorToCerr(__FUNCSIG__ " CreateEvent()", GetLastError());
     }
     memset(&olPipeConnectOnly, 0, sizeof(OVERLAPPED));
     olPipeConnectOnly.hEvent = hPipeEvent;
@@ -197,9 +203,7 @@ DWORD NamedPipe_CreateListening(const char *pipe_name, bool wait)
         0, NULL); // time-out for client run WaitNamedPipe(NMPWAIT_USE_DEFAULT_WAIT), 0 means default(50 ms)
     if (hPipe == INVALID_HANDLE_VALUE)
     {
-        gle = GetLastError();
-        displayErrorToCerr("CreateNamedPipe()", gle);
-        return gle;
+        return displayErrorToCerr(__FUNCSIG__ " CreateNamedPipe()", GetLastError());
     }
 
     BOOL fConnected = ConnectNamedPipe(hPipe, (wait ? NULL : &olPipeConnectOnly));
@@ -213,21 +217,21 @@ DWORD NamedPipe_CreateListening(const char *pipe_name, bool wait)
             else
             {
                 gle = GetLastError();
-                displayErrorToCerr("ConnectNamedPipe(synchronous)", gle);
+                displayErrorToCerr(__FUNCSIG__ " connect synchronous", gle);
                 NamedPipe_CloseHandle();
                 return gle;
             }
         }
         else
         {
-            displayErrorToCerr("ConnectNamedPipe(synchronous)", gle);
+            displayErrorToCerr(__FUNCSIG__ " connect synchronous", gle);
             NamedPipe_CloseHandle();
             return gle;
         }
     }
     else if(fConnected)  // asynchronous faild
     {
-        displayErrorToCerr("ConnectNamedPipe(asynchronous)", gle);
+        displayErrorToCerr(__FUNCSIG__ " connect synchronous", gle);
         NamedPipe_CloseHandle();
         return gle;
     }
@@ -241,12 +245,12 @@ DWORD NamedPipe_CreateListening(const char *pipe_name, bool wait)
         if(!SetEvent(olPipeConnectOnly.hEvent))
         {
             gle = GetLastError();
-            displayErrorToCerr("ConnectNamedPipe()", gle);
+            displayErrorToCerr(__FUNCSIG__ " SetEvent()", gle);
             NamedPipe_CloseHandle();
         }
         break;
     default:
-        displayErrorToCerr("ConnectNamedPipe()", gle);
+        displayErrorToCerr(__FUNCSIG__ " unexpected error", gle);
         NamedPipe_CloseHandle();
         break;
     }
@@ -256,15 +260,24 @@ DWORD NamedPipe_CreateListening(const char *pipe_name, bool wait)
 DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid)
 {
 #ifdef _DEBUG
-    char cmd[1024] = "D:\\zy\\docs\\GitHub\\simple-ris\\dcmtk-3.5.4\\Debug\\dcmmkdir.exe --general-purpose-dvd -A ";
-    int mkdir_pos = strlen(cmd);
+    int mkdir_pos = 0;
+    char cmd[1024] = __FILE__;
+    char *p = strrchr(cmd, '\\');
+    if(p)
+    {
+        ++p;
+        strcpy_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmmkdir.exe --general-purpose-dvd -A ");
+        mkdir_pos = strlen(cmd);
+    }
+    else
+        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd -A ", pacs_base);
 #else
     char cmd[1024];
 	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd -A ", pacs_base);
 #endif
     if(dot_or_study_uid == NULL || strlen(dot_or_study_uid) == 0)
     {
-        cerr << "NamedPipe_CreateClientProc(): Study UID must be not NULL" << endl;
+        cerr << __FUNCSIG__ " : Study UID must be not NULL" << endl;
         return -1;
     }
     if(strcmp(".", dot_or_study_uid))
@@ -277,9 +290,7 @@ DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid)
     HANDLE log = CreateFile(logfile.c_str(), GENERIC_READ | FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_FLAG_DELETE_ON_CLOSE | FILE_ATTRIBUTE_NORMAL, NULL);
     if(log == INVALID_HANDLE_VALUE)
     {
-        DWORD gle = GetLastError();
-        displayErrorToCerr("CreateClientProc() ", gle);
-        return gle;
+        return displayErrorToCerr( __FUNCSIG__ " CreateFile() ", GetLastError());
     }
     PROCESS_INFORMATION pi;
     STARTUPINFO si;
@@ -293,7 +304,7 @@ DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid)
     if(!CreateProcess(NULL, cmd, NULL, NULL, TRUE, NORMAL_PRIORITY_CLASS, NULL, "archdir", &si, &pi))
     {
         DWORD gle = GetLastError();
-        DisplayErrorToFileHandle("CreateClientProc()", gle, log);
+        DisplayErrorToFileHandle(__FUNCSIG__ " CreateProcess()", gle, log);
         CloseHandle(si.hStdOutput);
         CloseHandle(si.hStdError);
         CloseHandle(log);
@@ -360,7 +371,7 @@ static void push_cmove_log_context_to_dcmmkdir_queue(const CMOVE_LOG_CONTEXT &ov
         }
     }
     else
-        cerr << "push_cmove_log_context_to_dcmmkdir_queue(): CMOVE_LOG_CONTEXT.file.studyUID is empty." << endl;
+        cerr << __FUNCSIG__ " : CMOVE_LOG_CONTEXT.file.studyUID is empty." << endl;
 }
 
 int compress_queue_to_workers(CMOVE_LOG_CONTEXT *plc)
@@ -383,7 +394,7 @@ int compress_queue_to_workers(CMOVE_LOG_CONTEXT *plc)
 static void DisconnectAndClose(LPPIPEINST lpPipeInst)
 {
     if (! DisconnectNamedPipe(lpPipeInst->hPipeInst))
-        displayErrorToCerr("DisconnectAndClose() DisconnectNamedPipe()", GetLastError());
+        displayErrorToCerr(__FUNCSIG__ " DisconnectNamedPipe()", GetLastError());
     CloseHandle(lpPipeInst->hPipeInst);
     if (lpPipeInst != NULL) delete lpPipeInst;
 }
@@ -447,7 +458,7 @@ void close_all_blocked_pipe_instances()
             [&dc](LPPIPEINST ppi) { return 0 == strcmp(dc.dot_or_study_uid, ppi->dot_or_study_uid); });
         if(it_ppi == list_blocked_pipe_instances.end())
         {
-            cerr << "close_all_blocked_pipe_instances(): not matching pipe instance " << dc.dot_or_study_uid << endl;
+            cerr << __FUNCSIG__ " : not matching pipe instance " << dc.dot_or_study_uid << endl;
         }
         else
         {
@@ -460,7 +471,7 @@ void close_all_blocked_pipe_instances()
     {
         for_each(list_blocked_pipe_instances.begin(), list_blocked_pipe_instances.end(),
             [](LPPIPEINST ppi) {
-                cerr << "close_all_blocked_pipe_instances(): standalone pipe instance " << ppi->dot_or_study_uid << endl;
+                cerr << __FUNCSIG__ " : standalone pipe instance " << ppi->dot_or_study_uid << endl;
             });
     }
 }
@@ -471,7 +482,7 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
     if(dwErr == 0)
     {
         if(cbBytesRead == 0)
-            cerr << "NamedPipe_ReadPipeComplete(): cbBytesRead is 0" << endl;
+            cerr << __FUNCSIG__ " : cbBytesRead is 0" << endl;
         else
             lpPipeInst->chBuffer[cbBytesRead] = '\0';
 
@@ -479,7 +490,7 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
         // extract studyUID and filename from message
         if(!check_reading_message(lpPipeInst, cbBytesRead, studyUID, filename, xfer))
         {
-            cerr << "NamedPipe_ReadPipeComplete() check_reading_message(): message is corrupt, " << lpPipeInst->chBuffer << endl;
+            cerr << __FUNCSIG__ " check_reading_message(): message is corrupt, " << lpPipeInst->chBuffer << endl;
             DisconnectAndClose(lpPipeInst);
             return;
         }
@@ -488,7 +499,7 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
         map<string, list<CMOVE_LOG_CONTEXT> >::iterator it = create_or_open_dicomdir_queue(studyUID.c_str());
         if(it == map_dir_queue_list.end())
         {
-            cerr << "NamedPipe_ReadPipeComplete() check_reading_message(): Study UID is corrupt, " << lpPipeInst->chBuffer << endl;
+            cerr << __FUNCSIG__ " create_or_open_dicomdir_queue(): Study UID is corrupt, " << lpPipeInst->chBuffer << endl;
             DisconnectAndClose(lpPipeInst);
             return;
         }
@@ -555,7 +566,7 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
                 queue_clc.erase(it_clc);
             }
             else
-                cerr << "NamePipe read file's name is not in queue: " << lpPipeInst->chBuffer << endl;
+                cerr << __FUNCSIG__ " NamePipe read file's name is not in queue: " << lpPipeInst->chBuffer << endl;
         }
 
         if(queue_clc.empty())
@@ -579,7 +590,7 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
                 DWORD gle = GetLastError();
                 if(gle != ERROR_INVALID_USER_BUFFER && gle != ERROR_NOT_ENOUGH_MEMORY)
                 {
-                    displayErrorToCerr("NamedPipe_ReadPipeComplete() WriteFileEx()", gle);
+                    displayErrorToCerr(__FUNCSIG__ " WriteFileEx()", gle);
                     DisconnectAndClose(lpPipeInst);
                 }
             }
@@ -587,7 +598,7 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
     }
     else // dwErr != 0
     {
-        displayErrorToCerr("NamedPipe_ReadPipeComplete()", dwErr);
+        displayErrorToCerr(__FUNCSIG__ " param dwErr is an error", dwErr);
         DisconnectAndClose(lpPipeInst);
     }
 }
@@ -620,7 +631,7 @@ static void CALLBACK NamedPipe_FirstReadBindPipe(DWORD dwErr, DWORD cbBytesRead,
         // don't confirm studyUID == lpPipeInst->dot_or_study_uid, it's unbound.
         if(!check_reading_message(lpPipeInst, cbBytesRead, studyUID, otherMessage, xfer, false))
         {
-            cerr << "NamedPipe_FirstReadBindPipe(): message is corrupt, " << studyUID << "|" << otherMessage << endl;
+            cerr << __FUNCSIG__ " : message is currupt, " << studyUID << "|" << otherMessage << endl;
             DisconnectAndClose(lpPipeInst);
             return;
         }
@@ -628,7 +639,7 @@ static void CALLBACK NamedPipe_FirstReadBindPipe(DWORD dwErr, DWORD cbBytesRead,
             [&studyUID](DCMMKDIR_CONTEXT &dc) { return 0 == strcmp(studyUID.c_str(), dc.dot_or_study_uid); });
         if(itDirWorker == list_dir_workers.end())
         {
-            cerr << "NamedPipe_FirstReadBindPipe(): can't bind incoming request from client process, " << studyUID << "|" << otherMessage << endl;
+            cerr << __FUNCSIG__ " : can't bind incoming request from client process, " << studyUID << "|" << otherMessage << endl;
             DisconnectAndClose(lpPipeInst);
             return;
         }
@@ -637,7 +648,7 @@ static void CALLBACK NamedPipe_FirstReadBindPipe(DWORD dwErr, DWORD cbBytesRead,
     }
     else
     {
-        displayErrorToCerr("NamedPipe_FirstReadBindPipe()", dwErr);
+        displayErrorToCerr(__FUNCSIG__, dwErr);
         DisconnectAndClose(lpPipeInst);
     }
 }
@@ -655,14 +666,14 @@ static DWORD NamedPipe_PipeConnected(HANDLE)
                 (LPOVERLAPPED_COMPLETION_ROUTINE)NamedPipe_FirstReadBindPipe))
         {
             gle = GetLastError();
-            displayErrorToCerr("NamedPipe_PipeConnected() ReadFileEx()", gle);
+            displayErrorToCerr(__FUNCSIG__ " ReadFileEx()", gle);
             delete lpPipeInst;
         }
     }
     else
     {
         gle = GetLastError();
-        displayErrorToCerr("GetOverlappedResult()", gle);
+        displayErrorToCerr(__FUNCSIG__ " GetOverlappedResult()", gle);
     }
     if(gle)
         NamedPipe_CloseHandle();
@@ -671,7 +682,7 @@ static DWORD NamedPipe_PipeConnected(HANDLE)
     gle = NamedPipe_CreateListening(sessionId, false);
     if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
     {
-        displayErrorToCerr("NamedPipe_CreateListening() NamedPipe_CreateListening()", gle);
+        displayErrorToCerr(__FUNCSIG__ " NamedPipe_CreateListening()", gle);
         NamedPipe_CloseHandle();
         return gle;
     }
