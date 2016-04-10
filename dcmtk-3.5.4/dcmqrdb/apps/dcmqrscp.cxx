@@ -131,7 +131,7 @@ void errmsg(const char* msg, ...)
     fprintf(stderr, "\n");
 }
 
-
+static char pacs_base[MAX_PATH];
 static DcmQueryRetrieveConfig *configPtr = NULL;
 #ifdef _DEBUG
 static OFCommandLine *pCmd = NULL;
@@ -682,7 +682,7 @@ main(int argc, char *argv[])
     }
 #endif
 #ifdef _WIN32
-	ChangeToPacsWebSub(NULL, 0, NULL);
+	ChangeToPacsWebSub(pacs_base, sizeof(pacs_base), NULL);
 	atexit(exitHook);
 	
 	if (options.forkedChild_)
@@ -778,7 +778,7 @@ main(int argc, char *argv[])
 #endif
 #endif
 
-    DcmQueryRetrieveSCP scp(config, options, factory, triggerReceiveEvent);
+    DcmQueryRetrieveSCP scp(config, options, factory, triggerReceiveEvent, pacs_base);
     scp.setDatabaseFlags(opt_checkFindIdentifier, opt_checkMoveIdentifier, options.debug_);
 
 	Capture_Ctrl_C();

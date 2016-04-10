@@ -12,6 +12,8 @@
 #define NOTIFY_MV_STAT_WARNING  0x00001023
 #define NOTIFY_COMPRESS_OK      0xFFFFFFFA
 
+#define NOTIFY_PROC_STOR_START  0xFFFFFFE0
+
 #define INT_TO_CHAR4(pi) reinterpret_cast<const char*>(pi)
 #define CHAR4_TO_INT(pc) (*reinterpret_cast<const int*>(pc))
 #define STRING_PRE4_TO_INT(pc) (*reinterpret_cast<const int*>(pc.c_str()))

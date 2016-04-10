@@ -108,7 +108,7 @@ DcmQueryRetrieveSCP::DcmQueryRetrieveSCP(
   const DcmQueryRetrieveConfig& config,
   const DcmQueryRetrieveOptions& options,
   const DcmQueryRetrieveDatabaseHandleFactory& factory,
-  const IndexCallback cbStore)
+  const IndexCallback cbStore, const char *pacs_base)
 : config_(&config)
 , dbCheckFindIdentifier_(OFFalse)
 , dbCheckMoveIdentifier_(OFFalse)
@@ -116,6 +116,7 @@ DcmQueryRetrieveSCP::DcmQueryRetrieveSCP(
 , factory_(factory)
 , options_(options)
 , storeResult(STORE_NONE)
+, pPacsBase(pacs_base)
 {
     memset(&assoc_context, 0, sizeof(ASSOCIATION_CONTEXT));
     assoc_context.cbToDcmQueryRetrieveStoreContext = cbStore;
@@ -270,7 +271,7 @@ OFCondition DcmQueryRetrieveSCP::handleAssociation(T_ASC_Association * assoc, OF
         strcpy_s(filename + used, sizeof(filename) - used, "_" NOTIFY_STORE_TAG ".dfc");
         int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s\n", 
             storeResult == STORE_RELEASE ? NOTIFY_ASSOC_RELEASE : NOTIFY_ASSOC_ABORT, assoc_context.associationId);
-        if(fplog = fopen(filename, "a"))
+        if(fplog = fopen(filename, "w"))
         {
             fwrite(content, content_used, 1, fplog);
             fclose(fplog);
@@ -403,7 +404,11 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
             ASC_getAPTitles(assoc->params, assoc_context.callingAPTitle, assoc_context.calledAPTitle, NULL);
             const char *storageArea = NULL;
             if(dbHandle.makeStoreAssociationDir(assoc_context.associationId, assoc_context.storageArea, sizeof(assoc_context.storageArea)).bad())
+            {
                 assoc_context.associationId[0] = '\0';
+                cerr << "DcmQueryRetrieveSCP::storeSCP() can't create association dir " 
+                    << assoc_context.associationId << "\\" << assoc_context.storageArea << endl;
+            }
             else
             {
                 FILE *fplog = NULL;
@@ -413,7 +418,7 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                 int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d %s\n",
                     NOTIFY_ASSOC_ESTA, assoc_context.associationId, assoc_context.callingAPTitle, assoc_context.remoteHostName, 
                     assoc_context.calledAPTitle, assoc_context.port, assoc_context.remoteHostName);
-                if(fplog = fopen(filename, "a"))
+                if(fplog = fopen(filename, "w"))
                 {
                     fwrite(content, content_used, 1, fplog);
                     fclose(fplog);
@@ -421,7 +426,29 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                 else
                     cerr << "DcmQueryRetrieveSCP::storeSCP() can't create sequence file name " << filename << ", missing command:" << endl << content << endl;
             }
+
+            if(pPacsBase)
+            {
+                char filename[MAX_PATH], content[1024];
+                sprintf_s(filename, "%s\\pacs\\store_notify\\%s_" NOTIFY_ACKN_TAG ".dfc",
+                    pPacsBase, assoc_context.associationId);
+                int content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s\\%s %d %s %s %s %s %d %s\n",
+                    NOTIFY_PROC_STOR_START, assoc_context.storageArea, assoc_context.associationId, 
+                    _getpid(), assoc_context.associationId,
+                    assoc_context.callingAPTitle, assoc_context.remoteHostName, assoc_context.calledAPTitle,
+                    assoc_context.port, assoc_context.remoteHostName);
+                FILE *fplog = NULL;
+                if(fplog = fopen(filename, "w"))
+                {
+                    fwrite(content, content_used, 1, fplog);
+                    fclose(fplog);
+                }
+                else
+                    cerr << "DcmQueryRetrieveSCP::storeSCP() can't create notify file " << filename << ", missing command:" << endl << content << endl;
+            }
         }
+        else
+            cerr << "DcmQueryRetrieveSCP::storeSCP() can't create association id" << endl;
     }
 
     if (options_.verbose_) {

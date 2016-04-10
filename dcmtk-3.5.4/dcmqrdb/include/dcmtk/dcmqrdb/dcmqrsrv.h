@@ -78,6 +78,8 @@ enum STORE_PROCESSING
 class DcmQueryRetrieveSCP
 {
 public:
+  
+    const char *pPacsBase;
 
   /** constructor
    *  @param config SCP configuration facility
@@ -88,7 +90,8 @@ public:
     const DcmQueryRetrieveConfig& config,
     const DcmQueryRetrieveOptions& options,
     const DcmQueryRetrieveDatabaseHandleFactory& factory,
-    const IndexCallback cbStore= NULL);
+    const IndexCallback cbStore = NULL,
+    const char *pacs_base = NULL);
 
   /// destructor
   virtual ~DcmQueryRetrieveSCP() { }

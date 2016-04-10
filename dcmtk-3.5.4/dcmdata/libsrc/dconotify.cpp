@@ -60,7 +60,7 @@ void datasetToNotify(const char* instanceFileName, const char *notifyFileName, D
     ++instances;
     OFString sw = strmbuf.str();
 
-    FILE *fplog = fopen(notifyFileName, "a");
+    FILE *fplog = fopen(notifyFileName, "w");
     if(fplog != NULL)
     {
         fwrite(sw.c_str(), 1, sw.length(), fplog); fflush(fplog);

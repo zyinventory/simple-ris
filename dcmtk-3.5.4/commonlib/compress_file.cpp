@@ -553,7 +553,7 @@ static void CALLBACK NamedPipe_ReadPipeComplete(DWORD dwErr, DWORD cbBytesRead, 
                     char notify_file_name[MAX_PATH];
                     size_t pos = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
                     sprintf_s(notify_file_name + pos, sizeof(notify_file_name) - pos, "_%s.dfc", NOTIFY_ACKN_TAG);
-                    ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
+                    ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out);
                     if(ntf.good())
                     {
                         ntf << notify ;

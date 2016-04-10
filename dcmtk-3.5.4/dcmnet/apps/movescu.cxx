@@ -1185,14 +1185,37 @@ static OFCondition storeSCP(
             assoc->params->DULparams.callingPresentationAddress,
             assoc->params->DULparams.calledAPTitle, cb->port, 
             assoc->params->DULparams.calledPresentationAddress);
-        if(fn_used > 0 && (fplog = fopen(filename, "a")))
+        if(fn_used > 0 && (fplog = fopen(filename, "w")))
         {
             fwrite(content, content_used, 1, fplog);
             fclose(fplog);
         }
         else
         {
-            cerr << "storeSCP() can't create sequence file name " << filename << ", missing command: " << content << endl;
+            cerr << "storeSCP() can't create notify file " << filename << ", missing command:" << endl << content << endl;
+        }
+
+        char path_buff[MAX_PATH];
+        size_t buff_need = 0;
+        if(getenv_s(&buff_need, path_buff, "PACS_BASE")) strcpy_s(path_buff, "C:\\usr\\local\\dicom");
+        fn_used = sprintf_s(filename, "%s\\pacs\\store_notify\\%s_%s.dfc", path_buff, cb->associationId, NOTIFY_ACKN_TAG);
+
+        if(NULL == _getcwd(path_buff, sizeof(path_buff))) strcpy_s(path_buff, ".");
+        content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s %d %s %s %s %s %d %s\n", 
+            NOTIFY_PROC_STOR_START, path_buff, _getpid(), cb->associationId,
+            assoc->params->DULparams.callingAPTitle, 
+            assoc->params->DULparams.callingPresentationAddress,
+            assoc->params->DULparams.calledAPTitle, cb->port, 
+            assoc->params->DULparams.calledPresentationAddress);
+
+        if(fn_used > 0 && (fplog = fopen(filename, "w")))
+        {
+            fwrite(content, content_used, 1, fplog);
+            fclose(fplog);
+        }
+        else
+        {
+            cerr << "storeSCP() can't create notify file " << filename << ", missing command:" << endl << content << endl;
         }
     }
 
@@ -1297,7 +1320,7 @@ subOpSCP(T_ASC_Association **subAssoc, void *pCallbackData)
 
         if(used > 0 && -1 != sprintf_s(filename + used, sizeof(filename) - used, "_%s.dfc", NOTIFY_STORE_TAG))
         {
-            FILE *fplog = fopen(filename, "a");
+            FILE *fplog = fopen(filename, "w");
             if(fplog != NULL)
             {
                 strcat_s(term, "\n");
@@ -1430,7 +1453,7 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
     size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
     if(used > 0 && -1 != sprintf_s(filename + used, sizeof(filename) - used, "_%s.dfc", NOTIFY_ACKN_TAG))
     {
-        FILE *fplog = fopen(filename, "a");
+        FILE *fplog = fopen(filename, "w");
         if(fplog != NULL)
         {
             fwrite(sw.c_str(), 1, sw.length(), fplog); fflush(fplog);
@@ -1529,7 +1552,7 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
         assoc->params->DULparams.callingPresentationAddress,
         assoc->params->DULparams.calledAPTitle,
         assoc->params->DULparams.calledPresentationAddress);
-    if(fn_used > 0 && (fplog = fopen(filename, "a")))
+    if(fn_used > 0 && (fplog = fopen(filename, "w")))
     {
         fwrite(content, content_used, 1, fplog);
         fclose(fplog);
@@ -1578,7 +1601,7 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
     size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
     if(used > 0 && -1 != sprintf_s(filename + used, sizeof(filename) - used, "_%s.dfc", NOTIFY_MOVE_TAG))
     {
-        fplog = fopen(filename, "a");
+        fplog = fopen(filename, "w");
         if(fplog != NULL)
         {
             strcat_s(term, "\n");

@@ -193,7 +193,7 @@ static void overwrite_study_archdir(const char *pacs_base, const map<string, str
                     char notify_file_name[MAX_PATH];
                     int seq_len = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
                     sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
-                    ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
+                    ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out);
                     if(ntf.good())
                     {
                         ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_STUDY 
@@ -238,7 +238,7 @@ static void overwrite_study_archdir(const char *pacs_base, const map<string, str
                 char notify_file_name[MAX_PATH];
                 int seq_len = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
                 sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
-                ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
+                ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out);
                 if(ntf.good())
                 {
                     ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_DICOMDIR
@@ -483,7 +483,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     char notify_file_name[MAX_PATH];
     int seq_len = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
     sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
-    ofstream ntf(notify_file_name, ios_base::app | ios_base::out);
+    ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out);
     if(ntf.good())
     {
         ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ALL_COMPRESS_OK << endl;
@@ -514,7 +514,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     // send xml ok notification
     seq_len = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
     sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
-    ofstream ntf_final(notify_file_name, ios_base::app | ios_base::out);
+    ofstream ntf_final(notify_file_name, ios_base::trunc | ios_base::out);
     if(ntf_final.good())
     {
         ntf_final << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_XML_OK << endl;
