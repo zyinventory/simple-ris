@@ -2,7 +2,17 @@
 #include "commonlib.h"
 #include "commonlib_internal.h"
 #import <msxml3.dll>
-
+/*
+instance state : [backup state]_[include state]
+backup state:
+    on  : online, remote exist, local exist
+    off : offline, remote exist, local does not exist
+    new : new instance, remote does not exist, local exist
+    old : old instance, remote does not exist, local does not exist
+include state:
+    in : include
+    ex : exclude
+*/
 #define XML_HEADER "<?xml version=\"1.0\" encoding=\"GBK\"?>"
 
 using namespace std;
@@ -249,7 +259,7 @@ static void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument2 *pXMLDom)
     while(MSXML2::IXMLDOMNodePtr s = seriesNodes->nextNode())
     {
         size_t current_instance_count = 0;
-        MSXML2::IXMLDOMNodeListPtr instances = s->selectNodes(L"instance[@state='off_in' or @state='on_in']");
+        MSXML2::IXMLDOMNodeListPtr instances = s->selectNodes(L"instance[@state='new_in' or @state='on_in']");
         while(MSXML2::IXMLDOMNodePtr n = instances->nextNode())
         {
             __int64 fs = _atoi64((LPCSTR)n->attributes->getNamedItem(L"file_size")->text);
@@ -498,9 +508,7 @@ static void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const CMOVE_LOG_CONT
                         fs.st_size = 0;
                     }
                     instance->setAttribute(L"file_size", fs.st_size);
-                    // off_in : remote is offline and local is inclusive
-                    // off_ex : remote is offline and local is exclusive
-                    instance->setAttribute(L"state", fs.st_size ? L"off_in" : L"off_ex");
+                    instance->setAttribute(L"state", fs.st_size ? L"new_in" : L"new_ex");
                     if(clc.file.PathSeparator() == '/')
                         instance->setAttribute(L"url", clc.file.unique_filename);
                     else
@@ -740,11 +748,11 @@ void merge_index_study_patient_date(const char *pacs_base, bool overwrite, std::
                         if(attr == NULL)
                         {
                             attr = pDest->createAttribute(L"state");
-                            attr->nodeValue = L"off_ex"; // remote is offline and local is exclusive
+                            attr->nodeValue = L"new_ex";
                             n->appendChild(attr);
                         }
                         else
-                            attr->nodeValue = L"off_ex";
+                            attr->nodeValue = L"new_ex";
                     }
                 }
 

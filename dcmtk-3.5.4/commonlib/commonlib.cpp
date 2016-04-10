@@ -1,7 +1,13 @@
 #include "stdafx.h"
 #include "commonlib.h"
+#include "../dcmdata/include/dcmtk/dcmdata/dconotify.h"
 
 using namespace std;
+
+COMMONLIB_API size_t in_process_sequence_dll(char *buff, size_t buff_size, const char *prefix)
+{
+    return in_process_sequence(buff, buff_size, prefix);
+}
 
 COMMONLIB_API errno_t setEnvParentPID()
 {

@@ -176,6 +176,7 @@ COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t b
 COMMONLIB_API void ReleaseUniqueNoResource();
 
 COMMONLIB_API int scp_store_main_loop(const char *sessionId, bool verbose);
+COMMONLIB_API size_t in_process_sequence_dll(char *buff, size_t buff_size, const char *prefix);
 
 #ifdef _DEBUG
 

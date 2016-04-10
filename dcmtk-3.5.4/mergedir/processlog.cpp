@@ -35,35 +35,77 @@ static void test_sim_slow_log_writer(void*)
             dfc_files.push_back(dfc);
 	} while (FindNextFile(hDiskSearch, &wfd));
 	FindClose(hDiskSearch); // ¹Ø±Õ²éÕÒ¾ä±ú
+    
+    // load dll into memory
+    in_process_sequence_dll(fileFilter, sizeof(fileFilter), "state\\");
 
     dfc_files.sort();
     LARGE_INTEGER last_time = { 0, 0};
     char *buff = new char[4096];
-    for(list<string>::iterator it = dfc_files.begin(); it != dfc_files.end(); ++it)
+    int i = 0;
+    for(list<string>::iterator it = dfc_files.begin(); it != dfc_files.end(); ++it, ++i)
     {
         size_t pos1 = 0;
         size_t pos2 = it->find('.');
-        if(pos2 == string::npos) { cerr << "invalid dfc file name: " << *it << endl; continue; }
-        string integer_ms_str(it->substr(pos1, pos2 - pos1));
-        if(pos2 == string::npos) { cerr << "invalid dfc file name: " << *it << endl; continue; }
+        if(pos2 == string::npos) {
+            cerr << "invalid dfc file name: " << *it << endl; continue;
+        }
+        string integer_sec_str(it->substr(pos1, pos2 - pos1));
+        if(pos2 == string::npos) { 
+            cerr << "invalid dfc file name: " << *it << endl; continue;
+        }
         
         pos1 = pos2 + 1;
         pos2 = it->find('-', pos1);
-        if(pos2 == string::npos) { cerr << "invalid dfc file name: " << *it << endl; continue; }
-        integer_ms_str.append(it->substr(pos1, pos2 - pos1));
+        if(pos2 == string::npos) {
+            cerr << "invalid dfc file name: " << *it << endl;
+            continue;
+        }
+        string integer_ms_str(it->substr(pos1, pos2 - pos1));
 
         char *pstop = NULL;
+        LARGE_INTEGER sec_number;
+        sec_number.QuadPart = _atoi64(integer_sec_str.c_str());
+        if(pstop == integer_sec_str.c_str()) {
+            cerr << "invalid sec number: " << integer_sec_str << endl;
+            continue;
+        }
+
+        struct tm tstr;
+        tstr.tm_sec = sec_number.QuadPart % 100;
+        sec_number.QuadPart /= 100;
+        tstr.tm_min = sec_number.QuadPart % 100;
+        sec_number.QuadPart /= 100;
+        tstr.tm_hour = sec_number.QuadPart % 100;
+        sec_number.QuadPart /= 100;
+        tstr.tm_mday = sec_number.QuadPart % 100;
+        sec_number.QuadPart /= 100;
+        tstr.tm_mon = sec_number.QuadPart % 100 - 1;
+        sec_number.QuadPart /= 100;
+        tstr.tm_year = sec_number.QuadPart - 1900;
+        __time64_t tsec = _mktime64(&tstr);
+
         LARGE_INTEGER ms_number;
         ms_number.QuadPart = _atoi64(integer_ms_str.c_str());
-        if(pstop == integer_ms_str.c_str()) { cerr << "invalid ms number: " << integer_ms_str << endl; continue; }
+        if(pstop == integer_ms_str.c_str()) {
+            cerr << "invalid ms number: " << integer_ms_str << endl;
+            continue;
+        }
+        ms_number.QuadPart += tsec * 1000;
 
         pos1 = pos2 + 1;
         pos2 = it->find('-', pos1);
-        if(pos2 == string::npos) { cerr << "invalid dfc file name: " << *it << endl; continue; }
+        if(pos2 == string::npos) {
+            cerr << "invalid dfc file name: " << *it << endl;
+            continue;
+        }
         string diff_number(it->substr(pos1, pos2 - pos1).c_str());
         LARGE_INTEGER diff;
         diff.QuadPart = _strtoi64(diff_number.c_str(), &pstop, 10);
-        if(pstop == diff_number.c_str()) { cerr << "invalid diff number: " << diff_number << endl; continue; }
+        if(pstop == diff_number.c_str()) {
+            cerr << "invalid diff number: " << diff_number << endl;
+            continue;
+        }
 
         ms_number.QuadPart -= diff.QuadPart;
 
@@ -72,12 +114,22 @@ static void test_sim_slow_log_writer(void*)
 
         last_time = ms_number;
 
-        Sleep(diff.LowPart);
-
+        if(diff.LowPart > 10 * 1000)
+            cerr << "wait too long: " << diff.LowPart << endl;
+        else
+        {
+            if(diff.LowPart > 10)
+                Sleep(diff.LowPart - 10);
+            else
+                Sleep(0);
+        }
         string ipath("state.move\\");
+        
         ipath.append(*it);
         ifstream idfc(ipath);
-        if(idfc.fail()) { cerr << "can't open src dfc: " << ipath << endl; continue; }
+        if(idfc.fail()) {
+            cerr << "can't open src dfc: " << ipath << endl; continue;
+        }
         ostringstream ostrm;
         while(!idfc.fail())
         {
@@ -88,10 +140,16 @@ static void test_sim_slow_log_writer(void*)
 
         string content = ostrm.str();
 
-        string opath("state\\");
-        opath.append(*it);
-        ofstream odfc(opath, ios_base::out | ios_base::trunc);
-        if(odfc.fail()) { cerr << "can't open dest dfc: " << opath << endl; continue; }
+        char newfn_buff[MAX_PATH];
+        size_t used = in_process_sequence_dll(newfn_buff, sizeof(newfn_buff), "state\\");
+        string::size_type postfix = it->find_last_of('_');
+        strcpy_s(newfn_buff + used, sizeof(newfn_buff) - used, it->substr(postfix).c_str());
+
+        ofstream odfc(newfn_buff, ios_base::out | ios_base::trunc);
+        if(odfc.fail()) {
+            cerr << "can't open dest dfc: " << newfn_buff << endl;
+            continue;
+        }
         odfc.write(content.c_str(), content.length());
         odfc.close();
     }
