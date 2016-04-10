@@ -90,6 +90,12 @@ typedef struct {
     T_ASC_PresentationContextID presId;
 } MyCallbackInfo;
 
+typedef struct {
+    bool hasAssociationId;
+    char associationId[64];
+    int port;
+} MySubOpCallbackInfo;
+
 OFCmdUnsignedInt  opt_sleepAfter = 0;
 OFCmdUnsignedInt  opt_sleepDuring = 0;
 OFCmdUnsignedInt  opt_maxPDU = ASC_DEFAULTMAXPDU;
@@ -1067,7 +1073,7 @@ storeSCPCallback(
     if ((opt_abortDuringStore && progress->state != DIMSE_StoreBegin) ||
         (opt_abortAfterStore && progress->state == DIMSE_StoreEnd)) {
         if (opt_verbose) {
-            printf("ABORT initiated (due to command line options)\n");
+            printf("storeSCPCallback() ABORT initiated (due to command line options)\n");
         }
         ASC_abortAssociation(((StoreCallbackData*) callbackData)->assoc);
         rsp->DimseStatus = STATUS_STORE_Refused_OutOfResources;
@@ -1126,7 +1132,7 @@ storeSCPCallback(
                 opt_paddingType, (Uint32)opt_filepad, (Uint32)opt_itempad, !opt_useMetaheader);
             if (cond.bad())
             {
-                fprintf(stderr, "storescp: Cannot write image file: %s\n", fileName);
+                fprintf(stderr, "storeSCPCallback(): Cannot write image file: %s\n", fileName);
                 rsp->DimseStatus = STATUS_STORE_Refused_OutOfResources;
             }
 
@@ -1139,7 +1145,7 @@ storeSCPCallback(
                 /* which SOP class and SOP instance ? */
                 if (! DU_findSOPClassAndInstanceInDataSet(*imageDataSet, sopClass, sopInstance, opt_correctUIDPadding))
                 {
-                    fprintf(stderr, "storescp: Bad image file: %s\n", imageFileName);
+                    fprintf(stderr, "storeSCPCallback(): Bad image file: %s\n", imageFileName);
                     rsp->DimseStatus = STATUS_STORE_Error_CannotUnderstand;
                 }
                 else if (strcmp(sopClass, req->AffectedSOPClassUID) != 0)
@@ -1159,11 +1165,36 @@ storeSCPCallback(
 static OFCondition storeSCP(
   T_ASC_Association *assoc,
   T_DIMSE_Message *msg,
-  T_ASC_PresentationContextID presID)
+  T_ASC_PresentationContextID presID, void *pCallbackData)
 {
     OFCondition cond = EC_Normal;
     T_DIMSE_C_StoreRQ *req;
     char imageFileName[2048];
+
+    MySubOpCallbackInfo *cb = reinterpret_cast<MySubOpCallbackInfo*>(pCallbackData);
+    if(!cb->hasAssociationId)
+    {
+        in_process_sequence(cb->associationId, sizeof(cb->associationId), "");
+        cb->hasAssociationId = true;
+
+        FILE *fplog = NULL;
+        char filename[MAX_PATH], content[1024];
+        int fn_used = sprintf_s(filename, "%s%s_%s.dfc", STATE_DIR, cb->associationId, NOTIFY_STORE_TAG);
+        int content_used = sprintf_s(content, "%s %08X %s %s %s %s %d %s\n", NOTIFY_STORE_TAG, NOTIFY_ASSOC_ESTA, cb->associationId,
+            assoc->params->DULparams.callingAPTitle, 
+            assoc->params->DULparams.callingPresentationAddress,
+            assoc->params->DULparams.calledAPTitle, cb->port, 
+            assoc->params->DULparams.calledPresentationAddress);
+        if(fn_used > 0 && (fplog = fopen(filename, "a")))
+        {
+            fwrite(content, content_used, 1, fplog);
+            fclose(fplog);
+        }
+        else
+        {
+            cerr << "storeSCP() can't create sequence file name " << filename << ", missing command: " << content << endl;
+        }
+    }
 
     req = &msg->msg.CStoreRQ;
 
@@ -1205,7 +1236,7 @@ static OFCondition storeSCP(
 
     if (cond.bad())
     {
-      fprintf(stderr, "storescp: Store SCP Failed:\n");
+      fprintf(stderr, "storeSCP(): Store SCP Failed:\n");
       DimseCondition::dump(cond);
       /* remove file */
       if (!opt_ignore)
@@ -1226,7 +1257,7 @@ static OFCondition storeSCP(
 }
 
 static OFCondition
-subOpSCP(T_ASC_Association **subAssoc)
+subOpSCP(T_ASC_Association **subAssoc, void *pCallbackData)
 {
     T_DIMSE_Message     msg;
     T_ASC_PresentationContextID presID;
@@ -1240,7 +1271,7 @@ subOpSCP(T_ASC_Association **subAssoc)
     if (cond == EC_Normal) {
         switch (msg.CommandField) {
         case DIMSE_C_STORE_RQ:
-            cond = storeSCP(*subAssoc, &msg, presID);
+            cond = storeSCP(*subAssoc, &msg, presID, pCallbackData);
             break;
         case DIMSE_C_ECHO_RQ:
             cond = echoSCP(*subAssoc, &msg, presID);
@@ -1250,16 +1281,20 @@ subOpSCP(T_ASC_Association **subAssoc)
             break;
         }
     }
-
-    if(cond != EC_Normal)
+    
+    MySubOpCallbackInfo *pcb = reinterpret_cast<MySubOpCallbackInfo*>(pCallbackData);
+    if(cond != EC_Normal && pcb->hasAssociationId)
     {
-        char filename[MAX_PATH], term[16];
+        char filename[MAX_PATH], term[128];
         if(cond == DUL_PEERREQUESTEDRELEASE)
-            sprintf_s(term, "%s %08X", NOTIFY_STORE_TAG, NOTIFY_ASSOC_RELEASE);
+            sprintf_s(term, NOTIFY_STORE_TAG " %08X %s", NOTIFY_ASSOC_RELEASE, pcb->associationId);
         else
-            sprintf_s(term, "%s %08X", NOTIFY_STORE_TAG, NOTIFY_ASSOC_ABORT);
+            sprintf_s(term, NOTIFY_STORE_TAG " %08X %s", NOTIFY_ASSOC_ABORT, pcb->associationId);
 
         size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
+
+        memset(pcb, 0, sizeof(MySubOpCallbackInfo));
+
         if(used > 0 && -1 != sprintf_s(filename + used, sizeof(filename) - used, "_%s.dfc", NOTIFY_STORE_TAG))
         {
             FILE *fplog = fopen(filename, "a");
@@ -1272,9 +1307,10 @@ subOpSCP(T_ASC_Association **subAssoc)
         }
         else
         {
-            cerr << "can't create sequence file name " << filename << ", missing command: " << term << endl;
+            cerr << "subOpSCP() can't create sequence file name " << filename << ", missing command: " << term << endl;
         }
     }
+
     /* clean up on association termination */
     if (cond == DUL_PEERREQUESTEDRELEASE)
     {
@@ -1288,7 +1324,7 @@ subOpSCP(T_ASC_Association **subAssoc)
     }
     else if (cond != EC_Normal)
     {
-        errmsg("DIMSE Failure (aborting sub-association):\n");
+        errmsg("subOpSCP() DIMSE Failure (aborting sub-association):\n");
         DimseCondition::dump(cond);
         /* some kind of error so abort the association */
         cond = ASC_abortAssociation(*subAssoc);
@@ -1303,37 +1339,20 @@ subOpSCP(T_ASC_Association **subAssoc)
 }
 
 static void
-subOpCallback(void * /*subOpCallbackData*/ ,
+subOpCallback(void *pCallbackData,
         T_ASC_Network *aNet, T_ASC_Association **subAssoc)
 {
 
     if (aNet == NULL) return;   /* help no net ! */
-
+    
     if (*subAssoc == NULL) {
         /* negotiate association */
         acceptSubAssoc(aNet, subAssoc);
-
-        FILE *fplog = NULL;
-        char filename[MAX_PATH], seq[64], content[1024];
-        in_process_sequence(seq, sizeof(seq), "");
-        int fn_used = sprintf_s(filename, "%s%s_%s.dfc", STATE_DIR, seq, NOTIFY_STORE_TAG);
-        int content_used = sprintf_s(content, "%s %08X %s %s %s %s %d %s\n", NOTIFY_STORE_TAG, NOTIFY_ASSOC_ESTA, seq,
-            (*subAssoc)->params->DULparams.callingAPTitle, 
-            (*subAssoc)->params->DULparams.callingPresentationAddress,
-            (*subAssoc)->params->DULparams.calledAPTitle, aNet->acceptorPort, 
-            (*subAssoc)->params->DULparams.calledPresentationAddress);
-        if(fn_used > 0 && (fplog = fopen(filename, "a")))
-        {
-            fwrite(content, content_used, 1, fplog);
-            fclose(fplog);
-        }
-        else
-        {
-            cerr << "can't create sequence file name " << filename << ", missing command: " << content << endl;
-        }
+        MySubOpCallbackInfo *cb = reinterpret_cast<MySubOpCallbackInfo*>(pCallbackData);
+        cb->port = aNet->acceptorPort;
     } else {
         /* be a service class provider */
-        subOpSCP(subAssoc);
+        subOpSCP(subAssoc, pCallbackData);
     }
 }
 
@@ -1347,7 +1366,7 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
     myCallbackData = (MyCallbackInfo*)callbackData;
 
     if (opt_verbose) {
-        printf("Move Response %d: ", responseCount);
+        printf("moveCallback() Move Response %d: ", responseCount);
         DIMSE_printCMoveRSP(stdout, response);
     }
 
@@ -1420,7 +1439,7 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
     }
     else
     {
-        cerr << "can't create sequence file name " << filename << ", missing command: " << sw.c_str() << endl;
+        cerr << "moveCallback() can't create sequence file name " << filename << ", missing command: " << sw.c_str() << endl;
     }
 }
 
@@ -1459,14 +1478,14 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
 
     if (opt_verbose) {
         printf("================================\n");
-        if (fname) printf("Sending query file: %s\n", fname); else printf("Sending query\n");
+        if (fname) printf("moveSCU() Sending query file: %s\n", fname); else printf("Sending query\n");
     }
 
     DcmFileFormat dcmff;
 
     if (fname != NULL) {
         if (dcmff.loadFile(fname).bad()) {
-            errmsg("Bad DICOM file: %s: %s", fname, dcmff.error().text());
+            errmsg("moveSCU() Bad DICOM file: %s: %s", fname, dcmff.error().text());
             return DIMSE_BADDATA;
         }
     }
@@ -1518,17 +1537,31 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
     }
     else
     {
-        cerr << "can't create sequence file name " << filename << ", missing command: " << content << endl;
+        cerr << "moveSCU() can't create sequence file name " << filename << ", missing command: " << content << endl;
     }
+    
+    MySubOpCallbackInfo subOpCallbackData;
+    memset(&subOpCallbackData, 0, sizeof(MySubOpCallbackInfo));
+    /*  storeAssociationId call stack:
 
+                moveSCU - this func
+                    |
+                subOpCallback
+                    |
+                subOpSCP
+                    /\
+            echoSCP    storeSCP
+                           |*   <- call per command
+                    storeSCPCallback  <- if(command_state == STORE_END) save file.
+    */
     OFCondition cond = DIMSE_moveUser(assoc, presId, &req, dcmff.getDataset(),
         moveCallback, &callbackData, opt_blockMode, opt_dimse_timeout,
-        net, subOpCallback, NULL,
+        net, subOpCallback, &subOpCallbackData,
         &rsp, &statusDetail, &rspIds, opt_ignorePendingDatasets);
 
-    char term[16];
+    char term[128];
     if (cond == EC_Normal) {
-        sprintf_s(term, "%s %08X", NOTIFY_MOVE_TAG, NOTIFY_ASSOC_RELEASE);  // assoc normal term
+        sprintf_s(term, "%s %08X %s", NOTIFY_MOVE_TAG, NOTIFY_ASSOC_RELEASE, seq);  // assoc normal term
         if (opt_verbose) {
             DIMSE_printCMoveRSP(stdout, &rsp);
             if (rspIds != NULL) {
@@ -1537,8 +1570,8 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
             }
         }
     } else {
-        sprintf_s(term, "%s %08X", NOTIFY_MOVE_TAG, NOTIFY_ASSOC_ABORT);  // assoc abort
-        errmsg("Move Failed:");
+        sprintf_s(term, "%s %08X %s", NOTIFY_MOVE_TAG, NOTIFY_ASSOC_ABORT, seq);  // assoc abort
+        errmsg("moveSCU() Move Failed:");
         DimseCondition::dump(cond);
     }
 
@@ -1555,7 +1588,7 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
     }
     else
     {
-        cerr << "can't create sequence file name " << filename << ", missing command: " << term << endl;
+        cerr << "moveSCU() can't create sequence file name " << filename << ", missing command: " << term << endl;
     }
 
     if (statusDetail != NULL) {
