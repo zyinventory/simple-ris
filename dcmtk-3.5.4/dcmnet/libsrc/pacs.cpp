@@ -47,6 +47,17 @@ bool MkdirRecursive_dcmnet(const char *subdir)
   }
 }
 
+namespace
+{
+    class numpunct_no_gouping : public std::numpunct_byname<char>
+    {
+    public:
+        numpunct_no_gouping(const char* name) : std::numpunct_byname<char>(name){ };
+    protected:
+        virtual std::string do_grouping() const { return ""; } // no grouping
+    };
+}
+
 //return 0 if successful, otherwise errno
 int GenerateLogPath_dcmnet(char *buf, size_t bufLen, const char *appName, const char pathSeparator)
 {
@@ -57,6 +68,8 @@ int GenerateLogPath_dcmnet(char *buf, size_t bufLen, const char *appName, const 
   {
 	int pid = _getpid();
 	ostringstream format;
+    std::locale loc_nnp(std::locale::locale(""), ::new numpunct_no_gouping(""));
+    format.imbue(loc_nnp);
 	format << "pacs_log" << pathSeparator << "%Y" << pathSeparator << "%m" << pathSeparator << "%d" << pathSeparator << "%H%M%S_" << appName << '_' << pid << ".txt" << std::ends;
 	size_t pathLen = strftime(buf, bufLen, format.rdbuf()->str().c_str(), &calendar);
 	if( ! pathLen ) err = EINVAL;

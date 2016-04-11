@@ -6,13 +6,16 @@ using namespace std;
 
 static _TCHAR buffer[MAX_PATH], lock_passwd[9] = "", rw_passwd[9] = "";
 
-class numpunct_no_gouping : public numpunct_byname<char>
+namespace
 {
-public:
-    numpunct_no_gouping(const char* name) : numpunct_byname<char>(name){ }
-protected:
-    virtual string do_grouping() const { return ""; } // no grouping
-};
+    class numpunct_no_gouping : public numpunct_byname<char>
+    {
+    public:
+        numpunct_no_gouping(const char* name) : numpunct_byname<char>(name){ }
+    protected:
+        virtual string do_grouping() const { return ""; } // no grouping
+    };
+}
 
 void exitHook()
 {

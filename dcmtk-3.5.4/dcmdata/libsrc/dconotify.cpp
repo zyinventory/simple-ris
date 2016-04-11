@@ -15,13 +15,16 @@
 static OFList<OFString>  patients, studies, series;
 static size_t            instances = NOTIFY_FILE_SEQ_START;
 
-class numpunct_no_gouping : public std::numpunct_byname<char>
+namespace
 {
-public:
-    numpunct_no_gouping(const char* name) : std::numpunct_byname<char>(name){ };
-protected:
-    virtual std::string do_grouping() const { return ""; } // no grouping
-};
+    class numpunct_no_gouping : public std::numpunct_byname<char>
+    {
+    public:
+        numpunct_no_gouping(const char* name) : std::numpunct_byname<char>(name){ };
+    protected:
+        virtual std::string do_grouping() const { return ""; } // no grouping
+    };
+}
 
 void datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet, bool isFull)
 {

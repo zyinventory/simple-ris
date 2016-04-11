@@ -23,10 +23,13 @@
 #include <regex>
 #include <direct.h>
 
-class numpunct_no_gouping : public std::numpunct_byname<char>
+namespace
 {
-public:
-    numpunct_no_gouping(const char* name) : std::numpunct_byname<char>(name){ }
-protected:
-    virtual std::string do_grouping() const { return TEXT(""); } // no grouping
-};
+    class numpunct_no_gouping : public std::numpunct_byname<char>
+    {
+    public:
+        numpunct_no_gouping(const char* name) : std::numpunct_byname<char>(name){ }
+    protected:
+        virtual std::string do_grouping() const { return TEXT(""); } // no grouping
+    };
+}
