@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     const char *opt_descriptor = NULL;
     const char *opt_charset = "ISO_IR 100";
 
-	_setmode( _fileno( stdout ), _O_BINARY );
+	//_setmode( _fileno( stdout ), _O_BINARY );
 
 	OFConsoleApplication app(OFFIS_CONSOLE_APPLICATION, OFFIS_CONSOLE_DESCRIPTION, rcsid);
 	OFCommandLine cmd;

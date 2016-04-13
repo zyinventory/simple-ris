@@ -370,20 +370,13 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 {
     opt_verbose = verbose;
     sessionId = sessId;
-    string fn("\\storedir\\");
-    fn.append(sessionId);
-    if(ChangeToPacsWebSub(pacs_base, MAX_PATH, fn.c_str()))
-    {
-        cerr << "scp_store_main_loop(): 无法切换工作目录" << endl;
-        return -1;
-    }
     if(!make_relate_dir("state")) return -1;
     if(!make_relate_dir("archdir")) return -1;
     if(!make_relate_dir("indexdir")) return -1;
 
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
     
-    fn = _getcwd(NULL, 0);
+    string fn(_getcwd(NULL, 0));
     fn.append("\\state");
     hDirNotify = FindFirstChangeNotification(fn.c_str(), FALSE, FILE_NOTIFY_CHANGE_FILE_NAME);
     if(hDirNotify == INVALID_HANDLE_VALUE)
