@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include <io.h>
 #include <iomanip>
 #include <direct.h>
 #include <lock.h>
@@ -315,14 +316,15 @@ static void splitVolume(list<Volume> &vols, list<Study> &studies, const size_t v
 }
 
 #define JOB_ID_MAX 40
-static bool generateJDF(Volume &vol, char *volbufNoSeq, const char *mediaType, const string &jdfpath, bool isPatient, char *jobPrefix, const char *timeString)
+static bool generateJDF(Volume &vol, char *volbuf, const char *mediaType, const string &jdfpath, bool isPatient, char *jobPrefix, const char *timeString)
 {
     // jdfpath = ..\\tdd\\<job_id>_<seq>.jdf
-    // volbufNoSeq = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>. + isPatient ? "" : "seq."
+    // volbuf = tempdir\\ vol.seq.
 	ofstream ofs(jdfpath);
 	if(ofs.good())
 	{
 		string valid_publisher;
+        valid_publisher.reserve(64);
 		bool valid_found = SelectValidPublisher(TDB_STATUS, valid_publisher);
 		if(valid_found || valid_publisher.find("error:", 0) == string::npos)
 			ofs << "PUBLISHER=" << valid_publisher << endl;
@@ -332,18 +334,14 @@ static bool generateJDF(Volume &vol, char *volbufNoSeq, const char *mediaType, c
 		ofs << "DISC_TYPE=" << mediaType << endl;
 		ofs << "COPIES=1" << endl;
 		ofs << "DATA=" << pPacsBase << "\\viewer" << endl;
-
-        // DATA = $PacsBase\\pacs\\indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>.seq.dir
-        ofs << "DATA=" << pPacsBase << "\\pacs\\" << volbufNoSeq;
-        if(isPatient) ofs << vol.sequence << ".";
-        ofs << "dir\tDICOMDIR" << endl;
+        ofs << "DATA=" << pPacsBase << "\\pacs\\" << volbuf << "dir\tDICOMDIR" << endl;
 
         for(list<Study>::const_iterator its = vol.studiesOnVolume.begin(); its != vol.studiesOnVolume.end(); ++its)
 			ofs << "DATA=" << pPacsBase << "\\pacs\\"  << its->path << "\\" << its->hash << "\t" << its->hash << endl;
+
 		ofs << "VOLUME_LABEL=SMARTPUB" << endl;
-		ofs << "LABEL=" << pPacsBase << (isPatient ? "\\tdd\\patientInfo.tdd" : "\\tdd\\batchInfo.tdd") << endl;
-        // volbufNoSeq = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>. + isPatient ? "" : "seq."
-		ofs << "REPLACE_FIELD=" << pPacsBase << "\\pacs\\" << volbufNoSeq << "txt" << endl;
+		ofs << "LABEL=" << pPacsBase << (isPatient ? "\\tdd\\patientInfo2.tdd" : "\\tdd\\batchInfo.tdd") << endl;
+		ofs << "REPLACE_FIELD=" << pPacsBase << "\\pacs\\" << volbuf << "txt" << endl;
 		ofs.close();
 		return true;
 	}
@@ -354,7 +352,7 @@ static bool generateJDF(Volume &vol, char *volbufNoSeq, const char *mediaType, c
 	}
 }
 
-static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_t prefixLen, const char *mediaType, bool isPatient, char *jobPrefix)
+static void prepareDicomDirAndBurn(list<Volume> &vols, char *patientFieldsPath, const size_t prefixLen, const char *mediaType, bool isPatient, char *jobPrefix)
 {
 #if (!defined _DEBUG) && (!defined SKIP_ENCRYPTION_KEY)
 	char rw_passwd[9] = "";
@@ -382,11 +380,20 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_
 		return;
 	}
 #endif //(!defined _DEBUG) && (!defined SKIP_ENCRYPTION_KEY)
-    char timeBuffer[36];
+    char timeBuffer[36], tempDir[MAX_PATH];
     GetNextUniqueNo("job_", timeBuffer, sizeof(timeBuffer));
+
+    int tmpdirlen = sprintf_s(tempDir, "..\\temp\\%sXXXXXX", jobPrefix);
+    _mktemp_s(tempDir);
+    _mkdir(tempDir);
+    tempDir[tmpdirlen++] = '\\';
+    tempDir[tmpdirlen] = '\0';
 
 	for(list<Volume>::iterator itv = vols.begin(); itv != vols.end(); ++itv)
 	{
+        itv->sort_and_modalities_study();
+        
+        string modalities, studyDates;
 		list<string> dirlist;
 		for(list<Study>::iterator its = itv->studiesOnVolume.begin(); its != itv->studiesOnVolume.end(); ++its)
 		{
@@ -394,32 +401,84 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_
 			strcat_s(its->path, "\\DICOMDIR");
 			dirlist.push_back(its->path);
 			its->path[pathlen] = '\0';
+
+            if(modalities.length()) modalities.append(1, ' ');
+            modalities.append(its->modalities);
+
+            if(studyDates.length()) studyDates.append(1, ' ');
+            studyDates.append(its->study_date);
 		}
-        // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\STUDY_UID | [hash]\\PATIENT_ID>
-        // prefixLen = strlen(volbuf);
-        int seq_len = sprintf_s(volbuf + prefixLen, MAX_PATH - prefixLen, ".%d.", itv->sequence);
-        // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\STUDY_UID | [hash]\\PATIENT_ID>.seq.
-        strcat_s(volbuf, MAX_PATH, "dir");
-        // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\STUDY_UID | [hash]\\PATIENT_ID>.seq.dir
-		if(MergeDicomDir(dirlist, volbuf, "SMART_PUB_SET", index_errlog, false) != 0) 
+        // tempDir[] = tempdir\\ , tmpdirlen = strlen(tempDir)
+        int seq_len = sprintf_s(tempDir + tmpdirlen, MAX_PATH - tmpdirlen, "vol.%d.", itv->sequence);
+        // tempDir[] = tempdir\\ vol.seq.
+        strcat_s(tempDir, MAX_PATH, "dir");
+        // tempDir[] = tempdir\\ vol.seq.dir
+		if(MergeDicomDir(dirlist, tempDir, "SMART_PUB_SET", index_errlog, false) != 0) 
 		{
 			index_errlog << "Volume " << itv->sequence << " prepare failed." << endl;
 			continue;
 		}
 
-		volbuf[prefixLen + seq_len] = '\0';
-        // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>.seq.
-
+		strcpy_s(tempDir + tmpdirlen + seq_len, sizeof(tempDir) - tmpdirlen - seq_len, "txt");
+        // tempDir[] = tempdir\\ vol.seq.txt
 		if(isPatient)
-			volbuf[prefixLen + 1] = '\0';
-            // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>.
+        {
+            ofstream ofs(tempDir, ios_base::out | ios_base::trunc);
+            if(ofs.good())
+            {
+                char *fbuf = new char[4096];
+                ifstream ifs(patientFieldsPath);
+                if(ifs.good())
+                {
+                    while(ifs.good())
+                    {
+                        ifs.read(fbuf, 4096);
+                        ofs.write(fbuf, ifs.gcount());
+                    }
+                    ifs.close();
+                }
+                else
+			    {
+				    index_errlog << "prepareDicomDirAndBurn() read patient fields file " << patientFieldsPath << " failure." << endl;
+				    continue;
+			    }
+                strcpy_s(patientFieldsPath + prefixLen, MAX_PATH - prefixLen, "_ris.txt");
+                ifstream ifs_ris(patientFieldsPath);
+                if(ifs_ris.good())
+                {
+                    while(ifs_ris.good())
+                    {
+                        ifs_ris.read(fbuf, 4096);
+                        ofs.write(fbuf, ifs_ris.gcount());
+                    }
+                    ifs_ris.close();
+                }
+                else
+                    index_errlog << "prepareDicomDirAndBurn() read patient ris info " << patientFieldsPath << " failure." << endl;
+
+                ofs << "StudyCount=" << itv->studiesOnVolume.size() << endl;
+                ofs << "Modalities=" << itv->modalities << endl;
+                ofs << "StudyDates=" << itv->studyDates << endl;
+                ofs << "Description=" << itv->description << endl;
+				ofs << "Sequence=" << itv->sequence << endl;
+				ofs << "VolumeCount=" << itv->volumeCount << endl;
+                ofs.close();
+                if(fbuf) delete fbuf;
+            }
+            else
+			{
+				index_errlog << "prepareDicomDirAndBurn() create fields file " << tempDir << " failure." << endl;
+				continue;
+			}
+        }
 		else
 		{
-			strcpy_s(volbuf + prefixLen + seq_len, MAX_PATH - prefixLen - seq_len, "txt");
-            // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>.seq.txt
-			ofstream ofs(volbuf, ios_base::out | ios_base::trunc);
+			ofstream ofs(tempDir, ios_base::out | ios_base::trunc);
 			if(ofs.good())
 			{
+                ofs << "StudyCount=" << itv->studiesOnVolume.size() << endl;
+                ofs << "Modalities=" << itv->modalities << endl;
+                ofs << "StudyDates=" << itv->studyDates << endl;
 				ofs << "Description=" << itv->description << endl;
 				ofs << "Sequence=" << itv->sequence << endl;
 				ofs << "VolumeCount=" << itv->volumeCount << endl;
@@ -427,18 +486,19 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_
 			}
 			else
 			{
-				index_errlog << "create field file " << volbuf << " failure." << endl;
+				index_errlog << "create field file " << tempDir << " failure." << endl;
 				continue;
 			}
-			volbuf[prefixLen + seq_len] = '\0';
+			tempDir[prefixLen + seq_len] = '\0';
             // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>.seq.
 		}
 		stringstream jdfpathstrm("..\\tdd\\");
         jdfpathstrm << timeBuffer << "_" << itv->sequence << ".jdf";
         string jdfpath = jdfpathstrm.str();
         // jdfpath = ..\\tdd\\<job_id>_<seq>.jdf
-        // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>. + isPatient ? "" : "seq."
-		if(generateJDF(*itv, volbuf, mediaType, jdfpath, isPatient, jobPrefix, timeBuffer))
+        tempDir[tmpdirlen + seq_len] = '\0';
+        // tempDir[] = tempdir\\ vol.seq.
+		if(generateJDF(*itv, tempDir, mediaType, jdfpath, isPatient, jobPrefix, timeBuffer))
 		{
 			itv->valid = true;
 			// execute burning
@@ -519,21 +579,6 @@ int batchBurn()
         
 		if(cgiFormNotFound != cgiFormString("matchValue", postfix, MAX_PATH - pathlen) && strlen(postfix) > 0)
 		{   // *postfix = FormString["matchValue"]
-			char mutexName[MAX_PATH];
-			sprintf_s(mutexName, "Global\\%s%s", jobPrefix, postfix);
-			mh = CreateMutex(NULL, FALSE, mutexName);
-			if(mh == NULL)
-			{
-				DWORD errcode = GetLastError();
-				index_errlog << "无法创建互斥对象" << mutexName << ", error code " << hex << errcode << endl;
-				goto end_of_process;
-			}
-			DWORD waitResult = WaitForSingleObject(mh, 0);
-			if(waitResult == WAIT_TIMEOUT || waitResult == WAIT_FAILED)
-			{
-				index_errlog << "已有相同的任务在运行:" << jobPrefix << postfix << endl;
-				goto end_of_process;
-			}
 			strcat_s(desc, postfix);
 			if(isPatient)
 			{
@@ -555,9 +600,8 @@ int batchBurn()
 			vols.push_back(Volume(1, volumeSize, desc));
 			splitVolume(vols, studies, volumeSize, desc);
 			vols.sort([](const Volume &v1, const Volume &v2) { return v1.sequence < v2.sequence; });
-			xmlpath[prefixLen] = '\0';
-            // xmlpath[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\PATIENT_ID>
-            // prefixLen = strlen(xmlpath);
+
+            strcpy_s(xmlpath + prefixLen, sizeof(xmlpath) - prefixLen, ".txt");
 			prepareDicomDirAndBurn(vols, xmlpath, prefixLen, mediaType, isPatient, jobPrefix);
 		}
 		else
@@ -569,11 +613,6 @@ int batchBurn()
 		}
 	}
 end_of_process:
-	if(mh)
-	{
-		ReleaseMutex(mh);
-		CloseHandle(mh);
-	}
 	string errbuf = index_errlog.str();
 	if(errbuf.length() == 0)
 	{
@@ -588,6 +627,7 @@ end_of_process:
 		return -1;
 	}
 }
+
 #define CHUNK_BUFFER_SIZE 64*1024
 static int wadoRequest(const char *flag)
 {

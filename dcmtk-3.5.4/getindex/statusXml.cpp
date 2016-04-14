@@ -405,11 +405,26 @@ size_t collectionToFileNameList(const char *xmlpath, list<Study> &studies, bool 
 		if(studies.end() != find_if(studies.begin(), studies.end(), [&studyUid](Study &s) { return studyUid == s.uid; }))
 			continue;
 		MSXML2::IXMLDOMNodePtr studySizeAttr = pNode->Getattributes()->getNamedItem("StudyDescription");
+        _bstr_t studyDate(pNode->attributes->getNamedItem(L"StudyDate")->text);
+
+        MSXML2::IXMLDOMNodeListPtr pModalityList;
+        pModalityList = pNode->selectNodes("Series/@Modality");
+        string modalities;
+        while(MSXML2::IXMLDOMNodePtr pModality = pModalityList->nextNode())
+        {
+            string m((LPCSTR)pModality->text);
+            if(modalities.find(m) == string::npos)
+            {
+                if(modalities.length()) modalities.append(1, ',');
+                modalities.append(m);
+            }
+        }
+
 		int studySize = 0;
 		if(studySizeAttr) studySize = atoi(studySizeAttr->text);
 		try
 		{
-			studies.push_back(Study(studyUid.c_str(), studySize));
+            studies.push_back(Study(studyUid.c_str(), (LPCSTR)studyDate, modalities.c_str(), studySize));
 		}
 		catch(exception &e)
 		{
