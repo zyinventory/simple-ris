@@ -260,6 +260,8 @@ int initSecurity(int lockNumber, string &lockString)
 	return 0;
 }
 
+static bool input_init_pwd = true, input_rw_pwd = true;
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	HANDLE hFind = INVALID_HANDLE_VALUE;
@@ -296,8 +298,15 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	else
 	{
-		if(argc >= 4) strcpy_s(init_lock_passwd, 9, argv[3]);
-		if(argc >= 5) strcpy_s(init_rw_passwd, 9, argv[4]);
+		if(argc >= 4)
+            strcpy_s(init_lock_passwd, 9, argv[3]);
+        else
+            input_init_pwd = false;
+
+        if(argc >= 5)
+            strcpy_s(init_rw_passwd, 9, argv[4]);
+        else
+            input_rw_pwd = false;
 	}
 
 	//open dog, get lock number
@@ -313,19 +322,23 @@ int _tmain(int argc, _TCHAR* argv[])
 		cerr << "»ñÈ¡¼ÓÃÜ¹·ÐòÁÐºÅ´íÎó:" << hex << LYFGetLastErr() << endl;
 		return -5;
 	}
+
 	ostringstream serialStringStream;
 	serialStringStream << lockNumber;
 	string lockString = serialStringStream.str();
 	cerr << "¼ÓÃÜ¹·ÐòÁÐºÅ:" << lockString << endl;
-    	
-    // read key.txt
-	if(!readKeyFromTxt(argv[3], lockString))
-	{
-		cerr << "keyÎÄ¼þ¸ñÊ½´íÎó" << endl;
-		return -7;
-	}
 
-	if(isInit && _mkdir(lockString.c_str()))
+    if(isInit)
+    {
+        // read key.txt
+	    if(!readKeyFromTxt(argv[3], lockString))
+	    {
+		    cerr << "keyÎÄ¼þ¸ñÊ½´íÎó" << endl;
+		    return -7;
+	    }
+    }
+
+    if(isInit && _mkdir(lockString.c_str()))
 	{
 		int err = errno;
 		if(errno == EEXIST)
@@ -402,25 +415,31 @@ mkdir_ok:
 		if(initPasswdOK)
 		{
 			DWORD tmp = 0;
-			// change passwd
-			if(SetLock(7, &tmp, tmp, lock_passwd, init_lock_passwd, 0, 0))
-			{
-				cerr << "¹ÜÀíÃÜÂë:" << lock_passwd << endl;
-			}
-			else
-			{
-				cerr << "¼ÓÃÜ¹·ÐÞ¸Ä¹ÜÀíÃÜÂë´íÎó" << hex << LYFGetLastErr() << endl;
-				return -16;
-			}
-			if(SetLock(7, &tmp, tmp, rw_passwd, init_rw_passwd, 0, 0))
-			{
-				cerr << "¶ÁÐ´ÃÜÂë:" << rw_passwd << endl;
-			}
-			else
-			{
-				cerr << "¼ÓÃÜ¹·ÐÞ¸Ä¶ÁÐ´ÃÜÂë´íÎó" << hex << LYFGetLastErr() << endl;
-				return -16;
-			}
+            if(input_init_pwd && strcmp(lock_passwd, init_lock_passwd))
+            {
+			    // change passwd
+			    if(SetLock(7, &tmp, tmp, lock_passwd, init_lock_passwd, 0, 0))
+			    {
+				    cerr << "¹ÜÀíÃÜÂë:" << lock_passwd << endl;
+			    }
+			    else
+			    {
+				    cerr << "¼ÓÃÜ¹·ÐÞ¸Ä¹ÜÀíÃÜÂë´íÎó" << hex << LYFGetLastErr() << endl;
+				    return -16;
+			    }
+            }
+            if(input_rw_pwd && strcmp(rw_passwd, init_rw_passwd))
+            {
+			    if(SetLock(7, &tmp, tmp, rw_passwd, init_rw_passwd, 0, 0))
+			    {
+				    cerr << "¶ÁÐ´ÃÜÂë:" << rw_passwd << endl;
+			    }
+			    else
+			    {
+				    cerr << "¼ÓÃÜ¹·ÐÞ¸Ä¶ÁÐ´ÃÜÂë´íÎó" << hex << LYFGetLastErr() << endl;
+				    return -16;
+			    }
+            }
 		}
 		else // init_lock_passwd error
 		{	// test: lock_passwd(from passwd.txt) OK?
