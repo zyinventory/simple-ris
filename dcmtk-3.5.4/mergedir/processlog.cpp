@@ -174,14 +174,20 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
         cerr << "call_process_log() mkdir state faile: " << msg << endl;
         return;
     }
+
+    size_t requiredSize = 0;
+    if(getenv_s(&requiredSize, src_name, "PACS_BASE"))
+        strcpy_s(src_name, "C:\\usr\\local\\dicom");
+
     HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, NULL);
     //test_sim_slow_log_writer(NULL);
     if(start_write_log >= 0) // start_write_log == 0, start immediately
     {
         //test_consume_log(sessionId.c_str());
-        scp_store_main_loop(sessionId.c_str(), false);
+        scp_store_main_loop(sessionId.c_str(), src_name, false);
         //test_for_make_index("C:\\usr\\local\\dicom", true);
     }
+    WaitForSingleObject(ht, INFINITE);
 }
 
 void clear_resource()

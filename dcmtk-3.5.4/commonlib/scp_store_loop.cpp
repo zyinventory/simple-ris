@@ -366,10 +366,12 @@ static void move_index_receive(const char *pacs_base, map<string, errno_t> &map_
     }
 }
 
-COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
+COMMONLIB_API int scp_store_main_loop(const char *sessId, const char *pPacsBase, bool verbose)
 {
     opt_verbose = verbose;
     sessionId = sessId;
+    strcpy_s(pacs_base, pPacsBase);
+
     if(!make_relate_dir("state")) return -1;
     if(!make_relate_dir("archdir")) return -1;
     if(!make_relate_dir("indexdir")) return -1;
@@ -395,6 +397,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     {
         NamedPipe_CloseHandle(true);
         CloseHandle(hDirNotify);
+        displayErrorToCerr("scp_store_loop() NamedPipe_CreateListening() error", gle);
         return -4;
     }
     gle = NamedPipe_CreateClientProc(".");
@@ -402,6 +405,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     {
         NamedPipe_CloseHandle(true);
         CloseHandle(hDirNotify);
+        displayErrorToCerr("scp_store_loop() NamedPipe_CreateClientProc(.) error", gle);
         return -5;
     }
     
