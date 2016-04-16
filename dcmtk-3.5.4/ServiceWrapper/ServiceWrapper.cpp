@@ -11,7 +11,7 @@ using namespace std;
 static int argcSV;
 static char **argvSV, timeBuffer[48];
 static bool startXCS = false, xcsFound = false;
-static HANDLE logFile = INVALID_HANDLE_VALUE;
+static ofstream flog;
 
 const char *dirmakerCommand;
 bool opt_verbose = false;
@@ -38,7 +38,7 @@ static size_t checkDiskFreeSpaceInMB(const char * path)
 
 static void collectDayXmlFile(const char *filepath, list<WIN32_FIND_DATA> &findDataList)
 {
-	// if(opt_verbose) time_header_out(cout) << "start searching " << filepath << endl;
+	// if(opt_verbose) time_header_out(flog) << "start searching " << filepath << endl;
 	WIN32_FIND_DATA wfd;
 	char fileFilter[MAX_PATH];
 	strcpy_s(fileFilter, filepath);
@@ -48,9 +48,9 @@ static void collectDayXmlFile(const char *filepath, list<WIN32_FIND_DATA> &findD
 	{
 		DWORD winerr = GetLastError();
 		if(ERROR_FILE_NOT_FOUND == winerr)
-			time_header_out(cerr) << fileFilter << " not found" << endl;
+			time_header_out(flog) << fileFilter << " not found" << endl;
 		else
-			time_header_out(cerr) << fileFilter << " unknown error: " << winerr << endl;
+			time_header_out(flog) << fileFilter << " unknown error: " << winerr << endl;
 		return;
 	}
 	do
@@ -69,7 +69,7 @@ static void collectDayXmlFile(const char *filepath, list<WIN32_FIND_DATA> &findD
 			findDataList.push_back(wfd);
 		}
 		else if(opt_verbose)
-			time_header_out(cout) << filepath << '\\' << wfd.cFileName << " name is not '.xml', skip it." << endl;
+			time_header_out(flog) << filepath << '\\' << wfd.cFileName << " name is not '.xml', skip it." << endl;
 	} while (FindNextFile(hDiskSearch, &wfd));
 	FindClose(hDiskSearch); // 关闭查找句柄
 }
@@ -81,7 +81,7 @@ static bool findAndDeleteUnarchived(list<WIN32_FIND_DATA> &findDataList, size_t 
 		{ return *reinterpret_cast<__int64*>(&wfd1.ftLastAccessTime) > *reinterpret_cast<__int64*>(&wfd2.ftLastAccessTime); });
 	do{
 		WIN32_FIND_DATA &backItem = findDataList.back();
-		//if(opt_verbose) time_header_out(cout) << "pop_back " << backItem.cFileName << ", last access time: "
+		//if(opt_verbose) time_header_out(flog) << "pop_back " << backItem.cFileName << ", last access time: "
 		//	<< *reinterpret_cast<__int64*>(&backItem.ftLastAccessTime) << endl;
 		if(deleteDayStudy(backItem.cFileName))
 		{
@@ -89,7 +89,7 @@ static bool findAndDeleteUnarchived(list<WIN32_FIND_DATA> &findDataList, size_t 
 			if(INVALID_HANDLE_VALUE == hFile)
 			{
 				DWORD winerr = GetLastError();
-				time_header_out(cerr) << backItem.cFileName << " open file error:" << winerr << endl;
+				time_header_out(flog) << backItem.cFileName << " open file error:" << winerr << endl;
 			}
 			else
 			{
@@ -100,7 +100,7 @@ static bool findAndDeleteUnarchived(list<WIN32_FIND_DATA> &findDataList, size_t 
 				if(!SetFileTime(hFile, (LPFILETIME) NULL, &ft, (LPFILETIME) NULL))
 				{
 					DWORD winerr = GetLastError();
-					time_header_out(cerr) << backItem.cFileName << " set last access time error:" << winerr << endl;
+					time_header_out(flog) << backItem.cFileName << " set last access time error:" << winerr << endl;
 				}
 			}
 		}
@@ -110,7 +110,7 @@ static bool findAndDeleteUnarchived(list<WIN32_FIND_DATA> &findDataList, size_t 
 	}while(!findDataList.empty());
 
 	size_t lastFreeMB = checkDiskFreeSpaceInMB("archdir\\");
-	time_header_out(cerr) << "All day xml is free, free " << lastFreeMB << " M, need " << lower << " M" << endl;
+	time_header_out(flog) << "All day xml is free, free " << lastFreeMB << " M, need " << lower << " M" << endl;
 	noMoreFree = true;
 	return false;
 }
@@ -125,11 +125,11 @@ void autoCleanPacsDiskByStudyDate()
 	collectDayXmlFile("indexdir\\00080020", findDataList);
 	if(findDataList.empty())
 	{
-		if(opt_verbose) time_header_out(cout) << "No day xml files to free, free " << freeMB << " M, need " << lower << " M" << endl;
+		if(opt_verbose) time_header_out(flog) << "No day xml files to free, free " << freeMB << " M, need " << lower << " M" << endl;
 	}
 	else
 		findAndDeleteUnarchived(findDataList, lower);
-	if(opt_verbose) time_header_out(cout) << "auto clean done" << endl;	
+	if(opt_verbose) time_header_out(flog) << "auto clean done" << endl;	
 }
 
 static void mkcmd(ostringstream *cmdStream, const char *s)
@@ -158,11 +158,23 @@ static int realMain(int argc, char **argv)
 
 	// Perform work until service stops.
 	ostringstream cmdStream;
+#ifdef _DEBUG
+    char *p = strrchr(argv[0], '\\');
+    if(p)
+    {
+        ++p;
+        cmdStream.write(argv[0], p - argv[0]);
+        cmdStream << "dcmqrscp.exe ";
+    }
+    else
+        cmdStream << "..\\bin\\dcmqrscp.exe ";
+#else
+    cmdStream << "..\\bin\\dcmqrscp.exe ";
+#endif
 	for_each(argv + 2, argv + argc, bind1st(ptr_fun(mkcmd), &cmdStream)); // skip program and ServiceName
 	string cmd(cmdStream.str());
 	cmdStream.clear();
 	opt_verbose = (string::npos != cmd.find(" -v "));
-	//cout << opt_verbose << ':' << cmd << endl;
 
 	PROCESS_INFORMATION procinfo;
 	STARTUPINFO sinfo;
@@ -177,7 +189,7 @@ static int realMain(int argc, char **argv)
 	logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
 
 	HANDLE logFile = INVALID_HANDLE_VALUE;
-	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_storescp.txt", timeBuffer, sizeof(timeBuffer));
+	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_dcmqrscp.txt", timeBuffer, sizeof(timeBuffer));
 	if(PrepareFileDir(timeBuffer))
 		logFile = CreateFile(timeBuffer, GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 
@@ -189,20 +201,32 @@ static int realMain(int argc, char **argv)
 		sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
 	}
 
-	if( CreateProcess(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, CREATE_NEW_PROCESS_GROUP, NULL, NULL, &sinfo, &procinfo) )
+    char *qrcmd = new char[cmd.length() + 1];
+    strcpy_s(qrcmd, cmd.length() + 1, cmd.c_str());
+	if( CreateProcess(NULL, qrcmd, NULL, NULL, TRUE, CREATE_NEW_PROCESS_GROUP, NULL, NULL, &sinfo, &procinfo) )
 	{
-		WaitForInputIdle(procinfo.hProcess, INFINITE);
-		// Close process and thread handles to avoid resource leak
+        delete[] qrcmd;
+		//WaitForInputIdle(procinfo.hProcess, INFINITE);
 		CloseHandle(procinfo.hProcess);
 		CloseHandle(procinfo.hThread);
+        CloseHandle(logFile);
+        
+        if(opt_verbose) time_header_out(flog) << "create dcmqrscp process OK: " << cmd << endl;
 
 		SYSTEM_INFO sysInfo;
 		GetSystemInfo(&sysInfo);
-		return commandDispatcher(QUEUE_NAME, min(MAX_CORE, sysInfo.dwNumberOfProcessors - 1));
+		//return commandDispatcher(QUEUE_NAME, min(MAX_CORE, sysInfo.dwNumberOfProcessors - 1));
+        while(GetSignalInterruptValue() == 0)
+        {
+            // todo: listen notify dir
+            Sleep(1000);
+        }
 	}
 	else
 	{
-		cerr << "create process error: " << cmd << endl;;
+        delete[] qrcmd;
+		time_header_out(flog) << "create dcmqrscp process error: " << cmd << endl;
+        CloseHandle(logFile);
 		return -2;
 	}
 }
@@ -220,16 +244,16 @@ static void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	locale::global(locale(CHINESE_LOCAL));
-	if(argc < 3)
+	//locale::global(locale(CHINESE_LOCAL));
+	if(argc < 2)
 	{
-		cout << "usage: ServiceWrapper [ServiceName] [CommandLine]" << endl;
+		cerr << "使用说明: ServiceWrapper [ServiceName] [params]" << endl;
 		return -2;
 	}
 	else
 	{
-		strcpy_s(service_name, 128, argv[1]); // argv[1] must be ServiceName
-		//cout << "ServiceName " << service_name << endl;
+		if(strcpy_s(service_name, argv[1])) // argv[1] must be ServiceName
+		    cerr << "ServiceName too long: " << service_name << endl;
 	}
 
 	SERVICE_TABLE_ENTRY serviceTableEntry[] =
@@ -242,24 +266,38 @@ int _tmain(int argc, _TCHAR* argv[])
 	argvSV = argv;
 
 	Capture_Ctrl_C();
-	
-	setEnvParentPID();
 
-	if(changeWorkingDirectory(argc, argv)) return -3;
+	if(ChangeToPacsWebSub(COMMONLIB_PACS_BASE, sizeof(COMMONLIB_PACS_BASE))) return -3;
 
-	ofstream flog;
 	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", timeBuffer, sizeof(timeBuffer));
 	if(PrepareFileDir(timeBuffer))
-		flog.open(timeBuffer);
+    {
+        flog.open(timeBuffer);
+        if(flog.fail())
+        {
+            cerr << "ServiceWrapper open " << timeBuffer << " failed" << endl;
+            return -4;
+        }
+    }
 	else
 		return -4;
+    /*
 	if( ! captureStdoutToLogStream(flog))
 	{
 		flog << "captureStdoutToLogStream(flog) failed" << endl;
 		return -5;
 	}
-
+    */
 	int ret = 0;
+    HANDLE hMutex = CreateMutex(NULL, TRUE, "Global\\dcmtk_ServiceWrapper");
+
+    if(hMutex == NULL)
+    {
+        displayErrorToCerr("ServiceWrapper CreateMutex()", GetLastError(), &flog);
+		ret = -1;
+        goto exit_service_wrapper;
+    }
+    
 	if( StartServiceCtrlDispatcher( serviceTableEntry ) )
 	{
 		// This call returns when the service has stopped. 
@@ -275,11 +313,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	else
 	{
-		cerr << "C-Store Daemon start error" << endl;
+		flog << "ServiceWrapper start error" << endl;
 		ret = -1;
 	}
 	
-	releaseStdout(flog);
-	flog.close();
+    if(hMutex) { ReleaseMutex(hMutex); CloseHandle(hMutex); }
+exit_service_wrapper:
+	//releaseStdout(flog);
+    if(flog.is_open()) flog.close();
 	return ret;
 }

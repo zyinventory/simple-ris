@@ -4,7 +4,7 @@
 
 using namespace std;
 
-COMMONLIB_API char service_name[128];
+COMMONLIB_API char service_name[32];
 
 static SERVICE_STATUS          gSvcStatus; 
 static SERVICE_STATUS_HANDLE   gSvcStatusHandle; 

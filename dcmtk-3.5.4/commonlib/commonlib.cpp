@@ -4,6 +4,8 @@
 
 using namespace std;
 
+COMMONLIB_API char COMMONLIB_PACS_BASE[MAX_PATH] = "";
+
 COMMONLIB_API size_t in_process_sequence_dll(char *buff, size_t buff_size, const char *prefix)
 {
     return in_process_sequence(buff, buff_size, prefix);
@@ -224,43 +226,17 @@ COMMONLIB_API time_t dcmdate2tm(int dcmdate)
   return mktime(&timeBirth);
 }
 
-COMMONLIB_API int ChangeToPacsWebSub(char *pPacsBase, size_t buff_size, const char *subdir)
+COMMONLIB_API int ChangeToPacsWebSub(char *pPacsBase, size_t buff_size)
 {
-    char *static_buf = GetPacsBase();
-    size_t requiredSize = strlen(static_buf) + 1;
-    strcat_s(static_buf, MAX_PATH, "\\pacs"); // PACS_BASE + <web_dir>
-    if(subdir) strcat_s(static_buf, MAX_PATH, subdir); // PACS_BASE + <web_dir> + <sub_dir>
-    errno_t en = _chdir(static_buf);
-    static_buf[requiredSize - 1] = '\0';
+    size_t requiredSize = strlen(COMMONLIB_PACS_BASE);
+    strcpy_s(COMMONLIB_PACS_BASE + requiredSize, MAX_PATH - requiredSize, "\\pacs"); // PACS_BASE + <web_dir>
+    errno_t en = _chdir(COMMONLIB_PACS_BASE);
+    COMMONLIB_PACS_BASE[requiredSize] = '\0';
     if(en) return en;
     if(pPacsBase)
-        return strcpy_s(pPacsBase, buff_size, static_buf);
+        return strcpy_s(pPacsBase, buff_size, COMMONLIB_PACS_BASE);
     else
         return 0;
-}
-
-COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase)
-{
-	if(argc > 0)
-	{
-		char **endPos = argv + argc;
-		//char **pos = find_if(argv, endPos, not1(bind1st(ptr_fun(strcmp), "-wd")));
-        char **pos = find_if(argv, endPos, [](const char *p) { return strcmp("-wd", p) == 0 || strcmp("--working-directory", p) == 0; });
-		if(pos != endPos)
-		{
-			if(! _chdir(*++pos))
-			{
-				if(pPacsBase)
-                    return strcpy_s(pPacsBase, MAX_PATH, *pos);
-                else
-				    return 0;
-			}
-			else
-				return errno;
-		}
-	}
-	// get working dir from PACS_BASE in env
-    return ChangeToPacsWebSub(pPacsBase, MAX_PATH);
 }
 
 size_t sys_core_num = 4, worker_core_num = 2;
@@ -269,6 +245,7 @@ BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpRese
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
+        GetPacsBase();
         SYSTEM_INFO sysInfo;
 		GetSystemInfo(&sysInfo);
         sys_core_num = sysInfo.dwNumberOfProcessors;

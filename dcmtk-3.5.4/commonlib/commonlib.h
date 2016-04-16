@@ -130,6 +130,7 @@ catch(...)\
 const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
   ADD_DEFAULT_CHARSET[] = "Add default character set ", UNKNOWN_CHARSET[] = "Unknown character set ", OVERRIDE_BY[] = " is override by ";
 
+extern COMMONLIB_API char COMMONLIB_PACS_BASE[MAX_PATH];
 extern COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
 COMMONLIB_API DWORD displayErrorToCerr(const TCHAR *lpszFunction, DWORD gle, std::ostream *perrstrm = NULL);
@@ -157,9 +158,8 @@ COMMONLIB_API bool EnsureQueueExist(const char *queuePath);
 COMMONLIB_API bool DeleteQueue(const char *queueName);
 COMMONLIB_API errno_t setEnvParentPID();
 COMMONLIB_API size_t GenerateTime(const char *format, char *timeBuffer, size_t bufferSize, time_t *time_now = NULL);
-COMMONLIB_API char* GetPacsBase();
-COMMONLIB_API int ChangeToPacsWebSub(char *pPacsBase, size_t buff_size, const char *subdir = NULL);
-COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase = NULL);
+COMMONLIB_API const char* GetPacsBase();
+COMMONLIB_API int ChangeToPacsWebSub(char *pPacsBase, size_t buff_size);
 COMMONLIB_API __int64 HashStrW(const wchar_t *s, char *buffer = NULL, size_t buffer_size = 0);
 COMMONLIB_API __int64 HashStr(const char *s, char *buffer = NULL, size_t buffer_size = 0);
 COMMONLIB_API long long diskUsage(const char *pacsBase, const char *studyUID);
@@ -175,11 +175,11 @@ COMMONLIB_API bool DecodeBase32(const char *src, char *dec, size_t dec_buf_size)
 COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t buf_size);
 COMMONLIB_API void ReleaseUniqueNoResource();
 
-COMMONLIB_API int scp_store_main_loop(const char *sessionId, const char *pPacsBase, bool verbose);
+COMMONLIB_API int scp_store_main_loop(const char *sessionId, bool verbose);
 COMMONLIB_API size_t in_process_sequence_dll(char *buff, size_t buff_size, const char *prefix);
 
 #ifdef _DEBUG
 
-COMMONLIB_API int test_for_make_index(const char *pacs_base, bool verbose);
+COMMONLIB_API int test_for_make_index(bool verbose);
 
 #endif //_DEBUG

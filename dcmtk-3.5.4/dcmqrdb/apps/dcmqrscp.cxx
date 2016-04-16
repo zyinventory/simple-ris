@@ -139,8 +139,11 @@ static DcmQueryRetrieveOptions *optionsPtr = NULL;
 static DcmQueryRetrieveIndexDatabaseHandleFactory *factoryPtr = NULL;
 #endif
 
+static HANDLE hMutex = NULL;
+
 static void exitHook()
 {
+    if(hMutex) { ReleaseMutex(hMutex); CloseHandle(hMutex); }
 	if(configPtr) delete configPtr;
 #ifdef _DEBUG
 	dcmDataDict.clear();
@@ -329,7 +332,7 @@ main(int argc, char *argv[])
 #endif
 
     cmd.addSubGroup("other network options:");
-      cmd.addOption("--timeout",                "-to",    1, "[s]econds: integer (default: unlimited)", "timeout for connection requests");
+      cmd.addOption("--timeout",                "-to",    1, "[s]econds: integer (default: 3)", "timeout for connection requests");
       cmd.addOption("--acse-timeout",           "-ta", 1, "[s]econds: integer (default: 30)", "timeout for ACSE messages");
       cmd.addOption("--dimse-timeout",          "-td", 1, "[s]econds: integer (default: unlimited)", "timeout for DIMSE messages");
       OFString opt3 = "set max receive pdu to n bytes (default: ";
@@ -502,6 +505,8 @@ main(int argc, char *argv[])
         app.checkValue(cmd.getValueAndCheckMin(opt_timeout, 1));
         dcmConnectionTimeout.set((Sint32) opt_timeout);
       }
+      else
+          dcmConnectionTimeout.set(3);
 
       if (cmd.findOption("--acse-timeout"))
       {
@@ -671,7 +676,7 @@ main(int argc, char *argv[])
     fprintf(stderr, "Warning: no data dictionary loaded, check environment variable: %s\n",
         DCM_DICT_ENVIRONMENT_VARIABLE);
     }
-
+    
 #ifdef HAVE_GETEUID
     /* if port is privileged we must be as well */
     if (opt_port < 1024) {
@@ -682,8 +687,21 @@ main(int argc, char *argv[])
     }
 #endif
 #ifdef _WIN32
-	ChangeToPacsWebSub(pacs_base, sizeof(pacs_base), NULL);
 	atexit(exitHook);
+
+    if(!options.singleProcess_ && !options.forkedChild_)
+    {
+        hMutex = OpenMutex(SYNCHRONIZE, FALSE, "Global\\dcmtk_ServiceWrapper");
+        if(hMutex == NULL)
+        {
+            cerr << "OpenMutex(Global\\dcmtk_ServiceWrapper) failed: " << GetLastError() << endl;
+            return 11;
+        }
+        else if(options.verbose_)
+            cerr << "OpenMutex(Global\\dcmtk_ServiceWrapper) OK" << endl;
+    }
+
+    ChangeToPacsWebSub(pacs_base, sizeof(pacs_base));
 	
 	if (options.forkedChild_)
 	{
@@ -782,13 +800,23 @@ main(int argc, char *argv[])
     scp.setDatabaseFlags(opt_checkFindIdentifier, opt_checkMoveIdentifier, options.debug_);
 
 	Capture_Ctrl_C();
+
     /* loop waiting for associations */
     while (cond.good())
     {
 		cond = scp.waitForAssociation(options.net_);
-        if((options.singleProcess_ || options.forkedChild_) && scp.getStoreResult() != STORE_NONE)
+        if(options.singleProcess_ || options.forkedChild_)
         {
-            scp.cleanAssocContextExceptCallback();
+            if(scp.getStoreResult() != STORE_NONE) scp.cleanAssocContextExceptCallback();
+        }
+        else if(hMutex)
+        {
+            DWORD wr = WaitForSingleObject(hMutex, 0);
+            if(wr == WAIT_OBJECT_0 || wr == WAIT_ABANDONED)
+            {
+                SignalInterruptHandler(1);
+                if(options.verbose_) cerr << "hMutex is released, ServiceWrapper is not alive, dcmqrscp send Ctrl-C to self" << endl;
+            }
         }
 		if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */
 		if (options.forkedChild_) break;
@@ -805,7 +833,6 @@ main(int argc, char *argv[])
 #ifdef HAVE_WINSOCK_H
     WSACleanup();
 #endif
-
     return 0;
 }
 

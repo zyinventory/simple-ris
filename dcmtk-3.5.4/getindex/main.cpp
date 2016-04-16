@@ -4,7 +4,7 @@
 #include <lock.h>
 #include <liblock.h>
 
-static char pPacsBase[MAX_PATH];
+static const char *pPacsBase;
 std::ostringstream index_errlog;
 int statusCharge(const char *flag);
 int removeStudy(const char *flag);
@@ -658,7 +658,8 @@ int work()
 	atexit(exitHookDumpMem);
 #endif
 	//locale::global(locale(CHINESE_LOCAL));
-	int chdirOK = changeWorkingDirectory(0, NULL, pPacsBase);
+    pPacsBase = GetPacsBase();
+	int chdirOK = ChangeToPacsWebSub(NULL, 0);
 	if(chdirOK < 0)
 	{
 		index_errlog << "init working dir failed:" << -1 << ',' << chdirOK << endl;

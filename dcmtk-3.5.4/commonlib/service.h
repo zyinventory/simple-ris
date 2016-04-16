@@ -9,7 +9,7 @@
 #define SVC_ERROR ((DWORD)0xC0020001L)
 #define SVC_INFO  ((DWORD)0x60020002L)
 
-extern COMMONLIB_API char service_name[];
+extern COMMONLIB_API char service_name[32];
 
 COMMONLIB_API void __stdcall ReportSvcStatus( DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint);
 COMMONLIB_API void __stdcall SvcReportEvent(LPCTSTR szFunction, WORD eventType = EVENTLOG_ERROR_TYPE, DWORD eventId = SVC_ERROR);

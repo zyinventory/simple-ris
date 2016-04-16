@@ -35,10 +35,10 @@ static int create_worker_process(CMOVE_LOG_CONTEXT &lc)
         mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", verbose_flag, lc.file.filename);
     }
     else
-        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", pacs_base, verbose_flag, lc.file.filename);
+        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, lc.file.filename);
 #else
     char cmd[1024];
-	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", pacs_base, verbose_flag, lc.file.filename);
+	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, lc.file.filename);
 #endif
     char *mkdir_ptr = cmd + mkdir_pos;
     int ctn = mkdir_pos;
@@ -270,10 +270,10 @@ DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid)
         mkdir_pos = strlen(cmd);
     }
     else
-        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd -A ", pacs_base);
+        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd -A ", COMMONLIB_PACS_BASE);
 #else
     char cmd[1024];
-	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd -A ", pacs_base);
+	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd -A ", COMMONLIB_PACS_BASE);
 #endif
     if(dot_or_study_uid == NULL || strlen(dot_or_study_uid) == 0)
     {

@@ -87,7 +87,7 @@ static bool save_index_study_date(MSXML2::IXMLDOMDocument2 *pDomStudy)
         string xml_path((LPCSTR)attr_value);
         xml_path.insert(6, 1, '\\').insert(4, 1, '\\')
             .insert(0, "\\pacs\\indexdir\\00080020\\")
-            .insert(0, pacs_base).append(".xml");
+            .insert(0, COMMONLIB_PACS_BASE).append(".xml");
         if(!PrepareFileDir(xml_path.c_str())) throw logic_error(xml_path.insert(0, "PrepareFileDir ").append(" failed"));
         MSXML2::IXMLDOMDocument2Ptr pDom;
         pDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
@@ -153,7 +153,7 @@ static bool save_index_patient(MSXML2::IXMLDOMDocument2 *pDomStudy)
         encoded = encoded_attr->text;
         if(encoded.length() == 0) throw logic_error("shallow_copy_study()'s patient[encoded] value is NULL");
 
-        string xml_path(pacs_base);
+        string xml_path(COMMONLIB_PACS_BASE);
         xml_path.append("\\pacs\\indexdir\\00100020\\").append(hash_prefix_str)
             .append(1, '\\').append((LPCSTR)encoded).append(".xml");
         if(!PrepareFileDir(xml_path.c_str())) throw logic_error(xml_path.insert(0, "PrepareFileDir ").append(" failed"));
@@ -692,7 +692,7 @@ static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML
     return true;
 }
 
-void merge_index_study_patient_date(const char *pacs_base, bool overwrite, std::map<std::string, LARGE_INTEGER> &map_move_study_status)
+void merge_index_study_patient_date(bool overwrite, std::map<std::string, LARGE_INTEGER> &map_move_study_status)
 {
     for(map<string, LARGE_INTEGER>::iterator it = map_move_study_status.begin(); it != map_move_study_status.end(); ++it)
     {
@@ -700,7 +700,7 @@ void merge_index_study_patient_date(const char *pacs_base, bool overwrite, std::
         {
             if(it->second.LowPart == ERROR_PATH_NOT_FOUND) continue;
             char dest_path[MAX_PATH];
-            int offset = sprintf_s(dest_path, "%s\\pacs\\", pacs_base);
+            int offset = sprintf_s(dest_path, "%s\\pacs\\", COMMONLIB_PACS_BASE);
             char *src_path = dest_path + offset;
             sprintf_s(src_path, sizeof(dest_path) - offset, "indexdir\\0020000d\\%s.xml", it->first.c_str());
             MSXML2::IXMLDOMDocument2Ptr pSrc;
@@ -839,10 +839,9 @@ void merge_index_study_patient_date(const char *pacs_base, bool overwrite, std::
 
 #ifdef _DEBUG
 
-COMMONLIB_API int test_for_make_index(const char *pb, bool verbose)
+COMMONLIB_API int test_for_make_index(bool verbose)
 {
     opt_verbose = verbose;
-    strcpy_s(pacs_base, pb);
 
     map<string, LARGE_INTEGER> map_move_study_status;
     LARGE_INTEGER state = {0, 0};
@@ -856,7 +855,7 @@ COMMONLIB_API int test_for_make_index(const char *pb, bool verbose)
     {
         string study_path;
         study_path.reserve(255);
-        study_path.append(pacs_base).append("\\pacs\\indexdir\\000d0020\\").append(it->first).append(".xml");
+        study_path.append(COMMONLIB_PACS_BASE).append("\\pacs\\indexdir\\000d0020\\").append(it->first).append(".xml");
         MSXML2::IXMLDOMDocument2Ptr pXMLDom;
         pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
         pXMLDom->load(study_path.c_str());

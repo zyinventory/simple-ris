@@ -45,7 +45,6 @@ typedef struct {
 
 extern bool opt_verbose, ready_to_close_dcmmkdir_workers;
 extern size_t worker_core_num;
-extern char pacs_base[MAX_PATH];
 extern const char *sessionId;
 extern HANDLE hDirNotify;
 
@@ -84,6 +83,6 @@ DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid);
 
 errno_t make_index(const CMOVE_LOG_CONTEXT &clc);
 void save_index_study_receive_to_session();
-void merge_index_study_patient_date(const char *pacs_base, bool overwrite, std::map<std::string, LARGE_INTEGER> &map_move_study_status);
+void merge_index_study_patient_date(bool overwrite, std::map<std::string, LARGE_INTEGER> &map_move_study_status);
 
 #endif //COMMONLIB_INTERNAL

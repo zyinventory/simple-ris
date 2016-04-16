@@ -1766,6 +1766,9 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
                 if (!WriteFile(hChildStdInWrite, (BYTE*)&protoInfo, sizeof(WSAPROTOCOL_INFO), &bytesWritten, NULL))
 				{
                     CloseHandle(hChildStdInWrite);
+                    CloseHandle(pi.hProcess);
+                    CloseHandle(pi.hThread);
+				    closesocket(sock);
                     return makeDcmnetCondition (DULC_CANNOTFORK, OF_error, "error while writing to anonymous pipe");
                 }
 

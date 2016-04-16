@@ -34,26 +34,27 @@ size_t GenerateTime_internal(const char *format, char *timeBuffer, size_t buffer
 }
 
 #define ENV_PACS_BASE "PACS_BASE"
-static char PACS_BASE_CACHE[MAX_PATH] = "";
 
 #ifdef COMMONLIB_EXPORTS
+extern COMMONLIB_API char COMMONLIB_PACS_BASE[MAX_PATH];
 #define GetPacsBase_public GetPacsBase
-COMMONLIB_API char* GetPacsBase()
+COMMONLIB_API const char* GetPacsBase()
 #else
+static char COMMONLIB_PACS_BASE[MAX_PATH] = "";
 #define GetPacsBase_public GetPacsBase_internal
-static char* GetPacsBase_internal()
+static const char* GetPacsBase_internal()
 #endif
 {
-	size_t requiredSize = strlen(PACS_BASE_CACHE) + 1;
-    if(requiredSize == 1)
+	size_t requiredSize = 0;
+    if(strlen(COMMONLIB_PACS_BASE) == 0)
     {
 	    getenv_s( &requiredSize, NULL, 0, ENV_PACS_BASE);
 	    if(requiredSize > 0)
-            getenv_s(&requiredSize, PACS_BASE_CACHE, requiredSize, ENV_PACS_BASE);
+            getenv_s(&requiredSize, COMMONLIB_PACS_BASE, requiredSize, ENV_PACS_BASE);
 	    else
-            strcpy_s(PACS_BASE_CACHE, sizeof(PACS_BASE_CACHE), "C:\\usr\\local\\dicom");
+            strcpy_s(COMMONLIB_PACS_BASE, "C:\\usr\\local\\dicom");
     }
-    return PACS_BASE_CACHE;
+    return COMMONLIB_PACS_BASE;
 }
 
 #ifdef COMMONLIB_EXPORTS
@@ -259,7 +260,7 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
             size_t baselen = 0;
             if(sequence_path[0] == '\0')
             {
-                char *basedir = GetPacsBase_public();
+                const char *basedir = GetPacsBase_public();
                 strcpy_s(sequence_path, basedir);
                 baselen = strlen(sequence_path);
                 if(ownerPrivilege)

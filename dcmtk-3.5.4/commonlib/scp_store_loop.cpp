@@ -7,7 +7,6 @@ static int is_cr_lf(int c) { return (c == '\r' || c == '\n') ? 1 : 0; }
 #define STRING_LTRIM(str) str.erase(str.begin(), find_if(str.begin(), str.end(), std::not1(std::ptr_fun<int, int>(is_cr_lf))))
 
 bool opt_verbose = false;
-char pacs_base[MAX_PATH];
 const char *sessionId;
 HANDLE hDirNotify;
 
@@ -160,7 +159,7 @@ static void find_all_study_dir(map<string, string> &map_studies_dicomdir)
 // todo: for storescp, merge instances to old archive volume
 
 // move instances to old archive volume
-static void overwrite_study_archdir(const char *pacs_base, const map<string, string> &map_studies_dicomdir, map<string, LARGE_INTEGER> &map_move_study_status)
+static void overwrite_study_archdir(const map<string, string> &map_studies_dicomdir, map<string, LARGE_INTEGER> &map_move_study_status)
 {
     for(map<string, string>::const_iterator it = map_studies_dicomdir.begin(); it != map_studies_dicomdir.end(); ++it)
     {
@@ -170,7 +169,7 @@ static void overwrite_study_archdir(const char *pacs_base, const map<string, str
         char prefix[16], src_path[MAX_PATH], dest_path[MAX_PATH];
         HashStr(it->first.c_str(), prefix, sizeof(prefix));
         sprintf_s(src_path, "archdir\\%s", it->first.c_str());
-        sprintf_s(dest_path, "%s\\pacs\\archdir\\v%07d\\%c%c\\%c%c\\%c%c\\%c%c\\%s", pacs_base, state.HighPart,
+        sprintf_s(dest_path, "%s\\pacs\\archdir\\v%07d\\%c%c\\%c%c\\%c%c\\%c%c\\%s", COMMONLIB_PACS_BASE, state.HighPart,
             prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
         
         // move study dir 
@@ -321,7 +320,7 @@ static void find_recursive_xml_file(string &input_path, list<string> &collector)
     find_recursive(input_path, collector, bind2nd(ptr_fun(is_ext_file), ".xml"));
 }
 
-static void move_index_receive(const char *pacs_base, map<string, errno_t> &map_receive_index)
+static void move_index_receive(map<string, errno_t> &map_receive_index)
 {
     list<string> collector;
     string path("indexdir\\receive");
@@ -332,7 +331,7 @@ static void move_index_receive(const char *pacs_base, map<string, errno_t> &map_
     {
         errno_t move_state = 0;
         char dest_path[MAX_PATH];
-        sprintf_s(dest_path, "%s\\pacs\\%s", pacs_base, it->c_str());
+        sprintf_s(dest_path, "%s\\pacs\\%s", COMMONLIB_PACS_BASE, it->c_str());
         if(PrepareFileDir(dest_path))
         {
             if(_unlink(dest_path) == 0 || errno == ENOENT)
@@ -366,11 +365,10 @@ static void move_index_receive(const char *pacs_base, map<string, errno_t> &map_
     }
 }
 
-COMMONLIB_API int scp_store_main_loop(const char *sessId, const char *pPacsBase, bool verbose)
+COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 {
     opt_verbose = verbose;
     sessionId = sessId;
-    strcpy_s(pacs_base, pPacsBase);
 
     if(!make_relate_dir("state")) return -1;
     if(!make_relate_dir("archdir")) return -1;
@@ -496,12 +494,12 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, const char *pPacsBase,
 
     // LARGE_INTEGER: HighPart is volume id, LowPart is last error state.
     map<string, LARGE_INTEGER> map_move_study_status;
-    overwrite_study_archdir(pacs_base, map_studies_dicomdir, map_move_study_status);
+    overwrite_study_archdir(map_studies_dicomdir, map_move_study_status);
 
-    merge_index_study_patient_date(pacs_base, true, map_move_study_status);
+    merge_index_study_patient_date(true, map_move_study_status);
 
     map<string, errno_t> map_receive_index;
-    move_index_receive(pacs_base, map_receive_index);
+    move_index_receive(map_receive_index);
     for_each(map_receive_index.begin(), map_receive_index.end(), [](const pair<string, errno_t> &p)
     {
         if(p.second)
