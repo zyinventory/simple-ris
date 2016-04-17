@@ -88,24 +88,6 @@ COMMONLIB_API char *trim(char *s, int maxStrLen)
 	return head;
 }
 
-static int signalInterruptFlag = 0;
-
-COMMONLIB_API void SignalInterruptHandler(int signal)
-{
-  signalInterruptFlag = signal;
-}
-
-COMMONLIB_API void Capture_Ctrl_C()
-{
-  signalInterruptFlag = 0;
-  signal(SIGINT, SignalInterruptHandler);
-}
-
-COMMONLIB_API int GetSignalInterruptValue()
-{
-  return signalInterruptFlag;
-}
-
 COMMONLIB_API LONGLONG GetFileInfo(const char *filePath, PSYSTEMTIME localTime)
 {
   FILETIME fileTime;
@@ -224,19 +206,6 @@ COMMONLIB_API time_t dcmdate2tm(int dcmdate)
   timeBirth.tm_min = 0;
   timeBirth.tm_sec = 0;
   return mktime(&timeBirth);
-}
-
-COMMONLIB_API int ChangeToPacsWebSub(char *pPacsBase, size_t buff_size)
-{
-    size_t requiredSize = strlen(COMMONLIB_PACS_BASE);
-    strcpy_s(COMMONLIB_PACS_BASE + requiredSize, MAX_PATH - requiredSize, "\\pacs"); // PACS_BASE + <web_dir>
-    errno_t en = _chdir(COMMONLIB_PACS_BASE);
-    COMMONLIB_PACS_BASE[requiredSize] = '\0';
-    if(en) return en;
-    if(pPacsBase)
-        return strcpy_s(pPacsBase, buff_size, COMMONLIB_PACS_BASE);
-    else
-        return 0;
 }
 
 size_t sys_core_num = 4, worker_core_num = 2;

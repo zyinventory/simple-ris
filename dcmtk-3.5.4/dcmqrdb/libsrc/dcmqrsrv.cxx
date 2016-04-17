@@ -115,11 +115,12 @@ DcmQueryRetrieveSCP::DcmQueryRetrieveSCP(
 , dbDebug_(OFFalse)
 , factory_(factory)
 , options_(options)
-, storeResult(STORE_NONE)
+, storeResult(STORE_NONE), hAssociationMutex(NULL)
 , pPacsBase(pacs_base)
 {
     memset(&assoc_context, 0, sizeof(ASSOCIATION_CONTEXT));
     assoc_context.cbToDcmQueryRetrieveStoreContext = cbStore;
+    pPacsBase = GetPacsBase();
 }
 
 
@@ -218,6 +219,16 @@ OFCondition DcmQueryRetrieveSCP::dispatch(T_ASC_Association *assoc, OFBool corre
     return cond;
 }
 
+void DcmQueryRetrieveSCP::ReleseAssociationMutex()
+{
+    if(hAssociationMutex)
+    {
+        ReleaseMutex(hAssociationMutex);
+        CloseHandle(hAssociationMutex);
+        if(options_.verbose_) time_header_out(cerr) << "DcmQueryRetrieveSCP::handleAssociation() release mutex " << hAssociationMutex << endl;
+        hAssociationMutex = NULL;
+    }
+}
 
 OFCondition DcmQueryRetrieveSCP::handleAssociation(T_ASC_Association * assoc, OFBool correctUIDPadding)
 {
@@ -277,7 +288,9 @@ OFCondition DcmQueryRetrieveSCP::handleAssociation(T_ASC_Association * assoc, OF
             fclose(fplog);
         }
         else
-            cerr << "DcmQueryRetrieveSCP::handleAssociation() can't create sequence file name " << filename << ", missing command:" << endl << content << endl;
+            time_header_out(cerr) << "DcmQueryRetrieveSCP::handleAssociation() can't create sequence file name " << filename << ", missing command:" << endl << content << endl;
+
+        ReleseAssociationMutex();
     }
     return cond;
 }
@@ -406,13 +419,31 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
             if(dbHandle.makeStoreAssociationDir(assoc_context.associationId, assoc_context.storageArea, sizeof(assoc_context.storageArea)).bad())
             {
                 assoc_context.associationId[0] = '\0';
-                cerr << "DcmQueryRetrieveSCP::storeSCP() can't create association dir " 
+                time_header_out(cerr) << "DcmQueryRetrieveSCP::storeSCP() can't create association dir " 
                     << assoc_context.associationId << "\\" << assoc_context.storageArea << endl;
             }
             else
             {
                 FILE *fplog = NULL;
                 char filename[MAX_PATH], content[1024];
+
+                if(-1 != sprintf_s(filename, "Global\\%s", assoc_context.associationId))
+                {
+                    if(hAssociationMutex) { ReleaseMutex(hAssociationMutex); CloseHandle(hAssociationMutex); }
+                    hAssociationMutex = CreateMutex(NULL, TRUE, filename);
+                    if(hAssociationMutex)
+                    {
+                        if(options_.verbose_) time_header_out(cerr) << "DcmQueryRetrieveSCP::storeSCP() create mutex: " << filename << ", handle " << hAssociationMutex << endl;
+                    }
+                    else
+                    {
+                        stringstream msg;
+                        time_header_out(msg) << "DcmQueryRetrieveSCP::storeSCP() create mutex: " << filename;
+                        // displayErrorToCerr_internal() declare in dcmqrsvr.h
+                        displayErrorToCerr(msg.str().c_str(), GetLastError());
+                    }
+                }
+
                 sprintf_s(filename, "%s\\%s\\" STATE_DIR "%s_" NOTIFY_STORE_TAG ".dfc",
                     assoc_context.storageArea, assoc_context.associationId, assoc_context.associationId);
                 int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d %s\n",
@@ -424,7 +455,7 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                     fclose(fplog);
                 }
                 else
-                    cerr << "DcmQueryRetrieveSCP::storeSCP() can't create sequence file name " << filename << ", missing command:" << endl << content << endl;
+                    time_header_out(cerr) << "DcmQueryRetrieveSCP::storeSCP() can't create sequence file name " << filename << ", missing command:" << endl << content << endl;
             }
 
             if(pPacsBase)
@@ -444,11 +475,11 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                     fclose(fplog);
                 }
                 else
-                    cerr << "DcmQueryRetrieveSCP::storeSCP() can't create notify file " << filename << ", missing command:" << endl << content << endl;
+                    time_header_out(cerr) << "DcmQueryRetrieveSCP::storeSCP() can't create notify file " << filename << ", missing command:" << endl << content << endl;
             }
         }
         else
-            cerr << "DcmQueryRetrieveSCP::storeSCP() can't create association id" << endl;
+            time_header_out(cerr) << "DcmQueryRetrieveSCP::storeSCP() can't create association id" << endl;
     }
 
     if (options_.verbose_) {
@@ -523,7 +554,7 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
       /* remove file */
       if (strcmp(imageFileName, NULL_DEVICE_NAME) != 0) // don't try to delete /dev/null
       {
-        if (options_.verbose_) fprintf(stderr, "Store SCP: Deleting Image File: %s\n", imageFileName);
+        if (options_.verbose_) time_header_out(cerr) << "Store SCP: Deleting Image File: " << imageFileName << endl;
         unlink(imageFileName);
       }
       dbHandle.pruneInvalidRecords();

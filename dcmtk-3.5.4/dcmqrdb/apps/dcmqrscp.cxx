@@ -93,7 +93,6 @@ END_EXTERN_C
 #include "dcmtk/dcmqrdb/dcmqrcbs.h"
 #include "dcmtk/dcmdata/dcdatset.h"
 #include "dcmtk/dcmdata/dcdeftag.h"
-#include <commonlib.h>
 #include <algorithm>
 
 #ifdef WITH_SQL_DATABASE
@@ -120,17 +119,6 @@ OFBool      opt_checkFindIdentifier = OFFalse;
 OFBool      opt_checkMoveIdentifier = OFFalse;
 OFCmdUnsignedInt opt_port = 0;
 
-void errmsg(const char* msg, ...)
-{
-    va_list args;
-
-    fprintf(stderr, "%s: ", OFFIS_CONSOLE_APPLICATION);
-    va_start(args, msg);
-    vfprintf(stderr, msg, args);
-    va_end(args);
-    fprintf(stderr, "\n");
-}
-
 static char pacs_base[MAX_PATH];
 static DcmQueryRetrieveConfig *configPtr = NULL;
 #ifdef _DEBUG
@@ -139,11 +127,11 @@ static DcmQueryRetrieveOptions *optionsPtr = NULL;
 static DcmQueryRetrieveIndexDatabaseHandleFactory *factoryPtr = NULL;
 #endif
 
-static HANDLE hMutex = NULL;
+static HANDLE hServiceMutex = NULL;
 
 static void exitHook()
 {
-    if(hMutex) { ReleaseMutex(hMutex); CloseHandle(hMutex); }
+    if(hServiceMutex) { ReleaseMutex(hServiceMutex); CloseHandle(hServiceMutex); }
 	if(configPtr) delete configPtr;
 #ifdef _DEBUG
 	dcmDataDict.clear();
@@ -153,38 +141,7 @@ static void exitHook()
 	_CrtDumpMemoryLeaks();
 #endif
 }
-/*
-static bool association_established = false;
 
-static void association_establishment(DcmQueryRetrieveStoreContext *pc)
-{
-    FILE *fplog = NULL;
-    char filename[MAX_PATH], content[1024];
-
-    association_established = true;
-
-    strcpy_s(filename, pc->getFileName());
-    char * fn_only = strrchr(filename, '\\');
-    if(fn_only)
-    {
-        ++fn_only;
-        sprintf_s(fn_only, sizeof(filename) - (fn_only - filename), STATE_DIR "%s_" NOTIFY_STORE_TAG ".dfc", pc->pac->associationId);
-    
-        int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d %s\n",
-            NOTIFY_ASSOC_ESTA, pc->pac->associationId, pc->pac->callingAPTitle, pc->pac->remoteHostName, 
-            pc->pac->calledAPTitle, pc->pac->port, pc->pac->remoteHostName);
-        if(fplog = fopen(filename, "a"))
-        {
-            fwrite(content, content_used, 1, fplog);
-            fclose(fplog);
-        }
-        else
-            cerr << "association_establishment() can't create sequence file name " << filename << ", missing command: " << content << endl;
-    }
-    else
-        cerr << "association_establishment() can't find storage area's state dir: " << pc->getFileName() << endl;
-}
-*/
 static OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 {
     //if(!association_established) association_establishment(pc);
@@ -211,7 +168,6 @@ static OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
 int
 main(int argc, char *argv[])
 {
-	locale::global(locale(CHINESE_LOCAL));
     OFCondition cond = EC_Normal;
     OFCmdUnsignedInt overridePort = 0;
     OFCmdUnsignedInt overrideMaxPDU = 0;
@@ -646,7 +602,7 @@ main(int argc, char *argv[])
 
     /* read config file */
     if (access(opt_configFileName, R_OK) < 0) {
-    errmsg("cannot access %s: %s", opt_configFileName, strerror(errno));
+    time_header_out(CERR) << "cannot access " << opt_configFileName << ": " << strerror(errno) << endl;
     return 10;
     }
 
@@ -654,7 +610,7 @@ main(int argc, char *argv[])
 	DcmQueryRetrieveConfig &config = *configPtr;
 
 	if (!config.init(opt_configFileName)) {
-    errmsg("bad config file: %s", opt_configFileName);
+    time_header_out(CERR) << "bad config file: " << opt_configFileName << endl;
     return 10;
     }
     options.maxAssociations_ = config.getMaxAssociations();
@@ -681,7 +637,7 @@ main(int argc, char *argv[])
     /* if port is privileged we must be as well */
     if (opt_port < 1024) {
         if (geteuid() != 0) {
-        errmsg("cannot listen on port %d, insufficient privileges", (int)opt_port);
+        time_header_out(CERR) << "cannot listen on port " << (int)opt_port << ", insufficient privileges" << endl;
             return 10;
     }
     }
@@ -691,14 +647,14 @@ main(int argc, char *argv[])
 
     if(!options.singleProcess_ && !options.forkedChild_)
     {
-        hMutex = OpenMutex(SYNCHRONIZE, FALSE, "Global\\dcmtk_ServiceWrapper");
-        if(hMutex == NULL)
+        hServiceMutex = OpenMutex(SYNCHRONIZE, FALSE, "Global\\dcmtk_ServiceWrapper");
+        if(hServiceMutex == NULL)
         {
-            cerr << "OpenMutex(Global\\dcmtk_ServiceWrapper) failed: " << GetLastError() << endl;
+            time_header_out(CERR) << "OpenMutex(Global\\dcmtk_ServiceWrapper) failed: " << GetLastError() << endl;
             return 11;
         }
         else if(options.verbose_)
-            cerr << "OpenMutex(Global\\dcmtk_ServiceWrapper) OK" << endl;
+            time_header_out(CERR) << "OpenMutex(Global\\dcmtk_ServiceWrapper) OK" << endl;
     }
 
     ChangeToPacsWebSub(pacs_base, sizeof(pacs_base));
@@ -719,11 +675,11 @@ main(int argc, char *argv[])
 			// make sure buffer is zero terminated
 			SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, &protoInfo, 0, WSA_FLAG_OVERLAPPED);
 			dcmExternalSocketHandle.set((int)sock);
-			if(options.debug_) COUT << "external sock " << (int)sock << endl;
+			if(options.debug_) time_header_out(CERR) << "external sock " << (int)sock << endl;
 		}
 		else
 		{
-			CERR << "Error while reading socket handle: " << GetLastError() << endl;
+			time_header_out(CERR) << "Error while reading socket handle: " << GetLastError() << endl;
 			return 1;
 		}
 	}
@@ -735,7 +691,7 @@ main(int argc, char *argv[])
 #endif
     cond = ASC_initializeNetwork(NET_ACCEPTORREQUESTOR, (int)opt_port, options.acse_timeout_, &options.net_);
     if (cond.bad()) {
-		errmsg("Error initialising network:");
+		time_header_out(CERR) << "Error initialising network:";
 		DimseCondition::dump(cond);
         return 10;
     }
@@ -759,12 +715,12 @@ main(int argc, char *argv[])
      {
        if (!(grp = getgrnam(opt_GroupName)))
        {
-         errmsg("Bad group name %s", opt_GroupName);
+         time_header_out(CERR) << "Bad group name " << opt_GroupName << endl;
          return 10;
        }
        if (setgid(grp->gr_gid) == -1)
        {
-         errmsg("setgid: Unable to set group id to group %u", (unsigned)grp->gr_gid);
+         time_header_out(CERR) << "setgid: Unable to set group id to group " << (unsigned)grp->gr_gid) << endl;
          return 10;
        }
      }
@@ -772,12 +728,12 @@ main(int argc, char *argv[])
      {
        if (!(pwd = getpwnam(opt_UserName)))
        {
-         errmsg("Bad user name %s\n", opt_UserName);
+         time_header_out(CERR) << "Bad user name " << opt_UserName << endl;
          return 10;
        }
        if (setuid(pwd->pw_uid) == -1)
        {
-         errmsg("setuid: Unable to set user id to user %u", (unsigned)pwd->pw_uid);
+         time_header_out(CERR) << "setuid: Unable to set user id to user " << (unsigned)pwd->pw_uid) << endl;
          return 10;
        }
      }
@@ -809,13 +765,13 @@ main(int argc, char *argv[])
         {
             if(scp.getStoreResult() != STORE_NONE) scp.cleanAssocContextExceptCallback();
         }
-        else if(hMutex)
+        else if(hServiceMutex)
         {
-            DWORD wr = WaitForSingleObject(hMutex, 0);
+            DWORD wr = WaitForSingleObject(hServiceMutex, 0);
             if(wr == WAIT_OBJECT_0 || wr == WAIT_ABANDONED)
             {
                 SignalInterruptHandler(1);
-                if(options.verbose_) cerr << "hMutex is released, ServiceWrapper is not alive, dcmqrscp send Ctrl-C to self" << endl;
+                if(options.verbose_) time_header_out(CERR) << "hMutex is released, ServiceWrapper is not alive, dcmqrscp send Ctrl-C to self" << endl;
             }
         }
 		if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */
@@ -825,7 +781,7 @@ main(int argc, char *argv[])
 
     cond = ASC_dropNetwork(&options.net_);
     if (cond.bad()) {
-        errmsg("Error dropping network:");
+        time_header_out(CERR) << "Error dropping network:";
         DimseCondition::dump(cond);
         return 10;
     }

@@ -41,6 +41,7 @@
 #include "dcmtk/dcmnet/dimse.h"
 #include "dcmtk/dcmqrdb/dcmqrptb.h"
 #include "dcmtk/dcmqrdb/association_context.h"
+#include "common_public.h"
 
 class DcmQueryRetrieveConfig;
 class DcmQueryRetrieveOptions;
@@ -80,6 +81,7 @@ class DcmQueryRetrieveSCP
 public:
   
     const char *pPacsBase;
+    void ReleseAssociationMutex();
 
   /** constructor
    *  @param config SCP configuration facility
@@ -94,7 +96,9 @@ public:
     const char *pacs_base = NULL);
 
   /// destructor
-  virtual ~DcmQueryRetrieveSCP() { }
+  virtual ~DcmQueryRetrieveSCP() {
+      ReleseAssociationMutex();
+  }
 
   /** wait for incoming A-ASSOCIATE requests, perform association negotiation
    *  and serve the requests. May fork child processes depending on availability
@@ -131,6 +135,8 @@ public:
 private:
 
   ASSOCIATION_CONTEXT assoc_context;
+
+  HANDLE hAssociationMutex;
 
   /** perform association negotiation for an incoming A-ASSOCIATE request based
    *  on the SCP configuration and option flags. No A-ASSOCIATE response is generated,
@@ -207,7 +213,7 @@ private:
   const DcmQueryRetrieveOptions& options_;
 };
 
-#endif
+#endif // DCMQRSRV_H
 
 /*
  * CVS Log

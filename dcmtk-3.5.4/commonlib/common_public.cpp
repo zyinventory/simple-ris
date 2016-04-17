@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <time.h>
 #include <sys/timeb.h>
 #include <share.h>
@@ -11,6 +12,7 @@
 #include <windows.h>
 #include <Aclapi.h>
 #include <iostream>
+#include <sstream>
 
 #ifdef COMMONLIB_EXPORTS
 #define COMMONLIB_API __declspec(dllexport)
@@ -18,9 +20,43 @@
 #define COMMONLIB_API __declspec(dllimport)
 #endif
 
+static int signalInterruptFlag = 0;
+
 #ifdef COMMONLIB_EXPORTS
-COMMONLIB_API size_t GenerateTime(const char *format, char *timeBuffer, size_t bufferSize, time_t *time_now)
+#define SignalInterruptHandler SignalInterruptHandler_dll
+COMMONLIB_API void SignalInterruptHandler_dll(int signal)
 #else
+#define SignalInterruptHandler SignalInterruptHandler_internal
+void SignalInterruptHandler_internal(int signal)
+#endif
+{
+  signalInterruptFlag = signal;
+}
+
+#ifdef COMMONLIB_EXPORTS
+COMMONLIB_API void Capture_Ctrl_C_dll()
+#else
+void Capture_Ctrl_C_internal()
+#endif
+{
+  signalInterruptFlag = 0;
+  signal(SIGINT, SignalInterruptHandler);
+}
+
+#ifdef COMMONLIB_EXPORTS
+COMMONLIB_API int GetSignalInterruptValue_dll()
+#else
+int GetSignalInterruptValue_internal()
+#endif
+{
+  return signalInterruptFlag;
+}
+
+#ifdef COMMONLIB_EXPORTS
+#define GenerateTime GenerateTime_dll
+COMMONLIB_API size_t GenerateTime_dll(const char *format, char *timeBuffer, size_t bufferSize, time_t *time_now)
+#else
+#define GenerateTime GenerateTime_internal
 size_t GenerateTime_internal(const char *format, char *timeBuffer, size_t bufferSize, time_t *time_now)
 #endif
 {
@@ -33,16 +69,31 @@ size_t GenerateTime_internal(const char *format, char *timeBuffer, size_t buffer
 		return 0;
 }
 
+#define DATE_FORMAT_YEAR_TO_SECOND "%Y-%m-%d %H:%M:%S"
+
+#ifdef COMMONLIB_EXPORTS
+#define time_header_out time_header_out_dll
+COMMONLIB_API std::ostream& time_header_out_dll(std::ostream &os)
+#else
+#define time_header_out time_header_out_internal
+std::ostream& time_header_out_internal(std::ostream &os)
+#endif
+{
+	char timeBuffer[32];
+	if(GenerateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer), NULL)) os << timeBuffer << ' ';
+	return os;
+}
+
 #define ENV_PACS_BASE "PACS_BASE"
 
 #ifdef COMMONLIB_EXPORTS
 extern COMMONLIB_API char COMMONLIB_PACS_BASE[MAX_PATH];
-#define GetPacsBase_public GetPacsBase
-COMMONLIB_API const char* GetPacsBase()
+#define GetPacsBase GetPacsBase_dll
+COMMONLIB_API const char* GetPacsBase_dll()
 #else
 static char COMMONLIB_PACS_BASE[MAX_PATH] = "";
-#define GetPacsBase_public GetPacsBase_internal
-static const char* GetPacsBase_internal()
+#define GetPacsBase GetPacsBase_internal
+const char* GetPacsBase_internal()
 #endif
 {
 	size_t requiredSize = 0;
@@ -58,11 +109,28 @@ static const char* GetPacsBase_internal()
 }
 
 #ifdef COMMONLIB_EXPORTS
-#define displayErrorToCerr_public displayErrorToCerr
-COMMONLIB_API DWORD displayErrorToCerr(const TCHAR *lpszFunction, DWORD dw, std::ostream *perrstrm)
+COMMONLIB_API int ChangeToPacsWebSub_dll(char *pPacsBase, size_t buff_size)
 #else
-#define displayErrorToCerr_public displayErrorToCerr_internal
-static DWORD displayErrorToCerr_internal(const TCHAR *lpszFunction, DWORD dw, std::ostream *perrstrm)
+int ChangeToPacsWebSub_internal(char *pPacsBase, size_t buff_size)
+#endif
+{
+    size_t requiredSize = strlen(COMMONLIB_PACS_BASE);
+    strcpy_s(COMMONLIB_PACS_BASE + requiredSize, MAX_PATH - requiredSize, "\\pacs"); // PACS_BASE + <web_dir>
+    errno_t en = _chdir(COMMONLIB_PACS_BASE);
+    COMMONLIB_PACS_BASE[requiredSize] = '\0';
+    if(en) return en;
+    if(pPacsBase)
+        return strcpy_s(pPacsBase, buff_size, COMMONLIB_PACS_BASE);
+    else
+        return 0;
+}
+
+#ifdef COMMONLIB_EXPORTS
+#define displayErrorToCerr displayErrorToCerr_dll
+COMMONLIB_API DWORD displayErrorToCerr_dll(const TCHAR *lpszFunction, DWORD dw, std::ostream *perrstrm)
+#else
+#define displayErrorToCerr displayErrorToCerr_internal
+DWORD displayErrorToCerr_internal(const TCHAR *lpszFunction, DWORD dw, std::ostream *perrstrm)
 #endif
 {
 	TCHAR *lpMsgBuf;
@@ -73,35 +141,31 @@ static DWORD displayErrorToCerr_internal(const TCHAR *lpszFunction, DWORD dw, st
 	// Display the error message
 	//lpDisplayBuf = (TCHAR *)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
 	//StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error %d: %s"), lpszFunction, dw, lpMsgBuf); 
-    if(perrstrm)
-        *perrstrm << lpszFunction << " failed with error " << dw << ": " << lpMsgBuf << std::endl;
-    else
-	    fprintf(stderr, TEXT("%s failed with error %d: %s\n"), lpszFunction, dw, lpMsgBuf); 
+    time_header_out(perrstrm ? *perrstrm : std::cerr) << lpszFunction << " failed with error " << dw << ": " << lpMsgBuf << std::endl;
 	LocalFree(lpMsgBuf);
 	//LocalFree(lpDisplayBuf);
     return dw;
 }
 
 #ifdef COMMONLIB_EXPORTS
-#define DisplayErrorToFileHandle_public DisplayErrorToFileHandle
-COMMONLIB_API DWORD DisplayErrorToFileHandle(TCHAR *lpszFunction, DWORD dw, HANDLE fh)
+#define DisplayErrorToFileHandle DisplayErrorToFileHandle_dll
+COMMONLIB_API DWORD DisplayErrorToFileHandle_dll(TCHAR *lpszFunction, DWORD dw, HANDLE fh)
 #else
-#define DisplayErrorToFileHandle_public DisplayErrorToFileHandle_internal
-static DWORD DisplayErrorToFileHandle_internal(TCHAR *lpszFunction, DWORD dw, HANDLE fh)
+#define DisplayErrorToFileHandle DisplayErrorToFileHandle_internal
+DWORD DisplayErrorToFileHandle_internal(TCHAR *lpszFunction, DWORD dw, HANDLE fh)
 #endif
 {
 	TCHAR *lpMsgBuf;
-	TCHAR *lpDisplayBuf;
 
 	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 		NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) &lpMsgBuf, 0, NULL );
-	// Display the error message
-	lpDisplayBuf = (TCHAR *)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
-	sprintf_s(lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error %d: %s\r\n"), lpszFunction, dw, lpMsgBuf);
+
+    std::ostringstream msgbuf;
+    time_header_out(msgbuf) << lpszFunction << " failed with error " << dw << ": " << lpMsgBuf << std::endl;
+    std::string msg(msgbuf.str());
     DWORD written = 0;
-    WriteFile(fh, lpDisplayBuf, strlen(lpDisplayBuf), &written, NULL);
+    WriteFile(fh, msg.c_str(), msg.length(), &written, NULL);
 	LocalFree(lpMsgBuf);
-	LocalFree(lpDisplayBuf);
     return dw;
 }
 
@@ -115,7 +179,7 @@ FILE *create_transaction_append_file(const char *fn)
     {
         char msg[MAX_PATH];
         sprintf_s(msg, "CreateFile(%s)", fn);
-        displayErrorToCerr_public(msg, GetLastError(), NULL);
+        displayErrorToCerr(msg, GetLastError(), NULL);
     }
     else
     {
@@ -236,7 +300,7 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
             dw = GetLastError();
         }
         if(mutex_seq == NULL)
-            displayErrorToCerr_public("OpenMutex()", dw, NULL);
+            displayErrorToCerr("OpenMutex()", dw, NULL);
     }
 
     if(mutex_seq && WAIT_FAILED != WaitForSingleObject(mutex_seq, INFINITE))
@@ -260,7 +324,7 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
             size_t baselen = 0;
             if(sequence_path[0] == '\0')
             {
-                const char *basedir = GetPacsBase_public();
+                const char *basedir = GetPacsBase();
                 strcpy_s(sequence_path, basedir);
                 baselen = strlen(sequence_path);
                 if(ownerPrivilege)
@@ -285,7 +349,7 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
                 {
                     char prefix[MAX_PATH];
                     sprintf_s(prefix, "CreateFile(%s)", sequence_path);
-                    displayErrorToCerr_public(prefix, dw, NULL);
+                    displayErrorToCerr(prefix, dw, NULL);
                 }
             }
             hmap = CreateFileMapping(hfile, NULL, PAGE_READWRITE | SEC_COMMIT, 0, sizeof(MapHistory), mappingName);
@@ -294,7 +358,7 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
             {
                 char msg[MAX_PATH];
                 sprintf_s(msg, "create mapping %s", mappingName);
-                displayErrorToCerr_public(msg, dw, NULL);
+                displayErrorToCerr(msg, dw, NULL);
             }
             if(hmap && ownerPrivilege)
             {
@@ -319,7 +383,7 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
                 if(pSD) LocalFree(pSD);
                 if(pNewDacl) LocalFree(pNewDacl);
                 if(dw != ERROR_SUCCESS)
-                    displayErrorToCerr_public("SetSecurityInfo()", dw, NULL);
+                    displayErrorToCerr("SetSecurityInfo()", dw, NULL);
             }
 hmap_OK:
             if(hmap)
@@ -330,7 +394,7 @@ hmap_OK:
                 dw = GetLastError();
                 if(pMapHistory == NULL)
                 {
-                    displayErrorToCerr_public("MapViewOfFile()", dw, NULL);
+                    displayErrorToCerr("MapViewOfFile()", dw, NULL);
                     CloseHandle(hmap);
                     hmap = NULL;
                 }
@@ -341,7 +405,7 @@ hmap_OK:
                 }
             }
             else
-                displayErrorToCerr_public("OpenFileMapping() or CreateFileMapping()", dw, NULL);
+                displayErrorToCerr("OpenFileMapping() or CreateFileMapping()", dw, NULL);
         }
     }
     if(pMapHistory == NULL)

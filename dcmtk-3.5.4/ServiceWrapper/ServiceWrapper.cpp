@@ -16,13 +16,6 @@ static ofstream flog;
 const char *dirmakerCommand;
 bool opt_verbose = false;
 
-std::ostream& time_header_out(ostream &os)
-{
-	char timeBuffer[32];
-	if(GenerateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
-	return os;
-}
-
 static size_t checkDiskFreeSpaceInMB(const char * path)
 {
 	DWORD dwSectPerClust, dwBytesPerSect, dwFreeClusters, dwTotalClusters;
@@ -229,6 +222,7 @@ static int realMain(int argc, char **argv)
         CloseHandle(logFile);
 		return -2;
 	}
+    return 0;
 }
 
 static void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
@@ -244,7 +238,6 @@ static void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	//locale::global(locale(CHINESE_LOCAL));
 	if(argc < 2)
 	{
 		cerr << "使用说明: ServiceWrapper [ServiceName] [params]" << endl;

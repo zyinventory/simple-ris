@@ -91,7 +91,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;$(SolutionDir)commonlib;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\commonlib;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>HAVE_FORK;_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;WIN32;_WINDOWS;_DEBUG;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -113,10 +113,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;commonlib.lib;libz.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;libz.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(SolutionDir)$(ConfigurationName)\dcmqrscp.exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>Debug/dcmqrscp.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
@@ -139,7 +139,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;$(SolutionDir)commonlib;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\commonlib;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>HAVE_FORK;_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -160,10 +160,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;commonlib.lib;libz.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;libz.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(SolutionDir)$(ConfigurationName)\dcmqrscp.exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>Release/dcmqrscp.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>Release\dcmqrscp.lib</ImportLibrary>
@@ -185,7 +185,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;$(SolutionDir)commonlib;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\commonlib;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>HAVE_FORK;_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -206,10 +206,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;commonlib.lib;libz.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;libz.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(SolutionDir)$(ConfigurationName)\dcmqrscp.exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>MinSizeRel/dcmqrscp.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>
       <ImportLibrary>MinSizeRel\dcmqrscp.lib</ImportLibrary>
@@ -231,7 +231,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;$(SolutionDir)commonlib;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\config\include;..\include;..\..\ofstd\include;..\..\dcmdata\include;..\..\dcmnet\include;..\..\commonlib;$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\include\thirdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>HAVE_FORK;_REENTRANT;WITH_LIBXML;WITH_LIBPNG;WITH_LIBTIFF;WITH_OPENSSL;WITH_ZLIB;WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -253,10 +253,10 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions> /STACK:10000000 /machine:X86 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;commonlib.lib;libz.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>netapi32.lib;ws2_32.lib;..\..\ofstd\libsrc\$(ConfigurationName)\ofstd.lib;..\..\dcmdata\libsrc\$(ConfigurationName)\dcmdata.lib;..\..\dcmnet\libsrc\$(ConfigurationName)\dcmnet.lib;..\libsrc\$(ConfigurationName)\dcmqrdb.lib;libz.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(SolutionDir)$(ConfigurationName)\dcmqrscp.exe</OutputFile>
       <Version>0.0</Version>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(ConfigurationName);$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\dcmtk-support\openjpeg-dcmtk\lib\$(ConfigurationName)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>RelWithDebInfo/dcmqrscp.pdb</ProgramDatabaseFile>
       <SubSystem>Console</SubSystem>

@@ -133,11 +133,6 @@ const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
 extern COMMONLIB_API char COMMONLIB_PACS_BASE[MAX_PATH];
 extern COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
-COMMONLIB_API DWORD displayErrorToCerr(const TCHAR *lpszFunction, DWORD gle, std::ostream *perrstrm = NULL);
-COMMONLIB_API DWORD DisplayErrorToFileHandle(TCHAR *lpszFunction, DWORD dw, HANDLE fh);
-COMMONLIB_API int GetSignalInterruptValue();
-COMMONLIB_API void SignalInterruptHandler(int signal);
-COMMONLIB_API void Capture_Ctrl_C();
 COMMONLIB_API bool IsASCII(const char *str);
 COMMONLIB_API const char *trim_const(const char *s, int maxStrLen, const char **ptail);
 COMMONLIB_API char *rtrim(char *s, int maxLen = INT_MAX - 1);
@@ -157,9 +152,6 @@ COMMONLIB_API bool SendCommonMessageToQueue(const char *label, const char *body,
 COMMONLIB_API bool EnsureQueueExist(const char *queuePath);
 COMMONLIB_API bool DeleteQueue(const char *queueName);
 COMMONLIB_API errno_t setEnvParentPID();
-COMMONLIB_API size_t GenerateTime(const char *format, char *timeBuffer, size_t bufferSize, time_t *time_now = NULL);
-COMMONLIB_API const char* GetPacsBase();
-COMMONLIB_API int ChangeToPacsWebSub(char *pPacsBase, size_t buff_size);
 COMMONLIB_API __int64 HashStrW(const wchar_t *s, char *buffer = NULL, size_t buffer_size = 0);
 COMMONLIB_API __int64 HashStr(const char *s, char *buffer = NULL, size_t buffer_size = 0);
 COMMONLIB_API long long diskUsage(const char *pacsBase, const char *studyUID);
@@ -177,6 +169,27 @@ COMMONLIB_API void ReleaseUniqueNoResource();
 
 COMMONLIB_API int scp_store_main_loop(const char *sessionId, bool verbose);
 COMMONLIB_API size_t in_process_sequence_dll(char *buff, size_t buff_size, const char *prefix);
+
+// common_public.cpp
+#define GetSignalInterruptValue GetSignalInterruptValue_dll
+COMMONLIB_API int GetSignalInterruptValue_dll();
+#define SignalInterruptHandler SignalInterruptHandler_dll
+COMMONLIB_API void SignalInterruptHandler_dll(int signal);
+#define Capture_Ctrl_C Capture_Ctrl_C_dll
+COMMONLIB_API void Capture_Ctrl_C_dll();
+#define GetPacsBase GetPacsBase_dll
+COMMONLIB_API const char* GetPacsBase_dll();
+#define ChangeToPacsWebSub ChangeToPacsWebSub_dll
+COMMONLIB_API int ChangeToPacsWebSub_dll(char *pPacsBase, size_t buff_size);
+#define time_header_out time_header_out_dll
+COMMONLIB_API std::ostream& time_header_out_dll(std::ostream &os);
+#define GenerateTime GenerateTime_dll
+COMMONLIB_API size_t GenerateTime_dll(const char *format, char *timeBuffer, size_t bufferSize, time_t *time_now = NULL);
+#define displayErrorToCerr displayErrorToCerr_dll
+COMMONLIB_API DWORD displayErrorToCerr_dll(const TCHAR *lpszFunction, DWORD dw, std::ostream *perrstrm = NULL);
+#define DisplayErrorToFileHandle DisplayErrorToFileHandle_dll
+COMMONLIB_API DWORD DisplayErrorToFileHandle_dll(TCHAR *lpszFunction, DWORD dw, HANDLE fh);
+// common_public.cpp
 
 #ifdef _DEBUG
 

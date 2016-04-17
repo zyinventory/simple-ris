@@ -38,7 +38,6 @@ typedef struct _WorkerProcess {
 
 bool RedirectMessageLabelEqualWith(const char *equalWith, const char *queueName);
 int commandDispatcher(const char *queueName, int processorNumber);
-std::ostream& time_header_out(std::ostream &os);
 void autoCleanPacsDiskByStudyDate();
 bool deleteDayStudy(const char *dayxml);
 bool __stdcall captureStdoutToLogStream(std::ostream &flog);

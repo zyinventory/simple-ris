@@ -105,13 +105,6 @@ static char timeBuffer[32], fnbuf[1024], last_file_name[MAX_PATH] = "";
 
 // ********************************************
 
-static std::ostream& time_header_out(ostream &os)
-{
-	//char timeBuffer[32];
-	if(GenerateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
-	return os;
-}
-
 static bool GEMediaStorageSOPInstanceUID(char *buf, uint buf_len)
 {
 	time_t now = time(NULL);

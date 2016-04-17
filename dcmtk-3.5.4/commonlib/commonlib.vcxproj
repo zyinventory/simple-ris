@@ -148,6 +148,7 @@
     <ClInclude Include="..\dcmdata\include\dcmtk\dcmdata\dconotify.h" />
     <ClInclude Include="commonlib.h" />
     <ClInclude Include="commonlib_internal.h" />
+    <ClInclude Include="common_public.h" />
     <ClInclude Include="mini-gmp.h" />
     <ClInclude Include="poststore.h" />
     <ClInclude Include="service.h" />

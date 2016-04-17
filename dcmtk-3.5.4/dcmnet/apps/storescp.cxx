@@ -282,13 +282,6 @@ static void exitHook()
 #endif
 }
 
-static std::ostream& time_header_out(ostream &os)
-{
-	char timeBuffer[32];
-	if(GenerateTime(DATE_FORMAT_YEAR_TO_SECOND, timeBuffer, sizeof(timeBuffer))) os << timeBuffer << ' ';
-	return os;
-}
-
 int main(int argc, char *argv[])
 {
 #ifdef _DEBUG
