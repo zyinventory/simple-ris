@@ -122,7 +122,7 @@ static void find_all_study_dir(map<string, string> &map_studies_dicomdir)
     intptr_t hSearch = _findfirst("archdir\\*", &wfd);
     if(hSearch == -1)
     {
-        perror("move_study_dir() failed");
+        perror("find_all_study_dir() failed");
         fprintf_s(stderr, "\tfind %s failed\n", "archdir\\*");
         return;
     }

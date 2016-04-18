@@ -168,61 +168,11 @@ static int realMain(int argc, char **argv)
 	string cmd(cmdStream.str());
 	cmdStream.clear();
 	opt_verbose = (string::npos != cmd.find(" -v "));
+    
+    strcpy_s(qrcmd, cmd.c_str());
+    cmd.clear();
 
-	PROCESS_INFORMATION procinfo;
-	STARTUPINFO sinfo;
-
-	memset(&procinfo, 0, sizeof(PROCESS_INFORMATION));
-	memset(&sinfo, 0, sizeof(STARTUPINFO));
-	sinfo.cb = sizeof(STARTUPINFO);
-
-	SECURITY_ATTRIBUTES logSA;
-	logSA.bInheritHandle = TRUE;
-	logSA.lpSecurityDescriptor = NULL;
-	logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
-
-	HANDLE logFile = INVALID_HANDLE_VALUE;
-	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_dcmqrscp.txt", timeBuffer, sizeof(timeBuffer));
-	if(PrepareFileDir(timeBuffer))
-		logFile = CreateFile(timeBuffer, GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-
-	if(logFile != INVALID_HANDLE_VALUE)
-	{
-		sinfo.dwFlags |= STARTF_USESTDHANDLES;
-		sinfo.hStdOutput = logFile;
-		sinfo.hStdError = logFile;
-		sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-	}
-
-    char *qrcmd = new char[cmd.length() + 1];
-    strcpy_s(qrcmd, cmd.length() + 1, cmd.c_str());
-	if( CreateProcess(NULL, qrcmd, NULL, NULL, TRUE, CREATE_NEW_PROCESS_GROUP, NULL, NULL, &sinfo, &procinfo) )
-	{
-        delete[] qrcmd;
-		//WaitForInputIdle(procinfo.hProcess, INFINITE);
-		CloseHandle(procinfo.hProcess);
-		CloseHandle(procinfo.hThread);
-        CloseHandle(logFile);
-        
-        if(opt_verbose) time_header_out(flog) << "create dcmqrscp process OK: " << cmd << endl;
-
-		SYSTEM_INFO sysInfo;
-		GetSystemInfo(&sysInfo);
-		//return commandDispatcher(QUEUE_NAME, min(MAX_CORE, sysInfo.dwNumberOfProcessors - 1));
-        while(GetSignalInterruptValue() == 0)
-        {
-            // todo: listen notify dir
-            Sleep(1000);
-        }
-	}
-	else
-	{
-        delete[] qrcmd;
-		time_header_out(flog) << "create dcmqrscp process error: " << cmd << endl;
-        CloseHandle(logFile);
-		return -2;
-	}
-    return 0;
+    return watch_notify(flog);
 }
 
 static void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)

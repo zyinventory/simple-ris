@@ -18,6 +18,7 @@
 
 // TODO: 在此处引用程序需要的其他头文件
 #include <fcntl.h>
+#include <io.h>
 #include <sys/stat.h>
 #include <iostream>
 #include <fstream>
@@ -42,3 +43,8 @@ void autoCleanPacsDiskByStudyDate();
 bool deleteDayStudy(const char *dayxml);
 bool __stdcall captureStdoutToLogStream(std::ostream &flog);
 void __stdcall releaseStdout(std::ostream &flog);
+
+int watch_notify(std::ostream &flog);
+
+extern bool opt_verbose;
+extern char qrcmd[1024];
