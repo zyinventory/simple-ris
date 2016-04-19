@@ -427,7 +427,7 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                 FILE *fplog = NULL;
                 char filename[MAX_PATH], content[1024];
 
-                if(-1 != sprintf_s(filename, "Global\\%s", assoc_context.associationId))
+                if(-1 != sprintf_s(filename, "Global\\"NOTIFY_STORE_TAG"_%s", assoc_context.associationId))
                 {
                     if(hAssociationMutex) { ReleaseMutex(hAssociationMutex); CloseHandle(hAssociationMutex); }
                     hAssociationMutex = CreateMutex(NULL, TRUE, filename);

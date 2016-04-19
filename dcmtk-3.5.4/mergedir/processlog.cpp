@@ -175,7 +175,7 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
         return;
     }
 
-    HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, NULL);
+    //HANDLE ht = (HANDLE)_beginthread(test_sim_slow_log_writer, 0, NULL);
     //test_sim_slow_log_writer(NULL);
     if(start_write_log >= 0) // start_write_log == 0, start immediately
     {
@@ -183,7 +183,7 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
         scp_store_main_loop(sessionId.c_str(), false);
         //test_for_make_index("C:\\usr\\local\\dicom", true);
     }
-    WaitForSingleObject(ht, INFINITE);
+    //WaitForSingleObject(ht, INFINITE);
 }
 
 void clear_resource()

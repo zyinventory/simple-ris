@@ -47,4 +47,4 @@ void __stdcall releaseStdout(std::ostream &flog);
 int watch_notify(std::ostream &flog);
 
 extern bool opt_verbose;
-extern char qrcmd[1024];
+extern char exec_cmd[1024];
