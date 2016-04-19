@@ -610,14 +610,19 @@ OFCondition DJCodecEncoder::encodeTrueLossless(
         DcmDataset *pds = dynamic_cast<DcmDataset*>(dataset);
         // create DicomImage object. Will fail if dcmimage has not been activated in main().
         // transfer syntax can be any uncompressed one.
-        DicomImage dimage(dataset, pds->getOriginalXfer(), 0); // read all frames
-        if (dimage.getStatus() != EIS_Normal) result = EC_CorruptedData; // should return dimage.getStatus()
-        else result = EC_Normal;
-        if (result.good())
+        if(pds)
         {
-          if (! dimage.getMinMaxValues(minUsed, maxUsed, 0)) result = EC_CorruptedData;
-          if (maxUsed < minUsed) result = EC_CorruptedData;
+            DicomImage dimage(dataset, pds->getOriginalXfer(), 0); // read all frames
+            if (dimage.getStatus() != EIS_Normal) result = EC_CorruptedData; // should return dimage.getStatus()
+            else result = EC_Normal;
+            if (result.good())
+            {
+              if (! dimage.getMinMaxValues(minUsed, maxUsed, 0)) result = EC_CorruptedData;
+              if (maxUsed < minUsed) result = EC_CorruptedData;
+            }
         }
+        else
+            result = EC_Normal;
       }
       else
         result = EC_Normal;
