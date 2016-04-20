@@ -2,9 +2,12 @@
 #define DCMQR_ASSOC_CONTEXT
 
 class DcmQueryRetrieveStoreContext;
+class DcmQueryRetrieveConfig;
+
 typedef OFCondition(*IndexCallback)(DcmQueryRetrieveStoreContext *pc);
 
 typedef struct {
+    const DcmQueryRetrieveConfig *pConfig;
     IndexCallback cbToDcmQueryRetrieveStoreContext;
     char storageArea[DUL_LEN_NODE + 1];
     char associationId[40];

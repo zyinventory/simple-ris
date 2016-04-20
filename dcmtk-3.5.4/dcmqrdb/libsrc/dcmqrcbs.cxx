@@ -39,6 +39,7 @@
 #include "dcmtk/dcmqrdb/dcmqropt.h"
 #include "dcmtk/dcmnet/diutil.h"
 #include "dcmtk/dcmdata/dcfilefo.h"
+#include "dcmtk/dcmdata/dcvrlo.h"
 #include "dcmtk/dcmqrdb/dcmqrdbs.h"
 #include "dcmtk/dcmqrdb/dcmqrdbi.h"
 
@@ -179,6 +180,36 @@ void DcmQueryRetrieveStoreContext::callbackHandler(
 
         if (!options_.ignoreStoreData_ && rsp->DimseStatus == STATUS_Success) {
             if ((imageDataSet)&&(*imageDataSet)) {
+                // padding 
+                size_t padding_width = pac->pConfig->getPaddingWidth(pac->calledAPTitle);
+                if(padding_width)
+                {
+                    DcmElement *pElement = NULL;
+                    OFCondition cond = (*imageDataSet)->findAndGetElement(DCM_PatientID, pElement);
+                    if(cond.good())
+                    {
+                        DcmLongString *pPatientIDElement = dynamic_cast<DcmLongString*>(pElement);
+                        if(pPatientIDElement)
+                        {
+                            char *pid = NULL;
+                            cond = pPatientIDElement->getString(pid);
+                            if(cond.good() && pid)
+                            {
+                                size_t pid_len = strlen(pid);
+                                if(padding_width > pid_len)
+                                {
+                                    size_t pad_cnt = padding_width - pid_len;
+                                    char padding_pid[65];
+                                    char padding_char = pac->pConfig->getPaddingChar(pac->calledAPTitle);
+                                    for(size_t i = 0; i < pad_cnt; ++i)
+                                        padding_pid[i] = padding_char;
+                                    strcpy_s(padding_pid + pad_cnt, sizeof(padding_pid) - pad_cnt, pid);
+                                    pPatientIDElement->putString(padding_pid);
+                                }
+                            }
+                        }
+                    }
+                }
                 writeToFile(dcmff, fileName, rsp);
             }
             if (rsp->DimseStatus == STATUS_Success) {

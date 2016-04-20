@@ -119,6 +119,7 @@ DcmQueryRetrieveSCP::DcmQueryRetrieveSCP(
 , pPacsBase(pacs_base)
 {
     memset(&assoc_context, 0, sizeof(ASSOCIATION_CONTEXT));
+    assoc_context.pConfig = config_;
     assoc_context.cbToDcmQueryRetrieveStoreContext = cbStore;
     pPacsBase = GetPacsBase();
 }
@@ -408,7 +409,7 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
 
     if(storeResult == STORE_NONE) storeResult = STORE_BEGIN;
     DcmQueryRetrieveStoreContext context(dbHandle, options_, STATUS_Success, &dcmff, correctUIDPadding, &assoc_context);
-
+    
     if(strlen(assoc_context.associationId) == 0)
     {
         if(in_process_sequence(assoc_context.associationId, sizeof(assoc_context.associationId), ""))
@@ -446,9 +447,11 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
 
                 sprintf_s(filename, "%s\\%s\\" STATE_DIR "%s_" NOTIFY_STORE_TAG ".dfc",
                     assoc_context.storageArea, assoc_context.associationId, assoc_context.associationId);
-                int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d %s\n",
+                const char *xfer = config_->getXferName(assoc_context.calledAPTitle);
+                if(xfer == NULL) xfer = "DEFAULT";
+                int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d %s %s\n",
                     NOTIFY_ASSOC_ESTA, assoc_context.associationId, assoc_context.callingAPTitle, assoc_context.remoteHostName, 
-                    assoc_context.calledAPTitle, assoc_context.port, assoc_context.remoteHostName);
+                    assoc_context.calledAPTitle, assoc_context.port, xfer, assoc_context.localHostName);
                 if(fplog = fopen(filename, "w"))
                 {
                     fwrite(content, content_used, 1, fplog);
@@ -463,11 +466,13 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                 char filename[MAX_PATH], content[1024];
                 sprintf_s(filename, "%s\\pacs\\store_notify\\%s_" NOTIFY_ACKN_TAG ".dfc",
                     pPacsBase, assoc_context.associationId);
-                int content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s\\%s %d %s %s %s %s %d %s\n",
+                const char *xfer = config_->getXferName(assoc_context.calledAPTitle);
+                if(xfer == NULL) xfer = "DEFAULT";
+                int content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s\\%s %d %s %s %s %s %d %s %s\n",
                     NOTIFY_PROC_STOR_START, assoc_context.storageArea, assoc_context.associationId, 
                     _getpid(), assoc_context.associationId,
                     assoc_context.callingAPTitle, assoc_context.remoteHostName, assoc_context.calledAPTitle,
-                    assoc_context.port, assoc_context.remoteHostName);
+                    assoc_context.port, xfer, assoc_context.localHostName);
                 FILE *fplog = NULL;
                 if(fplog = fopen(filename, "w"))
                 {

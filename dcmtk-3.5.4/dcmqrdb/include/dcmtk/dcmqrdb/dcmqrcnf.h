@@ -79,6 +79,12 @@ struct DcmQueryRetrieveConfigAEEntry
 
     /// name of storage area  
     const char *StorageArea;
+    
+    /// patient id padding width  
+    size_t PaddingWidth;
+    
+    /// patient id padding char  
+    char PaddingChar;
 
     /// access type (read-only, read/write)
     const char *Access;        
@@ -188,6 +194,10 @@ public:
    *  Return : Storage Area
    */
   const char *getStorageArea(const char *AETitle) const;
+
+  /* patient id padding */
+  size_t getPaddingWidth(const char *AETitle) const;
+  char getPaddingChar(const char *AETitle) const;
 
   /*
    *  get Number of Maximal Studies

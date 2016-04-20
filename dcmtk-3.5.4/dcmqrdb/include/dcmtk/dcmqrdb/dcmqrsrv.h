@@ -125,8 +125,10 @@ public:
 
   void cleanAssocContextExceptCallback()
   {
+    const DcmQueryRetrieveConfig *pConfig = assoc_context.pConfig;
     IndexCallback cb = assoc_context.cbToDcmQueryRetrieveStoreContext;
     memset(&assoc_context, 0, sizeof(ASSOCIATION_CONTEXT));
+    assoc_context.pConfig = pConfig;
     assoc_context.cbToDcmQueryRetrieveStoreContext = cb;
   }
 

@@ -114,10 +114,10 @@ COMMONLIB_API int ChangeToPacsWebSub_dll(char *pPacsBase, size_t buff_size)
 int ChangeToPacsWebSub_internal(char *pPacsBase, size_t buff_size)
 #endif
 {
-    size_t requiredSize = strlen(COMMONLIB_PACS_BASE);
-    strcpy_s(COMMONLIB_PACS_BASE + requiredSize, MAX_PATH - requiredSize, "\\pacs"); // PACS_BASE + <web_dir>
+    size_t base_size = strlen(GetPacsBase());
+    strcpy_s(COMMONLIB_PACS_BASE + base_size, MAX_PATH - base_size, "\\pacs"); // PACS_BASE + <web_dir>
     errno_t en = _chdir(COMMONLIB_PACS_BASE);
-    COMMONLIB_PACS_BASE[requiredSize] = '\0';
+    COMMONLIB_PACS_BASE[base_size] = '\0';
     if(en) return en;
     if(pPacsBase)
         return strcpy_s(pPacsBase, buff_size, COMMONLIB_PACS_BASE);

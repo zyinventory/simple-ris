@@ -55,8 +55,9 @@ static int find_files(const char *filter, list<string> &filelist, list<string> &
     intptr_t hSearch = _findfirst(filter, &wfd);
     if(hSearch == -1)
     {
-        strerror_s(buff, errno);
-        time_header_out(flog) << "find_files() " << filter << " failed: " << buff << endl;
+        errno_t en = errno;
+        strerror_s(buff, en);
+        if(opt_verbose || en != ENOENT)time_header_out(flog) << "find_files() " << filter << " failed: " << buff << endl;
         return -1;
     }
     do {
