@@ -389,7 +389,9 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *patientFieldsPath, 
     tempDir[tmpdirlen++] = '\\';
     tempDir[tmpdirlen] = '\0';
 
-	for(list<Volume>::iterator itv = vols.begin(); itv != vols.end(); ++itv)
+    LoadSettings("..\\etc\settings.ini", index_errlog);
+
+    for(list<Volume>::iterator itv = vols.begin(); itv != vols.end(); ++itv)
 	{
         itv->sort_and_modalities_study();
         
@@ -442,19 +444,23 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *patientFieldsPath, 
 				    index_errlog << "prepareDicomDirAndBurn() read patient fields file " << patientFieldsPath << " failure." << endl;
 				    continue;
 			    }
-                strcpy_s(patientFieldsPath + prefixLen, MAX_PATH - prefixLen, "_ris.txt");
-                ifstream ifs_ris(patientFieldsPath);
-                if(ifs_ris.good())
+
+                if(GetSetting("RisIntegration", NULL, 0))
                 {
-                    while(ifs_ris.good())
+                    strcpy_s(patientFieldsPath + prefixLen, MAX_PATH - prefixLen, "_ris.txt");
+                    ifstream ifs_ris(patientFieldsPath);
+                    if(ifs_ris.good())
                     {
-                        ifs_ris.read(fbuf, 4096);
-                        ofs.write(fbuf, ifs_ris.gcount());
+                        while(ifs_ris.good())
+                        {
+                            ifs_ris.read(fbuf, 4096);
+                            ofs.write(fbuf, ifs_ris.gcount());
+                        }
+                        ifs_ris.close();
                     }
-                    ifs_ris.close();
+                    else
+                        index_errlog << "warning: prepareDicomDirAndBurn() read patient ris info " << patientFieldsPath << " failure." << endl;
                 }
-                else
-                    index_errlog << "prepareDicomDirAndBurn() read patient ris info " << patientFieldsPath << " failure." << endl;
 
                 ofs << "StudyCount=" << itv->studiesOnVolume.size() << endl;
                 ofs << "Modalities=" << itv->modalities << endl;
