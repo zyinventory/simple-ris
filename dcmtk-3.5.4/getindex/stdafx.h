@@ -36,6 +36,8 @@ extern "C" {
 #include <cgic.h>
 }
 
-extern std::ostringstream index_errlog;
-void outputContent(bool error);
+extern bool opt_verbose, errflag;
+extern std::iostream *perrlog;
+#define index_errlog (*perrlog)
+void outputContent();
 size_t collectionToFileNameList(const char *xmlpath, std::list<Study> &filenames, bool isPatient);

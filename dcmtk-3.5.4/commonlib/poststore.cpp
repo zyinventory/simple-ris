@@ -1602,6 +1602,6 @@ COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int li
 	root->appendChild(licenseNode);
 
 	if(hasError) root->appendChild(errorInfos);
-	outputbuf << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml;
+	outputbuf << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml << endl;
 	return 0;
 }

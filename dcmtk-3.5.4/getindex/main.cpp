@@ -5,10 +5,13 @@
 #include <lock.h>
 #include <liblock.h>
 
-static char pPacsBase[MAX_PATH];
-std::ostringstream index_errlog;
+bool opt_verbose = false, errflag = false;
+std::iostream *perrlog = NULL;
 int statusCharge(const char *flag);
 int removeStudy(const char *flag);
+
+static char logpath[MAX_PATH] = "";
+static char pPacsBase[MAX_PATH] = "";
 
 #define CHINESE_LOCAL "chinese"  // full name: Chinese_People's Republic of China.936, posix: zh_CN.GBK
 static char patientID[65], studyUID[65], host[65], indexPath[MAX_PATH];
@@ -59,14 +62,69 @@ static const char jnlp8[] =											"</argument>\
 </jnlp>";
 using namespace std;
 
-void outputContent(bool isText)
+static void clearErrlog()
 {
-	string content = index_errlog.str();
-	if(isText)
-		fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", content.length());
-	else
-		fprintf(cgiOut, "Content-Type: text/xml; charset=GBK\r\nContent-Length: %d\r\n\r\n", content.length());
-	fprintf(cgiOut, content.c_str());
+    fstream *perrf = dynamic_cast<fstream*>(perrlog);
+    stringstream *perrs = dynamic_cast<stringstream*>(perrlog);
+    if(perrf)
+    {
+        bool is_empty = true;
+        if(perrf->tellp()) is_empty = false;
+        perrf->close();
+        delete perrf;
+        if(is_empty) _unlink(logpath);
+    }
+    else if(perrs)
+        delete perrs;
+    else if(perrlog)
+        delete perrlog;
+
+    perrlog = NULL;
+}
+
+void outputContent()
+{
+    size_t content_len = 0, readbytes = 0;
+    char *content = NULL;
+
+    fstream *perrf = dynamic_cast<fstream*>(perrlog);
+    stringstream *perrs = dynamic_cast<stringstream*>(perrlog);
+
+    if(perrf)
+    {
+        content_len = (size_t)perrf->tellp();
+        content = new char[content_len + 1];
+        perrf->seekg(0, ios_base::beg);
+        readbytes = perrf->read(content, content_len).gcount();
+        content[readbytes] = '\0';
+        bool is_empty = true;
+        if(content_len) is_empty = false;
+        perrf->close();
+        delete perrf;
+        if(is_empty) _unlink(logpath);
+    }
+    else if(perrs)
+    {
+        string content_string = perrs->str();
+        delete perrs;
+        content_len = content_string.length();
+        content = new char[content_len + 1];
+        readbytes = content_string.copy(content, content_len);
+        content[readbytes] = '\0';
+    }
+    else if(perrlog)
+        delete perrlog;
+
+    if(content)
+    {
+	    if(errflag)
+		    fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", content_len);
+	    else
+		    fprintf(cgiOut, "Content-Type: text/xml; charset=GBK\r\nContent-Length: %d\r\n\r\n", content_len);
+        fprintf(cgiOut, content);
+        delete[] content;
+    }
+    perrlog = NULL;
 }
 
 int jnlp(int hostLength)
@@ -122,8 +180,9 @@ int queryXml(int hostLength)
 	else
 	{
 		if(cgiQueryString) index_errlog << "无效请求:" << cgiQueryString << endl;
-		if(pPacsBase) index_errlog << "PACS_BASE:" << pPacsBase << endl;;
-		outputContent(true);
+		if(pPacsBase) index_errlog << "PACS_BASE:" << pPacsBase << endl;
+        errflag = true;
+		outputContent();
 		return 0;
 	}
 
@@ -172,7 +231,8 @@ int queryXml(int hostLength)
 	else
 	{
 		index_errlog << "文件没找到" << endl;
-		outputContent(true);
+        errflag = true;
+		outputContent();
 		return -1;
 	}
 }
@@ -262,16 +322,16 @@ static int burningStudy(const char *media)
 		else
 			index_errlog << "此程序没有合法的授权" << endl;
 	}
-	string errmsg = index_errlog.str();
-	fprintf(cgiOut, "Content-Type: text/plain; charset=GBK\r\nContent-Length: %d\r\n\r\n", errmsg.length());
-	fprintf(cgiOut, errmsg.c_str());
+    errflag = true;
+    outputContent();
 	return -1;
 }
 
 static int reportStatus(const char *flag)
 {
 	int result = StatusXml(flag, TDB_STATUS, licenseCounter(), index_errlog);
-	outputContent(result);
+    errflag = (result != 0);
+	outputContent();
 	return result;
 }
 
@@ -389,10 +449,11 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *patientFieldsPath, 
     tempDir[tmpdirlen++] = '\\';
     tempDir[tmpdirlen] = '\0';
 
-    LoadSettings("..\\etc\settings.ini", index_errlog);
-
     for(list<Volume>::iterator itv = vols.begin(); itv != vols.end(); ++itv)
 	{
+        // tempDir[] = tempdir\\ , tmpdirlen = strlen(tempDir)
+        int seq_len = sprintf_s(tempDir + tmpdirlen, MAX_PATH - tmpdirlen, "vol.%d.", itv->sequence);
+
         itv->sort_and_modalities_study();
         
         string modalities, studyDates;
@@ -410,16 +471,20 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *patientFieldsPath, 
             if(studyDates.length()) studyDates.append(1, ' ');
             studyDates.append(its->study_date);
 		}
-        // tempDir[] = tempdir\\ , tmpdirlen = strlen(tempDir)
-        int seq_len = sprintf_s(tempDir + tmpdirlen, MAX_PATH - tmpdirlen, "vol.%d.", itv->sequence);
+        
         // tempDir[] = tempdir\\ vol.seq.
-        strcat_s(tempDir, MAX_PATH, "dir");
+        strcpy_s(tempDir + tmpdirlen + seq_len, sizeof(tempDir) - tmpdirlen - seq_len, "dir");
         // tempDir[] = tempdir\\ vol.seq.dir
-		if(MergeDicomDir(dirlist, tempDir, "SMART_PUB_SET", index_errlog, false) != 0) 
+
+        if(opt_verbose) index_errlog << "ready MergeDicomDir() " << tempDir << endl;
+        int merge_errno = MergeDicomDir(dirlist, tempDir, "SMART_PUB_SET", index_errlog, opt_verbose);
+		if(merge_errno) 
 		{
+            errflag = true;
 			index_errlog << "Volume " << itv->sequence << " prepare failed." << endl;
 			continue;
 		}
+        if(opt_verbose) index_errlog << "MergeDicomDir() OK " << tempDir << endl;
 
 		strcpy_s(tempDir + tmpdirlen + seq_len, sizeof(tempDir) - tmpdirlen - seq_len, "txt");
         // tempDir[] = tempdir\\ vol.seq.txt
@@ -441,26 +506,10 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *patientFieldsPath, 
                 }
                 else
 			    {
+                    errflag = true;
 				    index_errlog << "prepareDicomDirAndBurn() read patient fields file " << patientFieldsPath << " failure." << endl;
 				    continue;
 			    }
-
-                if(GetSetting("RisIntegration", NULL, 0))
-                {
-                    strcpy_s(patientFieldsPath + prefixLen, MAX_PATH - prefixLen, "_ris.txt");
-                    ifstream ifs_ris(patientFieldsPath);
-                    if(ifs_ris.good())
-                    {
-                        while(ifs_ris.good())
-                        {
-                            ifs_ris.read(fbuf, 4096);
-                            ofs.write(fbuf, ifs_ris.gcount());
-                        }
-                        ifs_ris.close();
-                    }
-                    else
-                        index_errlog << "warning: prepareDicomDirAndBurn() read patient ris info " << patientFieldsPath << " failure." << endl;
-                }
 
                 ofs << "StudyCount=" << itv->studiesOnVolume.size() << endl;
                 ofs << "Modalities=" << itv->modalities << endl;
@@ -473,6 +522,7 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *patientFieldsPath, 
             }
             else
 			{
+                errflag = true;
 				index_errlog << "prepareDicomDirAndBurn() create fields file " << tempDir << " failure." << endl;
 				continue;
 			}
@@ -492,6 +542,7 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *patientFieldsPath, 
 			}
 			else
 			{
+                errflag = true;
 				index_errlog << "create field file " << tempDir << " failure." << endl;
 				continue;
 			}
@@ -524,7 +575,10 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *patientFieldsPath, 
 #endif //(defined _DEBUG) || (defined SKIP_ENCRYPTION_KEY)
 		}
 		else
+        {
+            errflag = true;
 			index_errlog << "create JDF file " << jdfpath << " failure." << endl;
+        }
 	}
 }
 
@@ -533,7 +587,8 @@ int batchBurn()
 {
 	HANDLE mh = NULL;
 	size_t volumeSize = 0;
-	char xmlpath[MAX_PATH] = IndexPrefix, *postfix;
+	char xmlpath[MAX_PATH], *postfix;
+    strcpy_s(xmlpath, IndexPrefix);
 	postfix = xmlpath + sizeof(IndexPrefix) - 1;
 	const char *mediaType = detectMediaType(NULL);
 	list<Volume> vols;
@@ -542,6 +597,7 @@ int batchBurn()
 		volumeSize = atoi(postfix);
 		if(volumeSize == 0)
 		{
+            errflag = true;
 			index_errlog << "参数错误，没有分卷大小参数(VolumeSize)" << endl;
 			goto end_of_process;
 		}
@@ -574,6 +630,7 @@ int batchBurn()
 		}
 		else
 		{
+            errflag = true;
 			index_errlog << "参数错误，没有选择条件" << endl;
 			goto end_of_process;
 		}
@@ -612,6 +669,7 @@ int batchBurn()
 		}
 		else
 		{
+            errflag = true;
 			if(isPatient)
 				index_errlog << "参数错误，没有患者ID" << endl;
 			else
@@ -619,18 +677,17 @@ int batchBurn()
 		}
 	}
 end_of_process:
-	string errbuf = index_errlog.str();
-	if(errbuf.length() == 0)
+	if(errflag)
+	{
+		for(list<Volume>::const_iterator it = vols.begin(); it != vols.end(); ++it) it->print(index_errlog);
+		outputContent();
+		return -1;
+	}
+	else
 	{
 		cgiHeaderLocation("getindex.exe?status=html");
 		cgiHeaderContentType("text/html");
 		return 0;
-	}
-	else
-	{
-		for(list<Volume>::const_iterator it = vols.begin(); it != vols.end(); ++it) it->print(index_errlog);
-		outputContent(true);
-		return -1;
 	}
 }
 
@@ -709,11 +766,37 @@ int work()
 	int chdirOK = changeWorkingDirectory(0, NULL, pPacsBase);
 	if(chdirOK < 0)
 	{
-		index_errlog << "init working dir failed:" << -1 << ',' << chdirOK << endl;
-		if(pPacsBase) index_errlog << "PACS_BASE:" << pPacsBase << endl;
-		outputContent(true);
+        perrlog = new std::stringstream();
+		*perrlog << "init working dir failed:" << -1 << ',' << chdirOK << endl;
+		if(pPacsBase) *perrlog << "PACS_BASE:" << pPacsBase << endl;
+        errflag = true;
+		outputContent();
 		return -1;
 	}
+    
+    LoadSettings("..\\etc\\settings.ini", *perrlog);
+    size_t item_len = GetSetting("Verbose", NULL, 0);
+    if(item_len)
+    {
+        char *p = new char[item_len];
+        if(GetSetting("Verbose", p, item_len))
+        {
+            _strlwr_s(p, item_len);
+            if(strcmp(p, "1") == 0 || strcmp(p, "true") == 0)
+                opt_verbose = true;
+        }
+        delete[] p;
+    }
+
+    if(opt_verbose && 0 == GenerateLogPath(logpath, sizeof(logpath), "getindex", '\\'))
+    {
+        prepareFileDir(logpath);
+        fstream* pf = new fstream(logpath, ios_base::in | ios_base::out | ios_base::trunc);
+        if(pf->fail()) delete pf;
+        else perrlog = dynamic_cast<iostream*>(pf);
+    }
+    if(perrlog == NULL) perrlog = new stringstream();
+
 	int hostLength = 0;
 	if(strcmp(cgiServerPort, "80"))  // host = http://servername[:port]/
 		hostLength = sprintf_s(host, 64, "%s:%s", cgiServerName, cgiServerPort);
@@ -722,7 +805,7 @@ int work()
 	char flag[32];
 	if(cgiFormNotFound != cgiFormString("mode", flag, sizeof(flag)) && strlen(flag) > 0
 		&& 0 == strcmp(flag, "batchBurn"))
-		return batchBurn();
+        return batchBurn();
 	else if(cgiFormNotFound != cgiFormString("media", flag, sizeof(flag)) && strlen(flag) > 0)
 		return burningStudy(flag);
 	else if(cgiFormNotFound != cgiFormString("jnlp", flag, sizeof(flag)) && strlen(flag) > 0)
@@ -743,6 +826,11 @@ extern "C" int cppWrapper()
 {
 	CoInitialize(NULL);
 	int wr = work();
+    if(perrlog)
+    {
+        if(errflag) outputContent();
+        else clearErrlog();
+    }
 	CoUninitialize();
 	return wr;
 }

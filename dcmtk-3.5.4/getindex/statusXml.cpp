@@ -21,7 +21,8 @@ int statusCharge(const char *flag)
 	if (FAILED(hr))
 	{
 		index_errlog << "Failed to CreateInstance on an XML DOM." << endl;
-		outputContent(true);
+        errflag = true;
+		outputContent();
 		return -1;
 	}
 	pXmlDom->preserveWhiteSpace = VARIANT_FALSE;
@@ -61,7 +62,8 @@ int statusCharge(const char *flag)
 		if(seq == -1 || (seq == 0 && errno == EINVAL))
 		{
 			index_errlog << "ÐòÁÐºÅ´íÎó" << endl;
-			outputContent(true);
+            errflag = true;
+			outputContent();
 			return -1;
 		}
 #ifdef NDEBUG
@@ -71,7 +73,8 @@ int statusCharge(const char *flag)
 		if(!SetLock(8, &serial, 0, "fqE8km*O", "Tw2d@uJp", 0, 0))
 		{
 			index_errlog << "»ñÈ¡¼ÓÃÜËøÐòºÅ´íÎó:" << hex << LYFGetLastErr() << endl;
-			outputContent(true);
+            errflag = true;
+			outputContent();
 			return -2;
 		}
 #ifdef PACS_ENABLE_CHARGE
@@ -83,7 +86,8 @@ int statusCharge(const char *flag)
 		if(!lockResult)
 		{
 			index_errlog << "¼ÓÃÜËøÐ£Ñé´íÎó" << endl;
-			outputContent(true);
+            errflag = true;
+			outputContent();
 			return -2;
 		}
 		
@@ -100,7 +104,8 @@ int statusCharge(const char *flag)
 		if(isBatchMode)
 		{
 			index_errlog << "ÊýÁ¿»òÐòÁÐºÅ´íÎó: " << chargekey << endl;
-			outputContent(true);
+            errflag = true;
+			outputContent();
 			return -16;
 		}
 
@@ -109,15 +114,18 @@ int statusCharge(const char *flag)
 		{
 		case -1:
 			index_errlog << "´íÎó1:" << chargekey << endl;
-			outputContent(true);
+			errflag = true;
+            outputContent();
 			return -3;
 		case -2:
 			index_errlog << "´íÎó2:" << chargekey << endl;
-			outputContent(true);
+            errflag = true;
+			outputContent();
 			return -4;
 		case -3:
 			index_errlog << "´íÎó3:" << chargekey << endl;
-			outputContent(true);
+            errflag = true;
+			outputContent();
 			return -5;
 		}
 		DWORD box = ((unsigned int)retCode) >> 24;
@@ -125,7 +133,8 @@ int statusCharge(const char *flag)
 		if(box > MAX_BOX || fileno != seq || fileno >= TOTAL_BUY)
 		{
 			index_errlog << "ÊýÁ¿»òÐòÁÐºÅ´íÎó:" << chargekey << endl;
-			outputContent(true);
+            errflag = true;
+			outputContent();
 			return -6;
 		}
 
@@ -137,21 +146,24 @@ int statusCharge(const char *flag)
 				if(licenseCount < 0 || licenseCount > 0xffff)
 				{
 					index_errlog << "ÊÚÈ¨´íÎó" << endl;
-					outputContent(true);
+                    errflag = true;
+					outputContent();
 					return -1;
 				}
 			}
 			else
 			{
 				index_errlog << "ÊÚÈ¨´íÎó" << endl;
-				outputContent(true);
+                errflag = true;
+				outputContent();
 				return -1;
 			}
 		}
 		else
 		{
 			index_errlog << "ÊÚÈ¨´íÎó" << endl;
-			outputContent(true);
+            errflag = true;
+			outputContent();
 			return -1;
 		}
 
@@ -206,7 +218,8 @@ int statusCharge(const char *flag)
 		else
 		{
 			index_errlog << "³äÖµÈÕÖ¾Ð´Èë´íÎó£¬ÇëÖØÊÔ" << endl;
-			outputContent(true);
+            errflag = true;
+			outputContent();
 			return -9;
 		}
 #else
@@ -238,21 +251,24 @@ int statusCharge(const char *flag)
 				if(licenseCount < 0 || licenseCount > 0xFFFF)
 				{
 					index_errlog << "ÊÚÈ¨´íÎó" << endl;
-					outputContent(true);
+                    errflag = true;
+					outputContent();
 					return -1;
 				}
 			}
 			else
 			{
 				index_errlog << "ÊÚÈ¨´íÎó" << endl;
-				outputContent(true);
+                errflag = true;
+				outputContent();
 				return -1;
 			}
 		}
 		else
 		{
 			index_errlog << "ÊÚÈ¨´íÎó" << endl;
-			outputContent(true);
+            errflag = true;
+			outputContent();
 			return -1;
 		}
 	}
@@ -293,7 +309,7 @@ int statusCharge(const char *flag)
 		root->appendChild(errorInfos);
 	}
 	index_errlog << "<?xml version=\"1.0\" encoding=\"gbk\"?>" << (pXslt ? pXslt->xml : "") << root->xml;
-	outputContent(false);
+	outputContent();
 	return 0;
 }
 
