@@ -1000,6 +1000,8 @@ int main(int argc, char *argv[])
 	free(buffer);
   }
 
+  LoadSettings("..\\etc\\settings.ini", cerr);
+
   if(opt_verbose || opt_debug)
   {
 	COUT << "-xcr --exec-on-reception:" << opt_execOnReception << endl;
@@ -1952,6 +1954,36 @@ storeSCPCallback(
           CERR << "storescp: No patient ID found in data set." << endl;
 		  patientId = "";
 		}
+        size_t required = GetSetting("PaddingLength", NULL, 0);
+        if(required)
+        {
+            char *p = new char[required];
+            GetSetting("PaddingLength", p, required);
+            int padding_len = atoi(p);
+            if(padding_len > patientId.length())
+            {
+                char padding_char = '0';
+                size_t required_char = GetSetting("PaddingChar", NULL, 0);
+                if(required_char)
+                {
+                    if(required_char > required)
+                    {
+                        delete[] p;
+                        p = new char[required_char];
+                        required = required_char;
+                    }
+                    required = GetSetting("PaddingChar", p, required);
+                    padding_char = p[0];
+                }
+                patientId.insert(0, padding_len - patientId.length(), padding_char);
+                ec = (*imageDataSet)->putAndInsertString(DCM_PatientID, patientId.c_str());
+                if(ec.bad())
+                    time_header_out(CERR) << "padding patient id failed: " << ec.text() << endl;
+                else if(opt_verbose)
+                    time_header_out(CERR) << "padding patient id OK: " << patientId << endl;
+            }
+            delete[] p;
+        }
 		(*imageDataSet)->findAndGetOFString(DCM_PatientsSex, sex);
 		(*imageDataSet)->findAndGetOFString(DCM_PatientsBirthDate, birthdate);
 		(*imageDataSet)->findAndGetOFString(DCM_StudyDate, studyDate);
