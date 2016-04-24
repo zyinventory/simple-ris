@@ -57,7 +57,7 @@ static int find_files(const char *filter, list<string> &filelist, list<string> &
     {
         errno_t en = errno;
         strerror_s(buff, en);
-        if(opt_verbose || en != ENOENT)time_header_out(flog) << "find_files() " << filter << " failed: " << buff << endl;
+        if(opt_verbose || en != ENOENT) time_header_out(flog) << "find_files() " << filter << " failed: " << buff << endl;
         return -1;
     }
     do {
@@ -78,22 +78,25 @@ static int find_files(const char *filter, list<string> &filelist, list<string> &
 
 // if notify compress and index OK, return true, erease it;
 // else remain it.
-static bool process_notify(const string &notify_file, ostream &flog)
+static DWORD process_notify(const string &notify_file, string &transfer_path, ostream &flog)
 {
     string ntffn("store_notify\\");
     ntffn.append(notify_file);
-    cerr << notify_file << endl;
-
+    if(opt_verbose) time_header_out(flog) << "receive association notify " << notify_file << endl;
+#ifdef _DEBUG
+    time_header_out(cerr) << "receive association notify " << notify_file << endl;
+#endif
     ifstream ntff(ntffn);
-    if(ntff.fail()) return false;
+    if(ntff.fail()) return GetLastError();
     string cmd, path, assoc_id, calling, called, remote, port;
     DWORD tag, pid;
     ntff >> cmd >> hex >> tag >> path >> dec >> pid >> assoc_id >> calling >> remote >> called >> port;
     if(ntff.is_open()) ntff.close();
-
-    if(opt_verbose) cerr << cmd << " " << hex << tag << " " << path << " " << dec << pid << " " << assoc_id << " " << calling << " " << remote << " " << called << " " << port << endl;
-
+#ifdef _DEBUG
+    time_header_out(cerr) << cmd << " " << hex << tag << " " << path << " " << dec << pid << " " << assoc_id << " " << calling << " " << remote << " " << called << " " << port << endl;
+#endif
     if(path[1] != ':') path.insert(0, "\\pacs\\").insert(0, GetPacsBase());
+    transfer_path = path;
     string::size_type path_pos = path.find_last_of('\\');
     string association_id = path.substr(path_pos + 1);
     path.erase(path_pos);
@@ -109,9 +112,66 @@ static bool process_notify(const string &notify_file, ostream &flog)
 #else
     sprintf_s(exec_cmd, "..\\bin\\mergedir.exe %s", association_id.c_str());
 #endif
-    DWORD gle = 0;
-    gle = create_child_proc(exec_cmd, "mergedir", path.c_str(), &merge_procinfo, flog);
-    return true;
+    return create_child_proc(exec_cmd, "mergedir", path.c_str(), &merge_procinfo, flog);
+}
+
+static string transfer_dir;
+static list<string> transfer_notify_files, transfer_notify_processed_files;
+
+DWORD process_merge_notify(bool lastCall, HANDLE hTransferDir, ostream &flog, bool timeout)
+{
+    if(opt_verbose)
+    {
+        time_header_out(flog) << "------ ";
+        if(timeout) flog <<       "timeout ";
+        else if(lastCall) flog << "last    ";
+        else flog <<              "continue";
+        flog << " call ------" << endl;
+    }
+#ifdef _DEBUG
+        time_header_out(cerr) << "------ ";
+        if(timeout) cerr <<       "timeout ";
+        else if(lastCall) cerr << "last    ";
+        else cerr <<              "continue";
+        cerr << " call ------" << endl;
+#endif
+    string transfer_dir_filter(transfer_dir);
+    transfer_dir_filter.append(1, '\\');
+    size_t prefix_len = transfer_dir_filter.length();
+    transfer_dir_filter.append("*.dfc");
+    find_files(transfer_dir_filter.c_str(), transfer_notify_files, transfer_notify_processed_files, flog);
+
+    list<string>::iterator it = transfer_notify_files.begin();
+    while(it != transfer_notify_files.end())
+    {
+        transfer_dir_filter.erase(prefix_len);
+        transfer_dir_filter.append(*it);
+        if(opt_verbose) time_header_out(flog) << "process merge notify " << transfer_dir_filter << endl;
+#ifdef _DEBUG
+        time_header_out(cerr) << "process merge notify " << transfer_dir_filter << endl;
+#endif
+        transfer_notify_processed_files.push_back(*it);
+        it = transfer_notify_files.erase(it);
+    }
+
+    if(lastCall)
+    {
+        if(FindCloseChangeNotification(hTransferDir))
+            return 0;
+        else
+            return displayErrorToCerr("process_merge_notify() FindCloseChangeNotification()", GetLastError(), &flog);
+    }
+    else
+    {
+        if(FindNextChangeNotification(hTransferDir))
+            return 0;
+        else
+        {
+            DWORD gle = displayErrorToCerr("process_merge_notify() FindNextChangeNotification()", GetLastError(), &flog);
+            FindCloseChangeNotification(hTransferDir);
+            return gle;
+        }
+    }
 }
 
 #define NOTIFY_FILTER "store_notify\\*.dfc"
@@ -130,10 +190,10 @@ int watch_notify(ostream &flog)
 #ifdef _DEBUG
     WaitForInputIdle(qr_procinfo.hProcess, INFINITE);
 #endif
-    WIN32_FIND_DATA wfd;
+    HANDLE ha[4] = { qr_procinfo.hProcess, NULL, NULL, NULL };
     sprintf_s(buff, "%s\\pacs\\store_notify", GetPacsBase());
-    HANDLE hDirNotify = FindFirstChangeNotification(buff, FALSE, FILE_NOTIFY_CHANGE_SIZE);
-    if(hDirNotify == INVALID_HANDLE_VALUE)
+    ha[1] = FindFirstChangeNotification(buff, FALSE, FILE_NOTIFY_CHANGE_SIZE);
+    if(ha[1] == INVALID_HANDLE_VALUE)
     {
         gle = GetLastError();
         displayErrorToCerr("watch_notify() FindFirstChangeNotification()", gle, &flog);
@@ -143,23 +203,34 @@ int watch_notify(ostream &flog)
     // collect exist dfc files
     find_files(NOTIFY_FILTER, notify_list, notify_merged_list, flog);
 
-    HANDLE ha[3] = { qr_procinfo.hProcess, hDirNotify, NULL };
-    size_t hcnt = sizeof(ha) / sizeof(HANDLE);
     while(GetSignalInterruptValue() == 0)
     {
-        DWORD wr = 0;
-        if(merge_procinfo.hProcess == 0 || merge_procinfo.hProcess == INVALID_HANDLE_VALUE)
-            wr = WaitForMultipleObjects(hcnt - 1, ha, FALSE, 1000);
-        else
+        size_t hcnt = 2;
+        if(ha[2] && ha[2] != INVALID_HANDLE_VALUE)
         {
-            ha[2] = merge_procinfo.hProcess;
-            wr = WaitForMultipleObjects(hcnt, ha, FALSE, 1000);
+            ++hcnt;
+            if(ha[3] && ha[3] != INVALID_HANDLE_VALUE) ++hcnt;
         }
+        DWORD wr = WaitForMultipleObjects(hcnt, ha, FALSE, 1000);
+
         if(wr == WAIT_TIMEOUT)
         {
+            if(ha[3] && ha[3] != INVALID_HANDLE_VALUE && process_merge_notify(false, ha[3], flog, true)) ha[3] = NULL;
         }
-        // todo: else if(wr == WAIT_OBJECT_0) restart dcmqrscp
-        else if(wr == WAIT_OBJECT_0 + 1)
+        else if(wr == WAIT_OBJECT_0) // restart dcmqrscp
+        {
+            time_header_out(flog) << "dcmqrscp encounter error, restart." << endl;
+            if(qr_procinfo.hThread && qr_procinfo.hThread != INVALID_HANDLE_VALUE) CloseHandle(qr_procinfo.hThread);
+            if(qr_procinfo.hProcess && qr_procinfo.hProcess != INVALID_HANDLE_VALUE) CloseHandle(qr_procinfo.hProcess);
+            memset(&qr_procinfo, 0, sizeof(PROCESS_INFORMATION));
+            gle = create_child_proc(exec_cmd, "dcmqrscp", NULL, &qr_procinfo, flog);
+            if(gle)
+            {
+                displayErrorToCerr("watch_notify() create_child_proc(dcmqrscp) restart", gle, &flog);
+                goto clean_child_proc;
+            }
+        }
+        else if(wr == WAIT_OBJECT_0 + 1) // new file in store_notify
         {
             find_files(NOTIFY_FILTER, notify_list, notify_merged_list, flog);
             if(FALSE == FindNextChangeNotification(ha[1]))
@@ -168,12 +239,24 @@ int watch_notify(ostream &flog)
                 goto clean_child_proc;
             }
         }
-        else if(wr == WAIT_OBJECT_0 + 2)
+        else if(wr == WAIT_OBJECT_0 + 2) // mergedir.exe complete
         {
             if(opt_verbose) time_header_out(flog) << "watch_notify() mergedir.exe complete" << endl;
+#ifdef _DEBUG
+            time_header_out(cerr) << "watch_notify() mergedir.exe complete" << endl;
+#endif
             if(merge_procinfo.hThread && merge_procinfo.hThread != INVALID_HANDLE_VALUE) CloseHandle(merge_procinfo.hThread);
             if(merge_procinfo.hProcess && merge_procinfo.hProcess != INVALID_HANDLE_VALUE) CloseHandle(merge_procinfo.hProcess);
             memset(&merge_procinfo, 0, sizeof(PROCESS_INFORMATION));
+            ha[2] = NULL;
+            if(ha[3] && ha[3] != INVALID_HANDLE_VALUE) process_merge_notify(true, ha[3], flog, false);
+            ha[3] = NULL;
+            transfer_notify_files.clear();
+            transfer_dir.clear();
+        }
+        else if(wr == WAIT_OBJECT_0 + 3) // some file in storedir/association_id
+        {
+            if(process_merge_notify(false, ha[3], flog, false)) ha[3] = NULL;
         }
         else
         {
@@ -182,28 +265,51 @@ int watch_notify(ostream &flog)
         }
 
         if(merge_procinfo.hProcess == 0 || merge_procinfo.hProcess == INVALID_HANDLE_VALUE)
-        {
+        {   // if mergedir idle, start another mergedir.
             list<string>::iterator it = notify_list.begin();
             while(it != notify_list.end() &&
                 (merge_procinfo.hProcess == 0 || merge_procinfo.hProcess == INVALID_HANDLE_VALUE))
             {
-                if(process_notify(*it, flog))
+                gle = process_notify(*it, transfer_dir, flog); // try to start mergedir.exe
+                if(gle)
                 {
-                    notify_merged_list.push_back(*it);
-                    it = notify_list.erase(it);
+                    ++it;
+                    displayErrorToCerr("watch_notify() process_notify()", gle, &flog);
                 }
                 else
-                    ++it;
+                {
+                    ha[2] = merge_procinfo.hProcess;
+                    notify_merged_list.push_back(*it);
+                    it = notify_list.erase(it);
+                    transfer_dir.append("\\state");
+                    if(opt_verbose) time_header_out(flog) << "mointor " << transfer_dir << endl;
+#ifdef _DEBUG
+                    time_header_out(cerr) << "mointor " << transfer_dir << endl;
+#endif
+                    ha[3] = FindFirstChangeNotification(transfer_dir.c_str(), FALSE, FILE_NOTIFY_CHANGE_SIZE);
+                    if(ha[3] == INVALID_HANDLE_VALUE)
+                    {
+                        gle = GetLastError();
+                        ha[3] = NULL;
+                        string msg("watch_notify() FindFirstChangeNotification(");
+                        msg.append(transfer_dir).append(")");
+                        displayErrorToCerr(msg.c_str(), gle, &flog);
+                    }
+                    else if(process_merge_notify(false, ha[3], flog, false)) ha[3] = NULL;
+                }
             }
         }
     }
-    if(opt_verbose && GetSignalInterruptValue())
+    if(GetSignalInterruptValue() && opt_verbose)
         time_header_out(flog) << "watch_notify() WaitForMultipleObjects() get Ctrl-C" << endl;
 
 clean_child_proc:
-    if(hDirNotify && hDirNotify != INVALID_HANDLE_VALUE) FindCloseChangeNotification(hDirNotify);
+    if(ha[3] && ha[3] != INVALID_HANDLE_VALUE) FindCloseChangeNotification(ha[3]);
+    if(ha[1] && ha[1] != INVALID_HANDLE_VALUE) FindCloseChangeNotification(ha[1]);
+    // ha[0] is qr_procinfo.hProcess
     if(qr_procinfo.hThread && qr_procinfo.hThread != INVALID_HANDLE_VALUE) CloseHandle(qr_procinfo.hThread);
     if(qr_procinfo.hProcess && qr_procinfo.hProcess != INVALID_HANDLE_VALUE) CloseHandle(qr_procinfo.hProcess);
+    // ha[2] is merge_procinfo.hProcess
     if(merge_procinfo.hThread && merge_procinfo.hThread != INVALID_HANDLE_VALUE) CloseHandle(merge_procinfo.hThread);
     if(merge_procinfo.hProcess && merge_procinfo.hProcess != INVALID_HANDLE_VALUE) CloseHandle(merge_procinfo.hProcess);
     return gle;
