@@ -156,10 +156,13 @@ static void find_all_study_dir(map<string, string> &map_studies_dicomdir)
     });
 }
 
-// todo: for storescp, merge instances to old archive volume
+static errno_t merge_dir(const std::string src, const std::string dest)
+{
+    return 0;
+}
 
-// move instances to old archive volume
-static void overwrite_study_archdir(const map<string, string> &map_studies_dicomdir, map<string, LARGE_INTEGER> &map_move_study_status)
+// todo: for storescp, merge instances to old archive volume
+static void merge_study_archdir(const map<string, string> &map_studies_dicomdir, map<string, LARGE_INTEGER> &map_move_study_status)
 {
     for(map<string, string>::const_iterator it = map_studies_dicomdir.begin(); it != map_studies_dicomdir.end(); ++it)
     {
@@ -169,7 +172,30 @@ static void overwrite_study_archdir(const map<string, string> &map_studies_dicom
         char prefix[16], src_path[MAX_PATH], dest_path[MAX_PATH];
         HashStr(it->first.c_str(), prefix, sizeof(prefix));
         sprintf_s(src_path, "archdir\\%s", it->first.c_str());
-        sprintf_s(dest_path, "%s\\pacs\\archdir\\v%07d\\%c%c\\%c%c\\%c%c\\%c%c\\%s", COMMONLIB_PACS_BASE, state.HighPart,
+        sprintf_s(dest_path, "%s\\pacs\\archdir\\v%07d\\%c%c\\%c%c\\%c%c\\%c%c\\%s", GetPacsBase(), state.HighPart,
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
+
+        state.LowPart = merge_dir(src_path, dest_path);
+
+        sprintf_s(dest_path, "%c%c\\%c%c\\%c%c\\%c%c\\%s", 
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
+        map_move_study_status[dest_path] = state;
+    }
+}
+
+// move instances to old archive volume
+static void overwrite_study_archdir(const map<string, string> &map_studies_dicomdir, map<string, LARGE_INTEGER> &map_move_study_status)
+{
+    
+    for(map<string, string>::const_iterator it = map_studies_dicomdir.begin(); it != map_studies_dicomdir.end(); ++it)
+    {
+        LARGE_INTEGER state;
+        state.HighPart = 0; // for test, todo: find old archive vol.
+        state.LowPart = 0;  // last error is 0.
+        char prefix[16], src_path[MAX_PATH], dest_path[MAX_PATH];
+        HashStr(it->first.c_str(), prefix, sizeof(prefix));
+        sprintf_s(src_path, "archdir\\%s", it->first.c_str());
+        sprintf_s(dest_path, "%s\\pacs\\archdir\\v%07d\\%c%c\\%c%c\\%c%c\\%c%c\\%s", GetPacsBase(), state.HighPart,
             prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
         
         // move study dir 

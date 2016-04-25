@@ -24,4 +24,5 @@
 #include <io.h>
 #include <process.h>
 #include <direct.h>
+#include <sys/stat.h>
 #include "../commonlib/commonlib.h"

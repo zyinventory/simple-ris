@@ -156,6 +156,123 @@ static void test_sim_slow_log_writer(void*)
     if(buff) delete[] buff;
 }
 
+static errno_t merge_dir(const char *src, const char *dest)
+{
+    struct _stat src_stat, dest_stat;
+    errno_t en = 0;
+    if(_stat(dest, &dest_stat))
+    {
+        if(errno == ENOENT)
+        {
+            if(rename(src, dest))
+            {
+                char msg[1024];
+                en = errno;
+                strerror_s(msg, en);
+                cerr << "merge_dir(" << src << ", " << dest << ") dest is not exist, move src failed: " << msg << endl;
+                return en;
+            }
+            else return 0;
+        }
+        else
+        {
+            char msg[1024];
+            en = errno;
+            strerror_s(msg, en);
+            cerr << "merge_dir(" << src << ", " << dest << ") dest stat failed: " << msg << endl;
+            return en;
+        }
+    }
+
+    if(_stat(src, &src_stat))
+    {
+        char msg[1024];
+        en = errno;
+        strerror_s(msg, en);
+        cerr << "merge_dir(" << src << ", " << dest << ") src stat failed: " << msg << endl;
+        return en;
+    }
+
+    if(src_stat.st_mode & _S_IFDIR)
+    {
+        if(dest_stat.st_mode & _S_IFDIR) // dest is dir
+        {
+            // todo: robocopy merge dir
+
+            return en;
+        }
+        else // dest is file
+        {
+            if(_unlink(dest)) // delete dest file
+            {
+                char msg[1024];
+                en = errno;
+                strerror_s(msg, en);
+                cerr << "merge_dir(" << src << ", " << dest << ") src is dir, dest is file, delete dest file failed: " << msg << endl;
+                return en;
+            }
+            else
+            {
+                if(rename(src, dest))
+                {
+                    char msg[1024];
+                    en = errno;
+                    strerror_s(msg, en);
+                    cerr << "merge_dir(" << src << ", " << dest << ") dest file is deleted, move src dir failed: " << msg << endl;
+                    return en;
+                }
+                else return 0;
+            }
+        }
+    }
+    else // src is file
+    {
+        if(dest_stat.st_mode & _S_IFDIR) // dest is dir
+        {
+            if(DeleteTree(dest, &cerr))
+            {
+                if(rename(src, dest))
+                {
+                    char msg[1024];
+                    en = errno;
+                    strerror_s(msg, en);
+                    cerr << "merge_dir(" << src << ", " << dest << ") dest dir is deleted, move src file failed: " << msg << endl;
+                    return en;
+                }
+                else return 0;
+            }
+            else
+            {
+                cerr << "merge_dir(" << src << ", " << dest << ") dest is dir, delete failed" << endl;
+                return EACCES;
+            }
+        }
+        else // dest is file
+        {
+            if(_unlink(dest)) // delete dest file
+            {
+                char msg[1024];
+                en = errno;
+                strerror_s(msg, en);
+                cerr << "merge_dir(" << src << ", " << dest << ") dest is file, delete failed: " << msg << endl;
+                return en;
+            }
+            else
+            {
+                if(rename(src, dest))
+                {
+                    char msg[1024];
+                    en = errno;
+                    strerror_s(msg, en);
+                    cerr << "merge_dir(" << src << ", " << dest << ") dest file is deleted, move src file failed: " << msg << endl;
+                    return en;
+                }
+                else return 0;
+            }
+        }
+    }
+}
+
 void call_process_log(const std::string &storedir, const std::string &sessionId)
 {
     char src_name[MAX_PATH];
@@ -180,7 +297,9 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
     if(start_write_log >= 0) // start_write_log == 0, start immediately
     {
         //test_consume_log(sessionId.c_str());
-        scp_store_main_loop(sessionId.c_str(), false);
+        //scp_store_main_loop(sessionId.c_str(), false);
+        DWORD gle = merge_dir("archdir\\1.2.840.113820.861002.41993.5722781018828.2.1578427", 
+            "..\\..\\archdir\\v0000000\\HI\\QN\\IG\\2J\\1.2.840.113820.861002.41993.5722781018828.2.1578427");
         //test_for_make_index("C:\\usr\\local\\dicom", true);
     }
     //WaitForSingleObject(ht, INFINITE);
