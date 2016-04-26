@@ -115,9 +115,8 @@ static bool make_relate_dir(const char *dir_name)
     return true;
 }
 
-static void find_all_study_dir(map<string, string> &map_studies_dicomdir)
+static void find_all_study_dir(list<string> &list_studies)
 {
-    list<string> study_dirs, dir_files;
     struct _finddata_t wfd;
     intptr_t hSearch = _findfirst("archdir\\*", &wfd);
     if(hSearch == -1)
@@ -130,73 +129,199 @@ static void find_all_study_dir(map<string, string> &map_studies_dicomdir)
         string node(wfd.name);
         if (node.compare(".") == 0 || node.compare("..") == 0 || node.compare("DICOMDIR") == 0) 
 			continue; // skip . .. DICOMDIR
-        if(wfd.attrib & _A_SUBDIR)
-            study_dirs.push_back(node);
-        else
-            dir_files.push_back(node);
+        if(wfd.attrib & _A_SUBDIR) list_studies.push_back(node);
 	} while(_findnext(hSearch, &wfd) == 0);
 	_findclose(hSearch);
+}
 
-    for(list<string>::iterator it_study = study_dirs.begin(); it_study != study_dirs.end(); ++it_study)
+static errno_t merge_dir(const char *src, const char *dest)
+{
+    struct _stat src_stat, dest_stat;
+    errno_t en = 0;
+    if(_stat(dest, &dest_stat))
     {
-        string dir_filename(*it_study);
-        dir_filename.append(".dir");
-        list<string>::iterator it_dicomdir = find_if(dir_files.begin(), dir_files.end(),
-            [&dir_filename](const string &fn) { return fn.compare(dir_filename) == 0; });
-        if(it_dicomdir != dir_files.end())
+        if(errno == ENOENT)
         {
-            map_studies_dicomdir[*it_study] = dir_filename;
-            dir_files.erase(it_dicomdir);
+            if(PrepareFileDir(dest))
+            {
+                if(rename(src, dest))
+                {
+                    char msg[1024];
+                    en = errno;
+                    strerror_s(msg, en);
+                    cerr << "merge_dir(" << src << ", " << dest << ") dest is not exist, move src failed: " << msg << endl;
+                    return en;
+                }
+                else return 0;
+            }
+            else
+            {
+                char msg[1024];
+                en = errno;
+                strerror_s(msg, en);
+                cerr << "merge_dir(" << src << ", " << dest << ") PrepareFileDir(dest) failed: " << msg << endl;
+                return en;
+            }
         }
         else
-            cerr << "study " << *it_study << " can't find matched DICOMDIR " << dir_filename << endl;
+        {
+            char msg[1024];
+            en = errno;
+            strerror_s(msg, en);
+            cerr << "merge_dir(" << src << ", " << dest << ") dest stat failed: " << msg << endl;
+            return en;
+        }
     }
-    for_each(dir_files.begin(), dir_files.end(), [](const string &fn) {
-        cerr << "dicomdir " << fn << " remain, there is no matched study UID." << endl; 
-    });
+
+    if(_stat(src, &src_stat))
+    {
+        char msg[1024];
+        en = errno;
+        strerror_s(msg, en);
+        cerr << "merge_dir(" << src << ", " << dest << ") src stat failed: " << msg << endl;
+        return en;
+    }
+
+    if(src_stat.st_mode & _S_IFDIR)
+    {
+        if(dest_stat.st_mode & _S_IFDIR) // dest is dir
+        {
+            // todo: robocopy merge dir
+            PROCESS_INFORMATION procinfo;
+	        STARTUPINFO sinfo;
+	        memset(&sinfo, 0, sizeof(STARTUPINFO));
+	        sinfo.cb = sizeof(STARTUPINFO);
+            memset(&procinfo, 0, sizeof(PROCESS_INFORMATION));
+            char cmd[1024];
+            sprintf_s(cmd, "C:\\windows\\system32\\robocopy.exe %s %s /MT /MOVE /S", src, dest);
+            if( CreateProcess(NULL, cmd, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &sinfo, &procinfo) )
+            {
+                DWORD dw = WaitForSingleObject(procinfo.hProcess, INFINITE);
+                if(dw == WAIT_FAILED)
+                {
+                    DWORD gle = GetLastError();
+                    en = EINVAL;
+                    displayErrorToCerr(__FUNCSIG__" WaitForSingleObject() failed", gle, &cerr);
+                }
+                CloseHandle(procinfo.hThread);
+                CloseHandle(procinfo.hProcess);
+            }
+            else
+            {
+                DWORD gle = GetLastError();
+                en = EINVAL;
+                char msg[1024];
+                sprintf_s(msg, __FUNCSIG__" CreateProcess(%s) failed", cmd);
+                displayErrorToCerr(msg, gle, &cerr);
+            }
+            return en;
+        }
+        else // dest is file
+        {
+            if(_unlink(dest)) // delete dest file
+            {
+                char msg[1024];
+                en = errno;
+                strerror_s(msg, en);
+                cerr << "merge_dir(" << src << ", " << dest << ") src is dir, dest is file, delete dest file failed: " << msg << endl;
+                return en;
+            }
+            else
+            {
+                if(rename(src, dest))
+                {
+                    char msg[1024];
+                    en = errno;
+                    strerror_s(msg, en);
+                    cerr << "merge_dir(" << src << ", " << dest << ") dest file is deleted, move src dir failed: " << msg << endl;
+                    return en;
+                }
+                else return 0;
+            }
+        }
+    }
+    else // src is file
+    {
+        if(dest_stat.st_mode & _S_IFDIR) // dest is dir
+        {
+            if(DeleteTree(dest, &cerr))
+            {
+                if(rename(src, dest))
+                {
+                    char msg[1024];
+                    en = errno;
+                    strerror_s(msg, en);
+                    cerr << "merge_dir(" << src << ", " << dest << ") dest dir is deleted, move src file failed: " << msg << endl;
+                    return en;
+                }
+                else return 0;
+            }
+            else
+            {
+                cerr << "merge_dir(" << src << ", " << dest << ") dest is dir, delete failed" << endl;
+                return EACCES;
+            }
+        }
+        else // dest is file
+        {
+            if(_unlink(dest)) // delete dest file
+            {
+                char msg[1024];
+                en = errno;
+                strerror_s(msg, en);
+                cerr << "merge_dir(" << src << ", " << dest << ") dest is file, delete failed: " << msg << endl;
+                return en;
+            }
+            else
+            {
+                if(rename(src, dest))
+                {
+                    char msg[1024];
+                    en = errno;
+                    strerror_s(msg, en);
+                    cerr << "merge_dir(" << src << ", " << dest << ") dest file is deleted, move src file failed: " << msg << endl;
+                    return en;
+                }
+                else return 0;
+            }
+        }
+    }
 }
 
-static errno_t merge_dir(const std::string src, const std::string dest)
+static void merge_study_archdir(const list<string> &list_studies, map<string, LARGE_INTEGER> &map_move_study_status)
 {
-    return 0;
-}
-
-// todo: for storescp, merge instances to old archive volume
-static void merge_study_archdir(const map<string, string> &map_studies_dicomdir, map<string, LARGE_INTEGER> &map_move_study_status)
-{
-    for(map<string, string>::const_iterator it = map_studies_dicomdir.begin(); it != map_studies_dicomdir.end(); ++it)
+    for(list<string>::const_iterator it = list_studies.begin(); it != list_studies.end(); ++it)
     {
         LARGE_INTEGER state;
         state.HighPart = 0; // for test, todo: find old archive vol.
         state.LowPart = 0;  // last error is 0.
         char prefix[16], src_path[MAX_PATH], dest_path[MAX_PATH];
-        HashStr(it->first.c_str(), prefix, sizeof(prefix));
-        sprintf_s(src_path, "archdir\\%s", it->first.c_str());
+        HashStr(it->c_str(), prefix, sizeof(prefix));
+        sprintf_s(src_path, "archdir\\%s", it->c_str());
         sprintf_s(dest_path, "%s\\pacs\\archdir\\v%07d\\%c%c\\%c%c\\%c%c\\%c%c\\%s", GetPacsBase(), state.HighPart,
-            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->c_str());
 
         state.LowPart = merge_dir(src_path, dest_path);
 
         sprintf_s(dest_path, "%c%c\\%c%c\\%c%c\\%c%c\\%s", 
-            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->c_str());
         map_move_study_status[dest_path] = state;
     }
 }
 
 // move instances to old archive volume
-static void overwrite_study_archdir(const map<string, string> &map_studies_dicomdir, map<string, LARGE_INTEGER> &map_move_study_status)
+static void overwrite_study_archdir(const list<string> &list_studies, map<string, LARGE_INTEGER> &map_move_study_status)
 {
-    
-    for(map<string, string>::const_iterator it = map_studies_dicomdir.begin(); it != map_studies_dicomdir.end(); ++it)
+    for(list<string>::const_iterator it = list_studies.begin(); it != list_studies.end(); ++it)
     {
         LARGE_INTEGER state;
         state.HighPart = 0; // for test, todo: find old archive vol.
         state.LowPart = 0;  // last error is 0.
         char prefix[16], src_path[MAX_PATH], dest_path[MAX_PATH];
-        HashStr(it->first.c_str(), prefix, sizeof(prefix));
-        sprintf_s(src_path, "archdir\\%s", it->first.c_str());
+        HashStr(it->c_str(), prefix, sizeof(prefix));
+        sprintf_s(src_path, "archdir\\%s", it->c_str());
         sprintf_s(dest_path, "%s\\pacs\\archdir\\v%07d\\%c%c\\%c%c\\%c%c\\%c%c\\%s", GetPacsBase(), state.HighPart,
-            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->c_str());
         
         // move study dir 
         bool study_moved = false;
@@ -212,7 +337,7 @@ static void overwrite_study_archdir(const map<string, string> &map_studies_dicom
                 else
                 {
                     study_moved = true;
-                    cout << "trigger archive " << it->first << " " << dest_path << endl;
+                    cout << "trigger archive " << *it << " " << dest_path << endl;
 
                     // send archive ok notification
                     char notify_file_name[MAX_PATH];
@@ -222,12 +347,12 @@ static void overwrite_study_archdir(const map<string, string> &map_studies_dicom
                     if(ntf.good())
                     {
                         ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_STUDY 
-                            << " " << it->first << " " << dest_path << endl;
+                            << " " << *it << " " << dest_path << endl;
                         ntf.close();
                     }
                     else
                         cerr << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_STUDY 
-                            << " " << it->first << " " << dest_path << endl;
+                            << " " << *it << " " << dest_path << endl;
                 }
             }
             else
@@ -242,47 +367,9 @@ static void overwrite_study_archdir(const map<string, string> &map_studies_dicom
             goto report_study_status;
         }
 
-        // move dicomdir
-        bool dicomdir_moved = false;
-        strcat_s(src_path, ".dir");
-        strcat_s(dest_path, ".dir");
-        errno_t ec = _unlink(dest_path);
-        if(ec == 0 || errno == ENOENT)
-        {
-            if(rename(src_path, dest_path))
-            {
-                perror("overwrite_study_archdir() rename dicomdir failed");
-                cerr << "\t" << src_path << " -> " << dest_path << endl;
-            }
-            else
-            {
-                dicomdir_moved = true;
-                cout << "trigger dicomdir " << it->first << ".dir " << dest_path << endl;
-
-                // send dicomdir ok notification
-                char notify_file_name[MAX_PATH];
-                int seq_len = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
-                sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
-                ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out);
-                if(ntf.good())
-                {
-                    ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_DICOMDIR
-                        << " " << it->first << " " << dest_path << endl;
-                    ntf.close();
-                }
-                else
-                    cerr << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_DICOMDIR 
-                        << " " << it->first << " " << dest_path << endl;
-            }
-        }
-        else
-            cerr << "overwrite_study_archdir() can't delete dicomdir " << dest_path << endl;
-
-        if(!dicomdir_moved) state.LowPart = ERROR_FILE_NOT_FOUND;
-
 report_study_status:
         sprintf_s(dest_path, "%c%c\\%c%c\\%c%c\\%c%c\\%s", 
-            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->first.c_str());
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->c_str());
         map_move_study_status[dest_path] = state;
     }
 }
@@ -515,12 +602,12 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
 
     save_index_study_receive_to_session();
 
-    map<string, string> map_studies_dicomdir;
-    find_all_study_dir(map_studies_dicomdir);
+    list<string> list_studies;
+    find_all_study_dir(list_studies);
 
     // LARGE_INTEGER: HighPart is volume id, LowPart is last error state.
     map<string, LARGE_INTEGER> map_move_study_status;
-    overwrite_study_archdir(map_studies_dicomdir, map_move_study_status);
+    merge_study_archdir(list_studies, map_move_study_status);
 
     merge_index_study_patient_date(true, map_move_study_status);
 

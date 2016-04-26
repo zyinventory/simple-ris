@@ -281,7 +281,17 @@ DWORD NamedPipe_CreateClientProc(const char *dot_or_study_uid)
         return -1;
     }
     if(strcmp(".", dot_or_study_uid))
-        sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +id %s +D %s.dir --viewer GE -pn %s #", opt_verbose ? "-v" : "", dot_or_study_uid, dot_or_study_uid, sessionId);
+    {
+        char hash[9];
+        HashStr(dot_or_study_uid, hash, sizeof(hash));
+        string hash_path(hash);
+        hash_path.insert(6, 1, '\\').insert(4, 1, '\\').insert(2, 1, '\\')
+            .insert(0, "\\pacs\\archdir\\v0000000\\").insert(0, GetPacsBase())
+            .append(1, '\\').append(dot_or_study_uid).append(".dir");
+        PrepareFileDir(hash_path.c_str());
+        sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +id %s +D %s --viewer GE -pn %s #", 
+            opt_verbose ? "-v" : "", dot_or_study_uid, hash_path.c_str(), sessionId);
+    }
     else
         sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +D DICOMDIR --viewer GE -pn %s #", opt_verbose ? "-v" : "", sessionId);
 
