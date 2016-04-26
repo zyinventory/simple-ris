@@ -302,6 +302,20 @@ static void merge_study_archdir(const list<string> &list_studies, map<string, LA
             prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->c_str());
 
         state.LowPart = merge_dir(src_path, dest_path);
+        // send archive ok notification
+        char notify_file_name[MAX_PATH];
+        int seq_len = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
+        sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
+        ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out);
+        if(ntf.good())
+        {
+            ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_STUDY 
+                << " " << *it << " " << dest_path << endl;
+            ntf.close();
+        }
+        else
+            cerr << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_STUDY 
+                << " " << *it << " " << dest_path << endl;
 
         sprintf_s(dest_path, "%c%c\\%c%c\\%c%c\\%c%c\\%s", 
             prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], prefix[7], it->c_str());
@@ -609,7 +623,7 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
     map<string, LARGE_INTEGER> map_move_study_status;
     merge_study_archdir(list_studies, map_move_study_status);
 
-    merge_index_study_patient_date(true, map_move_study_status);
+    merge_index_study_patient_date(false, map_move_study_status);
 
     map<string, errno_t> map_receive_index;
     move_index_receive(map_receive_index);

@@ -142,10 +142,27 @@ static DWORD close_dcmmkdir_worker(HANDLE hProc)
         CloseHandle(it->hThread);
         CloseHandle(it->hProcess);
         close_log(it->log);
+
+        // send archive ok notification
+        char notify_file_name[MAX_PATH];
+        int seq_len = in_process_sequence(notify_file_name, sizeof(notify_file_name), STATE_DIR);
+        sprintf_s(notify_file_name + seq_len, sizeof(notify_file_name) - seq_len, "_%s.dfc", NOTIFY_ACKN_TAG);
+        ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out);
+        if(ntf.good())
+        {
+            ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_DICOMDIR 
+                << " " << it->dot_or_study_uid << endl;
+            ntf.close();
+        }
+        else
+            cerr << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ARCHIVE_DICOMDIR 
+                << " " << it->dot_or_study_uid << endl;
+
         list_dir_workers.erase(it);
     }
     else
         cerr << __FUNCSIG__ " : dcmmkdir process " << it->hProcess << " not found, study uid " << it->dot_or_study_uid << endl;
+
     return ERROR_SUCCESS;
 }
 
