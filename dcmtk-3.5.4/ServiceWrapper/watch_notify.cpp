@@ -118,20 +118,18 @@ static DWORD process_notify(const string &notify_file, string &transfer_path, os
 static string transfer_dir;
 static list<string> transfer_notify_files, transfer_notify_processed_files;
 
-DWORD process_merge_notify(bool lastCall, HANDLE hTransferDir, ostream &flog, bool timeout)
+DWORD process_merge_notify(bool lastCall, HANDLE hTransferDir, ostream &flog)
 {
     if(opt_verbose)
     {
         time_header_out(flog) << "------ ";
-        if(timeout) flog <<       "timeout ";
-        else if(lastCall) flog << "last    ";
+        if(lastCall) flog << "last    ";
         else flog <<              "continue";
         flog << " call ------" << endl;
     }
 #ifdef _DEBUG
         time_header_out(cerr) << "------ ";
-        if(timeout) cerr <<       "timeout ";
-        else if(lastCall) cerr << "last    ";
+        if(lastCall) cerr << "last    ";
         else cerr <<              "continue";
         cerr << " call ------" << endl;
 #endif
@@ -215,7 +213,7 @@ int watch_notify(ostream &flog)
 
         if(wr == WAIT_TIMEOUT)
         {
-            if(ha[3] && ha[3] != INVALID_HANDLE_VALUE && process_merge_notify(false, ha[3], flog, true)) ha[3] = NULL;
+
         }
         else if(wr == WAIT_OBJECT_0) // restart dcmqrscp
         {
@@ -249,14 +247,14 @@ int watch_notify(ostream &flog)
             if(merge_procinfo.hProcess && merge_procinfo.hProcess != INVALID_HANDLE_VALUE) CloseHandle(merge_procinfo.hProcess);
             memset(&merge_procinfo, 0, sizeof(PROCESS_INFORMATION));
             ha[2] = NULL;
-            if(ha[3] && ha[3] != INVALID_HANDLE_VALUE) process_merge_notify(true, ha[3], flog, false);
+            if(ha[3] && ha[3] != INVALID_HANDLE_VALUE) process_merge_notify(true, ha[3], flog);
             ha[3] = NULL;
             transfer_notify_files.clear();
             transfer_dir.clear();
         }
         else if(wr == WAIT_OBJECT_0 + 3) // some file in storedir/association_id
         {
-            if(process_merge_notify(false, ha[3], flog, false)) ha[3] = NULL;
+            if(process_merge_notify(false, ha[3], flog)) ha[3] = NULL;
         }
         else
         {
@@ -295,7 +293,7 @@ int watch_notify(ostream &flog)
                         msg.append(transfer_dir).append(")");
                         displayErrorToCerr(msg.c_str(), gle, &flog);
                     }
-                    else if(process_merge_notify(false, ha[3], flog, false)) ha[3] = NULL;
+                    else if(process_merge_notify(false, ha[3], flog)) ha[3] = NULL;
                 }
             }
         }
