@@ -45,6 +45,7 @@ bool __stdcall captureStdoutToLogStream(std::ostream &flog);
 void __stdcall releaseStdout(std::ostream &flog);
 
 int watch_notify(std::ostream &flog);
+bool read_notify_info(const std::string filename);
 
 extern bool opt_verbose;
 extern char exec_cmd[1024];

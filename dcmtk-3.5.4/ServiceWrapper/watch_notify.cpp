@@ -8,6 +8,8 @@ char exec_cmd[1024];
 static char buff[1024];
 static PROCESS_INFORMATION qr_procinfo, merge_procinfo;
 static list<string> notify_list, notify_merged_list;
+static string transfer_dir, current_notify_file;
+static list<string> transfer_notify_files, transfer_notify_processed_files;
 
 static int create_child_proc(char *cmd, const char *exec_name, const char *cwd_path, PPROCESS_INFORMATION pprocinfo, ostream &flog)
 {
@@ -115,9 +117,6 @@ static DWORD process_notify(const string &notify_file, string &transfer_path, os
     return create_child_proc(exec_cmd, "mergedir", path.c_str(), &merge_procinfo, flog);
 }
 
-static string transfer_dir;
-static list<string> transfer_notify_files, transfer_notify_processed_files;
-
 DWORD process_merge_notify(bool lastCall, HANDLE hTransferDir, ostream &flog)
 {
     if(opt_verbose)
@@ -148,8 +147,16 @@ DWORD process_merge_notify(bool lastCall, HANDLE hTransferDir, ostream &flog)
 #ifdef _DEBUG
         time_header_out(cerr) << "process merge notify " << transfer_dir_filter << endl;
 #endif
-        transfer_notify_processed_files.push_back(*it);
-        it = transfer_notify_files.erase(it);
+        if(read_notify_info(transfer_dir_filter))
+        {
+            transfer_notify_processed_files.push_back(*it);
+            it = transfer_notify_files.erase(it);
+        }
+        else
+        {
+            time_header_out(cerr) << "notify file process failed: " << *it << endl;
+            ++it;
+        }
     }
 
     if(lastCall)
@@ -247,9 +254,19 @@ int watch_notify(ostream &flog)
             if(merge_procinfo.hProcess && merge_procinfo.hProcess != INVALID_HANDLE_VALUE) CloseHandle(merge_procinfo.hProcess);
             memset(&merge_procinfo, 0, sizeof(PROCESS_INFORMATION));
             ha[2] = NULL;
+            // last call process_merge_notify()
             if(ha[3] && ha[3] != INVALID_HANDLE_VALUE) process_merge_notify(true, ha[3], flog);
             ha[3] = NULL;
             transfer_notify_files.clear();
+            transfer_notify_processed_files.clear();
+            notify_merged_list.remove(current_notify_file);
+            current_notify_file.insert(0, "store_notify\\");
+            string merged_notify_file(current_notify_file);
+            //_unlink(current_notify_file.c_str());
+            merged_notify_file.append(".txt");
+            rename(current_notify_file.c_str(), merged_notify_file.c_str());
+            current_notify_file.clear();
+            //DeleteTree(transfer_dir.c_str());
             transfer_dir.clear();
         }
         else if(wr == WAIT_OBJECT_0 + 3) // some file in storedir/association_id
@@ -276,6 +293,7 @@ int watch_notify(ostream &flog)
                 }
                 else
                 {
+                    current_notify_file = *it;
                     ha[2] = merge_procinfo.hProcess;
                     notify_merged_list.push_back(*it);
                     it = notify_list.erase(it);
