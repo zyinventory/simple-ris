@@ -109,10 +109,10 @@ static DWORD process_notify(const string &notify_file, string &transfer_path, os
     if(p) *p = '\0'; // cd ..
     p = strrchr(exec_cmd, '\\');
     if(p) *p = '\0'; // cd ..
-    if(p) sprintf_s(p, sizeof(exec_cmd) - (p - exec_cmd), "\\Debug\\mergedir.exe %s", association_id.c_str());
-    else sprintf_s(exec_cmd, "..\\bin\\mergedir.exe %s", association_id.c_str());
+    if(p) sprintf_s(p, sizeof(exec_cmd) - (p - exec_cmd), "\\Debug\\mergedir.exe %s %s", (opt_verbose ? "-v" : ""), association_id.c_str());
+    else sprintf_s(exec_cmd, "..\\bin\\mergedir.exe %s %s", (opt_verbose ? "-v" : ""), association_id.c_str());
 #else
-    sprintf_s(exec_cmd, "..\\bin\\mergedir.exe %s", association_id.c_str());
+    sprintf_s(exec_cmd, "..\\bin\\mergedir.exe %s %s", (opt_verbose ? "-v" : ""), association_id.c_str());
 #endif
     return create_child_proc(exec_cmd, "mergedir", path.c_str(), &merge_procinfo, flog);
 }
@@ -195,6 +195,22 @@ int watch_notify(ostream &flog)
 #ifdef _DEBUG
     WaitForInputIdle(qr_procinfo.hProcess, INFINITE);
 #endif
+    SYSTEM_INFO sysInfo;
+	GetSystemInfo(&sysInfo);
+    DWORD worker_core_num = max(2, sysInfo.dwNumberOfProcessors - 2);
+    HANDLE hSema = CreateSemaphore(NULL, worker_core_num, worker_core_num, "Global\\semaphore_compress_process");
+    if(hSema == NULL)
+    {
+        gle = GetLastError();
+        displayErrorToCerr("watch_notify() CreateSemaphore()", gle, &flog);
+        if(gle == ERROR_ALREADY_EXISTS)
+        {
+            time_header_out(flog) << "semaphore has existed, try to open it." << endl;
+            hSema = OpenSemaphore(SYNCHRONIZE | SEMAPHORE_MODIFY_STATE, FALSE, "Global\\semaphore_compress_process");
+            if(hSema == NULL) displayErrorToCerr("watch_notify() OpenSemaphore()", GetLastError(), &flog);
+        }
+    }
+    
     HANDLE ha[4] = { qr_procinfo.hProcess, NULL, NULL, NULL };
     sprintf_s(buff, "%s\\pacs\\store_notify", GetPacsBase());
     ha[1] = FindFirstChangeNotification(buff, FALSE, FILE_NOTIFY_CHANGE_SIZE);
@@ -320,6 +336,12 @@ int watch_notify(ostream &flog)
         time_header_out(flog) << "watch_notify() WaitForMultipleObjects() get Ctrl-C" << endl;
 
 clean_child_proc:
+    if(hSema)
+    {
+        while(ReleaseSemaphore(hSema, 1, NULL)) ;
+        CloseHandle(hSema);
+        hSema = NULL;
+    }
     if(ha[3] && ha[3] != INVALID_HANDLE_VALUE) FindCloseChangeNotification(ha[3]);
     if(ha[1] && ha[1] != INVALID_HANDLE_VALUE) FindCloseChangeNotification(ha[1]);
     // ha[0] is qr_procinfo.hProcess

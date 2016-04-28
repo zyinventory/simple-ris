@@ -410,10 +410,29 @@ int compress_queue_to_workers(CMOVE_LOG_CONTEXT *plc)
     }
 
     int step = 0;
-    while(workers.size() < worker_core_num && queue_compress.size() > 0)
+    if(hSema)
     {
-        step += create_worker_process(queue_compress.front());
-        queue_compress.pop_front();
+        DWORD dw = WAIT_OBJECT_0;
+        while((dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED) && queue_compress.size() > 0)
+        {
+            dw = WaitForSingleObject(hSema, 0);
+            if(dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED)
+            {
+                step += create_worker_process(queue_compress.front());
+                queue_compress.pop_front();
+            }
+            else if(dw == WAIT_FAILED)
+                displayErrorToCerr("compress_queue_to_workers() WaitForSingleObject(hSema)", dw);
+            // else WAIT_TIMEOUT, compress process is too much.
+        }
+    }
+    else
+    {
+        while(workers.size() < worker_core_num && queue_compress.size() > 0)
+        {
+            step += create_worker_process(queue_compress.front());
+            queue_compress.pop_front();
+        }
     }
     return step;
 }
@@ -718,7 +737,6 @@ static DWORD NamedPipe_PipeConnected(HANDLE)
 
 DWORD worker_complete(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worker_num)
 {
-    CMOVE_LOG_CONTEXT over_lc;
     wr -= WAIT_OBJECT_0;
 
     // not compress worker
@@ -728,21 +746,41 @@ DWORD worker_complete(DWORD wr, HANDLE *objs, WORKER_CALLBACK* cbs, size_t worke
     HANDLE over_hProcess = objs[wr];
     list<CMOVE_LOG_CONTEXT>::iterator it = find_if(workers.begin(), workers.end(), 
         [over_hProcess](CMOVE_LOG_CONTEXT &clc) { return clc.hprocess == over_hProcess; });
-    over_lc = *it;
-    workers.erase(it);
-    cout << "trigger complete " << over_lc.file.filename << endl;
-
-    bool result = false;
-    if(over_lc.hprocess != INVALID_HANDLE_VALUE)
+    if(it != workers.end())
     {
-        CloseHandle(over_lc.hthread);
-        over_lc.hthread = INVALID_HANDLE_VALUE;
-        CloseHandle(over_lc.hprocess);
-        over_lc.hprocess = INVALID_HANDLE_VALUE;
-        close_log(over_lc.log);
-        over_lc.log = INVALID_HANDLE_VALUE;
+        CMOVE_LOG_CONTEXT over_lc = *it;
+        workers.erase(it);
+        cout << "trigger complete " << over_lc.file.filename << endl;
 
-        push_cmove_log_context_to_dcmmkdir_queue(over_lc);
+        bool result = false;
+        if(over_lc.hprocess != INVALID_HANDLE_VALUE)
+        {
+            CloseHandle(over_lc.hthread);
+            over_lc.hthread = INVALID_HANDLE_VALUE;
+            CloseHandle(over_lc.hprocess);
+            over_lc.hprocess = INVALID_HANDLE_VALUE;
+            close_log(over_lc.log);
+            over_lc.log = INVALID_HANDLE_VALUE;
+
+            push_cmove_log_context_to_dcmmkdir_queue(over_lc);
+        }
+    }
+    else
+    {
+        CloseHandle(over_hProcess);
+        time_header_out(cerr) << "worker_complete() can't find handle in workers." << endl;
+    }
+
+    if(hSema)
+    {
+        long prevCnt = 0;
+        if(ReleaseSemaphore(hSema, 1, &prevCnt))
+        {
+            if(opt_verbose)
+                time_header_out(cerr) << "worker_complete() ReleaseSemaphore(1) OK, previous semaphore is " << prevCnt << endl;
+        }
+        else
+            displayErrorToCerr("worker_complete() ReleaseSemaphore()", GetLastError());
     }
     compress_queue_to_workers(NULL);
     return 0;

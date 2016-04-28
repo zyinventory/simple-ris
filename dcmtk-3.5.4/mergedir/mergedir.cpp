@@ -14,7 +14,7 @@
 #include "dcmtk/ofstd/ofcond.h"       /* for class OFCondition */
 #include "dcmdynamic.h"
 
-void call_process_log(const string &storedir, const string &sessionId);
+void call_process_log(const string &storedir, const string &sessionId, bool verbose);
 void clear_resource();
 
 #define OFFIS_CONSOLE_APPLICATION "mergedir"
@@ -100,7 +100,8 @@ int main(int argc, char *argv[])
 
     string storedir(_getcwd(NULL, 0));
     //CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
-    for_each(fileNames.begin(), fileNames.end(), [&storedir](const string &seid) { call_process_log(storedir, seid); });
+    bool verbose = opt_verbose;
+    for_each(fileNames.begin(), fileNames.end(), [&storedir, verbose](const string &seid) { call_process_log(storedir, seid, verbose); });
     
     clear_resource();
     //CoUninitialize();

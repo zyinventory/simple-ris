@@ -156,7 +156,7 @@ static void test_sim_slow_log_writer(void*)
     if(buff) delete[] buff;
 }
 
-void call_process_log(const std::string &storedir, const std::string &sessionId)
+void call_process_log(const std::string &storedir, const std::string &sessionId, bool verbose)
 {
     char src_name[MAX_PATH];
     sprintf_s(src_name, "%s\\%s", storedir.c_str(), sessionId.c_str());
@@ -180,7 +180,7 @@ void call_process_log(const std::string &storedir, const std::string &sessionId)
     if(start_write_log >= 0) // start_write_log == 0, start immediately
     {
         //test_consume_log(sessionId.c_str());
-        scp_store_main_loop(sessionId.c_str(), false);
+        scp_store_main_loop(sessionId.c_str(), verbose);
         //test_for_make_index("C:\\usr\\local\\dicom", true);
     }
     //WaitForSingleObject(ht, INFINITE);

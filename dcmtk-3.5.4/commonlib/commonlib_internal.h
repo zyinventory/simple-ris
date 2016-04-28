@@ -46,7 +46,7 @@ typedef struct {
 extern bool opt_verbose, ready_to_close_dcmmkdir_workers;
 extern size_t worker_core_num;
 extern const char *sessionId;
-extern HANDLE hDirNotify;
+extern HANDLE hDirNotify, hSema;
 
 int process_cmd(std::stringstream &content, int ftype, const std::string &filename);
 void clear_log_context(CMOVE_LOG_CONTEXT *lc = NULL);

@@ -8,7 +8,7 @@ static int is_cr_lf(int c) { return (c == '\r' || c == '\n') ? 1 : 0; }
 
 bool opt_verbose = false;
 const char *sessionId;
-HANDLE hDirNotify;
+HANDLE hDirNotify, hSema;
 
 static map<string, bool> inqueue_dfc_files;
 
@@ -534,6 +534,9 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
         return -5;
     }
     
+    hSema = OpenSemaphore(SYNCHRONIZE | SEMAPHORE_MODIFY_STATE, FALSE, "Global\\semaphore_compress_process");
+    if(hSema == NULL) displayErrorToCerr("scp_store_main_loop() OpenSemaphore()", GetLastError());
+
     size_t worker_num = 0, all_queue_size = 0;
     HANDLE *objs = NULL;
     WORKER_CALLBACK *cbs = NULL;
@@ -564,6 +567,8 @@ COMMONLIB_API int scp_store_main_loop(const char *sessId, bool verbose)
                     ready_to_close_dcmmkdir_workers = true;
                     cout << "trigger ready_close" << endl;
                 }
+                else // is any works remained?
+                    compress_queue_to_workers(NULL);
             }
             else
             {
