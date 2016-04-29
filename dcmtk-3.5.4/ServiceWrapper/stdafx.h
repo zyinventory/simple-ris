@@ -24,9 +24,16 @@
 #include <fstream>
 #include <sstream>
 #include <list>
+#include <vector>
+#include <map>
 #include <iterator>
 #include <algorithm>
 #include <functional>
+#include "handle_context.h"
+
+#define NOTIFY_BASE "store_notify"
+typedef std::map<HANDLE, handle_context::notify_file*> HANDLE_MAP;
+typedef std::pair<HANDLE, handle_context::notify_file*> HANDLE_PAIR;
 
 #define MAX_CORE 16
 
@@ -44,8 +51,7 @@ bool deleteDayStudy(const char *dayxml);
 bool __stdcall captureStdoutToLogStream(std::ostream &flog);
 void __stdcall releaseStdout(std::ostream &flog);
 
-int watch_notify(std::ostream &flog);
+int watch_notify(std::string &cmd, std::ostream &flog);
 bool read_notify_info(const std::string filename);
 
 extern bool opt_verbose;
-extern char exec_cmd[1024];

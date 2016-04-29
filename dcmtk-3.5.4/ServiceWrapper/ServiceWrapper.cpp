@@ -169,10 +169,7 @@ static int realMain(int argc, char **argv)
 	cmdStream.clear();
 	opt_verbose = (string::npos != cmd.find(" -v "));
     
-    strcpy_s(exec_cmd, cmd.c_str());
-    cmd.clear();
-
-    return watch_notify(flog);
+    return watch_notify(cmd, flog);
 }
 
 static void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
