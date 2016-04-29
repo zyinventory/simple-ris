@@ -1,8 +1,20 @@
 #include "stdafx.h"
 #include "commonlib.h"
+#include "../dcmdata/include/dcmtk/dcmdata/dconotify.h"
 
 using namespace std;
 using namespace handle_context;
+
+const char* CMOVE_FILE_SECTION::StorePath(char sp)
+{
+    HashStr(studyUID, unique_filename, sizeof(unique_filename));
+    unique_filename[8] = sp;
+    SeriesInstancePath(seriesUID, instanceUID, unique_filename + 9, sizeof(unique_filename) - 9, sp);
+    sprintf_s(hash, "%c%c%c%c%c%c%c%c%c%c%c",
+        unique_filename[0], unique_filename[1], sp, unique_filename[2], unique_filename[3], sp, 
+        unique_filename[4], unique_filename[5], sp, unique_filename[6], unique_filename[7]);
+    return unique_filename;
+}
 
 notify_file& notify_file::operator=(const notify_file &r)
 {
@@ -78,11 +90,110 @@ DWORD handle_dir::find_files(std::ostream &flog, std::function<DWORD(const std::
     return 0;
 }
 
+void handle_dir::process_file_notify_file(std::ifstream &ifs, unsigned int file_tag)
+{
+    DWORD flag = 0;
+    char *filename, linebuff[1024];
+    ifs.getline(linebuff, sizeof(linebuff));
+    filename = trim(linebuff, ifs.gcount());
+    
+    handle_context::CMOVE_FILE_SECTION *cfs = new handle_context::CMOVE_FILE_SECTION;
+    memset(cfs, 0, sizeof(handle_context::CMOVE_FILE_SECTION));
+    cfs->tag = file_tag;
+    sprintf_s(cfs->filename, "%s\\%s", get_path().c_str(), filename);
+    strcpy_s(cfs->association_id, get_association_id().c_str());
+
+    do{
+        ifs.getline(linebuff, 1024);
+        if(ifs.gcount())
+        {
+            istringstream cmdstrm(linebuff);
+            unsigned int tag = 0;
+            string type;
+            cmdstrm >> type;
+            if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_INSTANCE))
+            {
+                cmdstrm >> hex >> tag;
+                switch(tag)
+                {
+                case 0x0020000D:
+                    cmdstrm >> cfs->studyUID;
+                    flag |= 0x1;
+                    break;
+                case 0x0020000E:
+                    cmdstrm >> cfs->seriesUID;
+                    flag |= 0x2;
+                    break;
+                case 0x00080018:
+                    cmdstrm >> cfs->instanceUID;
+                    flag |= 0x4;
+                    break;
+                default:
+                    break;
+                }
+            }
+            // else ignore
+            if(flag == 0x7) break;
+        }
+    } while(ifs.good());
+    
+    if(strlen(cfs->studyUID) == 0)
+    {
+        time_header_out(cerr) << "handle_dir::process_file_notify_file() Unexpected empty studyUID" << endl;
+        return;
+    }
+    if(strlen(cfs->seriesUID) == 0)
+    {
+        time_header_out(cerr) << "handle_dir::process_file_notify_file() Unexpected empty seriesUID" << endl;
+        return;
+    }
+    if(strlen(cfs->instanceUID) == 0)
+    {
+        time_header_out(cerr) << "handle_dir::process_file_notify_file() Unexpected empty instanceUID" << endl;
+        return;
+    }
+    cfs->StorePath('\\');
+
+    delete cfs;
+}
+
 DWORD handle_dir::process_notify_file(const std::string &filename, std::ostream &flog)
 {
-    string filepath(get_path());
-    filepath.append(1, '\\').append(filename);
-    cerr << "handle_dir::process_notify_file(" << filepath << ")" << endl;
+    DWORD gle = 0, tag;
+    string cmd, filepath(get_path());
+    filepath.append("\\state\\").append(filename);
+    if(opt_verbose) time_header_out(cerr) << "handle_dir::process_notify_file(" << filepath << ")" << endl;
+    ifstream ntff(filepath, ios_base::in, _SH_DENYRW);
+    if(ntff.fail())
+    {
+        gle = GetLastError();
+        string msg("handle_dir::process_notify_file() open file ");
+        msg.append(filepath);
+        return displayErrorToCerr(msg.c_str(), gle, &flog);
+    }
+
+    ntff >> cmd >> hex >> tag;
+    
+    if(cmd.compare(NOTIFY_FILE_TAG) == 0) // receive a file
+    {
+        process_file_notify_file(ntff, tag);
+    }
+    else if(cmd.compare(NOTIFY_STORE_TAG) == 0)
+    {
+        switch(tag)
+        {
+        case NOTIFY_ASSOC_ESTA:
+            break;
+        case NOTIFY_ASSOC_RELEASE:
+            break;
+        case NOTIFY_ASSOC_ABORT:
+            break;
+        default:
+            break;
+        }
+    }
+    // else ignore
+    if(ntff.is_open()) ntff.close();
     return 0;
 }
 

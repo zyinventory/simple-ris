@@ -42,6 +42,9 @@
     <ClCompile Include="transfer_status.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="process_notify.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">

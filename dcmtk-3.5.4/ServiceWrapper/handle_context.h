@@ -8,6 +8,12 @@
 namespace handle_context
 {
     //enum handle_type { DIR, QRSCP, COMPRESS, ASSOC, STUDY };
+    typedef struct {
+        unsigned int tag;
+        char association_id[64], filename[MAX_PATH], hash[12], unique_filename[65], studyUID[65], seriesUID[65], instanceUID[65];
+        const char* StorePath(char sp = '/');
+        char PathSeparator() const { return unique_filename[8]; }
+    } CMOVE_FILE_SECTION;
 
     class notify_file
     {
@@ -46,6 +52,7 @@ namespace handle_context
         bool is_last_find_error() const { return last_find_error; };
         DWORD find_files(std::ostream &flog, std::function<DWORD(const std::string&)> p);
         DWORD process_notify_file(const std::string &filename, std::ostream &flog);
+        void process_file_notify_file(std::ifstream &ifs, unsigned int file_tag);
     };
 
     class handle_proc : public notify_file

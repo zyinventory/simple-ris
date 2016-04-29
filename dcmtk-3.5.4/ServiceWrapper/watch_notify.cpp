@@ -17,15 +17,23 @@ static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
     time_header_out(cerr) << "process_meta_notify_file() receive association notify " << notify_file << endl;
 #endif
     ifstream ntff(ntffn, ios_base::in, _SH_DENYRW);
-    if(ntff.fail()) return GetLastError();
-    string cmd, path, assoc_id, calling, called, remote, port;
+    if(ntff.fail())
+    {
+        DWORD gle = GetLastError();
+        string msg("process_meta_notify_file() open file ");
+        msg.append(ntffn);
+        return displayErrorToCerr(msg.c_str(), gle, &flog);
+    }
+    string cmd, path, assoc_id, calling, called, remote, port, transfer_syntax;
     DWORD tag, pid, gle = 0;
-    ntff >> cmd >> hex >> tag >> path >> dec >> pid >> assoc_id >> calling >> remote >> called >> port;
+    ntff >> cmd >> hex >> tag >> path >> dec >> pid >> assoc_id >> calling >> remote >> called >> port >> transfer_syntax;
     if(ntff.is_open()) ntff.close();
 #ifdef _DEBUG
     time_header_out(cerr) << cmd << " " << hex << tag << " " << path << " " << dec << pid << " " << assoc_id << " " << calling << " " << remote << " " << called << " " << port << endl;
 #endif
     if(path[1] != ':') path.insert(0, "\\pacs\\").insert(0, GetPacsBase());
+    size_t pos = path.length();
+    path.append("\\state");
     
     HANDLE hdir = FindFirstChangeNotification(path.c_str(), FALSE, FILE_NOTIFY_CHANGE_SIZE);
     if(hdir == INVALID_HANDLE_VALUE)
@@ -35,6 +43,7 @@ static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
         return displayErrorToCerr(buff, gle, &flog);
     }
     // create association(handle_dir) instance
+    path.erase(pos);
     handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path);
     gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify_file(filename, flog); });
     if(gle == 0) map_handle_context[hdir] = pclz_dir;
