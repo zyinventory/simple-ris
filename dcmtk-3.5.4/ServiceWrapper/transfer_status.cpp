@@ -46,6 +46,7 @@ DWORD handle_dir::find_files(std::ostream &flog, std::function<DWORD(const std::
     }
 
     bool process_file_error = false;
+    list<string> new_files;
     do {
         string node(wfd.name);
         if (node.compare(".") == 0 || node.compare("..") == 0) 
@@ -53,14 +54,7 @@ DWORD handle_dir::find_files(std::ostream &flog, std::function<DWORD(const std::
         if((wfd.attrib & _A_SUBDIR) == 0)
         {
             if(find(filelist.begin(), filelist.end(), node) == filelist.end())
-            {
-                if(pred(node))
-                {
-                    process_file_error = true;
-                    break;
-                }
-                else filelist.push_back(node);
-            }
+                new_files.push_back(node);
         }
 	} while(_findnext(hSearch, &wfd) == 0);
     last_find_error = process_file_error;
@@ -69,6 +63,18 @@ DWORD handle_dir::find_files(std::ostream &flog, std::function<DWORD(const std::
 
     if(FALSE == FindNextChangeNotification(handle))
         return displayErrorToCerr("handle_dir::find_files() FindNextChangeNotification()", GetLastError(), &flog);
+
+    // handle OK, process new files.
+    for(list<string>::iterator it = new_files.begin(); it != new_files.end(); ++it)
+    {
+        DWORD gle = pred(*it);
+        if(gle && gle == ERROR_SHARING_VIOLATION)
+        {
+            process_file_error = true;
+            break; // try it later
+        }
+        else filelist.push_back(*it); // success or other error, no more process it
+    }
     return 0;
 }
 

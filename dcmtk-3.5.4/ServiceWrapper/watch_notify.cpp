@@ -10,13 +10,13 @@ static HANDLE_MAP map_handle_context;
 
 static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
 {
-    string ntffn("store_notify\\");
-    ntffn.append(notify_file);
+    string ntffn(NOTIFY_BASE);
+    ntffn.append(1, '\\').append(notify_file);
     if(opt_verbose) time_header_out(flog) << "process_meta_notify_file() receive association notify " << notify_file << endl;
 #ifdef _DEBUG
     time_header_out(cerr) << "process_meta_notify_file() receive association notify " << notify_file << endl;
 #endif
-    ifstream ntff(ntffn);
+    ifstream ntff(ntffn, ios_base::in, _SH_DENYRW);
     if(ntff.fail()) return GetLastError();
     string cmd, path, assoc_id, calling, called, remote, port;
     DWORD tag, pid, gle = 0;
@@ -34,7 +34,7 @@ static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
         sprintf_s(buff, "process_meta_notify_file() FindFirstChangeNotification(%s)", path.c_str());
         return displayErrorToCerr(buff, gle, &flog);
     }
-
+    // create association(handle_dir) instance
     handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path);
     gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify_file(filename, flog); });
     if(gle == 0) map_handle_context[hdir] = pclz_dir;
@@ -42,8 +42,11 @@ static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
     {
         delete pclz_dir;
         displayErrorToCerr("process_meta_notify_file() handle_dir::find_files()", gle, &flog);
+        string badname(ntffn);
+        badname.append(".bad");
+        rename(ntffn.c_str(), badname.c_str());
     }
-    return gle;
+    return 0;
 }
 
 int watch_notify(string &cmd, ostream &flog)
