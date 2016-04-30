@@ -27,6 +27,15 @@ handle_dir& handle_dir::operator=(const handle_dir &r)
 {
     notify_file::operator=(r);
     handle = r.handle;
+    store_assoc_id = r.store_assoc_id;
+    callingAE = r.callingAE;
+    callingAddr = r.calledAddr;
+    calledAE = r.calledAE;
+    calledAddr = r.calledAddr;
+    expected_xfer = r.expected_xfer;
+    port = r.port;
+    assoc_disconn = r.assoc_disconn;
+    disconn_release = r.disconn_release;
     copy(r.filelist.begin(), r.filelist.end(), filelist.begin());
     return *this;
 }
@@ -90,81 +99,87 @@ DWORD handle_dir::find_files(std::ostream &flog, std::function<DWORD(const std::
     return 0;
 }
 
-void handle_dir::process_file_notify_file(std::ifstream &ifs, unsigned int file_tag)
+handle_context::CMOVE_NOTIFY_CONTEXT* handle_dir::process_notify_file(std::istream &ifs, unsigned int seq, ostream &flog)
 {
-    DWORD flag = 0;
-    char *filename, linebuff[1024];
-    ifs.getline(linebuff, sizeof(linebuff));
-    filename = trim(linebuff, ifs.gcount());
-    
-    handle_context::CMOVE_FILE_SECTION *cfs = new handle_context::CMOVE_FILE_SECTION;
-    memset(cfs, 0, sizeof(handle_context::CMOVE_FILE_SECTION));
-    cfs->tag = file_tag;
-    sprintf_s(cfs->filename, "%s\\%s", get_path().c_str(), filename);
-    strcpy_s(cfs->association_id, get_association_id().c_str());
+    CMOVE_NOTIFY_CONTEXT *pclc = new CMOVE_NOTIFY_CONTEXT;
+    memset(pclc, 0, sizeof(CMOVE_NOTIFY_CONTEXT));
 
+    if(seq >= NOTIFY_FILE_SEQ_START)
+    {
+        pclc->file_seq = seq;
+        ifs >> pclc->file.filename;
+        if(opt_verbose) time_header_out(flog) << NOTIFY_FILE_TAG << " " << hex << uppercase << setw(8) << setfill('0') << seq 
+            << " " << pclc->file.filename << endl;
+    }
+    else
+    {
+        time_header_out(flog) << "handle_dir::process_notify_file() seq is error: " 
+            << NOTIFY_FILE_TAG << " " << hex << uppercase << setw(8) << setfill('0') << seq 
+            << " " << pclc->file.filename << endl;
+        return NULL;
+    }
+
+    char *cmd = new char[1024];
     do{
-        ifs.getline(linebuff, 1024);
-        if(ifs.gcount())
+        ifs.getline(cmd, 1024);
+        if(ifs.gcount() && strlen(cmd))
         {
-            istringstream cmdstrm(linebuff);
-            unsigned int tag = 0;
+            istringstream linestrm(cmd);
             string type;
-            cmdstrm >> type;
+            linestrm >> type;
             if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_INSTANCE))
-            {
-                cmdstrm >> hex >> tag;
-                switch(tag)
-                {
-                case 0x0020000D:
-                    cmdstrm >> cfs->studyUID;
-                    flag |= 0x1;
-                    break;
-                case 0x0020000E:
-                    cmdstrm >> cfs->seriesUID;
-                    flag |= 0x2;
-                    break;
-                case 0x00080018:
-                    cmdstrm >> cfs->instanceUID;
-                    flag |= 0x4;
-                    break;
-                default:
-                    break;
-                }
-            }
-            // else ignore
-            if(flag == 0x7) break;
+                cmd_instance(type, linestrm, *pclc, flog);
+            else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_PATIENT))
+                cmd_patient(type, linestrm, *pclc, flog);
+            else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_STUDY))
+                cmd_study(type, linestrm, *pclc, flog);
+            else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_SERIES))
+                cmd_series(type, linestrm, *pclc, flog);
+            else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_FILE_TAG))
+                ; // ignore it
+            else 
+                time_header_out(flog) << "handle_dir::process_notify_file() can't recognize line: " << linestrm.str() << endl;
         }
     } while(ifs.good());
-    
-    if(strlen(cfs->studyUID) == 0)
-    {
-        time_header_out(cerr) << "handle_dir::process_file_notify_file() Unexpected empty studyUID" << endl;
-        return;
-    }
-    if(strlen(cfs->seriesUID) == 0)
-    {
-        time_header_out(cerr) << "handle_dir::process_file_notify_file() Unexpected empty seriesUID" << endl;
-        return;
-    }
-    if(strlen(cfs->instanceUID) == 0)
-    {
-        time_header_out(cerr) << "handle_dir::process_file_notify_file() Unexpected empty instanceUID" << endl;
-        return;
-    }
-    cfs->StorePath('\\');
-
-    delete cfs;
+    if(cmd) delete[] cmd;
+    return pclc;
 }
 
-DWORD handle_dir::process_notify_file(const std::string &filename, std::ostream &flog)
+void handle_dir::process_notify_association(std::istream &ifs, unsigned int tag, std::ostream &flog)
+{
+    switch(tag)
+    {
+    case NOTIFY_ASSOC_ESTA:
+        ifs >> store_assoc_id >> callingAE >> callingAddr >> calledAE >> dec >> port >> expected_xfer >> calledAddr;
+        if(opt_verbose) time_header_out(flog) << " " << callingAE << " " << callingAddr<< " " << calledAE<< " " << dec << port << " " << expected_xfer << " "<< calledAddr << endl;
+        break;
+    case NOTIFY_ASSOC_RELEASE:
+        assoc_disconn = true;
+        disconn_release = true;
+        break;
+    case NOTIFY_ASSOC_ABORT:
+        assoc_disconn = true;
+        disconn_release = false;
+        break;
+    default:
+        {
+            char otherbuf[1024] = "";
+            ifs.getline(otherbuf, sizeof(otherbuf));
+            if(!opt_verbose) time_header_out(flog) << NOTIFY_STORE_TAG << " " << hex << uppercase << setw(8) << setfill('0') << tag << " "
+                << " " << otherbuf << ", encounter error" << endl;
+        }
+        break;
+    }
+}
+
+DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog)
 {
     DWORD gle = 0, tag;
     string cmd, filepath(get_path());
     filepath.append("\\state\\").append(filename);
     if(opt_verbose) time_header_out(cerr) << "handle_dir::process_notify_file(" << filepath << ")" << endl;
-    ifstream ntff(filepath, ios_base::in, _SH_DENYRW);
-    if(ntff.fail())
+    ifstream ifs(filepath, ios_base::in, _SH_DENYRW);
+    if(ifs.fail())
     {
         gle = GetLastError();
         string msg("handle_dir::process_notify_file() open file ");
@@ -172,28 +187,24 @@ DWORD handle_dir::process_notify_file(const std::string &filename, std::ostream 
         return displayErrorToCerr(msg.c_str(), gle, &flog);
     }
 
-    ntff >> cmd >> hex >> tag;
+    ifs >> cmd >> hex >> tag;
     
     if(cmd.compare(NOTIFY_FILE_TAG) == 0) // receive a file
     {
-        process_file_notify_file(ntff, tag);
+        CMOVE_NOTIFY_CONTEXT * pclc = process_notify_file(ifs, tag, flog);
+        if(pclc)
+        {
+            strcpy_s(pclc->association_id, get_association_id().c_str());
+            pclc->file.StorePath();
+            delete pclc;
+        }
     }
     else if(cmd.compare(NOTIFY_STORE_TAG) == 0)
     {
-        switch(tag)
-        {
-        case NOTIFY_ASSOC_ESTA:
-            break;
-        case NOTIFY_ASSOC_RELEASE:
-            break;
-        case NOTIFY_ASSOC_ABORT:
-            break;
-        default:
-            break;
-        }
+        process_notify_association(ifs, tag, flog);
     }
     // else ignore
-    if(ntff.is_open()) ntff.close();
+    if(ifs.is_open()) ifs.close();
     return 0;
 }
 
@@ -245,10 +256,4 @@ int handle_proc::create_process(const char *exec_name, std::ostream &flog)
         CloseHandle(logFile);
 		return gle;
 	}
-}
-
-bool read_notify_info(const string filename)
-{
-
-    return true;
 }

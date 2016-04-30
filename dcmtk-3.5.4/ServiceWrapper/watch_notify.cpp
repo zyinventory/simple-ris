@@ -45,7 +45,7 @@ static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
     // create association(handle_dir) instance
     path.erase(pos);
     handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path);
-    gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify_file(filename, flog); });
+    gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify(filename, flog); });
     if(gle == 0) map_handle_context[hdir] = pclz_dir;
     else
     {
@@ -142,7 +142,7 @@ int watch_notify(string &cmd, ostream &flog)
             else if(phdir = dynamic_cast<handle_dir*>(pb))
             {
                 if(phdir->get_association_id().length()) // some file in storedir/association_id
-                    gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify_file(filename, flog); });
+                    gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, flog); });
                 else // new file in store_notify
                     gle = phdir->find_files(flog, [&flog](const string& filename) { return process_meta_notify_file(filename, flog); });
             }

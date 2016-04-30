@@ -4,70 +4,194 @@
 #include "../ofstd/include/dcmtk/ofstd/x_www_form_codec.h"
 
 using namespace std;
+using namespace handle_context;
 
 static char linebuff[1024];
 
-void process_file_notify_file(std::ifstream &ifs, unsigned int file_tag, const string &transfer_base)
+int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog)
 {
-    DWORD flag = 0;
-    char *filename;
-    ifs.getline(linebuff, sizeof(linebuff));
-    filename = trim(linebuff, ifs.gcount());
-    
-    handle_context::CMOVE_FILE_SECTION cfs;
-    memset(&cfs, 0, sizeof(cfs));
-    cfs.tag = file_tag;
-    sprintf_s(cfs.filename, "%s\\%s", transfer_base.c_str(), filename);
+    unsigned int tag = 0;
+    string temp;
 
-    do{
-        ifs.getline(linebuff, 1024);
-        if(ifs.gcount())
+    cmdstrm >> hex >> tag;
+    switch(tag)
+    {
+    case 0x00100020:
+        cmdstrm >> temp;
+        if(temp.empty())
+            time_header_out(flog) << "Unexpected empty patientID " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
+        else
         {
-            istringstream cmdstrm(linebuff);
-            unsigned int tag = 0;
-            string type;
-            cmdstrm >> type;
-            if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_INSTANCE))
-            {
-                cmdstrm >> hex >> cfs.tag;
-                switch(tag)
-                {
-                case 0x0020000D:
-                    cmdstrm >> cfs.studyUID;
-                    flag |= 0x1;
-                    break;
-                case 0x0020000E:
-                    cmdstrm >> cfs.seriesUID;
-                    flag |= 0x2;
-                    break;
-                case 0x00080018:
-                    cmdstrm >> cfs.instanceUID;
-                    flag |= 0x4;
-                    break;
-                default:
-                    break;
-                }
-            }
-            // else ignore
-            if(flag == 0x7) break;
+            if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp << endl;
+            x_www_form_codec<char>::decode(temp.c_str(), lc.file.patientID, sizeof(lc.file.patientID));
         }
-    } while(ifs.good());
-    
-    if(strlen(cfs.studyUID) == 0)
-    {
-        time_header_out(cerr) << "Unexpected empty studyUID " << cfs.studyUID << endl;
-        return;
+        break;
+    case 0x0020000D:
+        cmdstrm >> lc.file.studyUID;
+        if(strlen(lc.file.studyUID) == 0)
+            time_header_out(flog) << "Unexpected empty studyUID " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
+        else if(opt_verbose)
+            time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.studyUID << endl;
+        break;
+    case 0x0020000E:
+        cmdstrm >> lc.file.seriesUID;
+        if(strlen(lc.file.seriesUID) == 0)
+            time_header_out(flog) << "Unexpected empty seriesUID " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
+        else if(opt_verbose)
+            time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.seriesUID << endl;
+        break;
+    case 0x00080018:
+        cmdstrm >> lc.file.instanceUID;
+        if(strlen(lc.file.instanceUID) == 0)
+            time_header_out(flog) << "Unexpected empty instanceUID " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
+        else if(opt_verbose)
+            time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.instanceUID << endl;
+        break;
+    case 0x00020010:
+        cmdstrm >> lc.file.xfer >> lc.file.isEncapsulated;
+        if(strlen(lc.file.xfer) == 0)
+            time_header_out(flog) << "Unexpected empty xfer " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
+        else if(opt_verbose)
+            time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.xfer << " " << lc.file.isEncapsulated << endl;
+        break;
+    default:
+        {
+            char otherbuf[1024] = "";
+            cmdstrm.getline(otherbuf, sizeof(otherbuf));
+            time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
+                << " " << otherbuf << ", encounter error" << endl;
+        }
+        break;
     }
-    if(strlen(cfs.seriesUID) == 0)
+    return 0;
+}
+
+int cmd_patient(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog)
+{
+    unsigned int tag = 0;
+    string temp_patients_name;
+    bool dirty = false;
+
+    cmdstrm >> hex >> tag;
+    switch(tag)
     {
-        time_header_out(cerr) << "Unexpected empty seriesUID " << cfs.seriesUID << endl;
-        return;
+    case 0x00100010:
+        cmdstrm >> temp_patients_name;
+        dirty = true;
+        if(temp_patients_name.empty())
+            time_header_out(flog) << "Unexpected empty patient's name " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
+        else
+        {
+            x_www_form_codec<char>::decode(temp_patients_name.c_str(), lc.patient.patientsName, sizeof(lc.patient.patientsName));
+            if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp_patients_name << endl;
+        }
+        break;
+    case 0x00100030:
+        cmdstrm >> lc.patient.birthday;
+        dirty = true;
+        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.birthday << endl;
+        break;
+    case 0x00100040:
+        cmdstrm >> lc.patient.sex;
+        if(lc.patient.sex[0] != 'M' && lc.patient.sex[0] != 'F' && lc.patient.sex[0] != 'O')
+        {
+            lc.patient.sex[0] = ' ';
+            lc.patient.sex[1] = '\0';
+        }
+        else if(strlen(lc.patient.patientID) == 0) dirty = true;
+        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.sex << endl;
+        break;
+    case 0x00101020:
+        cmdstrm >> lc.patient.height;
+        dirty = true;
+        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.height << endl;
+        break;
+    case 0x00101030:
+        cmdstrm >> lc.patient.weight;
+        dirty = true;
+        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.weight << endl;
+        break;
+    default:
+        {
+            char otherbuf[1024] = "";
+            cmdstrm.getline(otherbuf, sizeof(otherbuf));
+            time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
+                << " " << otherbuf << ", encounter error" << endl;
+        }
+        break;
     }
-    if(strlen(cfs.instanceUID) == 0)
+    if(dirty) strcpy_s(lc.patient.patientID, lc.file.patientID);
+    return 0;
+}
+
+
+int cmd_study(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog)
+{
+    unsigned int tag = 0;
+    string temp;
+    bool dirty = false;
+
+    cmdstrm >> hex >> tag;
+    switch(tag)
     {
-        time_header_out(cerr) << "Unexpected empty instanceUID " << cfs.instanceUID << endl;
-        return;
+    case 0x00080020:
+        cmdstrm >> lc.study.studyDate;
+        dirty = true;
+        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.study.studyDate << endl;
+        break;
+    case 0x00080030:
+        cmdstrm >> lc.study.studyTime;
+        dirty = true;
+        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.study.studyTime << endl;
+        break;
+    case 0x00080050:
+        cmdstrm >> temp;
+        dirty = true;
+        x_www_form_codec<char>::decode(temp.c_str(), lc.study.accessionNumber, sizeof(lc.study.accessionNumber));
+        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp << endl;
+        break;
+    default:
+        {
+            char otherbuf[1024] = "";
+            cmdstrm.getline(otherbuf, sizeof(otherbuf));
+            time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
+                << " " << otherbuf << ", encounter error" << endl;
+        }
+        break;
     }
-    cfs.StorePath('\\');
-    
+    if(dirty)
+        strcpy_s(lc.study.studyUID, lc.file.studyUID);
+    return 0;
+}
+
+int cmd_series(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog)
+{
+    unsigned int tag = 0;
+    string temp;
+    bool dirty = false;
+
+    cmdstrm >> hex >> tag;
+    switch(tag)
+    {
+    case 0x00080060:
+        cmdstrm >> lc.series.modality;
+        if(strlen(lc.series.modality) == 0)
+            time_header_out(flog) << "Unexpected empty modality " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
+        else
+        {
+            dirty = true;
+            if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.series.modality << endl;
+        }
+        break;
+    default:
+        {
+            char otherbuf[1024] = "";
+            cmdstrm.getline(otherbuf, sizeof(otherbuf));
+            time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag
+                << " " << otherbuf << ", encounter error" << endl;
+        }
+        break;
+    }
+    if(dirty) strcpy_s(lc.series.seriesUID, lc.file.seriesUID);
+    return 0;
 }

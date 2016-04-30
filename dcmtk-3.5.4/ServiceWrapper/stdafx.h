@@ -21,6 +21,7 @@
 #include <io.h>
 #include <sys/stat.h>
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <sstream>
 #include <list>
@@ -34,6 +35,16 @@
 #define NOTIFY_BASE "store_notify"
 typedef std::map<HANDLE, handle_context::notify_file*> HANDLE_MAP;
 typedef std::pair<HANDLE, handle_context::notify_file*> HANDLE_PAIR;
+
+int watch_notify(std::string &cmd, std::ostream &flog);
+int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog);
+int cmd_patient(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog);
+int cmd_study(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog);
+int cmd_series(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog);
+
+extern bool opt_verbose;
+
+// ------- old ServiceWrapper -------
 
 #define MAX_CORE 16
 
@@ -50,8 +61,3 @@ void autoCleanPacsDiskByStudyDate();
 bool deleteDayStudy(const char *dayxml);
 bool __stdcall captureStdoutToLogStream(std::ostream &flog);
 void __stdcall releaseStdout(std::ostream &flog);
-
-int watch_notify(std::string &cmd, std::ostream &flog);
-bool read_notify_info(const std::string filename);
-
-extern bool opt_verbose;
