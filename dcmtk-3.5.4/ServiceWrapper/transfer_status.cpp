@@ -177,7 +177,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     DWORD gle = 0, tag;
     string cmd, filepath(get_path());
     filepath.append("\\state\\").append(filename);
-    if(opt_verbose) time_header_out(cerr) << "handle_dir::process_notify_file(" << filepath << ")" << endl;
+    if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_file(" << filepath << ")" << endl;
     ifstream ifs(filepath, ios_base::in, _SH_DENYRW);
     if(ifs.fail())
     {
@@ -196,7 +196,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
         {
             strcpy_s(pclc->association_id, get_association_id().c_str());
             pclc->file.StorePath();
-            delete pclc;
+            // todo: add CMOVE_NOTIFY_CONTEXT* to compress queue
         }
     }
     else if(cmd.compare(NOTIFY_STORE_TAG) == 0)
