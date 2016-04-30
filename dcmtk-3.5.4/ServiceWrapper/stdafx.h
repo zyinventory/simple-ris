@@ -35,7 +35,7 @@
 #define NOTIFY_BASE "store_notify"
 typedef std::map<HANDLE, handle_context::notify_file*> HANDLE_MAP;
 typedef std::pair<HANDLE, handle_context::notify_file*> HANDLE_PAIR;
-typedef std::list<handle_context::CMOVE_NOTIFY_CONTEXT*> NOTIFY_LIST;
+typedef std::list<handle_context::CMOVE_NOTIFY_CONTEXT> NOTIFY_LIST;
 
 int watch_notify(std::string &cmd, std::ostream &flog);
 int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog);

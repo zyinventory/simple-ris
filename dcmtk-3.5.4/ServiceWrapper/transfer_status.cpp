@@ -194,7 +194,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     
     if(cmd.compare(NOTIFY_FILE_TAG) == 0) // receive a file
     {
-        CMOVE_NOTIFY_CONTEXT * pclc = process_notify_file(ifs, tag, flog);
+        CMOVE_NOTIFY_CONTEXT *pclc = process_notify_file(ifs, tag, flog);
         if(pclc)
         {
             strcpy_s(pclc->association_id, get_association_id().c_str());
@@ -203,7 +203,8 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
 #ifdef _DEBUG
             time_header_out(cerr) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK" << endl;
 #endif
-            compress_queue.push_back(pclc);
+            compress_queue.push_back(*pclc);
+            delete pclc;
         }
     }
     else if(cmd.compare(NOTIFY_STORE_TAG) == 0)
@@ -294,9 +295,9 @@ int handle_proc::start_process(std::ostream &flog)
     }
 }
 
-handle_compress* handle_compress::make_handle_compress(CMOVE_NOTIFY_CONTEXT *pnc, HANDLE_MAP &map_handle)
+handle_compress* handle_compress::make_handle_compress(const CMOVE_NOTIFY_CONTEXT &cnc, HANDLE_MAP &map_handle)
 {
-    string assoc_id(pnc->association_id);
+    string assoc_id(cnc.association_id);
     // select cwd form assoc_id
     const HANDLE_MAP::iterator it = find_if(map_handle.begin(), map_handle.end(),
         [&assoc_id](const HANDLE_PAIR &p) { return 0 == assoc_id.compare(p.second->get_association_id()); });
@@ -311,24 +312,23 @@ handle_compress* handle_compress::make_handle_compress(CMOVE_NOTIFY_CONTEXT *pnc
     {
         ++p;
         mkdir_pos = p - cmd;
-        mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", verbose_flag, pnc->file.filename);
+        mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", verbose_flag, cnc.file.filename);
     }
     else
-        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, pnc->file.filename);
+        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, cnc.file.filename);
 #else
     char cmd[1024];
-	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, pnc->file.filename);
+	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, cnc.file.filename);
 #endif
     int ctn = mkdir_pos;
-    ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "archdir\\%s\\", pnc->file.studyUID);
-    if(strlen(pnc->file.unique_filename) == 0) pnc->file.StorePath('\\');
-    strcpy_s(cmd + ctn, sizeof(cmd) - ctn, pnc->file.unique_filename);
-    return new handle_compress(assoc_id, it->second->get_path(), cmd, "dcmcjpeg", pnc);
+    ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "archdir\\%s\\", cnc.file.studyUID);
+    strcpy_s(cmd + ctn, sizeof(cmd) - ctn, cnc.file.unique_filename);
+    return new handle_compress(assoc_id, it->second->get_path(), cmd, "dcmcjpeg", cnc);
 }
 
 handle_compress& handle_compress::operator=(const handle_compress &r)
 {
     handle_proc::operator=(r);
-    notify_ctx_ptr = r.notify_ctx_ptr;
+    notify_ctx = r.notify_ctx;
     return *this;
 }

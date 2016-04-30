@@ -135,9 +135,10 @@ int watch_notify(string &cmd, ostream &flog)
                 {
                     ReleaseSemaphore(hSema, 1, NULL);
                     map_handle_context.erase(phcompr->get_handle());
-                    CMOVE_NOTIFY_CONTEXT *pnc = phcompr->get_notify_context_ptr();
+                    CMOVE_NOTIFY_CONTEXT cnc = phcompr->get_notify_context();
                     delete phcompr;
-                    delete pnc; // todo: shall transfer ptr to dcmmkdir
+                    // todo: shall transfer cnc to dcmmkdir
+
                 }
                 else if(phproc = dynamic_cast<handle_proc*>(pb))
                 {
@@ -182,9 +183,8 @@ int watch_notify(string &cmd, ostream &flog)
                 dw = WaitForSingleObject(hSema, 0);
                 if(dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED)
                 {
-                    CMOVE_NOTIFY_CONTEXT *pnc = compress_queue.front();
+                    handle_compress* compr_ptr = handle_compress::make_handle_compress(compress_queue.front(), map_handle_context);
                     compress_queue.pop_front();
-                    handle_compress* compr_ptr = handle_compress::make_handle_compress(pnc, map_handle_context);
                     if(compr_ptr)
                     {
                         if(compr_ptr->start_process(flog))

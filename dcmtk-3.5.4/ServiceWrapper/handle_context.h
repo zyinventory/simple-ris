@@ -110,18 +110,18 @@ namespace handle_context
     class handle_compress : public handle_proc
     {
     private:
-        CMOVE_NOTIFY_CONTEXT *notify_ctx_ptr;
+        CMOVE_NOTIFY_CONTEXT notify_ctx;
 
     protected:
         handle_compress(const std::string &assoc_id, const std::string &cwd, const std::string &cmd, 
-            const std::string &exec_prog_name, CMOVE_NOTIFY_CONTEXT *pnc)
-            : handle_proc(assoc_id, cwd, cmd, exec_prog_name), notify_ctx_ptr(pnc) { };
+            const std::string &exec_prog_name, const CMOVE_NOTIFY_CONTEXT &cnc)
+            : handle_proc(assoc_id, cwd, cmd, exec_prog_name), notify_ctx(cnc) { };
 
     public:
-        static handle_compress* make_handle_compress(CMOVE_NOTIFY_CONTEXT *pnc, std::map<HANDLE, handle_context::notify_file*> &map_handle);
-        handle_compress(const handle_compress& o) : handle_proc(o), notify_ctx_ptr(o.notify_ctx_ptr) {};
+        static handle_compress* make_handle_compress(const CMOVE_NOTIFY_CONTEXT &cnc, std::map<HANDLE, handle_context::notify_file*> &map_handle);
+        handle_compress(const handle_compress& o) : handle_proc(o), notify_ctx(o.notify_ctx) {};
         handle_compress& operator=(const handle_compress &r);
-        CMOVE_NOTIFY_CONTEXT* get_notify_context_ptr() { return notify_ctx_ptr; };
+        CMOVE_NOTIFY_CONTEXT& get_notify_context() { return notify_ctx; };
     };
 }
 #endif
