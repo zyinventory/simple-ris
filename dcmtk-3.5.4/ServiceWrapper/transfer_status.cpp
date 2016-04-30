@@ -151,15 +151,18 @@ void handle_dir::process_notify_association(std::istream &ifs, unsigned int tag,
     {
     case NOTIFY_ASSOC_ESTA:
         ifs >> store_assoc_id >> callingAE >> callingAddr >> calledAE >> dec >> port >> expected_xfer >> calledAddr;
-        if(opt_verbose) time_header_out(flog) << " " << callingAE << " " << callingAddr<< " " << calledAE<< " " << dec << port << " " << expected_xfer << " "<< calledAddr << endl;
+        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << store_assoc_id << " "
+            << callingAE << " " << callingAddr<< " " << calledAE<< " " << dec << port << " " << expected_xfer << " "<< calledAddr << endl;
         break;
     case NOTIFY_ASSOC_RELEASE:
         assoc_disconn = true;
         disconn_release = true;
+        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << store_assoc_id << " disconnect release" << endl;
         break;
     case NOTIFY_ASSOC_ABORT:
         assoc_disconn = true;
         disconn_release = false;
+        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << store_assoc_id << " disconnect abort" << endl;
         break;
     default:
         {
@@ -200,8 +203,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
 #ifdef _DEBUG
             time_header_out(cerr) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK" << endl;
 #endif
-            // todo: add CMOVE_NOTIFY_CONTEXT* to compress queue
-            delete pclc;
+            compress_queue.push_back(pclc);
         }
     }
     else if(cmd.compare(NOTIFY_STORE_TAG) == 0)
@@ -216,16 +218,44 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
 handle_proc& handle_proc::operator=(const handle_proc &r)
 {
     notify_file::operator=(r);
+    hlog = r.hlog;
     exec_cmd = r.exec_cmd;
+    exec_name = r.exec_name;
+    log_path = r.log_path;
     procinfo = r.procinfo;
     return *this;
 }
 
-int handle_proc::create_process(const char *exec_name, std::ostream &flog)
+handle_proc::~handle_proc()
+{
+    if(procinfo.hThread && procinfo.hThread != INVALID_HANDLE_VALUE) CloseHandle(procinfo.hThread);
+    if(procinfo.hProcess && procinfo.hProcess != INVALID_HANDLE_VALUE) CloseHandle(procinfo.hProcess);
+    if(hlog && hlog != INVALID_HANDLE_VALUE)
+    {
+        DWORD file_size = GetFileSize(hlog, NULL);
+        CloseHandle(hlog);
+        if(file_size == 0)
+        {
+            if(_unlink(log_path.c_str()))
+            {
+                char msg[1024];
+                strerror_s(msg, errno);
+                time_header_out(cerr) << "handle_proc::~handle_proc() _unlink(" << log_path << ") failed: " << msg << endl;
+            }
+        }
+    }
+}
+
+#define START_PROCESS_BUFF_SIZE 1024
+
+int handle_proc::start_process(std::ostream &flog)
 {
     STARTUPINFO sinfo;
 	memset(&sinfo, 0, sizeof(STARTUPINFO));
 	sinfo.cb = sizeof(STARTUPINFO);
+
+    if(procinfo.hThread) CloseHandle(procinfo.hThread);
+    if(procinfo.hProcess) CloseHandle(procinfo.hProcess);
     memset(&procinfo, 0, sizeof(PROCESS_INFORMATION));
 
 	SECURITY_ATTRIBUTES logSA;
@@ -234,9 +264,9 @@ int handle_proc::create_process(const char *exec_name, std::ostream &flog)
 	logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
 
 	HANDLE logFile = INVALID_HANDLE_VALUE;
-    char buff[1024];
-	size_t pos = GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", buff, sizeof(buff));
-    sprintf_s(buff + pos, sizeof(buff) - pos, "%s.txt", exec_name);
+    char buff[START_PROCESS_BUFF_SIZE];
+	size_t pos = GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", buff, START_PROCESS_BUFF_SIZE);
+    sprintf_s(buff + pos, START_PROCESS_BUFF_SIZE - pos, "%s_%x.txt", exec_name.c_str(), this);
 
 	if(PrepareFileDir(buff))
 		logFile = CreateFile(buff, GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -247,18 +277,58 @@ int handle_proc::create_process(const char *exec_name, std::ostream &flog)
 		sinfo.hStdOutput = logFile;
 		sinfo.hStdError = logFile;
 		sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+        log_path = buff;
 	}
-    strcpy_s(buff, exec_cmd.c_str());
+    strcpy_s(buff, START_PROCESS_BUFF_SIZE, exec_cmd.c_str());
     if( CreateProcess(NULL, buff, NULL, NULL, TRUE, CREATE_NEW_PROCESS_GROUP, NULL, get_path().c_str(), &sinfo, &procinfo) )
 	{
-        CloseHandle(logFile);
-        if(opt_verbose) time_header_out(flog) << "create_child_proc(" << exec_cmd << ") OK" << endl;
+        if(FALSE == DuplicateHandle(GetCurrentProcess(), logFile, GetCurrentProcess(), &hlog, DUPLICATE_SAME_ACCESS, FALSE, DUPLICATE_CLOSE_SOURCE))
+            hlog = NULL;
+        if(opt_verbose) time_header_out(flog) << "handle_proc::start_process(" << exec_cmd << ") OK" << endl;
 		return 0;
 	}
 	else
-	{
-        DWORD gle = GetLastError();
+    {
         CloseHandle(logFile);
-		return gle;
-	}
+        return GetLastError();
+    }
+}
+
+handle_compress* handle_compress::make_handle_compress(CMOVE_NOTIFY_CONTEXT *pnc, HANDLE_MAP &map_handle)
+{
+    string assoc_id(pnc->association_id);
+    // select cwd form assoc_id
+    const HANDLE_MAP::iterator it = find_if(map_handle.begin(), map_handle.end(),
+        [&assoc_id](const HANDLE_PAIR &p) { return 0 == assoc_id.compare(p.second->get_association_id()); });
+    if(it == map_handle.end()) return NULL;
+
+    const char *verbose_flag = opt_verbose ? "-v" : "";
+#ifdef _DEBUG
+    int mkdir_pos = 0;
+    char cmd[1024] = __FILE__;
+    char *p = strrchr(cmd, '\\');
+    if(p)
+    {
+        ++p;
+        mkdir_pos = p - cmd;
+        mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", verbose_flag, pnc->file.filename);
+    }
+    else
+        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, pnc->file.filename);
+#else
+    char cmd[1024];
+	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, pnc->file.filename);
+#endif
+    int ctn = mkdir_pos;
+    ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "archdir\\%s\\", pnc->file.studyUID);
+    if(strlen(pnc->file.unique_filename) == 0) pnc->file.StorePath('\\');
+    strcpy_s(cmd + ctn, sizeof(cmd) - ctn, pnc->file.unique_filename);
+    return new handle_compress(assoc_id, it->second->get_path(), cmd, "dcmcjpeg", pnc);
+}
+
+handle_compress& handle_compress::operator=(const handle_compress &r)
+{
+    handle_proc::operator=(r);
+    notify_ctx_ptr = r.notify_ctx_ptr;
+    return *this;
 }

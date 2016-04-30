@@ -653,8 +653,7 @@ main(int argc, char *argv[])
             time_header_out(CERR) << "OpenMutex(Global\\dcmtk_ServiceWrapper) failed: " << GetLastError() << endl;
             return 11;
         }
-        else if(options.verbose_)
-            time_header_out(CERR) << "OpenMutex(Global\\dcmtk_ServiceWrapper) OK" << endl;
+        else time_header_out(CERR) << "OpenMutex(Global\\dcmtk_ServiceWrapper) OK" << endl;
     }
 
     ChangeToPacsWebSub(pacs_base, sizeof(pacs_base));
@@ -771,7 +770,7 @@ main(int argc, char *argv[])
             if(wr == WAIT_OBJECT_0 || wr == WAIT_ABANDONED)
             {
                 SignalInterruptHandler(1);
-                if(options.verbose_) time_header_out(CERR) << "hMutex is released, ServiceWrapper is not alive, dcmqrscp send Ctrl-C to self" << endl;
+                time_header_out(CERR) << "hMutex is released, ServiceWrapper is not alive, dcmqrscp send Ctrl-C to self" << endl;
             }
         }
 		if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */
@@ -779,17 +778,20 @@ main(int argc, char *argv[])
 		if (GetSignalInterruptValue()) break;
     }
 
+    int ret_code = 0;
     cond = ASC_dropNetwork(&options.net_);
     if (cond.bad()) {
         time_header_out(CERR) << "Error dropping network:";
         DimseCondition::dump(cond);
-        return 10;
+        ret_code = 10;
     }
 
 #ifdef HAVE_WINSOCK_H
     WSACleanup();
 #endif
-    return 0;
+    
+    time_header_out(CERR) << "dcmqrscp exit " << ret_code << endl;
+    return ret_code;
 }
 
 

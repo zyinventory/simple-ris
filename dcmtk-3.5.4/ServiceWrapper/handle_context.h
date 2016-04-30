@@ -40,8 +40,10 @@ namespace handle_context
     private:
         std::string association_id, path;
 
-    public:
+    protected:
         notify_file(const std::string &assoc_id, const std::string &file) : association_id(assoc_id), path(file) {};
+
+    public:
         notify_file(const notify_file& o) : association_id(o.association_id), path(o.path) {};
 
         notify_file& operator=(const notify_file &r);
@@ -86,21 +88,40 @@ namespace handle_context
     class handle_proc : public notify_file
     {
     private:
-        std::string exec_cmd;
+        HANDLE hlog;
+        std::string exec_cmd, exec_name, log_path;
         PROCESS_INFORMATION procinfo;
 
     public:
-        handle_proc(const std::string &assoc_id, const std::string &file, const std::string &cmd) 
-            : notify_file(assoc_id, file), exec_cmd(cmd) { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
-        handle_proc(const handle_proc& o) : notify_file(o), exec_cmd(o.exec_cmd), procinfo(o.procinfo) {};
+        handle_proc(const std::string &assoc_id, const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name) 
+            : notify_file(assoc_id, cwd), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name) { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
+        handle_proc(const handle_proc& o) : notify_file(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
+            log_path(o.log_path), procinfo(o.procinfo) {};
 
         handle_proc& operator=(const handle_proc &r);
-        virtual ~handle_proc() { CloseHandle(procinfo.hThread); CloseHandle(procinfo.hProcess); };
+        virtual ~handle_proc();
 
         HANDLE get_handle() const { return procinfo.hProcess; };
         const std::string& get_exec_cmd() const { return exec_cmd; };
         const PROCESS_INFORMATION& get_procinfo() const { return procinfo; };
-        int create_process(const char *exec_name, std::ostream &flog);
+        int start_process(std::ostream &flog);
+    };
+
+    class handle_compress : public handle_proc
+    {
+    private:
+        CMOVE_NOTIFY_CONTEXT *notify_ctx_ptr;
+
+    protected:
+        handle_compress(const std::string &assoc_id, const std::string &cwd, const std::string &cmd, 
+            const std::string &exec_prog_name, CMOVE_NOTIFY_CONTEXT *pnc)
+            : handle_proc(assoc_id, cwd, cmd, exec_prog_name), notify_ctx_ptr(pnc) { };
+
+    public:
+        static handle_compress* make_handle_compress(CMOVE_NOTIFY_CONTEXT *pnc, std::map<HANDLE, handle_context::notify_file*> &map_handle);
+        handle_compress(const handle_compress& o) : handle_proc(o), notify_ctx_ptr(o.notify_ctx_ptr) {};
+        handle_compress& operator=(const handle_compress &r);
+        CMOVE_NOTIFY_CONTEXT* get_notify_context_ptr() { return notify_ctx_ptr; };
     };
 }
 #endif

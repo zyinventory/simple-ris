@@ -7,6 +7,7 @@ using namespace handle_context;
 static char buff[1024];
 
 static HANDLE_MAP map_handle_context;
+NOTIFY_LIST compress_queue;
 
 static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
 {
@@ -44,6 +45,7 @@ static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
     }
     // create association(handle_dir) instance
     path.erase(pos);
+    // path is association base dir
     handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path);
     gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify(filename, flog); });
     if(gle == 0) map_handle_context[hdir] = pclz_dir;
@@ -62,8 +64,8 @@ int watch_notify(string &cmd, ostream &flog)
 {
     // start dcmqrscp.exe parent proc
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
-    handle_proc *phproc = new handle_proc("", buff, cmd);
-    DWORD gle = phproc->create_process("dcmqrscp", flog);
+    handle_proc *phproc = new handle_proc("", buff, cmd, "dcmqrscp");
+    DWORD gle = phproc->start_process(flog);
     if(gle)
     {
         displayErrorToCerr("watch_notify() handle_proc::create_process(dcmqrscp) at beginning", gle, &flog);
@@ -86,8 +88,10 @@ int watch_notify(string &cmd, ostream &flog)
         {
             time_header_out(flog) << "semaphore has existed, try to open it." << endl;
             hSema = OpenSemaphore(SYNCHRONIZE | SEMAPHORE_MODIFY_STATE, FALSE, "Global\\semaphore_compress_process");
-            if(hSema == NULL) displayErrorToCerr("watch_notify() OpenSemaphore()", GetLastError(), &flog);
+            if(hSema == NULL) return displayErrorToCerr("watch_notify() OpenSemaphore()", GetLastError(), &flog);
         }
+        else
+            return gle;
     }
     
     vector<HANDLE> ha;
@@ -120,41 +124,84 @@ int watch_notify(string &cmd, ostream &flog)
         }
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + map_handle_context.size())
         {
+            HANDLE waited = ha[wr - WAIT_OBJECT_0];
+            handle_compress *phcompr = NULL;
             handle_proc *phproc = NULL;
             handle_dir *phdir = NULL;
-            notify_file *pb = map_handle_context[ha[wr - WAIT_OBJECT_0]];
-            if(pb == NULL)
+            notify_file *pb = map_handle_context[waited];
+            if(pb)
             {
-                time_header_out(flog) << "watch_notify() missing handle " << ha[wr - WAIT_OBJECT_0] << endl;
-                continue;
-            }
-
-            if(phproc = dynamic_cast<handle_proc*>(pb))
-            {
-                time_header_out(flog) << "watch_notify() dcmqrscp encounter error, restart." << endl;
-                gle = phproc->create_process("dcmqrscp", flog);
-                if(gle)
+                if(phcompr = dynamic_cast<handle_compress*>(pb))
                 {
-                    displayErrorToCerr("watch_notify() handle_proc::create_process(dcmqrscp) restart", gle, &flog);
-                    goto clean_child_proc;
+                    ReleaseSemaphore(hSema, 1, NULL);
+                    map_handle_context.erase(phcompr->get_handle());
+                    CMOVE_NOTIFY_CONTEXT *pnc = phcompr->get_notify_context_ptr();
+                    delete phcompr;
+                    delete pnc; // todo: shall transfer ptr to dcmmkdir
                 }
-            }
-            else if(phdir = dynamic_cast<handle_dir*>(pb))
-            {
-                if(phdir->get_association_id().length()) // some file in storedir/association_id
-                    gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, flog); });
-                else // new file in store_notify
-                    gle = phdir->find_files(flog, [&flog](const string& filename) { return process_meta_notify_file(filename, flog); });
+                else if(phproc = dynamic_cast<handle_proc*>(pb))
+                {
+                    time_header_out(flog) << "watch_notify() dcmqrscp encounter error, restart." << endl;
+                    gle = phproc->start_process(flog);
+                    if(gle)
+                    {
+                        displayErrorToCerr("watch_notify() handle_proc::create_process(dcmqrscp) restart", gle, &flog);
+                        goto clean_child_proc;
+                    }
+                }
+                else if(phdir = dynamic_cast<handle_dir*>(pb))
+                {
+                    if(phdir->get_association_id().length()) // some file in storedir/association_id
+                        gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, flog); });
+                    else // new file in store_notify
+                        gle = phdir->find_files(flog, [&flog](const string& filename) { return process_meta_notify_file(filename, flog); });
+                }
+                else
+                {
+                    time_header_out(flog) << "unexcepting notify file " << pb->get_association_id() << ", " << pb->get_path() << endl;
+                }
             }
             else
             {
-                time_header_out(flog) << "unexcepting notify file " << pb->get_association_id() << ", " << pb->get_path() << endl;
+                time_header_out(flog) << "watch_notify() missing handle " << waited << endl;
+                map_handle_context.erase(waited);
             }
         }
         else
         {
             gle = displayErrorToCerr("watch_notify() WaitForMultipleObjects()", GetLastError(), &flog);
             break;
+        }
+
+        // try compress queue
+        if(compress_queue.size() > 0)
+        {
+            DWORD dw = WAIT_OBJECT_0;
+            while((dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED) && compress_queue.size() > 0)
+            {
+                dw = WaitForSingleObject(hSema, 0);
+                if(dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED)
+                {
+                    CMOVE_NOTIFY_CONTEXT *pnc = compress_queue.front();
+                    compress_queue.pop_front();
+                    handle_compress* compr_ptr = handle_compress::make_handle_compress(pnc, map_handle_context);
+                    if(compr_ptr)
+                    {
+                        if(compr_ptr->start_process(flog))
+                        {
+                            ReleaseSemaphore(hSema, 1, NULL);
+                            delete compr_ptr;
+                        }
+                        else
+                            map_handle_context[compr_ptr->get_handle()] = compr_ptr;
+                    }
+                    else
+                        ReleaseSemaphore(hSema, 1, NULL);
+                }
+                else if(dw == WAIT_FAILED)
+                    displayErrorToCerr("compress_queue_to_workers() WaitForSingleObject(hSema)", dw);
+                // else WAIT_TIMEOUT, compress process is too much.
+            }
         }
     }
     if(GetSignalInterruptValue() && opt_verbose)
