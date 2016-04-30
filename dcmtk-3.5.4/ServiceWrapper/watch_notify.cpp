@@ -126,7 +126,7 @@ int watch_notify(string &cmd, ostream &flog)
             if(pb == NULL)
             {
                 time_header_out(flog) << "watch_notify() missing handle " << ha[wr - WAIT_OBJECT_0] << endl;
-                goto after_process_handle;
+                continue;
             }
 
             if(phproc = dynamic_cast<handle_proc*>(pb))
@@ -156,9 +156,6 @@ int watch_notify(string &cmd, ostream &flog)
             gle = displayErrorToCerr("watch_notify() WaitForMultipleObjects()", GetLastError(), &flog);
             break;
         }
-
-after_process_handle:
-        ;
     }
     if(GetSignalInterruptValue() && opt_verbose)
         time_header_out(flog) << "watch_notify() WaitForMultipleObjects() get Ctrl-C" << endl;
