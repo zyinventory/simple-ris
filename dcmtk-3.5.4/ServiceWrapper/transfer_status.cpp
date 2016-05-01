@@ -205,8 +205,20 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
             time_header_out(cerr) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK" << endl;
 #endif
             compress_queue.push_back(*pclc);
-            this->insert_study(pclc->file.studyUID); // association[1] -> study[n]
-            //todo: lock study by association
+            string study_uid(pclc->file.studyUID);
+            this->insert_study(study_uid); // association[1] -> study[n]
+
+            handle_dicomdir* phd = NULL;
+            STUDY_MAP::iterator it = map_dicomdir.find(study_uid);
+            if(it == map_dicomdir.end())
+            {
+                phd = handle_dicomdir::make_handle_dicomdir(study_uid);
+                if(phd) map_dicomdir[study_uid] = phd;
+            }
+            else
+                phd = it->second;
+            
+            if(phd) phd->insert_association_path(get_path());
 
             delete pclc;
         }
@@ -340,5 +352,46 @@ handle_compress& handle_compress::operator=(const handle_compress &r)
 {
     handle_proc::operator=(r);
     notify_ctx = r.notify_ctx;
+    return *this;
+}
+
+handle_dicomdir* handle_dicomdir::make_handle_dicomdir(const std::string &study)
+{
+    char dicomdir[1024], hash[9];
+    string pacs_dir(GetPacsBase());
+    pacs_dir.append("\\pacs");
+    HashStr(study.c_str(), hash, sizeof(hash));
+    sprintf_s(dicomdir, "%s\\archdir\\v0000000\\%c%c\\%c%c\\%c%c\\%c%c\\%s.dir", pacs_dir.c_str(),
+        hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], study.c_str());
+    PrepareFileDir(dicomdir);
+
+#ifdef _DEBUG
+    int mkdir_pos = 0;
+    char cmd[1024] = __FILE__;
+    char *p = strrchr(cmd, '\\');
+    if(p)
+    {
+        ++p;
+        strcpy_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmmkdir.exe --general-purpose-dvd -A ");
+        mkdir_pos = strlen(cmd);
+    }
+    else
+        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd -A ", GetPacsBase());
+#else
+    char cmd[1024];
+	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd -A ", GetPacsBase());
+#endif
+    sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +id . +D %s --viewer GE -pn %s #", 
+        opt_verbose ? "-v" : "", dicomdir, study.c_str());
+
+    return new handle_dicomdir("", pacs_dir, cmd, "dcmmkdir", dicomdir, study);
+}
+
+handle_dicomdir& handle_dicomdir::operator=(const handle_dicomdir &r)
+{
+    handle_proc::operator=(r);
+    study_uid = r.study_uid;
+    dicomdir_path = r.dicomdir_path;
+    copy(r.set_association_path.begin(), r.set_association_path.end(), inserter(set_association_path, set_association_path.end()));
     return *this;
 }

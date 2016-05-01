@@ -37,6 +37,8 @@
 typedef std::map<HANDLE, handle_context::notify_file*> HANDLE_MAP;
 typedef std::pair<HANDLE, handle_context::notify_file*> HANDLE_PAIR;
 typedef std::list<handle_context::CMOVE_NOTIFY_CONTEXT> NOTIFY_LIST;
+typedef std::map<std::string, handle_context::handle_dicomdir*> STUDY_MAP;
+typedef std::pair<std::string, handle_context::handle_dicomdir*> STUDY_PAIR;
 
 int watch_notify(std::string &cmd, std::ostream &flog);
 int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog);
@@ -46,6 +48,7 @@ int cmd_series(const std::string &type, std::istringstream &cmdstrm, handle_cont
 
 extern bool opt_verbose;
 extern NOTIFY_LIST compress_queue;
+extern STUDY_MAP map_dicomdir;
 
 // ------- old ServiceWrapper -------
 

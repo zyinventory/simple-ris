@@ -8,6 +8,7 @@ static char buff[1024];
 
 static HANDLE_MAP map_handle_context;
 NOTIFY_LIST compress_queue;
+STUDY_MAP map_dicomdir;
 
 static bool select_handle_dir_by_association_path(const notify_file* pnf, const string &association_id, const string &path, ostream &flog)
 {

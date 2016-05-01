@@ -125,5 +125,27 @@ namespace handle_context
         handle_compress& operator=(const handle_compress &r);
         CMOVE_NOTIFY_CONTEXT& get_notify_context() { return notify_ctx; };
     };
+
+    class handle_dicomdir : public handle_proc
+    {
+    private:
+        std::string study_uid, dicomdir_path;
+        std::set<std::string> set_association_path; // study[1] -> association[n]
+
+    protected:
+        handle_dicomdir(const std::string &assoc_id, const std::string &cwd, const std::string &cmd, 
+            const std::string &exec_prog_name, const std::string &dicomdir, const std::string &study)
+            : handle_proc(assoc_id, cwd, cmd, exec_prog_name), dicomdir_path(dicomdir), study_uid(study) {};
+    public:
+        static handle_dicomdir* make_handle_dicomdir(const std::string &study);
+        handle_dicomdir(const handle_dicomdir &r) : handle_proc(r), study_uid(r.study_uid), 
+            dicomdir_path(r.dicomdir_path), set_association_path(r.set_association_path) {};
+        
+        handle_dicomdir& operator=(const handle_dicomdir &r);
+
+        const std::string& get_study_uid() const { return study_uid; };
+        const std::string& get_dicomdir_path() const { return dicomdir_path; };
+        bool insert_association_path(const std::string &assoc_path) { return set_association_path.insert(assoc_path).second; };
+    };
 }
 #endif
