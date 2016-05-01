@@ -9,6 +9,24 @@ static char buff[1024];
 static HANDLE_MAP map_handle_context;
 NOTIFY_LIST compress_queue;
 
+static bool select_handle_dir_by_association_path(const notify_file* pnf, const string &association_id, const string &path, ostream &flog)
+{
+    if(pnf == NULL) return false;
+    bool same_assoc = (association_id.compare(pnf->get_association_id()) == 0);
+    bool same_path = (path.compare(pnf->get_path()) == 0);
+
+    if(same_assoc && same_path)
+        return (NULL != dynamic_cast<const handle_dir*>(pnf));
+    else if(same_assoc || same_path)
+    {
+        time_header_out(flog) << "select_handle_dir_by_association_path(" << association_id << ", " << path 
+            << ") mismatch (" << pnf->get_association_id() << ", " << pnf->get_path() << ")" << endl;
+        // path is unique key
+        if(same_path) return (NULL != dynamic_cast<const handle_dir*>(pnf));
+    }
+    return false;
+}
+
 static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
 {
     string ntffn(NOTIFY_BASE);
@@ -44,13 +62,18 @@ static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
         return displayErrorToCerr(buff, gle, &flog);
     }
     // create association(handle_dir) instance
+
     path.erase(pos);
     // path is association base dir
+    const HANDLE_MAP::iterator it = find_if(map_handle_context.begin(), map_handle_context.end(),
+        [&assoc_id, &path, &flog](const HANDLE_PAIR &p) { return select_handle_dir_by_association_path(p.second, assoc_id, path, flog); });
+    if(it != map_handle_context.end()) return 0;
+
     handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path);
     gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify(filename, flog); });
     if(gle == 0) map_handle_context[hdir] = pclz_dir;
     else
-    {
+    {   // discard the meta notify
         delete pclz_dir;
         displayErrorToCerr("process_meta_notify_file() handle_dir::find_files()", gle, &flog);
         string badname(ntffn);

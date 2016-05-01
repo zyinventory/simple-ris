@@ -36,7 +36,8 @@ handle_dir& handle_dir::operator=(const handle_dir &r)
     port = r.port;
     assoc_disconn = r.assoc_disconn;
     disconn_release = r.disconn_release;
-    copy(r.filelist.begin(), r.filelist.end(), filelist.begin());
+    copy(r.list_file.begin(), r.list_file.end(), back_inserter(list_file));
+    copy(r.set_study.begin(), r.set_study.end(), inserter(set_study, set_study.end()));
     return *this;
 }
 
@@ -74,13 +75,12 @@ DWORD handle_dir::find_files(std::ostream &flog, std::function<DWORD(const std::
 			continue; // skip . .. DICOMDIR
         if((wfd.attrib & _A_SUBDIR) == 0)
         {
-            if(find(filelist.begin(), filelist.end(), node) == filelist.end())
+            if(find(list_file.begin(), list_file.end(), node) == list_file.end())
                 new_files.push_back(node);
         }
 	} while(_findnext(hSearch, &wfd) == 0);
     last_find_error = process_file_error;
 	_findclose(hSearch);
-    filelist.sort();
 
     if(FALSE == FindNextChangeNotification(handle))
         return displayErrorToCerr("handle_dir::find_files() FindNextChangeNotification()", GetLastError(), &flog);
@@ -94,8 +94,9 @@ DWORD handle_dir::find_files(std::ostream &flog, std::function<DWORD(const std::
             process_file_error = true;
             break; // try it later
         }
-        else filelist.push_back(*it); // success or other error, no more process it
+        else list_file.push_back(*it); // success or other error, no more process it
     }
+    list_file.sort();
     return 0;
 }
 
@@ -204,6 +205,9 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
             time_header_out(cerr) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK" << endl;
 #endif
             compress_queue.push_back(*pclc);
+            this->insert_study(pclc->file.studyUID); // association[1] -> study[n]
+            //todo: lock study by association
+
             delete pclc;
         }
     }
@@ -300,9 +304,14 @@ handle_compress* handle_compress::make_handle_compress(const CMOVE_NOTIFY_CONTEX
     string assoc_id(cnc.association_id);
     // select cwd form assoc_id
     const HANDLE_MAP::iterator it = find_if(map_handle.begin(), map_handle.end(),
-        [&assoc_id](const HANDLE_PAIR &p) { return 0 == assoc_id.compare(p.second->get_association_id()); });
+        [&assoc_id](const HANDLE_PAIR &p) -> bool {
+            if(0 == assoc_id.compare(p.second->get_association_id()))
+                return (NULL != dynamic_cast<handle_dir*>(p.second));
+            else
+                return false;
+        });
     if(it == map_handle.end()) return NULL;
-
+    
     const char *verbose_flag = opt_verbose ? "-v" : "";
 #ifdef _DEBUG
     int mkdir_pos = 0;
@@ -323,6 +332,7 @@ handle_compress* handle_compress::make_handle_compress(const CMOVE_NOTIFY_CONTEX
     int ctn = mkdir_pos;
     ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "archdir\\%s\\", cnc.file.studyUID);
     strcpy_s(cmd + ctn, sizeof(cmd) - ctn, cnc.file.unique_filename);
+
     return new handle_compress(assoc_id, it->second->get_path(), cmd, "dcmcjpeg", cnc);
 }
 

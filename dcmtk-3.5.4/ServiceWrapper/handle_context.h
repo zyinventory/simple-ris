@@ -53,36 +53,38 @@ namespace handle_context
         const std::string& get_path() const { return path; };
     };
 
-    class handle_dir : public notify_file
+    class handle_dir : public notify_file // handle_dir is association
     {
     private:
         HANDLE handle;
-        std::list<std::string> filelist;
+        std::list<std::string> list_file;
+        std::set<std::string> set_study; // association[1] -> study[n]
         bool last_find_error, assoc_disconn, disconn_release;
         std::string store_assoc_id, callingAE, callingAddr, calledAE, calledAddr, expected_xfer;
         unsigned short port;
         
         void process_notify_association(std::istream &ifs, unsigned int tag, std::ostream &flog);
+        handle_context::CMOVE_NOTIFY_CONTEXT* process_notify_file(std::istream &ifs, unsigned int file_tag, std::ostream &flog);
 
     public:
         handle_dir(HANDLE h, const std::string &assoc_id, const std::string &file)
             : notify_file(assoc_id, file), handle(h), last_find_error(false), 
             assoc_disconn(false), disconn_release(true), port(104) {};
 
-        handle_dir(const handle_dir& o) : notify_file(o), handle(o.handle), 
-            last_find_error(o.last_find_error), filelist(o.filelist), port(o.port), store_assoc_id(o.store_assoc_id),
+        handle_dir(const handle_dir& o) : notify_file(o), handle(o.handle), last_find_error(o.last_find_error),
+            list_file(o.list_file), set_study(o.set_study), port(o.port), store_assoc_id(o.store_assoc_id),
             callingAE(o.callingAE), callingAddr(o.callingAE), calledAE(o.calledAE), calledAddr(o.calledAddr),
             expected_xfer(o.expected_xfer), assoc_disconn(o.assoc_disconn), disconn_release(o.disconn_release){};
 
         handle_dir& operator=(const handle_dir &r);
         virtual ~handle_dir() { FindCloseChangeNotification(handle); };
-
+        
         HANDLE get_handle() const { return handle; };
+        bool insert_study(const std::string &study_uid) { return set_study.insert(study_uid).second; };
         std::string& get_find_filter(std::string&) const;
         bool is_last_find_error() const { return last_find_error; };
         DWORD find_files(std::ostream &flog, std::function<DWORD(const std::string&)> p);
         DWORD process_notify(const std::string &filename, std::ostream &flog);
-        handle_context::CMOVE_NOTIFY_CONTEXT* process_notify_file(std::istream &ifs, unsigned int file_tag, std::ostream &flog);
     };
 
     class handle_proc : public notify_file
