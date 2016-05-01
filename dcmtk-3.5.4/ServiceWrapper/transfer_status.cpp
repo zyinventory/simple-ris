@@ -207,7 +207,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
             compress_queue.push_back(*pclc);
             string study_uid(pclc->file.studyUID);
             this->insert_study(study_uid); // association[1] -> study[n]
-
+            
             handle_dicomdir* phd = NULL;
             STUDY_MAP::iterator it = map_dicomdir.find(study_uid);
             if(it == map_dicomdir.end())
@@ -218,7 +218,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
             else
                 phd = it->second;
             
-            if(phd) phd->insert_association_path(get_path());
+            if(phd) phd->insert_association_path(get_path());  // study[1] -> association[n]
 
             delete pclc;
         }

@@ -77,7 +77,7 @@ namespace handle_context
             expected_xfer(o.expected_xfer), assoc_disconn(o.assoc_disconn), disconn_release(o.disconn_release){};
 
         handle_dir& operator=(const handle_dir &r);
-        virtual ~handle_dir() { FindCloseChangeNotification(handle); };
+        virtual ~handle_dir() { FindCloseChangeNotification(handle); }; // todo: broadcast association close event
         
         HANDLE get_handle() const { return handle; };
         bool insert_study(const std::string &study_uid) { return set_study.insert(study_uid).second; };
@@ -141,6 +141,8 @@ namespace handle_context
         handle_dicomdir(const handle_dicomdir &r) : handle_proc(r), study_uid(r.study_uid), 
             dicomdir_path(r.dicomdir_path), set_association_path(r.set_association_path) {};
         
+        virtual ~handle_dicomdir() { }; // todo: broadcast dicomdir close event
+
         handle_dicomdir& operator=(const handle_dicomdir &r);
 
         const std::string& get_study_uid() const { return study_uid; };

@@ -160,9 +160,23 @@ int watch_notify(string &cmd, ostream &flog)
                     ReleaseSemaphore(hSema, 1, NULL);
                     map_handle_context.erase(phcompr->get_handle());
                     CMOVE_NOTIFY_CONTEXT cnc = phcompr->get_notify_context();
+                    string study_uid(cnc.file.studyUID), assoc_path(phcompr->get_path()), assoc_id(phcompr->get_association_id());
                     delete phcompr;
-                    // todo: shall transfer cnc to dcmmkdir
 
+                    STUDY_MAP::iterator it = map_dicomdir.find(study_uid);
+                    handle_dicomdir *phd = NULL;
+                    if(it == map_dicomdir.end())
+                    {
+                        time_header_out(flog) << "watch_notify() handle_compress complete, can't find map_dicomdir[" << study_uid << "], create new handle_dicomdir" << endl;
+                        phd = handle_dicomdir::make_handle_dicomdir(study_uid);
+                        if(phd) map_dicomdir[study_uid] = phd;
+                    }
+                    else phd = it->second;
+
+                    if(phd)
+                    {
+                        // todo: create named pipe and start process if necessary, transfer cnc to dcmmkdir
+                    }
                 }
                 else if(phproc = dynamic_cast<handle_proc*>(pb))
                 {
