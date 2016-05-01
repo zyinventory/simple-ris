@@ -248,6 +248,8 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
             set_complete.insert(filename); // complete ack self
             if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify() recieve compress complete notify " << filename << "(" << src_notify_file << ")." << endl;
         }
+        else if(tag == NOTIFY_ALL_COMPRESS_OK)
+            set_complete.insert(filename);
         else
             time_header_out(flog) << "handle_dir::process_notify() ignore ack file " << filename << endl
                 << cmd << " " << hex << uppercase << tag << " ..." << endl;
@@ -259,7 +261,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     return 0;
 }
 
-void handle_dir::send_compress_complete_notify(const std::string &src_notify, const CMOVE_NOTIFY_CONTEXT &cnc, ostream &flog)
+void handle_dir::send_compress_complete_notify(const CMOVE_NOTIFY_CONTEXT &cnc, ostream &flog)
 {
     char notify_file_name[MAX_PATH];
     string prefix(get_path());
@@ -283,7 +285,7 @@ void handle_dir::send_compress_complete_notify(const std::string &src_notify, co
 void handle_dir::check_complete_remain(std::ostream &flog) const
 {
     set<string> remain(set_complete);
-    time_header_out(flog) << "association " << get_association_id() << " " << get_path() << " file " << list_file.size() << ", complete " << set_complete.size() << endl;
+    time_header_out(flog) << "association " << get_association_id() << " " << get_path() << " file " << dec << list_file.size() << ", complete " << set_complete.size() << endl;
     for(list<string>::const_iterator it = list_file.begin(); it != list_file.end(); ++it)
     {
         if(remain.find(*it) == remain.end())
@@ -294,7 +296,7 @@ void handle_dir::check_complete_remain(std::ostream &flog) const
     for(set<string>::iterator it = remain.begin(); it != remain.end(); ++it)
         flog << *it << " unexcepted complete" << endl;
     for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
-        flog << "study " << *it << endl;
+        flog << "\tstudy " << *it << endl;
 }
 
 handle_proc& handle_proc::operator=(const handle_proc &r)
@@ -388,7 +390,8 @@ handle_compress* handle_compress::make_handle_compress(const CMOVE_NOTIFY_CONTEX
                 return false;
         });
     if(it == map_handle.end()) return NULL;
-    
+    handle_dir *phdir = dynamic_cast<handle_dir*>(it->second);
+
     const char *verbose_flag = opt_verbose ? "-v" : "";
 #ifdef _DEBUG
     int mkdir_pos = 0;
@@ -410,12 +413,13 @@ handle_compress* handle_compress::make_handle_compress(const CMOVE_NOTIFY_CONTEX
     ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "archdir\\%s\\", cnc.file.studyUID);
     strcpy_s(cmd + ctn, sizeof(cmd) - ctn, cnc.file.unique_filename);
 
-    return new handle_compress(assoc_id, it->second->get_path(), cmd, "dcmcjpeg", cnc);
+    return new handle_compress(phdir, cmd, "dcmcjpeg", cnc);
 }
 
 handle_compress& handle_compress::operator=(const handle_compress &r)
 {
     handle_proc::operator=(r);
+    handle_dir_ptr = r.handle_dir_ptr;
     notify_ctx = r.notify_ctx;
     return *this;
 }

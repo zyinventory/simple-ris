@@ -222,3 +222,24 @@ void save_notify_context_to_ostream(const CMOVE_NOTIFY_CONTEXT &cnc, ostream &ou
     output << endl;
     output << NOTIFY_LEVEL_SERIES << " 00080060 " << cnc.series.modality << endl;
 }
+
+void send_all_compress_ok_notify(const string &association_base, ostream &flog)
+{
+    char notify_file_name[MAX_PATH];
+    string prefix(association_base);
+    prefix.append("\\state\\");
+    size_t pos = in_process_sequence_dll(notify_file_name, sizeof(notify_file_name), prefix.c_str());
+    sprintf_s(notify_file_name + pos, sizeof(notify_file_name) - pos, "_%s.dfc", NOTIFY_ACKN_TAG);
+    ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out, _SH_DENYRW);
+    if(ntf.good())
+    {
+        ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ALL_COMPRESS_OK << endl;
+        ntf.close();
+        if(opt_verbose) time_header_out(flog) << "watch_notify() send all compress OK notify " << notify_file_name << " OK." << endl;
+    }
+    else
+    {
+        time_header_out(flog) << "watch_notify() send all compress OK notify " << notify_file_name << " failed:" << endl;
+        flog << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ALL_COMPRESS_OK << endl;
+    }
+}

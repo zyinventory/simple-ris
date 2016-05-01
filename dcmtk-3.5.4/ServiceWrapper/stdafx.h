@@ -46,6 +46,7 @@ int cmd_patient(const std::string &type, std::istringstream &cmdstrm, handle_con
 int cmd_study(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog);
 int cmd_series(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog);
 void save_notify_context_to_ostream(const handle_context::CMOVE_NOTIFY_CONTEXT &cnc, std::ostream &output);
+void send_all_compress_ok_notify(const std::string &association_base, std::ostream &flog);
 
 extern bool opt_verbose;
 extern NOTIFY_LIST compress_queue;

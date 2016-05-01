@@ -84,9 +84,12 @@ namespace handle_context
         bool insert_complete(const std::string &filename) { return set_complete.insert(filename).second; };
         std::string& get_find_filter(std::string&) const;
         bool is_last_find_error() const { return last_find_error; };
+        bool is_association_disconnect() const { return assoc_disconn; };
+        bool is_disconnect_release() const { return disconn_release; };
+        int file_complete_remain() const { return list_file.size() - set_complete.size(); };
         DWORD find_files(std::ostream &flog, std::function<DWORD(const std::string&)> p);
         DWORD process_notify(const std::string &filename, std::ostream &flog);
-        void send_compress_complete_notify(const std::string &src_notify, const CMOVE_NOTIFY_CONTEXT &cnc, std::ostream &flog);
+        void send_compress_complete_notify(const CMOVE_NOTIFY_CONTEXT &cnc, std::ostream &flog);
         void check_complete_remain(std::ostream &flog) const;
     };
 
@@ -115,17 +118,16 @@ namespace handle_context
     class handle_compress : public handle_proc
     {
     private:
-        std::string src_notify_filename;
+        handle_dir *handle_dir_ptr;
         CMOVE_NOTIFY_CONTEXT notify_ctx;
-
+        
     protected:
-        handle_compress(const std::string &assoc_id, const std::string &cwd, const std::string &cmd, 
-            const std::string &exec_prog_name, const CMOVE_NOTIFY_CONTEXT &cnc)
-            : handle_proc(assoc_id, cwd, cmd, exec_prog_name), notify_ctx(cnc) { };
+        handle_compress(handle_dir *dir_ptr, const std::string &cmd, const std::string &exec_prog_name, const CMOVE_NOTIFY_CONTEXT &cnc)
+            : handle_proc(dir_ptr->get_association_id(), dir_ptr->get_path(), cmd, exec_prog_name), handle_dir_ptr(dir_ptr), notify_ctx(cnc) { };
 
     public:
         static handle_compress* make_handle_compress(const CMOVE_NOTIFY_CONTEXT &cnc, std::map<HANDLE, handle_context::notify_file*> &map_handle);
-        handle_compress(const handle_compress& o) : handle_proc(o), notify_ctx(o.notify_ctx) {};
+        handle_compress(const handle_compress& o) : handle_proc(o), handle_dir_ptr(o.handle_dir_ptr), notify_ctx(o.notify_ctx) {};
         handle_compress& operator=(const handle_compress &r);
         CMOVE_NOTIFY_CONTEXT& get_notify_context() { return notify_ctx; };
     };
