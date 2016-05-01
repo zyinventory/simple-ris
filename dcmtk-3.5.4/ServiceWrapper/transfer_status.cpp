@@ -38,6 +38,7 @@ handle_dir& handle_dir::operator=(const handle_dir &r)
     disconn_release = r.disconn_release;
     copy(r.list_file.begin(), r.list_file.end(), back_inserter(list_file));
     copy(r.set_study.begin(), r.set_study.end(), inserter(set_study, set_study.end()));
+    copy(r.set_complete.begin(), r.set_complete.end(), inserter(set_complete, set_complete.end()));
     return *this;
 }
 
@@ -86,6 +87,7 @@ DWORD handle_dir::find_files(std::ostream &flog, std::function<DWORD(const std::
         return displayErrorToCerr("handle_dir::find_files() FindNextChangeNotification()", GetLastError(), &flog);
 
     // handle OK, process new files.
+    new_files.sort();
     for(list<string>::iterator it = new_files.begin(); it != new_files.end(); ++it)
     {
         DWORD gle = pred(*it);
@@ -199,12 +201,15 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
         if(pclc)
         {
             strcpy_s(pclc->association_id, get_association_id().c_str());
+            strcpy_s(pclc->src_notify_filename, filename.c_str());
             pclc->file.StorePath();
-            if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK" << endl;
+            if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK." << endl;
 #ifdef _DEBUG
-            time_header_out(cerr) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK" << endl;
+            time_header_out(cerr) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK." << endl;
 #endif
+            // don't insert file to set_complete now, insert it after compress complete
             compress_queue.push_back(*pclc);
+
             string study_uid(pclc->file.studyUID);
             this->insert_study(study_uid); // association[1] -> study[n]
             
@@ -222,14 +227,74 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
 
             delete pclc;
         }
+        else
+        {
+            time_header_out(flog) << "handle_dir::process_notify() can't process " << filename << ", ignore." << endl;
+            set_complete.insert(filename);
+        }
     }
     else if(cmd.compare(NOTIFY_STORE_TAG) == 0)
     {
         process_notify_association(ifs, tag, flog);
+        set_complete.insert(filename);
     }
-    // else ignore
+    else if(cmd.compare(NOTIFY_ACKN_ITEM) == 0)
+    {
+        if(tag == NOTIFY_COMPRESS_OK)
+        {
+            string src_notify_file;
+            ifs >> src_notify_file;
+            set_complete.insert(src_notify_file);
+            set_complete.insert(filename); // complete ack self
+            if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify() recieve compress complete notify " << filename << "(" << src_notify_file << ")." << endl;
+        }
+        else
+            time_header_out(flog) << "handle_dir::process_notify() ignore ack file " << filename << endl
+                << cmd << " " << hex << uppercase << tag << " ..." << endl;
+    }
+    else
+        time_header_out(flog) << "handle_dir::process_notify() ignore " << filename << endl;
+
     if(ifs.is_open()) ifs.close();
     return 0;
+}
+
+void handle_dir::send_compress_complete_notify(const std::string &src_notify, const CMOVE_NOTIFY_CONTEXT &cnc, ostream &flog)
+{
+    char notify_file_name[MAX_PATH];
+    string prefix(get_path());
+    prefix.append("\\state\\");
+    size_t pos = in_process_sequence_dll(notify_file_name, sizeof(notify_file_name), prefix.c_str());
+    sprintf_s(notify_file_name + pos, sizeof(notify_file_name) - pos, "_%s.dfc", NOTIFY_ACKN_TAG);
+    ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out, _SH_DENYRW);
+    if(ntf.good())
+    {
+        save_notify_context_to_ostream(cnc, ntf);
+        ntf.close();
+        if(opt_verbose) time_header_out(flog) << "handle_dir::send_compress_complete_notify() to " << notify_file_name << " OK." << endl;
+    }
+    else
+    {
+        time_header_out(flog) << "handle_dir::send_compress_complete_notify() to " << notify_file_name << " failed:" << endl;
+        save_notify_context_to_ostream(cnc, flog);
+    }
+}
+
+void handle_dir::check_complete_remain(std::ostream &flog) const
+{
+    set<string> remain(set_complete);
+    time_header_out(flog) << "association " << get_association_id() << " " << get_path() << " file " << list_file.size() << ", complete " << set_complete.size() << endl;
+    for(list<string>::const_iterator it = list_file.begin(); it != list_file.end(); ++it)
+    {
+        if(remain.find(*it) == remain.end())
+            flog << *it << " not complete" << endl;
+        else
+            remain.erase(*it);
+    }
+    for(set<string>::iterator it = remain.begin(); it != remain.end(); ++it)
+        flog << *it << " unexcepted complete" << endl;
+    for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
+        flog << "study " << *it << endl;
 }
 
 handle_proc& handle_proc::operator=(const handle_proc &r)

@@ -28,7 +28,7 @@ static bool select_handle_dir_by_association_path(const notify_file* pnf, const 
     return false;
 }
 
-static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
+static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify_file, ostream &flog)
 {
     string ntffn(NOTIFY_BASE);
     ntffn.append(1, '\\').append(notify_file);
@@ -40,10 +40,13 @@ static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
     if(ntff.fail())
     {
         DWORD gle = GetLastError();
+        if(gle != ERROR_SHARING_VIOLATION) base_dir->insert_complete(notify_file);
         string msg("process_meta_notify_file() open file ");
         msg.append(ntffn);
         return displayErrorToCerr(msg.c_str(), gle, &flog);
     }
+    base_dir->insert_complete(notify_file); // if(gle != ERROR_SHARING_VIOLATION) find_files() must insert complete
+
     string cmd, path, assoc_id, calling, called, remote, port, transfer_syntax;
     DWORD tag, pid, gle = 0;
     ntff >> cmd >> hex >> tag >> path >> dec >> pid >> assoc_id >> calling >> remote >> called >> port >> transfer_syntax;
@@ -62,8 +65,8 @@ static DWORD process_meta_notify_file(const string &notify_file, ostream &flog)
         sprintf_s(buff, "process_meta_notify_file() FindFirstChangeNotification(%s)", path.c_str());
         return displayErrorToCerr(buff, gle, &flog);
     }
-    // create association(handle_dir) instance
 
+    // create association(handle_dir) instance
     path.erase(pos);
     // path is association base dir
     const HANDLE_MAP::iterator it = find_if(map_handle_context.begin(), map_handle_context.end(),
@@ -131,7 +134,7 @@ int watch_notify(string &cmd, ostream &flog)
     map_handle_context[hbase] = pclz_base_dir;
     
     // collect exist dfc files
-    if(pclz_base_dir->find_files(flog, [&flog](const string& filename) { return process_meta_notify_file(filename, flog); }))
+    if(pclz_base_dir->find_files(flog, [pclz_base_dir, &flog](const string& filename) { return process_meta_notify_file(pclz_base_dir, filename, flog); }))
         goto clean_child_proc;
 
     while(GetSignalInterruptValue() == 0)
@@ -160,8 +163,21 @@ int watch_notify(string &cmd, ostream &flog)
                     ReleaseSemaphore(hSema, 1, NULL);
                     map_handle_context.erase(phcompr->get_handle());
                     CMOVE_NOTIFY_CONTEXT cnc = phcompr->get_notify_context();
-                    string study_uid(cnc.file.studyUID), assoc_path(phcompr->get_path()), assoc_id(phcompr->get_association_id());
+
+                    string study_uid(cnc.file.studyUID), src_notify_filename(cnc.src_notify_filename),
+                        assoc_path(phcompr->get_path()), assoc_id(phcompr->get_association_id());
                     delete phcompr;
+                    
+                    const HANDLE_MAP::iterator it_assoc = find_if(map_handle_context.begin(), map_handle_context.end(),
+                        [&assoc_id](const HANDLE_PAIR &p) { return 0 == assoc_id.compare(p.second->get_association_id()); });
+                    handle_dir *pha = NULL;
+                    if(it_assoc != map_handle_context.end()) pha = dynamic_cast<handle_dir*>(it_assoc->second);
+                    if(pha)
+                    {
+                        //pha->insert_complete(src_notify_filename); shall set complete in handle_dir's monitor
+                        pha->send_compress_complete_notify(src_notify_filename, cnc, flog);
+                    }
+                    else time_header_out(flog) << "watch_notify() set src file " << src_notify_filename << " complete failed: missing association " << assoc_id << endl;
 
                     STUDY_MAP::iterator it = map_dicomdir.find(study_uid);
                     handle_dicomdir *phd = NULL;
@@ -193,7 +209,7 @@ int watch_notify(string &cmd, ostream &flog)
                     if(phdir->get_association_id().length()) // some file in storedir/association_id
                         gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, flog); });
                     else // new file in store_notify
-                        gle = phdir->find_files(flog, [&flog](const string& filename) { return process_meta_notify_file(filename, flog); });
+                        gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return process_meta_notify_file(phdir, filename, flog); });
                 }
                 else
                 {
@@ -252,7 +268,22 @@ clean_child_proc:
         CloseHandle(hSema);
         hSema = NULL;
     }
+    
+    // print association state
     for(HANDLE_MAP::iterator it = map_handle_context.begin(); it != map_handle_context.end(); ++it)
+    {
+        handle_dir *pha = dynamic_cast<handle_dir*>(it->second);
+        if(pha) pha->check_complete_remain(flog);
         delete it->second;
+    }
+
+    // print study state
+    for(STUDY_MAP::iterator it = map_dicomdir.begin(); it != map_dicomdir.end(); ++it)
+    {
+        time_header_out(flog) << "study " << it->first << endl;
+        const set<string>& set_assoc_path = it->second->get_set_association_path();
+        for(set<string>::const_iterator it_inner = set_assoc_path.begin(); it_inner != set_assoc_path.end(); ++it_inner)
+            flog << "association path " << *it_inner << endl;
+    }
     return gle;
 }

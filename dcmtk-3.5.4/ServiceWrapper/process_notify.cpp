@@ -195,3 +195,30 @@ int cmd_series(const std::string &type, std::istringstream &cmdstrm, handle_cont
     if(dirty) strcpy_s(lc.series.seriesUID, lc.file.seriesUID);
     return 0;
 }
+
+void save_notify_context_to_ostream(const CMOVE_NOTIFY_CONTEXT &cnc, ostream &output)
+{
+    output << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_COMPRESS_OK << " " << cnc.src_notify_filename << endl;
+    output << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << cnc.file_seq
+        << " " << cnc.file.filename << " " << cnc.file.unique_filename << endl;
+    output << NOTIFY_LEVEL_INSTANCE << " 00100020 ";
+    x_www_form_codec<ostream>::encode(cnc.file.patientID, &output);
+    output << endl;
+    output << NOTIFY_LEVEL_INSTANCE << " 0020000D " << cnc.file.studyUID << endl;
+    output << NOTIFY_LEVEL_INSTANCE << " 0020000E " << cnc.file.seriesUID << endl;
+    output << NOTIFY_LEVEL_INSTANCE << " 00080018 " << cnc.file.instanceUID << endl;
+    output << NOTIFY_LEVEL_INSTANCE << " 00020010 " << cnc.file.xfer << " " << cnc.file.isEncapsulated << " " << cnc.file.xfer_new << endl;
+    output << NOTIFY_LEVEL_PATIENT << " 00100010 ";
+    x_www_form_codec<ostream>::encode(cnc.patient.patientsName, &output);
+    output << endl;
+    output << NOTIFY_LEVEL_PATIENT << " 00100030 " << cnc.patient.birthday << endl;
+    output << NOTIFY_LEVEL_PATIENT << " 00100040 " << cnc.patient.sex << endl;
+    output << NOTIFY_LEVEL_PATIENT << " 00101020 " << cnc.patient.height << endl;
+    output << NOTIFY_LEVEL_PATIENT << " 00101030 " << cnc.patient.weight << endl;
+    output << NOTIFY_LEVEL_STUDY << " 00080020 " << cnc.study.studyDate << endl;
+    output << NOTIFY_LEVEL_STUDY << " 00080030 " << cnc.study.studyTime << endl;
+    output << NOTIFY_LEVEL_STUDY << " 00080050 ";
+    x_www_form_codec<ostream>::encode(cnc.study.accessionNumber, &output);
+    output << endl;
+    output << NOTIFY_LEVEL_SERIES << " 00080060 " << cnc.series.modality << endl;
+}

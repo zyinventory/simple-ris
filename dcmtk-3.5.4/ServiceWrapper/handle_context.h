@@ -27,7 +27,7 @@ namespace handle_context
     } CMOVE_SERIES_SECTION;
 
     typedef struct {
-        char association_id[64];
+        char association_id[64], src_notify_filename[64];
         unsigned int file_seq;
         CMOVE_FILE_SECTION file;
         CMOVE_PATIENT_SECTION patient;
@@ -58,13 +58,13 @@ namespace handle_context
     private:
         HANDLE handle;
         std::list<std::string> list_file;
-        std::set<std::string> set_study; // association[1] -> study[n]
+        std::set<std::string> set_complete, set_study; // set_study: association[1] -> study[n]
         bool last_find_error, assoc_disconn, disconn_release;
         std::string store_assoc_id, callingAE, callingAddr, calledAE, calledAddr, expected_xfer;
         unsigned short port;
         
         void process_notify_association(std::istream &ifs, unsigned int tag, std::ostream &flog);
-        handle_context::CMOVE_NOTIFY_CONTEXT* process_notify_file(std::istream &ifs, unsigned int file_tag, std::ostream &flog);
+        CMOVE_NOTIFY_CONTEXT* process_notify_file(std::istream &ifs, unsigned int file_tag, std::ostream &flog);
 
     public:
         handle_dir(HANDLE h, const std::string &assoc_id, const std::string &file)
@@ -72,8 +72,8 @@ namespace handle_context
             assoc_disconn(false), disconn_release(true), port(104) {};
 
         handle_dir(const handle_dir& o) : notify_file(o), handle(o.handle), last_find_error(o.last_find_error),
-            list_file(o.list_file), set_study(o.set_study), port(o.port), store_assoc_id(o.store_assoc_id),
-            callingAE(o.callingAE), callingAddr(o.callingAE), calledAE(o.calledAE), calledAddr(o.calledAddr),
+            list_file(o.list_file), set_complete(o.set_complete), set_study(o.set_study), port(o.port), 
+            store_assoc_id(o.store_assoc_id), callingAE(o.callingAE), callingAddr(o.callingAE), calledAE(o.calledAE), calledAddr(o.calledAddr),
             expected_xfer(o.expected_xfer), assoc_disconn(o.assoc_disconn), disconn_release(o.disconn_release){};
 
         handle_dir& operator=(const handle_dir &r);
@@ -81,10 +81,13 @@ namespace handle_context
         
         HANDLE get_handle() const { return handle; };
         bool insert_study(const std::string &study_uid) { return set_study.insert(study_uid).second; };
+        bool insert_complete(const std::string &filename) { return set_complete.insert(filename).second; };
         std::string& get_find_filter(std::string&) const;
         bool is_last_find_error() const { return last_find_error; };
         DWORD find_files(std::ostream &flog, std::function<DWORD(const std::string&)> p);
         DWORD process_notify(const std::string &filename, std::ostream &flog);
+        void send_compress_complete_notify(const std::string &src_notify, const CMOVE_NOTIFY_CONTEXT &cnc, std::ostream &flog);
+        void check_complete_remain(std::ostream &flog) const;
     };
 
     class handle_proc : public notify_file
@@ -112,6 +115,7 @@ namespace handle_context
     class handle_compress : public handle_proc
     {
     private:
+        std::string src_notify_filename;
         CMOVE_NOTIFY_CONTEXT notify_ctx;
 
     protected:
@@ -147,6 +151,7 @@ namespace handle_context
 
         const std::string& get_study_uid() const { return study_uid; };
         const std::string& get_dicomdir_path() const { return dicomdir_path; };
+        const std::set<std::string>& get_set_association_path() const { return set_association_path; };
         bool insert_association_path(const std::string &assoc_path) { return set_association_path.insert(assoc_path).second; };
     };
 }
