@@ -16,6 +16,25 @@ const char* _tag_NOTIFY_FILE_CONTEXT_FILE_SECTION::StorePath(char sp)
     return unique_filename;
 }
 
+bool _tag_NOTIFY_FILE_CONTEXT::operator<(const struct _tag_NOTIFY_FILE_CONTEXT &r) const
+{
+    int cmp = strcmp(src_notify_filename, r.src_notify_filename);
+    if(cmp < 0) return true;
+    else if(cmp > 0) return false;
+    else
+    {
+        cmp = strcmp(file.unique_filename, r.file.unique_filename);
+        if(cmp < 0) return true;
+        else if(cmp > 0) return false;
+        else
+        {
+            cmp = strcmp(file.filename, r.file.filename);
+            if(cmp < 0) return true;
+            else return false;
+        }
+    }
+}
+
 notify_file& notify_file::operator=(const notify_file &r)
 {
     association_id = r.association_id;
@@ -499,4 +518,35 @@ bool handle_dicomdir::insert_action_and_erease_association_path(const action_aft
     if(opt_verbose) time_header_out(flog) << "handle_dicomdir::insert_action_and_erease_association_path() " << study_uid << " add action " << action.type << endl;
     if(opt_verbose) time_header_out(flog) << "handle_dicomdir::insert_action_and_erease_association_path() " << study_uid << " erease assoc path " << assoc_path << endl;
     return set_action.insert(action).second;
+}
+
+action_after_association& action_after_association::operator=(const action_after_association &r)
+{
+    type = r.type;
+    burn_multi_id = r.burn_multi_id;
+    if(r.pnfc)
+    {
+        pnfc = new NOTIFY_FILE_CONTEXT;
+        *pnfc = *r.pnfc;
+    }
+    else pnfc = r.pnfc; // r.pnfc is NULL
+    return *this;
+}
+
+bool action_after_association::operator<(const action_after_association &r) const
+{
+    if(type < r.type) return true;
+    else if(r.type < type) return false;
+    else // type == r.type
+    {
+        if(pnfc == r.pnfc) return false;
+        else if(pnfc == NULL) return true; // r.pnfc != NULL
+        else if(r.pnfc == NULL) return false; // pnfc != NULL
+        else // all is not NULL
+        {
+            if(*pnfc < *r.pnfc) return true;
+            else if(*r.pnfc < *pnfc) return false;
+            else return burn_multi_id < r.burn_multi_id; // ==
+        }
+    }
 }

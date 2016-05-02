@@ -38,7 +38,9 @@ namespace handle_context
         NOTIFY_FILE_CONTEXT_PATIENT_SECTION patient;
         NOTIFY_FILE_CONTEXT_STUDY_SECTION study;
         NOTIFY_FILE_CONTEXT_SERIES_SECTION series;
-    } NOTIFY_FILE_CONTEXT;
+        bool operator<(const struct _tag_NOTIFY_FILE_CONTEXT &r) const;
+        bool operator==(const struct _tag_NOTIFY_FILE_CONTEXT &r) const { return (!(*this < r) && !(r < *this)); };
+    } NOTIFY_FILE_CONTEXT, *PNOTIFY_FILE_CONTEXT;
 
     typedef std::list<NOTIFY_FILE_CONTEXT> NOTIFY_LIST;
 
@@ -52,9 +54,7 @@ namespace handle_context
 
     public:
         notify_file(const notify_file& o) : association_id(o.association_id), path(o.path) {};
-
         notify_file& operator=(const notify_file &r);
-
         virtual HANDLE get_handle() const { return NULL; };
         const std::string& get_association_id() const { return association_id; };
         const std::string& get_path() const { return path; };
@@ -73,30 +73,19 @@ namespace handle_context
     public:
         ACTION_TYPE type;
         std::string burn_multi_id;
+        PNOTIFY_FILE_CONTEXT pnfc;
 
-        action_after_association() : type(BURN_PER_STUDY) {};
-        action_after_association(const action_after_association& r) : type(r.type), burn_multi_id(r.burn_multi_id) {};
-        action_after_association& operator=(const action_after_association &r)
+        action_after_association() : type(BURN_PER_STUDY), pnfc(NULL) {};
+        action_after_association(const NOTIFY_FILE_CONTEXT &nfc) : type(BURN_PER_STUDY) { pnfc = new NOTIFY_FILE_CONTEXT; *pnfc = nfc; };
+        action_after_association(const action_after_association& r) : type(r.type), burn_multi_id(r.burn_multi_id)
         {
-            type = r.type;
-            burn_multi_id = r.burn_multi_id;
-            return *this;
+            if(r.pnfc) { pnfc = new NOTIFY_FILE_CONTEXT; *pnfc = *r.pnfc; }
+            else pnfc = NULL;
         };
-
-        bool operator<(const action_after_association &r) const
-        {
-            if(type < r.type) return true;
-            else if( type == r.type) return burn_multi_id < r.burn_multi_id;
-            else return false;
-        };
-
-        bool operator==(const action_after_association &r) const
-        {
-            if(typeid(*this) == typeid(r))
-                return (!(*this < r) && !(r < *this));
-            else
-                return false;
-        };
+        virtual ~action_after_association() { if(pnfc) delete pnfc; };
+        action_after_association& operator=(const action_after_association &r);
+        bool operator<(const action_after_association &r) const;
+        bool operator==(const action_after_association &r) const { return (!(*this < r) && !(r < *this)); };
     };
 
     class handle_dir : public notify_file // handle_dir is association
@@ -126,7 +115,6 @@ namespace handle_context
 
         handle_dir& operator=(const handle_dir &r);
         virtual ~handle_dir() { if(handle) FindCloseChangeNotification(handle); };
-        
         HANDLE get_handle() const { return handle; };
         const action_after_association& get_action_after_association() const { return action_after_assoc; };
         bool insert_study(const std::string &study_uid) { return set_study.insert(study_uid).second; };
@@ -159,7 +147,6 @@ namespace handle_context
 
         handle_proc& operator=(const handle_proc &r);
         virtual ~handle_proc();
-
         HANDLE get_handle() const { return procinfo.hProcess; };
         const std::string& get_exec_cmd() const { return exec_cmd; };
         const PROCESS_INFORMATION& get_procinfo() const { return procinfo; };
@@ -199,9 +186,7 @@ namespace handle_context
             dicomdir_path(r.dicomdir_path), set_association_path(r.set_association_path), set_action(r.set_action) {};
         
         virtual ~handle_dicomdir() { }; // todo: broadcast dicomdir close event
-
         handle_dicomdir& operator=(const handle_dicomdir &r);
-
         const std::string& get_study_uid() const { return study_uid; };
         const std::string& get_dicomdir_path() const { return dicomdir_path; };
         const std::set<std::string>& get_set_association_path() const { return set_association_path; };
@@ -210,16 +195,21 @@ namespace handle_context
     };
 }
 
-namespace std 
+template<> class std::hash<handle_context::action_after_association>
 {
-    template<> class hash<handle_context::action_after_association>
+public:
+    size_t operator()(const handle_context::action_after_association &c) const
     {
-    public:
-        size_t operator()(const handle_context::action_after_association &c) const
+        if(c.pnfc)
         {
-            return c.type + hash<string>()(c.burn_multi_id);
+            string src_notify(c.pnfc->src_notify_filename),
+                unique_filename(c.pnfc->file.unique_filename),
+                filename(c.pnfc->file.filename);
+            return c.type + hash<string>()(c.burn_multi_id) + hash<string>()(src_notify) 
+                + hash<string>()(unique_filename) + hash<string>()(filename);
         }
-    };
-}
+        else return c.type + hash<string>()(c.burn_multi_id);
+    }
+};
 
 #endif
