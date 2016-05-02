@@ -240,29 +240,59 @@ int watch_notify(string &cmd, ostream &flog)
         // try compress queue
         if(compress_queue.size() > 0)
         {
+            set<string> exist_uniquename; // don't start same study/series/instance, avoid file lock
+            for(HANDLE_MAP::const_iterator it = map_handle_context.begin(); it != map_handle_context.end(); ++it)
+            {
+                handle_compress *phc = NULL;
+                if(phc = dynamic_cast<handle_compress*>(it->second))
+                    exist_uniquename.insert(phc->get_notify_context().file.unique_filename);
+            }
+
             DWORD dw = WAIT_OBJECT_0;
             while((dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED) && compress_queue.size() > 0)
             {
                 dw = WaitForSingleObject(hSema, 0);
                 if(dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED)
                 {
-                    handle_compress* compr_ptr = handle_compress::make_handle_compress(compress_queue.front());
-                    compress_queue.pop_front();
-                    if(compr_ptr)
+                    bool find_job = false, start_compress_process_ok = false;
+                    for(NOTIFY_LIST::iterator it = compress_queue.begin(); it != compress_queue.end(); ++it)
                     {
-                        if(compr_ptr->start_process(flog))
-                        {
-                            ReleaseSemaphore(hSema, 1, NULL);
-                            delete compr_ptr;
+                        if(exist_uniquename.find(it->file.unique_filename) == exist_uniquename.end())
+                        {   // no same study/series/instance
+                            find_job = true;
+                            NOTIFY_FILE_CONTEXT nfc = *it;
+                            compress_queue.erase(it);
+
+                            handle_compress* compr_ptr = handle_compress::make_handle_compress(nfc);
+                            if(compr_ptr)
+                            {
+                                if(compr_ptr->start_process(flog))
+                                {   // failed
+                                    time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << nfc.src_notify_filename << " " << nfc.file.filename << endl;
+                                    delete compr_ptr;
+                                }
+                                else// succeed
+                                {
+                                    map_handle_context[compr_ptr->get_handle()] = compr_ptr;
+                                    exist_uniquename.insert(nfc.file.unique_filename);
+                                    start_compress_process_ok = true;
+                                }
+                            }
+                            else
+                                time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << nfc.src_notify_filename << " " << nfc.file.filename << endl;
+                            break; // exit for(NOTIFY_LIST::iterator it = compress_queue.begin()
                         }
-                        else
-                            map_handle_context[compr_ptr->get_handle()] = compr_ptr;
                     }
-                    else
-                        ReleaseSemaphore(hSema, 1, NULL);
+                    if(!start_compress_process_ok) ReleaseSemaphore(hSema, 1, NULL);
+                    if(!find_job)
+                    {
+                        if(compress_queue.size())
+                            time_header_out(flog) << "watch_notify() can't find compress job to start process, compress_queue.size() is " << compress_queue.size() << endl;
+                        break; // exit while((dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED) && compress_queue.size() > 0)
+                    }
                 }
                 else if(dw == WAIT_FAILED)
-                    displayErrorToCerr("compress_queue_to_workers() WaitForSingleObject(hSema)", dw);
+                    displayErrorToCerr("compress_queue_to_workers() WaitForSingleObject(hSema)", dw, &flog);
                 // else WAIT_TIMEOUT, compress process is too much.
             }
         }

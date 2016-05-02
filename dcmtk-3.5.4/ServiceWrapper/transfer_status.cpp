@@ -311,12 +311,12 @@ void handle_dir::check_complete_remain(std::ostream &flog) const
     for(list<string>::const_iterator it = list_file.begin(); it != list_file.end(); ++it)
     {
         if(remain.find(*it) == remain.end())
-            flog << *it << " not complete" << endl;
+            flog << "\t" << *it << " not complete" << endl;
         else
             remain.erase(*it);
     }
     for(set<string>::iterator it = remain.begin(); it != remain.end(); ++it)
-        flog << *it << " unexcepted complete" << endl;
+        flog << "\t" << *it << " unexcepted complete" << endl;
     for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
         flog << "\tstudy " << *it << endl;
 }
