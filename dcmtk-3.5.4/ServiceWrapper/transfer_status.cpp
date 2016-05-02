@@ -5,6 +5,19 @@
 using namespace std;
 using namespace handle_context;
 
+const char* handle_context::translate_action_type(ACTION_TYPE t)
+{
+    switch(t)
+    {
+    case NO_ACTION: return "NO_ACTION";
+    case BURN_PER_STUDY_RELEASE: return "BURN_PER_STUDY_RELEASE";
+    case BURN_PER_STUDY_ABORT: return "BURN_PER_STUDY_ABORT";
+    case BURN_MULTI: return "BURN_MULTI";
+    case INDEX_INSTANCE:  return "INDEX_INSTANCE";
+    default: return "ERROR_ACTION_TYPE";
+    }
+}
+
 const char* _tag_NOTIFY_FILE_CONTEXT_FILE_SECTION::StorePath(char sp)
 {
     HashStr(studyUID, unique_filename, sizeof(unique_filename));
@@ -46,7 +59,6 @@ handle_dir& handle_dir::operator=(const handle_dir &r)
 {
     notify_file::operator=(r);
     handle = r.handle;
-    action_after_assoc = r.action_after_assoc;
     store_assoc_id = r.store_assoc_id;
     callingAE = r.callingAE;
     callingAddr = r.calledAddr;
@@ -175,18 +187,18 @@ void handle_dir::process_notify_association(std::istream &ifs, unsigned int tag,
     {
     case NOTIFY_ASSOC_ESTA:
         ifs >> store_assoc_id >> callingAE >> callingAddr >> calledAE >> dec >> port >> expected_xfer >> calledAddr;
-        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << store_assoc_id << " "
+        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_association_id() << " "
             << callingAE << " " << callingAddr<< " " << calledAE<< " " << dec << port << " " << expected_xfer << " "<< calledAddr << endl;
         break;
     case NOTIFY_ASSOC_RELEASE:
         assoc_disconn = true;
         disconn_release = true;
-        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << store_assoc_id << " disconnect release" << endl;
+        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_association_id() << " disconnect release" << endl;
         break;
     case NOTIFY_ASSOC_ABORT:
         assoc_disconn = true;
         disconn_release = false;
-        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << store_assoc_id << " disconnect abort" << endl;
+        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_association_id() << " disconnect abort" << endl;
         break;
     default:
         {
@@ -283,8 +295,10 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     return 0;
 }
 
-void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &cnc, ostream &flog)
+void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_dicomdir *phdir, ostream &flog)
 {
+    if(phdir) phdir->append_action(action_from_association(nfc));
+
     char notify_file_name[MAX_PATH];
     string prefix(get_path());
     prefix.append("\\state\\");
@@ -293,14 +307,14 @@ void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &cnc, o
     ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out, _SH_DENYRW);
     if(ntf.good())
     {
-        save_notify_context_to_ostream(cnc, ntf);
+        save_notify_context_to_ostream(nfc, ntf);
         ntf.close();
         if(opt_verbose) time_header_out(flog) << "handle_dir::send_compress_complete_notify() to " << notify_file_name << " OK." << endl;
     }
     else
     {
         time_header_out(flog) << "handle_dir::send_compress_complete_notify() to " << notify_file_name << " failed:" << endl;
-        save_notify_context_to_ostream(cnc, flog);
+        save_notify_context_to_ostream(nfc, flog);
     }
 }
 
@@ -352,9 +366,17 @@ void handle_dir::broadcast_action_to_all_study(STUDY_MAP &all_study, ostream &fl
     {
         handle_dicomdir *phd = all_study[*it];
         if(phd)
-            phd->insert_action_and_erease_association_path(action_after_assoc, get_path(), flog);
-        else
-            time_header_out(flog) << "handle_dir::broadcast_action_to_all_study() can't find study " << *it << endl;
+        {
+            if(assoc_disconn)
+            {
+                action_from_association *paaa = NULL;
+                paaa = new action_from_association((disconn_release ? ACTION_TYPE::BURN_PER_STUDY_RELEASE : ACTION_TYPE::BURN_PER_STUDY_ABORT));
+                phd->append_action_and_erease_association(*paaa, get_association_id(), get_path(), flog);
+                delete paaa;
+            }
+            else time_header_out(flog) << "handle_dir::broadcast_action_to_all_study() " << *it << " : association is not disconnected." << endl;
+        }
+        else time_header_out(flog) << "handle_dir::broadcast_action_to_all_study() can't find study " << *it << endl;
     }
 }
 
@@ -437,7 +459,7 @@ int handle_proc::start_process(std::ostream &flog)
     }
 }
 
-handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT &cnc)
+handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT &nfc)
 {
     const char *verbose_flag = opt_verbose ? "-v" : "";
 #ifdef _DEBUG
@@ -448,19 +470,19 @@ handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT
     {
         ++p;
         mkdir_pos = p - cmd;
-        mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", verbose_flag, cnc.file.filename);
+        mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", verbose_flag, nfc.file.filename);
     }
     else
-        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, cnc.file.filename);
+        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, nfc.file.filename);
 #else
     char cmd[1024];
-	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, cnc.file.filename);
+	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, nfc.file.filename);
 #endif
     int ctn = mkdir_pos;
-    ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "archdir\\%s\\", cnc.file.studyUID);
-    strcpy_s(cmd + ctn, sizeof(cmd) - ctn, cnc.file.unique_filename);
+    ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "..\\..\\archdir\\v0000000\\%s\\%s\\", nfc.file.hash, nfc.file.studyUID);
+    strcpy_s(cmd + ctn, sizeof(cmd) - ctn, nfc.file.unique_filename);
 
-    return new handle_compress(cnc.handle_dir_ptr, cmd, "dcmcjpeg", cnc);
+    return new handle_compress(nfc.handle_dir_ptr, cmd, "dcmcjpeg", nfc);
 }
 
 handle_compress& handle_compress::operator=(const handle_compress &r)
@@ -499,7 +521,7 @@ handle_dicomdir* handle_dicomdir::make_handle_dicomdir(const std::string &study)
     sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +id . +D %s --viewer GE -pn %s #", 
         opt_verbose ? "-v" : "", dicomdir, study.c_str());
 
-    return new handle_dicomdir("", pacs_dir, cmd, "dcmmkdir", dicomdir, study);
+    return new handle_dicomdir(pacs_dir, cmd, "dcmmkdir", dicomdir, study);
 }
 
 handle_dicomdir& handle_dicomdir::operator=(const handle_dicomdir &r)
@@ -508,19 +530,40 @@ handle_dicomdir& handle_dicomdir::operator=(const handle_dicomdir &r)
     study_uid = r.study_uid;
     dicomdir_path = r.dicomdir_path;
     copy(r.set_association_path.begin(), r.set_association_path.end(), inserter(set_association_path, set_association_path.end()));
-    copy(r.set_action.begin(), r.set_action.end(), inserter(set_action, set_action.end()));
+    copy(r.list_action.begin(), r.list_action.end(), back_inserter(list_action));
     return *this;
 }
 
-bool handle_dicomdir::insert_action_and_erease_association_path(const action_after_association &action, const std::string &assoc_path, std::ostream &flog)
+void handle_dicomdir::append_action_and_erease_association(const action_from_association &action, const string &assoc_id, const string &assoc_path, ostream &flog)
 {
     set_association_path.erase(assoc_path);
-    if(opt_verbose) time_header_out(flog) << "handle_dicomdir::insert_action_and_erease_association_path() " << study_uid << " add action " << action.type << endl;
-    if(opt_verbose) time_header_out(flog) << "handle_dicomdir::insert_action_and_erease_association_path() " << study_uid << " erease assoc path " << assoc_path << endl;
-    return set_action.insert(action).second;
+    if(opt_verbose) time_header_out(flog) << "handle_dicomdir::append_action_and_erease_association() " << study_uid << " add action " << translate_action_type(action.type) << endl
+        << "\tand erease assoc " << assoc_id << " " << assoc_path << endl;
+    list_action.push_back(action);
 }
 
-action_after_association& action_after_association::operator=(const action_after_association &r)
+void handle_dicomdir::print_state(ostream &flog) const
+{
+    time_header_out(flog) << "study " << study_uid << endl;
+    // print associations
+    for(set<string>::const_iterator it = set_association_path.begin(); it != set_association_path.end(); ++it)
+        flog << "\tassociation path " << *it << endl;
+    // print actions
+    flog << "actions:" << endl;
+    for(list<action_from_association>::const_iterator it = list_action.begin(); it != list_action.end(); ++it)
+    {
+        flog << "\t" << translate_action_type(it->type);
+        if(it->type == ACTION_TYPE::INDEX_INSTANCE)
+        {
+            if(it->pnfc) flog << " " << it->pnfc->file.unique_filename;
+            else flog << " pnfc is NULL";
+        }
+        else if(it->type == ACTION_TYPE::BURN_MULTI) flog << it->burn_multi_id;
+        flog << endl;
+    }
+}
+
+action_from_association& action_from_association::operator=(const action_from_association &r)
 {
     type = r.type;
     burn_multi_id = r.burn_multi_id;
@@ -533,7 +576,7 @@ action_after_association& action_after_association::operator=(const action_after
     return *this;
 }
 
-bool action_after_association::operator<(const action_after_association &r) const
+bool action_from_association::operator<(const action_from_association &r) const
 {
     if(type < r.type) return true;
     else if(r.type < type) return false;

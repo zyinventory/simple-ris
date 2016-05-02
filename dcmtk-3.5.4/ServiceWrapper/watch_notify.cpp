@@ -75,7 +75,11 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
 
     handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path, notify_file);
     gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify(filename, flog); });
-    if(gle == 0) map_handle_context[hdir] = pclz_dir;
+    if(gle == 0)
+    {
+        map_handle_context[hdir] = pclz_dir;
+        if(opt_verbose) time_header_out(flog) << "process_meta_notify_file() add association " << pclz_dir->get_association_id() << " " << pclz_dir->get_path() << endl;
+    }
     else
     {   // discard the meta notify
         delete pclz_dir;
@@ -167,25 +171,42 @@ int watch_notify(string &cmd, ostream &flog)
                     string study_uid(cnc.file.studyUID), assoc_path(phcompr->get_path()), assoc_id(phcompr->get_association_id());
                     delete phcompr;
                     
+                    if(opt_verbose) time_header_out(flog) << "watch_notify() dcmcjpeg complete, find association " << assoc_id << " to set complete." << endl;
+                    handle_dir *phd = NULL;
                     const HANDLE_MAP::iterator it_assoc = find_if(map_handle_context.begin(), map_handle_context.end(),
-                        [&assoc_id](const HANDLE_PAIR &p) { return 0 == assoc_id.compare(p.second->get_association_id()); });
-                    handle_dir *pha = NULL;
-                    if(it_assoc != map_handle_context.end()) pha = dynamic_cast<handle_dir*>(it_assoc->second);
+                        [&assoc_id, &phd](const HANDLE_PAIR &p) -> bool {
+                            if(0 == assoc_id.compare(p.second->get_association_id()))
+                            {
+                                phd = dynamic_cast<handle_dir*>(p.second);
+                                if(phd) return true;
+                            }
+                            else return false;
+                        });
 
-                    if(pha) pha->send_compress_complete_notify(cnc, flog);
+                    if(phd)
+                    {
+                        STUDY_MAP::iterator it = map_dicomdir.find(study_uid);
+                        if(it == map_dicomdir.end())
+                        {
+                            time_header_out(flog) << "watch_notify() src file " << cnc.src_notify_filename << " can't send action to dicomdir: missing study " << study_uid << endl;
+                            phd->send_compress_complete_notify(cnc, NULL, flog);
+                        }
+                        else
+                            phd->send_compress_complete_notify(cnc, it->second, flog);
+                    }
                     else time_header_out(flog) << "watch_notify() set src file " << cnc.src_notify_filename << " complete failed: missing association " << assoc_id << endl;
 
                     STUDY_MAP::iterator it = map_dicomdir.find(study_uid);
-                    handle_dicomdir *phd = NULL;
+                    handle_dicomdir *phdir = NULL;
                     if(it == map_dicomdir.end())
                     {
                         time_header_out(flog) << "watch_notify() handle_compress complete, can't find map_dicomdir[" << study_uid << "], create new handle_dicomdir" << endl;
-                        phd = handle_dicomdir::make_handle_dicomdir(study_uid);
-                        if(phd) map_dicomdir[study_uid] = phd;
+                        phdir = handle_dicomdir::make_handle_dicomdir(study_uid);
+                        if(phdir) map_dicomdir[study_uid] = phdir;
                     }
-                    else phd = it->second;
+                    else phdir = it->second;
 
-                    if(phd)
+                    if(phdir)
                     {
                         // todo: create named pipe and start process if necessary, transfer cnc to dcmmkdir
                     }
@@ -209,6 +230,7 @@ int watch_notify(string &cmd, ostream &flog)
                         {
                             phdir->check_complete_remain(flog);
                             map_handle_context.erase(waited);
+                            if(opt_verbose) time_header_out(flog) << "watch_notify() association " << phdir->get_association_id() << " complete, erease from map_handle_context." << endl;
                             // close monitor handle, all_compress_ok_notify is a comment.
                             phdir->send_all_compress_ok_notify_and_close_handle(flog);
                             phdir->broadcast_action_to_all_study(map_dicomdir, flog);
@@ -317,12 +339,6 @@ clean_child_proc:
     }
 
     // print study state
-    for(STUDY_MAP::iterator it = map_dicomdir.begin(); it != map_dicomdir.end(); ++it)
-    {
-        time_header_out(flog) << "study " << it->first << endl;
-        const set<string>& set_assoc_path = it->second->get_set_association_path();
-        for(set<string>::const_iterator it_inner = set_assoc_path.begin(); it_inner != set_assoc_path.end(); ++it_inner)
-            flog << "\tassociation path " << *it_inner << endl;
-    }
+    for_each(map_dicomdir.begin(), map_dicomdir.end(), [&flog](const STUDY_PAIR &p) { p.second->print_state(flog); });
     return gle;
 }
