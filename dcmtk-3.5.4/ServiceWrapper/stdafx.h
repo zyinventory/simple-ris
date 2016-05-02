@@ -31,26 +31,20 @@
 #include <iterator>
 #include <algorithm>
 #include <functional>
+
 #include "handle_context.h"
 
-#define NOTIFY_BASE "store_notify"
-typedef std::map<HANDLE, handle_context::notify_file*> HANDLE_MAP;
-typedef std::pair<HANDLE, handle_context::notify_file*> HANDLE_PAIR;
-typedef std::list<handle_context::CMOVE_NOTIFY_CONTEXT> NOTIFY_LIST;
-typedef std::map<std::string, handle_context::handle_dicomdir*> STUDY_MAP;
-typedef std::pair<std::string, handle_context::handle_dicomdir*> STUDY_PAIR;
-
 int watch_notify(std::string &cmd, std::ostream &flog);
-int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog);
-int cmd_patient(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog);
-int cmd_study(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog);
-int cmd_series(const std::string &type, std::istringstream &cmdstrm, handle_context::CMOVE_NOTIFY_CONTEXT &lc, std::ostream &flog);
-void save_notify_context_to_ostream(const handle_context::CMOVE_NOTIFY_CONTEXT &cnc, std::ostream &output);
+int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);
+int cmd_patient(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);
+int cmd_study(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);
+int cmd_series(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);
+void save_notify_context_to_ostream(const handle_context::NOTIFY_FILE_CONTEXT &cnc, std::ostream &output);
 void send_all_compress_ok_notify(const std::string &association_base, std::ostream &flog);
 
 extern bool opt_verbose;
-extern NOTIFY_LIST compress_queue;
-extern STUDY_MAP map_dicomdir;
+extern handle_context::NOTIFY_LIST compress_queue;
+extern handle_context::STUDY_MAP map_dicomdir;
 
 // ------- old ServiceWrapper -------
 

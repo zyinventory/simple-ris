@@ -73,7 +73,7 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
         [&assoc_id, &path, &flog](const HANDLE_PAIR &p) { return select_handle_dir_by_association_path(p.second, assoc_id, path, flog); });
     if(it != map_handle_context.end()) return 0;
 
-    handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path);
+    handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path, notify_file);
     gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify(filename, flog); });
     if(gle == 0) map_handle_context[hdir] = pclz_dir;
     else
@@ -130,7 +130,7 @@ int watch_notify(string &cmd, ostream &flog)
         displayErrorToCerr("watch_notify() FindFirstChangeNotification(store_notify)", gle, &flog);
         goto clean_child_proc;
     }
-    handle_dir *pclz_base_dir = new handle_dir(hbase, "", NOTIFY_BASE);
+    handle_dir *pclz_base_dir = new handle_dir(hbase, "", NOTIFY_BASE, "");
     map_handle_context[hbase] = pclz_base_dir;
     
     // collect exist dfc files
@@ -162,7 +162,7 @@ int watch_notify(string &cmd, ostream &flog)
                 {
                     ReleaseSemaphore(hSema, 1, NULL);
                     map_handle_context.erase(phcompr->get_handle());
-                    CMOVE_NOTIFY_CONTEXT cnc = phcompr->get_notify_context();
+                    NOTIFY_FILE_CONTEXT cnc = phcompr->get_notify_context();
 
                     string study_uid(cnc.file.studyUID), assoc_path(phcompr->get_path()), assoc_id(phcompr->get_association_id());
                     delete phcompr;
@@ -207,16 +207,14 @@ int watch_notify(string &cmd, ostream &flog)
                         gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, flog); });
                         if(phdir->is_association_disconnect() && phdir->file_complete_remain() == 0)
                         {
-                            string association_base(phdir->get_path());
-                            map_handle_context.erase(waited);
                             phdir->check_complete_remain(flog);
-                            // todo: broadcast to related studies' queue(add file to dicomdir, assoc disconnect OK?).
+                            map_handle_context.erase(waited);
+                            // close monitor handle, all_compress_ok_notify is a comment.
+                            phdir->send_all_compress_ok_notify_and_close_handle(flog);
+                            phdir->broadcast_action_to_all_study(map_dicomdir, flog);
                             delete phdir;
 
                             // todo: if cmove assoc, start batch burning function in another dir.
-
-                            // monitor handle has been closed, all_compress_ok_notify is a comment.
-                            send_all_compress_ok_notify(association_base, flog);
                         }
                     }
                     else // new file in store_notify
@@ -248,7 +246,7 @@ int watch_notify(string &cmd, ostream &flog)
                 dw = WaitForSingleObject(hSema, 0);
                 if(dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED)
                 {
-                    handle_compress* compr_ptr = handle_compress::make_handle_compress(compress_queue.front(), map_handle_context);
+                    handle_compress* compr_ptr = handle_compress::make_handle_compress(compress_queue.front());
                     compress_queue.pop_front();
                     if(compr_ptr)
                     {

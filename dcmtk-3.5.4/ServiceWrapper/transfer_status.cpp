@@ -5,7 +5,7 @@
 using namespace std;
 using namespace handle_context;
 
-const char* CMOVE_FILE_SECTION::StorePath(char sp)
+const char* _tag_NOTIFY_FILE_CONTEXT_FILE_SECTION::StorePath(char sp)
 {
     HashStr(studyUID, unique_filename, sizeof(unique_filename));
     unique_filename[8] = sp;
@@ -27,6 +27,7 @@ handle_dir& handle_dir::operator=(const handle_dir &r)
 {
     notify_file::operator=(r);
     handle = r.handle;
+    action_after_assoc = r.action_after_assoc;
     store_assoc_id = r.store_assoc_id;
     callingAE = r.callingAE;
     callingAddr = r.calledAddr;
@@ -34,6 +35,7 @@ handle_dir& handle_dir::operator=(const handle_dir &r)
     calledAddr = r.calledAddr;
     expected_xfer = r.expected_xfer;
     port = r.port;
+    last_association_notify_filename = r.last_association_notify_filename;
     assoc_disconn = r.assoc_disconn;
     disconn_release = r.disconn_release;
     copy(r.list_file.begin(), r.list_file.end(), back_inserter(list_file));
@@ -102,10 +104,10 @@ DWORD handle_dir::find_files(std::ostream &flog, std::function<DWORD(const std::
     return 0;
 }
 
-handle_context::CMOVE_NOTIFY_CONTEXT* handle_dir::process_notify_file(std::istream &ifs, unsigned int seq, ostream &flog)
+handle_context::NOTIFY_FILE_CONTEXT* handle_dir::process_notify_file(std::istream &ifs, unsigned int seq, ostream &flog)
 {
-    CMOVE_NOTIFY_CONTEXT *pclc = new CMOVE_NOTIFY_CONTEXT;
-    memset(pclc, 0, sizeof(CMOVE_NOTIFY_CONTEXT));
+    NOTIFY_FILE_CONTEXT *pclc = new NOTIFY_FILE_CONTEXT;
+    memset(pclc, 0, sizeof(NOTIFY_FILE_CONTEXT));
 
     if(seq >= NOTIFY_FILE_SEQ_START)
     {
@@ -197,20 +199,20 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     
     if(cmd.compare(NOTIFY_FILE_TAG) == 0) // receive a file
     {
-        CMOVE_NOTIFY_CONTEXT *pclc = process_notify_file(ifs, tag, flog);
-        if(pclc)
+        NOTIFY_FILE_CONTEXT *pnfc = process_notify_file(ifs, tag, flog);
+        if(pnfc)
         {
-            strcpy_s(pclc->association_id, get_association_id().c_str());
-            strcpy_s(pclc->src_notify_filename, filename.c_str());
-            pclc->file.StorePath();
+            pnfc->handle_dir_ptr = this;
+            strcpy_s(pnfc->src_notify_filename, filename.c_str());
+            pnfc->file.StorePath();
             if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK." << endl;
 #ifdef _DEBUG
             time_header_out(cerr) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK." << endl;
 #endif
             // don't insert file to set_complete now, insert it after compress complete
-            compress_queue.push_back(*pclc);
+            compress_queue.push_back(*pnfc);
 
-            string study_uid(pclc->file.studyUID);
+            string study_uid(pnfc->file.studyUID);
             this->insert_study(study_uid); // association[1] -> study[n]
             
             handle_dicomdir* phd = NULL;
@@ -225,7 +227,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
             
             if(phd) phd->insert_association_path(get_path());  // study[1] -> association[n]
 
-            delete pclc;
+            delete pnfc;
         }
         else
         {
@@ -236,6 +238,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     else if(cmd.compare(NOTIFY_STORE_TAG) == 0)
     {
         process_notify_association(ifs, tag, flog);
+        last_association_notify_filename = filename;
         set_complete.insert(filename);
     }
     else if(cmd.compare(NOTIFY_ACKN_ITEM) == 0)
@@ -261,7 +264,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     return 0;
 }
 
-void handle_dir::send_compress_complete_notify(const CMOVE_NOTIFY_CONTEXT &cnc, ostream &flog)
+void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &cnc, ostream &flog)
 {
     char notify_file_name[MAX_PATH];
     string prefix(get_path());
@@ -297,6 +300,43 @@ void handle_dir::check_complete_remain(std::ostream &flog) const
         flog << *it << " unexcepted complete" << endl;
     for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
         flog << "\tstudy " << *it << endl;
+}
+
+void handle_dir::send_all_compress_ok_notify_and_close_handle(ostream &flog)
+{
+    // close motinor handle, avoid all_compress_ok notify loop
+    FindCloseChangeNotification(handle);
+    handle = NULL;
+
+    char notify_file_name[MAX_PATH];
+    string prefix(get_path());
+    prefix.append("\\state\\");
+    size_t pos = in_process_sequence_dll(notify_file_name, sizeof(notify_file_name), prefix.c_str());
+    sprintf_s(notify_file_name + pos, sizeof(notify_file_name) - pos, "_%s.dfc", NOTIFY_ACKN_TAG);
+    ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out, _SH_DENYRW);
+    if(ntf.good())
+    {
+        ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ALL_COMPRESS_OK << " " << last_association_notify_filename << endl;
+        ntf.close();
+        if(opt_verbose) time_header_out(flog) << "watch_notify() send all compress OK notify " << notify_file_name << " OK." << endl;
+    }
+    else
+    {
+        time_header_out(flog) << "watch_notify() send all compress OK notify " << notify_file_name << " failed:" << endl;
+        flog << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ALL_COMPRESS_OK << endl;
+    }
+}
+
+void handle_dir::broadcast_action_to_all_study(STUDY_MAP &all_study, ostream &flog) const
+{
+    for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
+    {
+        handle_dicomdir *phd = all_study[*it];
+        if(phd)
+            phd->insert_action_and_erease_association_path(action_after_assoc, get_path(), flog);
+        else
+            time_header_out(flog) << "handle_dir::broadcast_action_to_all_study() can't find study " << *it << endl;
+    }
 }
 
 handle_proc& handle_proc::operator=(const handle_proc &r)
@@ -378,20 +418,8 @@ int handle_proc::start_process(std::ostream &flog)
     }
 }
 
-handle_compress* handle_compress::make_handle_compress(const CMOVE_NOTIFY_CONTEXT &cnc, HANDLE_MAP &map_handle)
+handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT &cnc)
 {
-    string assoc_id(cnc.association_id);
-    // select cwd form assoc_id
-    const HANDLE_MAP::iterator it = find_if(map_handle.begin(), map_handle.end(),
-        [&assoc_id](const HANDLE_PAIR &p) -> bool {
-            if(0 == assoc_id.compare(p.second->get_association_id()))
-                return (NULL != dynamic_cast<handle_dir*>(p.second));
-            else
-                return false;
-        });
-    if(it == map_handle.end()) return NULL;
-    handle_dir *phdir = dynamic_cast<handle_dir*>(it->second);
-
     const char *verbose_flag = opt_verbose ? "-v" : "";
 #ifdef _DEBUG
     int mkdir_pos = 0;
@@ -413,13 +441,12 @@ handle_compress* handle_compress::make_handle_compress(const CMOVE_NOTIFY_CONTEX
     ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "archdir\\%s\\", cnc.file.studyUID);
     strcpy_s(cmd + ctn, sizeof(cmd) - ctn, cnc.file.unique_filename);
 
-    return new handle_compress(phdir, cmd, "dcmcjpeg", cnc);
+    return new handle_compress(cnc.handle_dir_ptr, cmd, "dcmcjpeg", cnc);
 }
 
 handle_compress& handle_compress::operator=(const handle_compress &r)
 {
     handle_proc::operator=(r);
-    handle_dir_ptr = r.handle_dir_ptr;
     notify_ctx = r.notify_ctx;
     return *this;
 }
@@ -462,5 +489,14 @@ handle_dicomdir& handle_dicomdir::operator=(const handle_dicomdir &r)
     study_uid = r.study_uid;
     dicomdir_path = r.dicomdir_path;
     copy(r.set_association_path.begin(), r.set_association_path.end(), inserter(set_association_path, set_association_path.end()));
+    copy(r.set_action.begin(), r.set_action.end(), inserter(set_action, set_action.end()));
     return *this;
+}
+
+bool handle_dicomdir::insert_action_and_erease_association_path(const action_after_association &action, const std::string &assoc_path, std::ostream &flog)
+{
+    set_association_path.erase(assoc_path);
+    if(opt_verbose) time_header_out(flog) << "handle_dicomdir::insert_action_and_erease_association_path() " << study_uid << " add action " << action.type << endl;
+    if(opt_verbose) time_header_out(flog) << "handle_dicomdir::insert_action_and_erease_association_path() " << study_uid << " erease assoc path " << assoc_path << endl;
+    return set_action.insert(action).second;
 }
