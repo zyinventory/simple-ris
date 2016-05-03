@@ -45,7 +45,6 @@ void send_all_compress_ok_notify(const std::string &association_base, std::ostre
 
 extern bool opt_verbose;
 extern handle_context::NOTIFY_LIST compress_queue;
-extern handle_context::STUDY_MAP map_dicomdir;
 
 // ------- old ServiceWrapper -------
 

@@ -44,20 +44,33 @@ namespace handle_context
 
     typedef std::list<NOTIFY_FILE_CONTEXT> NOTIFY_LIST;
 
-    class notify_file
+    class handle_waitable
     {
     private:
-        std::string association_id, path;
+        std::string path;
 
     protected:
-        notify_file(const std::string &assoc_id, const std::string &p) : association_id(assoc_id), path(p) {};
+        handle_waitable(const std::string p) : path(p) {};
 
     public:
-        notify_file(const notify_file& o) : association_id(o.association_id), path(o.path) {};
-        notify_file& operator=(const notify_file &r);
+        handle_waitable(const handle_waitable &r) : path(r.path) {};
+        handle_waitable& operator=(const handle_waitable &r) { path = r.path; return *this; };
         virtual HANDLE get_handle() const { return NULL; };
-        const std::string& get_association_id() const { return association_id; };
         const std::string& get_path() const { return path; };
+    };
+
+    class notify_file : public handle_waitable
+    {
+    private:
+        std::string association_id;
+
+    protected:
+        notify_file(const std::string &assoc_id, const std::string &p) : handle_waitable(p), association_id(assoc_id) {};
+
+    public:
+        notify_file(const notify_file& r) : handle_waitable(r), association_id(r.association_id) {};
+        notify_file& operator=(const notify_file &r);
+        const std::string& get_association_id() const { return association_id; };
     };
 
     typedef std::map<HANDLE, notify_file*> HANDLE_MAP;
@@ -90,6 +103,8 @@ namespace handle_context
         bool operator<(const action_from_association &r) const;
         bool operator==(const action_from_association &r) const { return (!(*this < r) && !(r < *this)); };
     };
+    
+    class named_pipe_server;
 
     class handle_dir : public notify_file // handle_dir is association
     {
@@ -128,7 +143,7 @@ namespace handle_context
         DWORD process_notify(const std::string &filename, std::ostream &flog);
         void send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_dicomdir *phdir, std::ostream &flog);
         void check_complete_remain(std::ostream &flog) const;
-        void broadcast_action_to_all_study(STUDY_MAP &all_study_map, std::ostream &flog) const;
+        void broadcast_action_to_all_study(named_pipe_server &nps, std::ostream &flog) const;
         void send_all_compress_ok_notify_and_close_handle(std::ostream &flog);
     };
 
@@ -171,17 +186,19 @@ namespace handle_context
 
     class handle_dicomdir : public handle_proc
     {
+        friend class named_pipe_server;
     private:
-        std::string study_uid, dicomdir_path;
-        std::set<std::string> set_association_path; // study[1] -> association[n]
-        std::list<action_from_association> list_action;
+        std::string dicomdir_path;
+        std::string study_uid;  // todo: in_process_sequence_id is primary key, handle_dicomdir has multi studies.
+        std::list<action_from_association> list_action; // todo: if handle_dicomdir has the study, it shall receive corresponding action broadcast.
+        std::set<std::string> set_association_path; // todo: associations is lock, it isn't necessary to bind study and association.
 
     protected:
         handle_dicomdir(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
             const std::string &dicomdir, const std::string &study)
-            : handle_proc("", cwd, cmd, exec_prog_name), dicomdir_path(dicomdir), study_uid(study) {};
+            : handle_proc("<in_process_sequence_id>", cwd, cmd, exec_prog_name), dicomdir_path(dicomdir), study_uid(study) {};
+                        // specify pk at constructor
     public:
-        static handle_dicomdir* make_handle_dicomdir(const std::string &study);
         handle_dicomdir(const handle_dicomdir &r) : handle_proc(r), study_uid(r.study_uid),
             dicomdir_path(r.dicomdir_path), set_association_path(r.set_association_path), list_action(r.list_action) {};
         
@@ -196,32 +213,40 @@ namespace handle_context
         void append_action_and_erease_association(const action_from_association &action, const std::string &assoc_id, const std::string &assoc_path, std::ostream &flog);
     };
 
-    typedef struct
+    typedef struct _tag_PIPEINST
     {
 	    OVERLAPPED oOverlap;
 	    HANDLE hPipeInst;
 	    TCHAR chBuffer[FILE_BUF_SIZE];
 	    DWORD cbShouldWrite;
-        char dot_or_study_uid[65];
+        char study_uid[65];
     } PIPEINST, *LPPIPEINST;
 
-    class named_pipe_server : public notify_file
+    class named_pipe_server : public handle_waitable
     {
     private:
         std::ostream *pflog;
-        HANDLE hPipeEvent, hPipe;
+        HANDLE hPipeEvent, hPipe; // hPipe will change per listening
         OVERLAPPED olPipeConnectOnly;
+        STUDY_MAP map_dicomdir; // todo: named pipe handle is primary key of handle_dicomdir, but bind at connected
 
     public:
         named_pipe_server(const char *pipe_path, std::ostream *plog);
-        named_pipe_server(const named_pipe_server &r) : notify_file(r), pflog(r.pflog),
+        named_pipe_server(const named_pipe_server &r) : handle_waitable(r), pflog(r.pflog),
             hPipeEvent(r.hPipeEvent), hPipe(r.hPipe), olPipeConnectOnly(r.olPipeConnectOnly) {};
         named_pipe_server& operator=(const named_pipe_server &r);
         virtual ~named_pipe_server();
 
+        static named_pipe_server *named_pipe_server_ptr;
+        static void register_named_pipe_server(named_pipe_server *p);
+
         HANDLE get_handle() const { return hPipe; };
         DWORD start_listening();
         DWORD pipe_client_connect_incoming();
+        void client_connect_callback(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap);
+        void disconnect_connection(LPPIPEINST lpPipeInst);
+        handle_dicomdir* make_handle_dicomdir(const std::string &study);
+        handle_dicomdir* find_handle_dicomdir(const std::string &study) { return map_dicomdir[study]; };
     };
 }
 

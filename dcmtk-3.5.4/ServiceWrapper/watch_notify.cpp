@@ -8,7 +8,6 @@ static char buff[FILE_BUF_SIZE];
 
 static HANDLE_MAP map_handle_context;
 NOTIFY_LIST compress_queue;
-STUDY_MAP map_dicomdir;
 
 static bool select_handle_dir_by_association_path(const notify_file* pnf, const string &association_id, const string &path, ostream &flog)
 {
@@ -105,15 +104,15 @@ int watch_notify(string &cmd, ostream &flog)
     if(opt_verbose) time_header_out(flog) << "watch_notify() dcmqrscp start" << endl;
     
     in_process_sequence_dll(buff, sizeof(buff), "\\\\.\\pipe\\");
-    named_pipe_server *pnps = new named_pipe_server(buff, &flog);
-    gle = pnps->start_listening();
+    named_pipe_server nps(buff, &flog);
+    named_pipe_server::register_named_pipe_server(&nps);
+    gle = nps.start_listening();
     if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
     {
         displayErrorToCerr("watch_notify() named_pipe_server::start_listening()", gle, &flog);
         return gle;
     }
     if(opt_verbose) time_header_out(flog) << "watch_notify() named_pipe_server start" << endl;
-    map_handle_context[pnps->get_handle()] = pnps;
 
 #ifdef _DEBUG
     WaitForInputIdle(phproc->get_handle(), INFINITE);
@@ -160,19 +159,20 @@ int watch_notify(string &cmd, ostream &flog)
         transform(map_handle_context.begin(), map_handle_context.end(), back_inserter(ha), 
             [](const HANDLE_PAIR &p) { return p.first; });
 
+        ha.push_back(nps.get_handle()); // map_handle_context[named pipe listening handle] == NULL
+
         DWORD wr = WaitForMultipleObjects(ha.size(), ha.data(), FALSE, 1000);
 
         if(wr == WAIT_TIMEOUT)
         {
 
         }
-        else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + map_handle_context.size())
+        else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + ha.size())
         {
             HANDLE waited = ha[wr - WAIT_OBJECT_0];
             handle_compress *phcompr = NULL;
             handle_proc *phproc = NULL;
             handle_dir *phdir = NULL;
-            named_pipe_server * pnps = NULL;
             notify_file *pb = map_handle_context[waited];
             if(pb)
             {
@@ -194,33 +194,21 @@ int watch_notify(string &cmd, ostream &flog)
                                 phd = dynamic_cast<handle_dir*>(p.second);
                                 if(phd) return true;
                             }
-                            else return false;
+                            return false;
                         });
 
                     if(phd)
                     {
-                        STUDY_MAP::iterator it = map_dicomdir.find(study_uid);
-                        if(it == map_dicomdir.end())
-                        {
+                        handle_dicomdir *pdicomdir = nps.find_handle_dicomdir(study_uid);
+                        if(pdicomdir == NULL)
                             time_header_out(flog) << "watch_notify() src file " << cnc.src_notify_filename << " can't send action to dicomdir: missing study " << study_uid << endl;
-                            phd->send_compress_complete_notify(cnc, NULL, flog);
-                        }
-                        else
-                            phd->send_compress_complete_notify(cnc, it->second, flog);
+                        phd->send_compress_complete_notify(cnc, pdicomdir, flog);
                     }
                     else time_header_out(flog) << "watch_notify() set src file " << cnc.src_notify_filename << " complete failed: missing association " << assoc_id << endl;
 
-                    STUDY_MAP::iterator it = map_dicomdir.find(study_uid);
-                    handle_dicomdir *phdir = NULL;
-                    if(it == map_dicomdir.end())
-                    {
-                        time_header_out(flog) << "watch_notify() handle_compress complete, can't find map_dicomdir[" << study_uid << "], create new handle_dicomdir" << endl;
-                        phdir = handle_dicomdir::make_handle_dicomdir(study_uid);
-                        if(phdir) map_dicomdir[study_uid] = phdir;
-                    }
-                    else phdir = it->second;
-
-                    if(phdir)
+                    if(opt_verbose) time_header_out(flog) << "watch_notify() handle_compress complete, find or create dcmmkdir" << endl;
+                    handle_dicomdir *pdicomdir = nps.make_handle_dicomdir(study_uid);
+                    if(pdicomdir)
                     {
                         // todo: create named pipe and start process if necessary, transfer cnc to dcmmkdir
                     }
@@ -237,7 +225,7 @@ int watch_notify(string &cmd, ostream &flog)
                             if(opt_verbose) time_header_out(flog) << "watch_notify() association " << phdir->get_association_id() << " complete, erease from map_handle_context." << endl;
                             // close monitor handle, all_compress_ok_notify is a comment.
                             phdir->send_all_compress_ok_notify_and_close_handle(flog);
-                            phdir->broadcast_action_to_all_study(map_dicomdir, flog);
+                            phdir->broadcast_action_to_all_study(nps, flog);
                             delete phdir;
 
                             // todo: if cmove assoc, start batch burning function in another dir.
@@ -245,10 +233,6 @@ int watch_notify(string &cmd, ostream &flog)
                     }
                     else // new file in store_notify
                         gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return process_meta_notify_file(phdir, filename, flog); });
-                }
-                else if(pnps = dynamic_cast<named_pipe_server*>(pb))
-                {   // pipe client(dcmmkdir) connect incoming
-                    // todo: pnps->pipe_client_connect_incoming();
                 }
                 else if(phproc = dynamic_cast<handle_proc*>(pb))
                 {
@@ -264,6 +248,10 @@ int watch_notify(string &cmd, ostream &flog)
                 {
                     time_header_out(flog) << "unexcepting notify file " << pb->get_association_id() << ", " << pb->get_path() << endl;
                 }
+            }
+            else if(waited == nps.get_handle()) // pipe client(dcmmkdir) connect incoming
+            {
+                // todo: pnps->pipe_client_connect_incoming();
             }
             else
             {
@@ -355,8 +343,5 @@ clean_child_proc:
         if(pha) pha->check_complete_remain(flog);
         delete it->second;
     }
-
-    // print study state
-    for_each(map_dicomdir.begin(), map_dicomdir.end(), [&flog](const STUDY_PAIR &p) { p.second->print_state(flog); });
     return gle;
 }
