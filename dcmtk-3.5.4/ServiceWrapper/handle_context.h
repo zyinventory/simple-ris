@@ -50,7 +50,7 @@ namespace handle_context
         std::string association_id, path;
 
     protected:
-        notify_file(const std::string &assoc_id, const std::string &file) : association_id(assoc_id), path(file) {};
+        notify_file(const std::string &assoc_id, const std::string &p) : association_id(assoc_id), path(p) {};
 
     public:
         notify_file(const notify_file& o) : association_id(o.association_id), path(o.path) {};
@@ -194,6 +194,34 @@ namespace handle_context
         bool insert_association_path(const std::string &assoc_path) { return set_association_path.insert(assoc_path).second; };
         void append_action(const action_from_association &action) { return list_action.push_back(action); };
         void append_action_and_erease_association(const action_from_association &action, const std::string &assoc_id, const std::string &assoc_path, std::ostream &flog);
+    };
+
+    typedef struct
+    {
+	    OVERLAPPED oOverlap;
+	    HANDLE hPipeInst;
+	    TCHAR chBuffer[FILE_BUF_SIZE];
+	    DWORD cbShouldWrite;
+        char dot_or_study_uid[65];
+    } PIPEINST, *LPPIPEINST;
+
+    class named_pipe_server : public notify_file
+    {
+    private:
+        std::ostream *pflog;
+        HANDLE hPipeEvent, hPipe;
+        OVERLAPPED olPipeConnectOnly;
+
+    public:
+        named_pipe_server(const char *pipe_path, std::ostream *plog);
+        named_pipe_server(const named_pipe_server &r) : notify_file(r), pflog(r.pflog),
+            hPipeEvent(r.hPipeEvent), hPipe(r.hPipe), olPipeConnectOnly(r.olPipeConnectOnly) {};
+        named_pipe_server& operator=(const named_pipe_server &r);
+        virtual ~named_pipe_server();
+
+        HANDLE get_handle() const { return hPipe; };
+        DWORD start_listening();
+        DWORD pipe_client_connect_incoming();
     };
 }
 

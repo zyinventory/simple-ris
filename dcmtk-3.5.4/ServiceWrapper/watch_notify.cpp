@@ -4,7 +4,7 @@
 using namespace std;
 using namespace handle_context;
 
-static char buff[1024];
+static char buff[FILE_BUF_SIZE];
 
 static HANDLE_MAP map_handle_context;
 NOTIFY_LIST compress_queue;
@@ -102,6 +102,19 @@ int watch_notify(string &cmd, ostream &flog)
         displayErrorToCerr("watch_notify() handle_proc::create_process(dcmqrscp) at beginning", gle, &flog);
         return gle;
     }
+    if(opt_verbose) time_header_out(flog) << "watch_notify() dcmqrscp start" << endl;
+    
+    in_process_sequence_dll(buff, sizeof(buff), "\\\\.\\pipe\\");
+    named_pipe_server *pnps = new named_pipe_server(buff, &flog);
+    gle = pnps->start_listening();
+    if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
+    {
+        displayErrorToCerr("watch_notify() named_pipe_server::start_listening()", gle, &flog);
+        return gle;
+    }
+    if(opt_verbose) time_header_out(flog) << "watch_notify() named_pipe_server start" << endl;
+    map_handle_context[pnps->get_handle()] = pnps;
+
 #ifdef _DEBUG
     WaitForInputIdle(phproc->get_handle(), INFINITE);
 #endif
@@ -159,6 +172,7 @@ int watch_notify(string &cmd, ostream &flog)
             handle_compress *phcompr = NULL;
             handle_proc *phproc = NULL;
             handle_dir *phdir = NULL;
+            named_pipe_server * pnps = NULL;
             notify_file *pb = map_handle_context[waited];
             if(pb)
             {
@@ -211,16 +225,6 @@ int watch_notify(string &cmd, ostream &flog)
                         // todo: create named pipe and start process if necessary, transfer cnc to dcmmkdir
                     }
                 }
-                else if(phproc = dynamic_cast<handle_proc*>(pb))
-                {
-                    time_header_out(flog) << "watch_notify() dcmqrscp encounter error, restart." << endl;
-                    gle = phproc->start_process(flog);
-                    if(gle)
-                    {
-                        displayErrorToCerr("watch_notify() handle_proc::create_process(dcmqrscp) restart", gle, &flog);
-                        goto clean_child_proc;
-                    }
-                }
                 else if(phdir = dynamic_cast<handle_dir*>(pb))
                 {
                     if(phdir->get_association_id().length()) // some file in storedir/association_id
@@ -241,6 +245,20 @@ int watch_notify(string &cmd, ostream &flog)
                     }
                     else // new file in store_notify
                         gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return process_meta_notify_file(phdir, filename, flog); });
+                }
+                else if(pnps = dynamic_cast<named_pipe_server*>(pb))
+                {   // pipe client(dcmmkdir) connect incoming
+                    // todo: pnps->pipe_client_connect_incoming();
+                }
+                else if(phproc = dynamic_cast<handle_proc*>(pb))
+                {
+                    time_header_out(flog) << "watch_notify() dcmqrscp encounter error, restart." << endl;
+                    gle = phproc->start_process(flog);
+                    if(gle)
+                    {
+                        displayErrorToCerr("watch_notify() handle_proc::create_process(dcmqrscp) restart", gle, &flog);
+                        goto clean_child_proc;
+                    }
                 }
                 else
                 {

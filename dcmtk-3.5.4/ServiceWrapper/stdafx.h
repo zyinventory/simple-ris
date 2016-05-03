@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <functional>
 
+#define FILE_BUF_SIZE 1024
 #include "handle_context.h"
 
 int watch_notify(std::string &cmd, std::ostream &flog);
