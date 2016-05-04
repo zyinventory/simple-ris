@@ -180,9 +180,9 @@ int watch_notify(string &cmd, ostream &flog)
                 {
                     ReleaseSemaphore(hSema, 1, NULL);
                     map_handle_context.erase(phcompr->get_handle());
-                    NOTIFY_FILE_CONTEXT cnc = phcompr->get_notify_context();
+                    NOTIFY_FILE_CONTEXT nfc = phcompr->get_notify_context();
 
-                    string study_uid(cnc.file.studyUID), assoc_path(phcompr->get_path()), assoc_id(phcompr->get_association_id());
+                    string study_uid(nfc.file.studyUID), assoc_path(phcompr->get_path()), assoc_id(phcompr->get_association_id());
                     delete phcompr;
                     
                     if(opt_verbose) time_header_out(flog) << "watch_notify() dcmcjpeg complete, find association " << assoc_id << " to set complete." << endl;
@@ -199,19 +199,12 @@ int watch_notify(string &cmd, ostream &flog)
 
                     if(phd)
                     {
-                        handle_study *pdicomdir = nps.find_handle_study(study_uid);
-                        if(pdicomdir == NULL)
-                            time_header_out(flog) << "watch_notify() src file " << cnc.src_notify_filename << " can't send action to dicomdir: missing study " << study_uid << endl;
-                        phd->send_compress_complete_notify(cnc, pdicomdir, flog);
+                        handle_study *phs = nps.find_handle_study(study_uid);
+                        if(phs == NULL)
+                            time_header_out(flog) << "watch_notify() src file " << nfc.src_notify_filename << " can't send action to dicomdir: missing study " << study_uid << endl;
+                        phd->send_compress_complete_notify(nfc, phs, flog); // phs->append_action(action_from_association(nfc)); 
                     }
-                    else time_header_out(flog) << "watch_notify() set src file " << cnc.src_notify_filename << " complete failed: missing association " << assoc_id << endl;
-
-                    if(opt_verbose) time_header_out(flog) << "watch_notify() handle_compress complete, find or create dcmmkdir" << endl;
-                    handle_study *pdicomdir = nps.make_handle_study(study_uid);
-                    if(pdicomdir)
-                    {
-                        // todo: create named pipe and start process if necessary, transfer cnc to dcmmkdir
-                    }
+                    else time_header_out(flog) << "watch_notify() set src file " << nfc.src_notify_filename << " complete failed: missing association " << assoc_id << endl;
                 }
                 else if(phdir = dynamic_cast<handle_dir*>(pb))
                 {

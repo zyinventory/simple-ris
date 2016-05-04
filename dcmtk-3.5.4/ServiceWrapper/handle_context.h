@@ -87,13 +87,13 @@ namespace handle_context
         friend class std::hash<action_from_association>;
     public:
         ACTION_TYPE type;
-        std::string burn_multi_id;
+        std::string association_path, burn_multi_id;
         NOTIFY_FILE_CONTEXT *pnfc;
 
         action_from_association() : type(NO_ACTION), pnfc(NULL) {};
-        action_from_association(ACTION_TYPE action_type) : type(action_type), pnfc(NULL) {};
-        action_from_association(const NOTIFY_FILE_CONTEXT &nfc) : type(INDEX_INSTANCE) { pnfc = new NOTIFY_FILE_CONTEXT; *pnfc = nfc; };
-        action_from_association(const action_from_association& r) : type(r.type), burn_multi_id(r.burn_multi_id)
+        action_from_association(ACTION_TYPE action_type, std::string path) : type(action_type), association_path(path), pnfc(NULL) {};
+        action_from_association(const NOTIFY_FILE_CONTEXT &nfc, std::string path) : type(INDEX_INSTANCE), association_path(path) { pnfc = new NOTIFY_FILE_CONTEXT; *pnfc = nfc; };
+        action_from_association(const action_from_association& r) : type(r.type), association_path(r.association_path), burn_multi_id(r.burn_multi_id)
         {
             if(r.pnfc) { pnfc = new NOTIFY_FILE_CONTEXT; *pnfc = *r.pnfc; }
             else pnfc = NULL;
@@ -102,6 +102,8 @@ namespace handle_context
         action_from_association& operator=(const action_from_association &r);
         bool operator<(const action_from_association &r) const;
         bool operator==(const action_from_association &r) const { return (!(*this < r) && !(r < *this)); };
+        const std::string& get_association_path() const { return association_path; };
+        ACTION_TYPE get_type() const { return type; };
     };
     
     class named_pipe_server;
@@ -184,22 +186,33 @@ namespace handle_context
         NOTIFY_FILE_CONTEXT& get_notify_context() { return notify_ctx; };
     };
 
+    typedef struct _tag_PIPEINST
+    {
+	    OVERLAPPED oOverlap;
+	    HANDLE hPipeInst;
+	    TCHAR chBuffer[FILE_BUF_SIZE];
+	    DWORD cbShouldWrite;
+        char study_uid[65];
+    } PIPEINST, *LPPIPEINST;
+
     class handle_study : public handle_proc
     {
         friend class named_pipe_server;
     private:
-        std::string dicomdir_path;
+        LPPIPEINST blocked_pipe_context;
         std::string study_uid;
+        std::string dicomdir_path;
         std::list<action_from_association> list_action;
         std::set<std::string> set_association_path;
+        void erease_association(const std::string &assoc_id, const std::string &assoc_path, std::ostream &flog);
 
     protected:
         handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
             const std::string &dicomdir, const std::string &study)
-            : handle_proc("<in_process_sequence_id>", cwd, cmd, exec_prog_name), dicomdir_path(dicomdir), study_uid(study) {};
-                        // specify pk at constructor
+            : handle_proc("", cwd, cmd, exec_prog_name), blocked_pipe_context(NULL), dicomdir_path(dicomdir), study_uid(study) {};
+
     public:
-        handle_study(const handle_study &r) : handle_proc(r), study_uid(r.study_uid),
+        handle_study(const handle_study &r) : handle_proc(r), blocked_pipe_context(r.blocked_pipe_context), study_uid(r.study_uid),
             dicomdir_path(r.dicomdir_path), set_association_path(r.set_association_path), list_action(r.list_action) {};
         
         virtual ~handle_study() { }; // todo: broadcast dicomdir close event
@@ -209,18 +222,9 @@ namespace handle_context
         const std::set<std::string>& get_set_association_path() const { return set_association_path; };
         void print_state(std::ostream &flog) const;
         bool insert_association_path(const std::string &assoc_path) { return set_association_path.insert(assoc_path).second; };
-        void append_action(const action_from_association &action) { return list_action.push_back(action); };
-        void append_action_and_erease_association(const action_from_association &action, const std::string &assoc_id, const std::string &assoc_path, std::ostream &flog);
+        DWORD instance_add_to_dicomdir_ok(const std::string &filename, const std::string &xfer_new, LPOVERLAPPED_COMPLETION_ROUTINE write_complete_callback, std::ostream &flog);
+        void append_action(const action_from_association &action, std::ostream &flog);
     };
-
-    typedef struct _tag_PIPEINST
-    {
-	    OVERLAPPED oOverlap;
-	    HANDLE hPipeInst;
-	    TCHAR chBuffer[FILE_BUF_SIZE];
-	    DWORD cbShouldWrite;
-        char study_uid[65];
-    } PIPEINST, *LPPIPEINST;
 
     class named_pipe_server : public handle_waitable
     {
@@ -244,6 +248,8 @@ namespace handle_context
         DWORD start_listening();
         DWORD pipe_client_connect_incoming();
         void client_connect_callback(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap);
+        void read_pipe_complete(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap);
+        void write_pipe_complete(DWORD dwErr, DWORD cbBytesWrite, LPOVERLAPPED lpOverLap);
         void disconnect_connection(LPPIPEINST lpPipeInst);
         handle_study* make_handle_study(const std::string &study);
         handle_study* find_handle_study(const std::string &study) { return map_study[study]; };

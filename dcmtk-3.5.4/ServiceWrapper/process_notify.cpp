@@ -8,6 +8,11 @@ using namespace handle_context;
 
 static char linebuff[1024];
 
+int x_www_form_codec_encode_to_ostream(const char *str, ostream *output)
+{
+    return x_www_form_codec<ostream>::encode(str, output);
+}
+
 int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog)
 {
     unsigned int tag = 0;

@@ -246,8 +246,8 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
             string study_uid(pnfc->file.studyUID);
             this->insert_study(study_uid); // association[1] -> study[n]
             
-            handle_study* phd = named_pipe_server::named_pipe_server_ptr->make_handle_study(study_uid);
-            if(phd) phd->insert_association_path(get_path());  // study[1] -> association[n]
+            handle_study* phs = named_pipe_server::named_pipe_server_ptr->make_handle_study(study_uid);
+            if(phs) phs->insert_association_path(get_path());  // add association lock to study, study[1] -> association[n]
 
             delete pnfc;
         }
@@ -286,9 +286,9 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     return 0;
 }
 
-void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phdir, ostream &flog)
+void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phs, ostream &flog)
 {
-    if(phdir) phdir->append_action(action_from_association(nfc));
+    if(phs) phs->append_action(action_from_association(nfc, get_path()), flog);
 
     char notify_file_name[MAX_PATH];
     string prefix(get_path());
@@ -355,14 +355,16 @@ void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps, ostream &
 {
     for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
     {
-        handle_study *phd = nps.find_handle_study(*it);
-        if(phd)
+        handle_study *phs = nps.find_handle_study(*it);
+        if(phs)
         {
             if(assoc_disconn)
             {
                 action_from_association *paaa = NULL;
-                paaa = new action_from_association((disconn_release ? ACTION_TYPE::BURN_PER_STUDY_RELEASE : ACTION_TYPE::BURN_PER_STUDY_ABORT));
-                phd->append_action_and_erease_association(*paaa, get_association_id(), get_path(), flog);
+                paaa = new action_from_association(
+                    (disconn_release ? ACTION_TYPE::BURN_PER_STUDY_RELEASE : ACTION_TYPE::BURN_PER_STUDY_ABORT),
+                    get_path());
+                phs->append_action(*paaa, flog);
                 delete paaa;
             }
             else time_header_out(flog) << "handle_dir::broadcast_action_to_all_study() " << *it << " : association is not disconnected." << endl;
@@ -446,7 +448,7 @@ int handle_proc::start_process(std::ostream &flog)
 	else
     {
         CloseHandle(logFile);
-        return GetLastError();
+        return displayErrorToCerr(__FUNCSIG__, GetLastError(), &flog);
     }
 }
 
@@ -486,6 +488,7 @@ handle_compress& handle_compress::operator=(const handle_compress &r)
 handle_study& handle_study::operator=(const handle_study &r)
 {
     handle_proc::operator=(r);
+    blocked_pipe_context = r.blocked_pipe_context;
     study_uid = r.study_uid;
     dicomdir_path = r.dicomdir_path;
     copy(r.set_association_path.begin(), r.set_association_path.end(), inserter(set_association_path, set_association_path.end()));
@@ -493,12 +496,26 @@ handle_study& handle_study::operator=(const handle_study &r)
     return *this;
 }
 
-void handle_study::append_action_and_erease_association(const action_from_association &action, const string &assoc_id, const string &assoc_path, ostream &flog)
+void handle_study::append_action(const action_from_association &action, ostream &flog)
+{
+    list_action.push_back(action);
+    // if the dicomdir in block mode, shall send action.
+    if(blocked_pipe_context)
+    {
+        blocked_pipe_context->oOverlap.InternalHigh = sprintf_s(blocked_pipe_context->chBuffer, "%s|restart", action.pnfc->file.studyUID);
+        blocked_pipe_context->cbShouldWrite = blocked_pipe_context->oOverlap.InternalHigh;
+        blocked_pipe_context->oOverlap.Internal = 0; // error code
+        LPPIPEINST lpPipeInst = blocked_pipe_context;
+        blocked_pipe_context = NULL;
+        read_pipe_complete_func_ptr(0, blocked_pipe_context->oOverlap.InternalHigh, (LPOVERLAPPED)lpPipeInst);
+    }
+}
+
+void handle_study::erease_association(const string &assoc_id, const string &assoc_path, ostream &flog)
 {
     set_association_path.erase(assoc_path);
-    if(opt_verbose) time_header_out(flog) << "handle_study::append_action_and_erease_association() " << study_uid << " add action " << translate_action_type(action.type) << endl
+    if(opt_verbose) time_header_out(flog) << "handle_study::erease_association() " << study_uid << endl
         << "\tand erease assoc " << assoc_id << " " << assoc_path << endl;
-    list_action.push_back(action);
 }
 
 void handle_study::print_state(ostream &flog) const
@@ -541,14 +558,19 @@ bool action_from_association::operator<(const action_from_association &r) const
     else if(r.type < type) return false;
     else // type == r.type
     {
-        if(pnfc == r.pnfc) return false;
-        else if(pnfc == NULL) return true; // r.pnfc != NULL
-        else if(r.pnfc == NULL) return false; // pnfc != NULL
-        else // all is not NULL
+        if(association_path < r.association_path) return true;
+        else if(r.association_path < association_path) return false;
+        else // association_path == r.association_path
         {
-            if(*pnfc < *r.pnfc) return true;
-            else if(*r.pnfc < *pnfc) return false;
-            else return burn_multi_id < r.burn_multi_id; // ==
+            if(pnfc == r.pnfc) return false;
+            else if(pnfc == NULL) return true; // r.pnfc != NULL
+            else if(r.pnfc == NULL) return false; // pnfc != NULL
+            else // all is not NULL
+            {
+                if(*pnfc < *r.pnfc) return true;
+                else if(*r.pnfc < *pnfc) return false;
+                else return burn_multi_id < r.burn_multi_id; // ==
+            }
         }
     }
 }
