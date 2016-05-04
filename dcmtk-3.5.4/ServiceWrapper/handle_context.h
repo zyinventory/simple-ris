@@ -75,9 +75,9 @@ namespace handle_context
 
     typedef std::map<HANDLE, notify_file*> HANDLE_MAP;
     typedef std::pair<HANDLE, notify_file*> HANDLE_PAIR;
-    class handle_dicomdir;
-    typedef std::map<std::string, handle_dicomdir*> STUDY_MAP;
-    typedef std::pair<std::string, handle_dicomdir*> STUDY_PAIR;
+    class handle_study;
+    typedef std::map<std::string, handle_study*> STUDY_MAP;
+    typedef std::pair<std::string, handle_study*> STUDY_PAIR;
 
     enum ACTION_TYPE { NO_ACTION = 0, BURN_PER_STUDY_RELEASE, BURN_PER_STUDY_ABORT, BURN_MULTI, INDEX_INSTANCE };
     const char *translate_action_type(ACTION_TYPE t);
@@ -141,7 +141,7 @@ namespace handle_context
         int file_complete_remain() const { return list_file.size() - set_complete.size(); };
         DWORD find_files(std::ostream &flog, std::function<DWORD(const std::string&)> p);
         DWORD process_notify(const std::string &filename, std::ostream &flog);
-        void send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_dicomdir *phdir, std::ostream &flog);
+        void send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phdir, std::ostream &flog);
         void check_complete_remain(std::ostream &flog) const;
         void broadcast_action_to_all_study(named_pipe_server &nps, std::ostream &flog) const;
         void send_all_compress_ok_notify_and_close_handle(std::ostream &flog);
@@ -184,26 +184,26 @@ namespace handle_context
         NOTIFY_FILE_CONTEXT& get_notify_context() { return notify_ctx; };
     };
 
-    class handle_dicomdir : public handle_proc
+    class handle_study : public handle_proc
     {
         friend class named_pipe_server;
     private:
         std::string dicomdir_path;
-        std::string study_uid;  // todo: in_process_sequence_id is primary key, handle_dicomdir has multi studies.
-        std::list<action_from_association> list_action; // todo: if handle_dicomdir has the study, it shall receive corresponding action broadcast.
-        std::set<std::string> set_association_path; // todo: associations is lock, it isn't necessary to bind study and association.
+        std::string study_uid;
+        std::list<action_from_association> list_action;
+        std::set<std::string> set_association_path;
 
     protected:
-        handle_dicomdir(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
+        handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
             const std::string &dicomdir, const std::string &study)
             : handle_proc("<in_process_sequence_id>", cwd, cmd, exec_prog_name), dicomdir_path(dicomdir), study_uid(study) {};
                         // specify pk at constructor
     public:
-        handle_dicomdir(const handle_dicomdir &r) : handle_proc(r), study_uid(r.study_uid),
+        handle_study(const handle_study &r) : handle_proc(r), study_uid(r.study_uid),
             dicomdir_path(r.dicomdir_path), set_association_path(r.set_association_path), list_action(r.list_action) {};
         
-        virtual ~handle_dicomdir() { }; // todo: broadcast dicomdir close event
-        handle_dicomdir& operator=(const handle_dicomdir &r);
+        virtual ~handle_study() { }; // todo: broadcast dicomdir close event
+        handle_study& operator=(const handle_study &r);
         const std::string& get_study_uid() const { return study_uid; };
         const std::string& get_dicomdir_path() const { return dicomdir_path; };
         const std::set<std::string>& get_set_association_path() const { return set_association_path; };
@@ -228,7 +228,7 @@ namespace handle_context
         std::ostream *pflog;
         HANDLE hPipeEvent, hPipe; // hPipe will change per listening
         OVERLAPPED olPipeConnectOnly;
-        STUDY_MAP map_dicomdir; // todo: named pipe handle is primary key of handle_dicomdir, but bind at connected
+        STUDY_MAP map_study;
 
     public:
         named_pipe_server(const char *pipe_path, std::ostream *plog);
@@ -245,8 +245,8 @@ namespace handle_context
         DWORD pipe_client_connect_incoming();
         void client_connect_callback(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap);
         void disconnect_connection(LPPIPEINST lpPipeInst);
-        handle_dicomdir* make_handle_dicomdir(const std::string &study);
-        handle_dicomdir* find_handle_dicomdir(const std::string &study) { return map_dicomdir[study]; };
+        handle_study* make_handle_study(const std::string &study);
+        handle_study* find_handle_study(const std::string &study) { return map_study[study]; };
     };
 }
 

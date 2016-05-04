@@ -246,7 +246,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
             string study_uid(pnfc->file.studyUID);
             this->insert_study(study_uid); // association[1] -> study[n]
             
-            handle_dicomdir* phd = named_pipe_server::named_pipe_server_ptr->make_handle_dicomdir(study_uid);
+            handle_study* phd = named_pipe_server::named_pipe_server_ptr->make_handle_study(study_uid);
             if(phd) phd->insert_association_path(get_path());  // study[1] -> association[n]
 
             delete pnfc;
@@ -286,7 +286,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     return 0;
 }
 
-void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_dicomdir *phdir, ostream &flog)
+void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phdir, ostream &flog)
 {
     if(phdir) phdir->append_action(action_from_association(nfc));
 
@@ -355,7 +355,7 @@ void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps, ostream &
 {
     for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
     {
-        handle_dicomdir *phd = nps.find_handle_dicomdir(*it);
+        handle_study *phd = nps.find_handle_study(*it);
         if(phd)
         {
             if(assoc_disconn)
@@ -483,7 +483,7 @@ handle_compress& handle_compress::operator=(const handle_compress &r)
     return *this;
 }
 
-handle_dicomdir& handle_dicomdir::operator=(const handle_dicomdir &r)
+handle_study& handle_study::operator=(const handle_study &r)
 {
     handle_proc::operator=(r);
     study_uid = r.study_uid;
@@ -493,15 +493,15 @@ handle_dicomdir& handle_dicomdir::operator=(const handle_dicomdir &r)
     return *this;
 }
 
-void handle_dicomdir::append_action_and_erease_association(const action_from_association &action, const string &assoc_id, const string &assoc_path, ostream &flog)
+void handle_study::append_action_and_erease_association(const action_from_association &action, const string &assoc_id, const string &assoc_path, ostream &flog)
 {
     set_association_path.erase(assoc_path);
-    if(opt_verbose) time_header_out(flog) << "handle_dicomdir::append_action_and_erease_association() " << study_uid << " add action " << translate_action_type(action.type) << endl
+    if(opt_verbose) time_header_out(flog) << "handle_study::append_action_and_erease_association() " << study_uid << " add action " << translate_action_type(action.type) << endl
         << "\tand erease assoc " << assoc_id << " " << assoc_path << endl;
     list_action.push_back(action);
 }
 
-void handle_dicomdir::print_state(ostream &flog) const
+void handle_study::print_state(ostream &flog) const
 {
     time_header_out(flog) << "study " << study_uid << endl;
     // print associations

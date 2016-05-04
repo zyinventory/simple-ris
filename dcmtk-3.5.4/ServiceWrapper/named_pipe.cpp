@@ -28,6 +28,7 @@ named_pipe_server& named_pipe_server::operator=(const named_pipe_server &r)
 
 DWORD named_pipe_server::start_listening()
 {
+    hPipe = INVALID_HANDLE_VALUE;
     if(!hPipeEvent) hPipeEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
     if(hPipeEvent == NULL)
         return displayErrorToCerr(__FUNCSIG__ " CreateEvent()", GetLastError(), pflog);
@@ -107,7 +108,6 @@ void named_pipe_server::client_connect_callback(DWORD dwErr, DWORD cbBytesRead, 
     LPPIPEINST lpPipeInst = reinterpret_cast<LPPIPEINST>(lpOverLap);
 
     BOOL bindOK = FALSE;
-    // if first bind failed, how to?
     if ((dwErr == 0) && (cbBytesRead != 0))
     {
         string study_uid, otherMessage, xfer;
@@ -115,23 +115,23 @@ void named_pipe_server::client_connect_callback(DWORD dwErr, DWORD cbBytesRead, 
         // false param: don't confirm studyUID == lpPipeInst->study_uid, because it's unbound.
         if(!check_reading_message(lpPipeInst, cbBytesRead, study_uid, otherMessage, xfer, false))
         {
-            cerr << __FUNCSIG__ " : message is currupt, " << study_uid << "|" << otherMessage << endl;
+            time_header_out(*pflog) << __FUNCSIG__ " : message is currupt, " << study_uid << "|" << otherMessage << endl;
             disconnect_connection(lpPipeInst);
             return;
         }
-        // todo: bind named pipe handle and handle_dicomdir
-        STUDY_MAP::iterator it = map_dicomdir.find(study_uid);
-        if(it == map_dicomdir.end())
-        {
+        STUDY_MAP::iterator it = map_study.find(study_uid);
+        if(it == map_study.end())
+        {   // if first bind failed, close named pipe instance
             time_header_out(*pflog) << __FUNCSIG__ " : can't bind incoming request from client process, " << study_uid << "|" << otherMessage << endl;
             disconnect_connection(lpPipeInst);
             return;
         }
+        // bind named pipe handle and handle_study
         strcpy_s(lpPipeInst->study_uid, it->first.c_str());
         // todo: NamedPipe_ReadPipeComplete(dwErr, cbBytesRead, lpOverLap);
     }
     else
-    {
+    {   // if first bind failed, close named pipe instance
         displayErrorToCerr(__FUNCSIG__, dwErr, pflog);
         disconnect_connection(lpPipeInst);
     }
@@ -144,7 +144,7 @@ DWORD named_pipe_server::pipe_client_connect_incoming()
     {
         LPPIPEINST lpPipeInst = new PIPEINST;
         memset(lpPipeInst, 0, sizeof(PIPEINST));
-        lpPipeInst->hPipeInst = hPipe;
+        lpPipeInst->hPipeInst = hPipe; // save hPipe to named pipe instance
         if(! ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer, FILE_BUF_SIZE, 
             (LPOVERLAPPED)lpPipeInst, (LPOVERLAPPED_COMPLETION_ROUTINE)client_connect_callback_func_ptr))
         {
@@ -154,23 +154,29 @@ DWORD named_pipe_server::pipe_client_connect_incoming()
     }
     else gle = displayErrorToCerr(__FUNCSIG__ " GetOverlappedResult()", GetLastError(), pflog);
 
-    if(gle) return gle;
-
-    // start a listening named pipe
+    if(gle) DisconnectNamedPipe(hPipe);
+    // discard this connected named pipe instance
+    // start a new listening named pipe, hPipe is changed
     gle = start_listening();
     if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
+    {
+        if(hPipe == INVALID_HANDLE_VALUE)
+        {
+            DisconnectNamedPipe(hPipe);
+            hPipe = NULL;
+        }
         return displayErrorToCerr(__FUNCSIG__ " start_listening()", gle, pflog);
-
-    return ERROR_SUCCESS;
+    }
+    return 0; //ERROR_SUCCESS
 }
 
-handle_dicomdir* named_pipe_server::make_handle_dicomdir(const std::string &study_uid)
+handle_study* named_pipe_server::make_handle_study(const std::string &study_uid)
 {
-    handle_dicomdir *phdir = NULL;
-    STUDY_MAP::iterator it = map_dicomdir.find(study_uid);
-    if(it == map_dicomdir.end())
+    handle_study *phdir = NULL;
+    STUDY_MAP::iterator it = map_study.find(study_uid);
+    if(it == map_study.end())
     {
-        time_header_out(*pflog) << "watch_notify() handle_compress complete, can't find map_dicomdir[" << study_uid << "], create new handle_dicomdir" << endl;
+        time_header_out(*pflog) << "watch_notify() handle_compress complete, can't find map_study[" << study_uid << "], create new handle_study" << endl;
         char dicomdir[1024], hash[9];
         HashStr(study_uid.c_str(), hash, sizeof(hash));
         int pos = sprintf_s(dicomdir, "%s\\pacs\\archdir\\v0000000\\%c%c\\%c%c\\%c%c\\%c%c",
@@ -196,8 +202,8 @@ handle_dicomdir* named_pipe_server::make_handle_dicomdir(const std::string &stud
         sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +id %s +D %s.dir --viewer GE -pn %s #", 
             opt_verbose ? "-v" : "", study_uid.c_str(), study_uid.c_str(), study_uid.c_str());
 
-        phdir = new handle_dicomdir(dicomdir, cmd, "dcmmkdir", dicomdir, study_uid);
-        if(phdir) map_dicomdir[study_uid] = phdir;
+        phdir = new handle_study(dicomdir, cmd, "dcmmkdir", dicomdir, study_uid);
+        if(phdir) map_study[study_uid] = phdir;
     }
     else phdir = it->second;
 
@@ -215,5 +221,5 @@ named_pipe_server::~named_pipe_server()
     }
     if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::~named_pipe_server()" << endl;
     ostream *pflog2 = pflog;
-    for_each(map_dicomdir.begin(), map_dicomdir.end(), [pflog2](const STUDY_PAIR &p) { p.second->print_state(*pflog2); });
+    for_each(map_study.begin(), map_study.end(), [pflog2](const STUDY_PAIR &p) { p.second->print_state(*pflog2); });
 }

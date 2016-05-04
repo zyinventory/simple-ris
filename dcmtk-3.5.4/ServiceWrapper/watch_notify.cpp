@@ -199,7 +199,7 @@ int watch_notify(string &cmd, ostream &flog)
 
                     if(phd)
                     {
-                        handle_dicomdir *pdicomdir = nps.find_handle_dicomdir(study_uid);
+                        handle_study *pdicomdir = nps.find_handle_study(study_uid);
                         if(pdicomdir == NULL)
                             time_header_out(flog) << "watch_notify() src file " << cnc.src_notify_filename << " can't send action to dicomdir: missing study " << study_uid << endl;
                         phd->send_compress_complete_notify(cnc, pdicomdir, flog);
@@ -207,7 +207,7 @@ int watch_notify(string &cmd, ostream &flog)
                     else time_header_out(flog) << "watch_notify() set src file " << cnc.src_notify_filename << " complete failed: missing association " << assoc_id << endl;
 
                     if(opt_verbose) time_header_out(flog) << "watch_notify() handle_compress complete, find or create dcmmkdir" << endl;
-                    handle_dicomdir *pdicomdir = nps.make_handle_dicomdir(study_uid);
+                    handle_study *pdicomdir = nps.make_handle_study(study_uid);
                     if(pdicomdir)
                     {
                         // todo: create named pipe and start process if necessary, transfer cnc to dcmmkdir
@@ -251,7 +251,12 @@ int watch_notify(string &cmd, ostream &flog)
             }
             else if(waited == nps.get_handle()) // pipe client(dcmmkdir) connect incoming
             {
-                // todo: pnps->pipe_client_connect_incoming();
+                gle = nps.pipe_client_connect_incoming();
+                if(gle)
+                {
+                    displayErrorToCerr("watch_notify() named_pipe_server::pipe_client_connect_incoming()", gle, &flog);
+                    break;
+                }
             }
             else
             {
@@ -325,8 +330,11 @@ int watch_notify(string &cmd, ostream &flog)
             }
         }
     }
-    if(GetSignalInterruptValue() && opt_verbose)
-        time_header_out(flog) << "watch_notify() WaitForMultipleObjects() get Ctrl-C" << endl;
+    if(GetSignalInterruptValue())
+    {
+        if(opt_verbose) time_header_out(flog) << "watch_notify() WaitForMultipleObjects() get Ctrl-C" << endl;
+    }
+    else displayErrorToCerr("watch_notify() main loop exit", gle, &flog);
 
 clean_child_proc:
     if(hSema)
