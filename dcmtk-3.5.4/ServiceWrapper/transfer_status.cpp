@@ -517,8 +517,10 @@ handle_study::~handle_study()
 
 DWORD handle_study::append_action(const action_from_association &action)
 {
+    size_t previous_size = list_action.size();
     list_action.push_back(action);
-    return write_message_to_pipe();
+    if(previous_size == 0 && (blocked || disconnect)) return write_message_to_pipe();
+    return 0;
 }
 
 DWORD handle_study::write_message_to_pipe()
@@ -528,7 +530,7 @@ DWORD handle_study::write_message_to_pipe()
 
     list<action_from_association>::iterator it = list_action.begin();
     bool write_message_ok = false;
-    while(it != list_action.end())
+    while(!write_message_ok && it != list_action.end())
     {
         switch(it->type)
         {
@@ -561,8 +563,8 @@ DWORD handle_study::write_message_to_pipe()
             break;
         }
         it = list_action.erase(it);
-        if(write_message_ok) break;
     }
+    if(!write_message_ok) blocked = true;
     return gle;
 }
 
