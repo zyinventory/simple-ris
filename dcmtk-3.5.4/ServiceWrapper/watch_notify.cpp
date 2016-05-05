@@ -72,7 +72,7 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
         [&assoc_id, &path, &flog](const HANDLE_PAIR &p) { return select_handle_dir_by_association_path(p.second, assoc_id, path, flog); });
     if(it != map_handle_context.end()) return 0;
 
-    handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path, notify_file);
+    handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path, notify_file, &flog);
     gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify(filename, flog); });
     if(gle == 0)
     {
@@ -94,7 +94,7 @@ int watch_notify(string &cmd, ostream &flog)
 {
     // start dcmqrscp.exe parent proc
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
-    handle_proc *phproc = new handle_proc("", buff, cmd, "dcmqrscp");
+    handle_proc *phproc = new handle_proc("", buff, cmd, "dcmqrscp", &flog);
     DWORD gle = phproc->start_process(flog);
     if(gle)
     {
@@ -146,7 +146,7 @@ int watch_notify(string &cmd, ostream &flog)
         displayErrorToCerr("watch_notify() FindFirstChangeNotification(store_notify)", gle, &flog);
         goto clean_child_proc;
     }
-    handle_dir *pclz_base_dir = new handle_dir(hbase, "", NOTIFY_BASE, "");
+    handle_dir *pclz_base_dir = new handle_dir(hbase, "", NOTIFY_BASE, "", &flog);
     map_handle_context[hbase] = pclz_base_dir;
     
     // collect exist dfc files
@@ -161,7 +161,7 @@ int watch_notify(string &cmd, ostream &flog)
 
         ha.push_back(nps.get_handle()); // map_handle_context[named pipe listening handle] == NULL
 
-        DWORD wr = WaitForMultipleObjects(ha.size(), ha.data(), FALSE, 1000);
+        DWORD wr = WaitForMultipleObjectsEx(ha.size(), ha.data(), FALSE, 1000, TRUE);
 
         if(wr == WAIT_TIMEOUT)
         {
@@ -218,7 +218,7 @@ int watch_notify(string &cmd, ostream &flog)
                             if(opt_verbose) time_header_out(flog) << "watch_notify() association " << phdir->get_association_id() << " complete, erease from map_handle_context." << endl;
                             // close monitor handle, all_compress_ok_notify is a comment.
                             phdir->send_all_compress_ok_notify_and_close_handle(flog);
-                            phdir->broadcast_action_to_all_study(nps, flog);
+                            phdir->broadcast_action_to_all_study(nps);
                             delete phdir;
 
                             // todo: if cmove assoc, start batch burning function in another dir.
@@ -289,7 +289,7 @@ int watch_notify(string &cmd, ostream &flog)
                             NOTIFY_FILE_CONTEXT nfc = *it;
                             compress_queue.erase(it);
 
-                            handle_compress* compr_ptr = handle_compress::make_handle_compress(nfc);
+                            handle_compress* compr_ptr = handle_compress::make_handle_compress(nfc, flog);
                             if(compr_ptr)
                             {
                                 if(compr_ptr->start_process(flog))

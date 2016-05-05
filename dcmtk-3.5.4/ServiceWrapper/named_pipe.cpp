@@ -5,28 +5,20 @@
 using namespace std;
 using namespace handle_context;
 
-named_pipe_server* named_pipe_server::named_pipe_server_ptr = NULL;
+named_pipe_server* named_pipe_server::singleton_ptr = NULL;
 
-static void CALLBACK client_connect_callback_func_ptr(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap)
-{
-    named_pipe_server::named_pipe_server_ptr->client_connect_callback(dwErr, cbBytesRead, lpOverLap);
-}
-static void CALLBACK write_pipe_complete_func_ptr(DWORD dwErr, DWORD cbBytesWrite, LPOVERLAPPED lpOverLap)
-{
-    named_pipe_server::named_pipe_server_ptr->write_pipe_complete(dwErr, cbBytesWrite, lpOverLap);
-}
-void CALLBACK read_pipe_complete_func_ptr(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap)
-{
-    named_pipe_server::named_pipe_server_ptr->read_pipe_complete(dwErr, cbBytesRead, lpOverLap);
-}
-
+void CALLBACK named_pipe_server::client_connect_callback_func_ptr(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap)
+{ named_pipe_server::singleton_ptr->client_connect_callback(dwErr, cbBytesRead, lpOverLap); }
+void CALLBACK named_pipe_server::write_pipe_complete_func_ptr(DWORD dwErr, DWORD cbBytesWrite, LPOVERLAPPED lpOverLap)
+{ named_pipe_server::singleton_ptr->write_pipe_complete(dwErr, cbBytesWrite, lpOverLap); }
+void CALLBACK named_pipe_server::read_pipe_complete_func_ptr(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap)
+{ named_pipe_server::singleton_ptr->read_pipe_complete(dwErr, cbBytesRead, lpOverLap); }
 void named_pipe_server::register_named_pipe_server(named_pipe_server *p)
-{ named_pipe_server_ptr = p; }
+{ singleton_ptr = p; }
 
 named_pipe_server::named_pipe_server(const char *pipe_path, std::ostream *plog)
-    : handle_waitable(pipe_path), pflog(plog), hPipeEvent(NULL), hPipe(NULL)
+    : handle_waitable(pipe_path, plog), hPipeEvent(NULL), hPipe(NULL)
 {
-    if(pflog == NULL) pflog = &std::cerr;
     memset(&olPipeConnectOnly, 0, sizeof(OVERLAPPED));
 }
 
@@ -104,19 +96,26 @@ static bool check_reading_message(LPPIPEINST lpPipeInst, DWORD cbBytesRead, stri
     return !(confirm_study_uid && studyUID.compare(lpPipeInst->study_uid));
 }
 
-void named_pipe_server::disconnect_connection(LPPIPEINST lpPipeInst)
+void named_pipe_server::disconnect_connection_auto_detect(LPPIPEINST lpPipeInst)
 {
     if(lpPipeInst == NULL) return;
-    handle_study* phs = map_study[lpPipeInst->study_uid];
-    if (! DisconnectNamedPipe(lpPipeInst->hPipeInst))
-        displayErrorToCerr(__FUNCSIG__ " DisconnectNamedPipe()", GetLastError(), pflog);
-    CloseHandle(lpPipeInst->hPipeInst);
-    if(phs)
+    string study_uid(lpPipeInst->study_uid);
+    STUDY_MAP::iterator it = map_study.find(study_uid);
+    if(it == map_study.end())
     {
-        map_study.erase(lpPipeInst->study_uid);
-        delete phs;
+        if(lpPipeInst->hPipeInst && lpPipeInst->hPipeInst != INVALID_HANDLE_VALUE)
+        {
+            DisconnectNamedPipe(lpPipeInst->hPipeInst);
+            CloseHandle(lpPipeInst->hPipeInst);
+            lpPipeInst->hPipeInst = NULL;
+        }
     }
-    delete lpPipeInst;
+    else
+    {
+        handle_study* phs = map_study[study_uid];
+        map_study.erase(study_uid);
+        if(phs) delete phs;
+    }
 }
 
 void named_pipe_server::client_connect_callback(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap)
@@ -131,42 +130,75 @@ void named_pipe_server::client_connect_callback(DWORD dwErr, DWORD cbBytesRead, 
         // false param: don't confirm studyUID == lpPipeInst->study_uid, because it's unbound.
         if(!check_reading_message(lpPipeInst, cbBytesRead, study_uid, otherMessage, xfer, false))
         {
-            time_header_out(*pflog) << __FUNCSIG__ " : message is currupt, " << study_uid << "|" << otherMessage << endl;
-            disconnect_connection(lpPipeInst);
+            time_header_out(*pflog) << __FUNCSIG__ " message is currupt, " << study_uid << "|" << otherMessage << endl;
+            if(lpPipeInst->hPipeInst && lpPipeInst->hPipeInst != INVALID_HANDLE_VALUE)
+            {
+                DisconnectNamedPipe(lpPipeInst->hPipeInst);
+                CloseHandle(lpPipeInst->hPipeInst);
+            }
+            delete lpPipeInst;
             return;
         }
-        STUDY_MAP::iterator it = map_study.find(study_uid);
-        if(it == map_study.end())
-        {   // if first bind failed, close named pipe instance
-            time_header_out(*pflog) << __FUNCSIG__ " : can't bind incoming request from client process, " << study_uid << "|" << otherMessage << endl;
-            disconnect_connection(lpPipeInst);
-            return;
+        strcpy_s(lpPipeInst->study_uid, study_uid.c_str());
+
+        handle_study *phs = make_handle_study(study_uid);
+        if(phs)
+        {   // bind named pipe handle and handle_study
+            phs->bind_pipe_context(lpPipeInst);
+            DWORD gle = phs->write_message_to_pipe();
+            if(gle)
+            {
+                time_header_out(*pflog) << __FUNCSIG__ " write_message_to_pipe() failed, deconstruct handle_study " << study_uid << endl;
+                disconnect_connection_auto_detect(lpPipeInst);
+            }
+            // else return OK
         }
-        // bind named pipe handle and handle_study
-        strcpy_s(lpPipeInst->study_uid, it->first.c_str());
-        read_pipe_complete(dwErr, cbBytesRead, lpOverLap);
+        else
+        {
+            time_header_out(*pflog) << __FUNCSIG__ " can't find handle_study(" << study_uid << "), otherMessage " << otherMessage << endl;
+            delete lpPipeInst;
+        }
     }
     else
-    {   // if first bind failed, close named pipe instance
-        displayErrorToCerr(__FUNCSIG__, dwErr, pflog);
-        disconnect_connection(lpPipeInst);
+    {
+        if(dwErr) displayErrorToCerr(__FUNCSIG__, dwErr, pflog);
+        else time_header_out(*pflog) << __FUNCSIG__" failed: read " << lpPipeInst->chBuffer << endl;
+        if(lpPipeInst)
+        {
+            if(lpPipeInst->hPipeInst && lpPipeInst->hPipeInst != INVALID_HANDLE_VALUE)
+            {
+                DisconnectNamedPipe(lpPipeInst->hPipeInst);
+                CloseHandle(lpPipeInst->hPipeInst);
+            }
+            delete lpPipeInst;
+        }
     }
 }
 
 void named_pipe_server::write_pipe_complete(DWORD dwErr, DWORD cbBytesWrite, LPOVERLAPPED lpOverLap)
 {
     LPPIPEINST lpPipeInst = (LPPIPEINST) lpOverLap;
-    BOOL fRead = FALSE;
+    DWORD gle = 0;
     // The read operation has finished, so write a response (if no error occurred).
     if ((dwErr == 0) && (cbBytesWrite == lpPipeInst->cbShouldWrite))
     {
         // next read loop, until dcmmkdir close pipe
-        fRead = ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer,
+        if(!ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer,
             FILE_BUF_SIZE * sizeof(TCHAR), (LPOVERLAPPED) lpPipeInst,
-            (LPOVERLAPPED_COMPLETION_ROUTINE)read_pipe_complete_func_ptr);
+            (LPOVERLAPPED_COMPLETION_ROUTINE)read_pipe_complete_func_ptr))
+            gle = GetLastError();
+    }
+    else
+    {
+        if(dwErr) displayErrorToCerr(__FUNCSIG__, dwErr, pflog);
+        else time_header_out(*pflog) << __FUNCSIG__" failed: message written " << lpPipeInst->chBuffer << endl;
     }
     // Disconnect if an error occurred.
-    if (! fRead) disconnect_connection(lpPipeInst);
+    if (gle)
+    {
+        displayErrorToCerr(__FUNCSIG__" ReadFileEx()", gle, pflog);
+        disconnect_connection_auto_detect(lpPipeInst);
+    }
 }
 
 void named_pipe_server::read_pipe_complete(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap)
@@ -184,137 +216,36 @@ void named_pipe_server::read_pipe_complete(DWORD dwErr, DWORD cbBytesRead, LPOVE
         if(!check_reading_message(lpPipeInst, cbBytesRead, study_uid, filename, xfer))
         {
             time_header_out(*pflog) << __FUNCSIG__ " check_reading_message(): message is corrupt, " << lpPipeInst->chBuffer << endl;
-            disconnect_connection(lpPipeInst);
+            disconnect_connection_auto_detect(lpPipeInst);
             return;
         }
 
         // find handle_study by study_uid
-        STUDY_MAP::iterator it = map_study.find(study_uid); // todo: create new handle if not exist?
+        STUDY_MAP::iterator it = map_study.find(study_uid);
         if(it == map_study.end())
         {
             time_header_out(*pflog) << __FUNCSIG__ " pipe message read is corrupt, " << lpPipeInst->chBuffer << endl;
-            disconnect_connection(lpPipeInst);
+            disconnect_connection_auto_detect(lpPipeInst);
             return;
         }
         handle_study *phs = it->second;
 
         if(phs) // handle_study is found
         {
-            // dcmmkdir: dcmmkdir pid xxxx, dcmmkdir first bind.
-            // restart: some file is ready in queue, send it to dcmmkdir, queue shall leave block mode.
-            if(strncmp(filename.c_str(), "dcmmkdir", 7) && strncmp(filename.c_str(), "restart", 7))
-            {
-                // previous message is compress ok message, make xml index, erease the action from list
-                list<action_from_association>::iterator it_clc = find_if(phs->list_action.begin(), phs->list_action.end(),
-                    [&filename](const action_from_association &lc){ return lc.pnfc && filename.compare(lc.pnfc->file.unique_filename) == 0; });
-                if(it_clc != phs->list_action.end())
-                {
-                    cout << "trigger make_dicomdir " << study_uid << "\\" << it_clc->pnfc->file.filename << endl;
-
-                    strcpy_s(it_clc->pnfc->file.xfer_new, xfer.c_str());
-                    // todo: make_index(*it_clc);
-
-                    // send notification of a file dicomdir and index OK to state dir
-                    stringstream output;
-                    output << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_COMPRESS_OK << endl;
-                    output << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << it_clc->pnfc->file_seq
-                        << " " << it_clc->pnfc->file.filename << " " << it_clc->pnfc->file.unique_filename << endl;
-                    output << NOTIFY_LEVEL_INSTANCE << " 00100020 ";
-                    x_www_form_codec_encode_to_ostream(it_clc->pnfc->file.patientID, &output);
-                    output << endl;
-                    output << NOTIFY_LEVEL_INSTANCE << " 0020000D " << it_clc->pnfc->file.studyUID << endl;
-                    output << NOTIFY_LEVEL_INSTANCE << " 0020000E " << it_clc->pnfc->file.seriesUID << endl;
-                    output << NOTIFY_LEVEL_INSTANCE << " 00080018 " << it_clc->pnfc->file.instanceUID << endl;
-                    output << NOTIFY_LEVEL_INSTANCE << " 00020010 " << it_clc->pnfc->file.xfer << " " << it_clc->pnfc->file.isEncapsulated << " " << it_clc->pnfc->file.xfer_new << endl;
-                    output << NOTIFY_LEVEL_PATIENT << " 00100010 ";
-                    x_www_form_codec_encode_to_ostream(it_clc->pnfc->patient.patientsName, &output);
-                    output << endl;
-                    output << NOTIFY_LEVEL_PATIENT << " 00100030 " << it_clc->pnfc->patient.birthday << endl;
-                    output << NOTIFY_LEVEL_PATIENT << " 00100040 " << it_clc->pnfc->patient.sex << endl;
-                    output << NOTIFY_LEVEL_PATIENT << " 00101020 " << it_clc->pnfc->patient.height << endl;
-                    output << NOTIFY_LEVEL_PATIENT << " 00101030 " << it_clc->pnfc->patient.weight << endl;
-                    output << NOTIFY_LEVEL_STUDY << " 00080020 " << it_clc->pnfc->study.studyDate << endl;
-                    output << NOTIFY_LEVEL_STUDY << " 00080030 " << it_clc->pnfc->study.studyTime << endl;
-                    output << NOTIFY_LEVEL_STUDY << " 00080050 ";
-                    x_www_form_codec_encode_to_ostream(it_clc->pnfc->study.accessionNumber, &output);
-                    output << endl;
-                    output << NOTIFY_LEVEL_SERIES << " 00080060 " << it_clc->pnfc->series.modality << endl;
-                    string notify = output.str();
-                    output.str("");
-
-                    char notify_file_name[MAX_PATH];
-                    size_t pos = in_process_sequence_dll(notify_file_name, sizeof(notify_file_name), STATE_DIR);
-                    sprintf_s(notify_file_name + pos, sizeof(notify_file_name) - pos, "_%s.dfc", NOTIFY_ACKN_TAG);
-                    ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out);
-                    if(ntf.good())
-                    {
-                        ntf << notify ;
-                        ntf.close();
-                    }
-                    else time_header_out(*pflog) << notify;
-
-                    // this instance is all OK, erase it from queue
-                    phs->list_action.erase(it_clc);
-                }
-                else
-                {
-                    time_header_out(*pflog) << __FUNCSIG__ " NamePipe read file's name is not in queue: " << lpPipeInst->chBuffer << endl;
-                }
-            }
-
-            // send next action
-            if(phs->list_action.empty())
-            {
-                // no more file in queue, add to lpPipeInst list_blocked_pipe_instances.
-                // queue has blocked until new action arriving.
-                phs->blocked_pipe_context = lpPipeInst;
-            }
-            else
-            {
-                DWORD gle = 0;
-                list<action_from_association>::iterator it = phs->list_action.begin();
-                while(it != phs->list_action.end())
-                {
-                    bool wait_response = false;
-                    switch(it->type)
-                    {
-                    case ACTION_TYPE::INDEX_INSTANCE:
-                        lpPipeInst->cbShouldWrite = sprintf_s(lpPipeInst->chBuffer, "%s|%s", it->pnfc->file.studyUID, it->pnfc->file.unique_filename);
-                        //replace(lpPipeInst->chBuffer, lpPipeInst->chBuffer + strlen(lpPipeInst->chBuffer), '/', '\\');
-
-                        if(!WriteFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer, lpPipeInst->cbShouldWrite, 
-                            (LPOVERLAPPED) lpPipeInst, (LPOVERLAPPED_COMPLETION_ROUTINE)write_pipe_complete_func_ptr))
-                        {
-                            gle = displayErrorToCerr(__FUNCSIG__ " WriteFileEx()", GetLastError(), pflog);
-                            disconnect_connection(lpPipeInst);
-                        }
-                        wait_response = true;
-                        ++it;
-                        break;
-                    case ACTION_TYPE::BURN_PER_STUDY_RELEASE:
-                    case ACTION_TYPE::BURN_PER_STUDY_ABORT:
-                        // todo: process association disconnect action
-                        // if(assoc disconnect && list_action.empty() && assoc lock is empty) exit
-                        it = phs->list_action.erase(it);
-                        break;
-                    default:
-                        it = phs->list_action.erase(it);
-                        break;
-                    }
-                    if(wait_response) break;
-                }
-            }
+            // previous message is compress ok message, make xml index, erease the action from list
+            phs->action_compress_ok(filename, xfer);
+            if(phs->write_message_to_pipe()) disconnect_connection_auto_detect(lpPipeInst);
         }
         else
         {
             time_header_out(*pflog) << __FUNCSIG__ " can't find study_uid " << study_uid << endl;
-            disconnect_connection(lpPipeInst);
+            disconnect_connection_auto_detect(lpPipeInst);
         }
     }
     else // dwErr != 0
     {
         displayErrorToCerr(__FUNCSIG__ " param dwErr is an error", dwErr, pflog);
-        disconnect_connection(lpPipeInst);
+        disconnect_connection_auto_detect(lpPipeInst);
     }
 }
 
@@ -325,7 +256,7 @@ DWORD named_pipe_server::pipe_client_connect_incoming()
     {
         LPPIPEINST lpPipeInst = new PIPEINST;
         memset(lpPipeInst, 0, sizeof(PIPEINST));
-        lpPipeInst->hPipeInst = hPipe; // save hPipe to named pipe instance
+        lpPipeInst->hPipeInst = hPipe; // bind hPipe to named pipe instance
         if(! ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer, FILE_BUF_SIZE, 
             (LPOVERLAPPED)lpPipeInst, (LPOVERLAPPED_COMPLETION_ROUTINE)client_connect_callback_func_ptr))
         {
@@ -382,11 +313,11 @@ handle_study* named_pipe_server::make_handle_study(const std::string &study_uid)
         sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +id %s +D %s.dir --viewer GE -pn %s #", 
             opt_verbose ? "-v" : "", study_uid.c_str(), study_uid.c_str(), study_uid.c_str());
 
-        phs = new handle_study(dicomdir, cmd, "dcmmkdir", dicomdir, study_uid);
+        phs = new handle_study(dicomdir, cmd, "dcmmkdir", dicomdir, study_uid, pflog);
         if(phs)
         {
             if(0 == phs->start_process(*pflog)) map_study[study_uid] = phs;
-            else { delete phs; phs == NULL; }
+            else { delete phs; phs = NULL; }
         }
         else time_header_out(*pflog) << __FUNCSIG__" new handle_study() failed." << endl;
     }
@@ -404,5 +335,5 @@ named_pipe_server::~named_pipe_server()
     }
     if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::~named_pipe_server()" << endl;
     ostream *pflog2 = pflog;
-    for_each(map_study.begin(), map_study.end(), [pflog2](const STUDY_PAIR &p) { p.second->print_state(*pflog2); });
+    for_each(map_study.begin(), map_study.end(), [pflog2](const STUDY_PAIR &p) { p.second->print_state(*pflog2); delete p.second; });
 }

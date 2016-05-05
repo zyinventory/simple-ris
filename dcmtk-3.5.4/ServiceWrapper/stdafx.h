@@ -43,7 +43,6 @@ int cmd_series(const std::string &type, std::istringstream &cmdstrm, handle_cont
 void save_notify_context_to_ostream(const handle_context::NOTIFY_FILE_CONTEXT &nfc, std::ostream &output);
 void send_all_compress_ok_notify(const std::string &association_base, std::ostream &flog);
 int x_www_form_codec_encode_to_ostream(const char *str, std::ostream *output);
-void CALLBACK read_pipe_complete_func_ptr(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap);
 
 extern bool opt_verbose;
 extern handle_context::NOTIFY_LIST compress_queue;

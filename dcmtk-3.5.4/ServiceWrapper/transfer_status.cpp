@@ -246,7 +246,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
             string study_uid(pnfc->file.studyUID);
             this->insert_study(study_uid); // association[1] -> study[n]
             
-            handle_study* phs = named_pipe_server::named_pipe_server_ptr->make_handle_study(study_uid);
+            handle_study* phs = named_pipe_server::get_named_pipe_server_singleton()->make_handle_study(study_uid);
             if(phs) phs->insert_association_path(get_path());  // add association lock to study, study[1] -> association[n]
 
             delete pnfc;
@@ -288,7 +288,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
 
 void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phs, ostream &flog)
 {
-    if(phs) phs->append_action(action_from_association(nfc, get_path()), flog);
+    if(phs) phs->append_action(action_from_association(nfc, get_path()));
 
     char notify_file_name[MAX_PATH];
     string prefix(get_path());
@@ -351,7 +351,7 @@ void handle_dir::send_all_compress_ok_notify_and_close_handle(ostream &flog)
     }
 }
 
-void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps, ostream &flog) const
+void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps) const
 {
     for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
     {
@@ -364,12 +364,12 @@ void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps, ostream &
                 paaa = new action_from_association(
                     (disconn_release ? ACTION_TYPE::BURN_PER_STUDY_RELEASE : ACTION_TYPE::BURN_PER_STUDY_ABORT),
                     get_path());
-                phs->append_action(*paaa, flog);
+                DWORD gle = phs->append_action(*paaa);
                 delete paaa;
             }
-            else time_header_out(flog) << "handle_dir::broadcast_action_to_all_study() " << *it << " : association is not disconnected." << endl;
+            else time_header_out(*pflog) << "handle_dir::broadcast_action_to_all_study() " << *it << " : association is not disconnected." << endl;
         }
-        else time_header_out(flog) << "handle_dir::broadcast_action_to_all_study() can't find study " << *it << endl;
+        else time_header_out(*pflog) << "handle_dir::broadcast_action_to_all_study() can't find study " << *it << endl;
     }
 }
 
@@ -452,7 +452,7 @@ int handle_proc::start_process(std::ostream &flog)
     }
 }
 
-handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT &nfc)
+handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT &nfc, ostream &flog)
 {
     const char *verbose_flag = opt_verbose ? "-v" : "";
 #ifdef _DEBUG
@@ -475,7 +475,7 @@ handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT
     ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "..\\..\\archdir\\v0000000\\%s\\%s\\", nfc.file.hash, nfc.file.studyUID);
     strcpy_s(cmd + ctn, sizeof(cmd) - ctn, nfc.file.unique_filename);
 
-    return new handle_compress(nfc.handle_dir_ptr, cmd, "dcmcjpeg", nfc);
+    return new handle_compress(nfc.handle_dir_ptr, cmd, "dcmcjpeg", nfc, &flog);
 }
 
 handle_compress& handle_compress::operator=(const handle_compress &r)
@@ -488,7 +488,11 @@ handle_compress& handle_compress::operator=(const handle_compress &r)
 handle_study& handle_study::operator=(const handle_study &r)
 {
     handle_proc::operator=(r);
-    blocked_pipe_context = r.blocked_pipe_context;
+    pipe_context = r.pipe_context;
+    blocked = r.blocked;
+    disconnect = r.disconnect;
+    release = r.release;
+    last_disconnect_time = r.last_disconnect_time;
     study_uid = r.study_uid;
     dicomdir_path = r.dicomdir_path;
     copy(r.set_association_path.begin(), r.set_association_path.end(), inserter(set_association_path, set_association_path.end()));
@@ -496,26 +500,134 @@ handle_study& handle_study::operator=(const handle_study &r)
     return *this;
 }
 
-void handle_study::append_action(const action_from_association &action, ostream &flog)
+handle_study::~handle_study()
 {
-    list_action.push_back(action);
-    // if the dicomdir in block mode, shall send action.
-    if(blocked_pipe_context)
+    if(pipe_context)
     {
-        blocked_pipe_context->oOverlap.InternalHigh = sprintf_s(blocked_pipe_context->chBuffer, "%s|restart", action.pnfc->file.studyUID);
-        blocked_pipe_context->cbShouldWrite = blocked_pipe_context->oOverlap.InternalHigh;
-        blocked_pipe_context->oOverlap.Internal = 0; // error code
-        LPPIPEINST lpPipeInst = blocked_pipe_context;
-        blocked_pipe_context = NULL;
-        read_pipe_complete_func_ptr(0, blocked_pipe_context->oOverlap.InternalHigh, (LPOVERLAPPED)lpPipeInst);
+        if(pipe_context->hPipeInst && pipe_context->hPipeInst != INVALID_HANDLE_VALUE)
+        {
+            if (! DisconnectNamedPipe(pipe_context->hPipeInst))
+                displayErrorToCerr(__FUNCSIG__ " DisconnectNamedPipe()", GetLastError(), pflog);
+            CloseHandle(pipe_context->hPipeInst);
+        }
+        delete pipe_context;
+        pipe_context = NULL;
     }
 }
 
-void handle_study::erease_association(const string &assoc_id, const string &assoc_path, ostream &flog)
+DWORD handle_study::append_action(const action_from_association &action)
+{
+    list_action.push_back(action);
+    return write_message_to_pipe();
+}
+
+DWORD handle_study::write_message_to_pipe()
+{
+    DWORD gle = 0;
+    if(list_action.empty()) { blocked = true; return gle; } // return error shall cause ~handle_study()
+
+    list<action_from_association>::iterator it = list_action.begin();
+    bool write_message_ok = false;
+    while(it != list_action.end())
+    {
+        switch(it->type)
+        {
+        case ACTION_TYPE::INDEX_INSTANCE:
+            pipe_context->cbShouldWrite = sprintf_s(pipe_context->chBuffer, "%s|%s", it->pnfc->file.studyUID, it->pnfc->file.unique_filename);
+            //replace(lpPipeInst->chBuffer, lpPipeInst->chBuffer + strlen(lpPipeInst->chBuffer), '/', '\\');
+
+            if(!WriteFileEx(pipe_context->hPipeInst, pipe_context->chBuffer, pipe_context->cbShouldWrite, 
+                (LPOVERLAPPED) pipe_context, (LPOVERLAPPED_COMPLETION_ROUTINE)named_pipe_server::write_pipe_complete_func_ptr))
+            {   // return error shall cause ~handle_study()
+                return displayErrorToCerr(__FUNCSIG__ " WriteFileEx()", GetLastError(), pflog);
+            }
+            blocked = false;
+            disconnect = false;
+            release = false;
+            write_message_ok = true;
+            break;
+        case ACTION_TYPE::BURN_PER_STUDY_RELEASE:
+            erase_association(it->get_association_path());
+            disconnect = true;
+            release = true;
+            break;
+        case ACTION_TYPE::BURN_PER_STUDY_ABORT:
+            erase_association(it->get_association_path());
+            disconnect = true;
+            release = false;
+            break;
+        default:
+            time_header_out(*pflog) << __FUNCSIG__" encounter " << translate_action_type(it->type) << " action." << endl;
+            break;
+        }
+        it = list_action.erase(it);
+        if(write_message_ok) break;
+    }
+    return gle;
+}
+
+void handle_study::action_compress_ok(const string &filename, const string &xfer)
+{
+    list<action_from_association>::iterator it_clc = find_if(list_action.begin(), list_action.end(),
+        [&filename](const action_from_association &lc){ return lc.pnfc && filename.compare(lc.pnfc->file.unique_filename) == 0; });
+    if(it_clc != list_action.end())
+    {
+        cout << "trigger make_dicomdir " << study_uid << "\\" << it_clc->pnfc->file.filename << endl;
+
+        strcpy_s(it_clc->pnfc->file.xfer_new, xfer.c_str());
+        // todo: make_index(*it_clc);
+
+        // send notification of a file dicomdir and index OK to state dir
+        stringstream output;
+        output << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_COMPRESS_OK << endl;
+        output << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << it_clc->pnfc->file_seq
+            << " " << it_clc->pnfc->file.filename << " " << it_clc->pnfc->file.unique_filename << endl;
+        output << NOTIFY_LEVEL_INSTANCE << " 00100020 ";
+        x_www_form_codec_encode_to_ostream(it_clc->pnfc->file.patientID, &output);
+        output << endl;
+        output << NOTIFY_LEVEL_INSTANCE << " 0020000D " << it_clc->pnfc->file.studyUID << endl;
+        output << NOTIFY_LEVEL_INSTANCE << " 0020000E " << it_clc->pnfc->file.seriesUID << endl;
+        output << NOTIFY_LEVEL_INSTANCE << " 00080018 " << it_clc->pnfc->file.instanceUID << endl;
+        output << NOTIFY_LEVEL_INSTANCE << " 00020010 " << it_clc->pnfc->file.xfer << " " << it_clc->pnfc->file.isEncapsulated << " " << it_clc->pnfc->file.xfer_new << endl;
+        output << NOTIFY_LEVEL_PATIENT << " 00100010 ";
+        x_www_form_codec_encode_to_ostream(it_clc->pnfc->patient.patientsName, &output);
+        output << endl;
+        output << NOTIFY_LEVEL_PATIENT << " 00100030 " << it_clc->pnfc->patient.birthday << endl;
+        output << NOTIFY_LEVEL_PATIENT << " 00100040 " << it_clc->pnfc->patient.sex << endl;
+        output << NOTIFY_LEVEL_PATIENT << " 00101020 " << it_clc->pnfc->patient.height << endl;
+        output << NOTIFY_LEVEL_PATIENT << " 00101030 " << it_clc->pnfc->patient.weight << endl;
+        output << NOTIFY_LEVEL_STUDY << " 00080020 " << it_clc->pnfc->study.studyDate << endl;
+        output << NOTIFY_LEVEL_STUDY << " 00080030 " << it_clc->pnfc->study.studyTime << endl;
+        output << NOTIFY_LEVEL_STUDY << " 00080050 ";
+        x_www_form_codec_encode_to_ostream(it_clc->pnfc->study.accessionNumber, &output);
+        output << endl;
+        output << NOTIFY_LEVEL_SERIES << " 00080060 " << it_clc->pnfc->series.modality << endl;
+        string notify = output.str();
+        output.str("");
+
+        char notify_file_name[MAX_PATH];
+        size_t pos = in_process_sequence_dll(notify_file_name, sizeof(notify_file_name), STATE_DIR);
+        sprintf_s(notify_file_name + pos, sizeof(notify_file_name) - pos, "_%s.dfc", NOTIFY_ACKN_TAG);
+        ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out);
+        if(ntf.good())
+        {
+            ntf << notify ;
+            ntf.close();
+        }
+        else time_header_out(*pflog) << notify;
+
+        // this instance is all OK, erase it from queue
+        list_action.erase(it_clc);
+    }
+    else time_header_out(*pflog) << __FUNCSIG__ " NamePipe read file's name is not in queue: " << filename << endl;
+}
+
+void handle_study::erase_association(const string &assoc_path)
 {
     set_association_path.erase(assoc_path);
-    if(opt_verbose) time_header_out(flog) << "handle_study::erease_association() " << study_uid << endl
-        << "\tand erease assoc " << assoc_id << " " << assoc_path << endl;
+    if(opt_verbose) time_header_out(*pflog) << "handle_study::erease_association() " << study_uid << endl
+        << "\tand erease assoc " << assoc_path << endl;
+    if(set_association_path.size() == 0) time(&last_disconnect_time);
 }
 
 void handle_study::print_state(ostream &flog) const
