@@ -526,7 +526,12 @@ DWORD handle_study::append_action(const action_from_association &action)
 DWORD handle_study::write_message_to_pipe()
 {
     DWORD gle = 0;
-    if(list_action.empty()) { blocked = true; return gle; } // return error shall cause ~handle_study()
+    if(list_action.empty())
+    {
+        if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " blocked, list_action is empty."  << endl;
+        blocked = true;
+        return gle;
+    } // return error shall cause ~handle_study()
 
     list<action_from_association>::iterator it = list_action.begin();
     bool write_message_ok = false;
@@ -543,17 +548,20 @@ DWORD handle_study::write_message_to_pipe()
             {   // return error shall cause ~handle_study()
                 return displayErrorToCerr(__FUNCSIG__ " WriteFileEx()", GetLastError(), pflog);
             }
+            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " write message " << pipe_context->chBuffer << endl;
             blocked = false;
             disconnect = false;
             release = false;
             write_message_ok = true;
             break;
         case ACTION_TYPE::BURN_PER_STUDY_RELEASE:
+            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " erase association " << it->get_association_path() << ", release." << endl;
             erase_association(it->get_association_path());
             disconnect = true;
             release = true;
             break;
         case ACTION_TYPE::BURN_PER_STUDY_ABORT:
+            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " erase association " << it->get_association_path() << ", abort." << endl;
             erase_association(it->get_association_path());
             disconnect = true;
             release = false;

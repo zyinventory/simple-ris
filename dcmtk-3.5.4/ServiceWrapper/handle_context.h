@@ -255,7 +255,8 @@ namespace handle_context
         static void CALLBACK read_pipe_complete_func_ptr(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap);
         static void CALLBACK write_pipe_complete_func_ptr(DWORD dwErr, DWORD cbBytesWrite, LPOVERLAPPED lpOverLap);
 
-        HANDLE get_handle() const { return hPipe; };
+        bool check_reading_message(LPPIPEINST lpPipeInst, DWORD cbBytesRead, std::string &studyUID, std::string &filename, std::string &xfer, bool confirm_study_uid = true);
+        HANDLE get_handle() const { return hPipeEvent; };
         DWORD start_listening();
         DWORD pipe_client_connect_incoming();
         void client_connect_callback(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap);

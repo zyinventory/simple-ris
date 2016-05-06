@@ -40,7 +40,10 @@ DWORD named_pipe_server::start_listening()
         return displayErrorToCerr(__FUNCSIG__ " CreateEvent()", GetLastError(), pflog);
     olPipeConnectOnly.hEvent = hPipeEvent;
 
-    hPipe = CreateNamedPipe(get_path().c_str(), PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+    string pipe_path("\\\\.\\pipe\\");
+    pipe_path.append(get_path());
+    if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" listen on " << pipe_path << endl;
+    hPipe = CreateNamedPipe(pipe_path.c_str(), PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
         PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, // message-type pipe, message read mode, blocking mode
         PIPE_UNLIMITED_INSTANCES, FILE_BUF_SIZE, FILE_BUF_SIZE, // output, input buffer size 
         0, NULL); // time-out for client run WaitNamedPipe(NMPWAIT_USE_DEFAULT_WAIT), 0 means default(50 ms)
@@ -52,8 +55,7 @@ DWORD named_pipe_server::start_listening()
     gle = GetLastError();
     if(fConnected)  // asynchronous faild
     {
-        displayErrorToCerr(__FUNCSIG__ " connect synchronous", gle, pflog);
-        return gle;
+        return displayErrorToCerr(__FUNCSIG__ " connect synchronous", gle, pflog);
     }
 
     switch(gle)
@@ -75,11 +77,11 @@ DWORD named_pipe_server::start_listening()
 }
 
 // first message is: study_uid|dcmmkdir pid <pid>
-static bool check_reading_message(LPPIPEINST lpPipeInst, DWORD cbBytesRead, string &studyUID, string &filename, string &xfer, bool confirm_study_uid = true)
+bool named_pipe_server::check_reading_message(LPPIPEINST lpPipeInst, DWORD cbBytesRead, string &study_uid, string &filename, string &xfer, bool confirm_study_uid)
 {
     char *sp1 = strchr(lpPipeInst->chBuffer, '|');
     if(sp1 == NULL) return false;
-    studyUID.append(lpPipeInst->chBuffer, sp1 - lpPipeInst->chBuffer);
+    study_uid.append(lpPipeInst->chBuffer, sp1 - lpPipeInst->chBuffer);
     ++sp1;
     char *sp2 = strchr(sp1, '|');
     if(sp2 == NULL)
@@ -93,7 +95,8 @@ static bool check_reading_message(LPPIPEINST lpPipeInst, DWORD cbBytesRead, stri
         ++sp2;
         xfer.append(sp2);
     }
-    return !(confirm_study_uid && studyUID.compare(lpPipeInst->study_uid));
+    if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" check message: " << study_uid << "|" << filename << endl;
+    return !(confirm_study_uid && study_uid.compare(lpPipeInst->study_uid));
 }
 
 void named_pipe_server::disconnect_connection_auto_detect(LPPIPEINST lpPipeInst)
@@ -151,7 +154,8 @@ void named_pipe_server::client_connect_callback(DWORD dwErr, DWORD cbBytesRead, 
                 time_header_out(*pflog) << __FUNCSIG__ " write_message_to_pipe() failed, deconstruct handle_study " << study_uid << endl;
                 disconnect_connection_auto_detect(lpPipeInst);
             }
-            // else return OK
+            else // OK
+                if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" client connect OK, client write: " << study_uid << "|" << otherMessage << endl;
         }
         else
         {
@@ -182,6 +186,7 @@ void named_pipe_server::write_pipe_complete(DWORD dwErr, DWORD cbBytesWrite, LPO
     // The read operation has finished, so write a response (if no error occurred).
     if ((dwErr == 0) && (cbBytesWrite == lpPipeInst->cbShouldWrite))
     {
+        if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" " << lpPipeInst->chBuffer << endl;
         // next read loop, until dcmmkdir close pipe
         if(!ReadFileEx(lpPipeInst->hPipeInst, lpPipeInst->chBuffer,
             FILE_BUF_SIZE * sizeof(TCHAR), (LPOVERLAPPED) lpPipeInst,
@@ -311,7 +316,7 @@ handle_study* named_pipe_server::make_handle_study(const std::string &study_uid)
 	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd -A ", GetPacsBase());
 #endif
         sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +id %s +D %s.dir --viewer GE -pn %s #", 
-            opt_verbose ? "-v" : "", study_uid.c_str(), study_uid.c_str(), study_uid.c_str());
+            opt_verbose ? "-v" : "", study_uid.c_str(), study_uid.c_str(), get_path().c_str());
 
         phs = new handle_study(dicomdir, cmd, "dcmmkdir", dicomdir, study_uid, pflog);
         if(phs)

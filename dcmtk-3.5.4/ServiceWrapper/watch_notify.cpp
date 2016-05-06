@@ -103,7 +103,7 @@ int watch_notify(string &cmd, ostream &flog)
     }
     if(opt_verbose) time_header_out(flog) << "watch_notify() dcmqrscp start" << endl;
     
-    in_process_sequence_dll(buff, sizeof(buff), "\\\\.\\pipe\\");
+    in_process_sequence_dll(buff, sizeof(buff), "");
     named_pipe_server nps(buff, &flog);
     named_pipe_server::register_named_pipe_server(&nps);
     gle = nps.start_listening();
@@ -137,7 +137,6 @@ int watch_notify(string &cmd, ostream &flog)
             return gle;
     }
     
-    vector<HANDLE> ha;
     sprintf_s(buff, "%s\\pacs\\"NOTIFY_BASE, GetPacsBase());
     HANDLE hbase = FindFirstChangeNotification(buff, FALSE, FILE_NOTIFY_CHANGE_SIZE);
     if(hbase == INVALID_HANDLE_VALUE)
@@ -153,28 +152,44 @@ int watch_notify(string &cmd, ostream &flog)
     if(pclz_base_dir->find_files(flog, [pclz_base_dir, &flog](const string& filename) { return process_meta_notify_file(pclz_base_dir, filename, flog); }))
         goto clean_child_proc;
 
+    HANDLE *pha = NULL;
     while(GetSignalInterruptValue() == 0)
     {
-        ha.clear();
-        transform(map_handle_context.begin(), map_handle_context.end(), back_inserter(ha), 
+        size_t hsize = map_handle_context.size() + 1;
+        if(pha) delete[] pha;
+        pha = new HANDLE[hsize];
+        transform(map_handle_context.begin(), map_handle_context.end(), pha, 
             [](const HANDLE_PAIR &p) { return p.first; });
 
-        ha.push_back(nps.get_handle()); // map_handle_context[named pipe listening handle] == NULL
+        pha[hsize - 1] = nps.get_handle(); // map_handle_context[named pipe listening handle] == NULL
 
-        DWORD wr = WaitForMultipleObjectsEx(ha.size(), ha.data(), FALSE, 1000, TRUE);
+        DWORD wr = WaitForMultipleObjectsEx(hsize, pha, FALSE, 1000, TRUE);
 
         if(wr == WAIT_TIMEOUT)
         {
-
+            //if(opt_verbose) time_header_out(flog) << "WaitForMultipleObjectsEx() timeout." << endl;
         }
-        else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + ha.size())
+        else if(wr == WAIT_IO_COMPLETION)
         {
-            HANDLE waited = ha[wr - WAIT_OBJECT_0];
+            if(opt_verbose) time_header_out(flog) << "WaitForMultipleObjectsEx() WAIT_IO_COMPLETION." << endl;
+        }
+        else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + hsize)
+        {
+            HANDLE waited = pha[wr - WAIT_OBJECT_0];
             handle_compress *phcompr = NULL;
             handle_proc *phproc = NULL;
             handle_dir *phdir = NULL;
             notify_file *pb = map_handle_context[waited];
-            if(pb)
+            if(waited == nps.get_handle()) // pipe client(dcmmkdir) connect incoming
+            {
+                gle = nps.pipe_client_connect_incoming();
+                if(gle)
+                {
+                    displayErrorToCerr("watch_notify() named_pipe_server::pipe_client_connect_incoming()", gle, &flog);
+                    break;
+                }
+            }
+            else if(pb)
             {
                 if(phcompr = dynamic_cast<handle_compress*>(pb))
                 {
@@ -189,6 +204,7 @@ int watch_notify(string &cmd, ostream &flog)
                     handle_dir *phd = NULL;
                     const HANDLE_MAP::iterator it_assoc = find_if(map_handle_context.begin(), map_handle_context.end(),
                         [&assoc_id, &phd](const HANDLE_PAIR &p) -> bool {
+                            if(p.second == NULL) return false; // todo: print map_handle_context state after set and erase
                             if(0 == assoc_id.compare(p.second->get_association_id()))
                             {
                                 phd = dynamic_cast<handle_dir*>(p.second);
@@ -240,15 +256,6 @@ int watch_notify(string &cmd, ostream &flog)
                 else
                 {
                     time_header_out(flog) << "unexcepting notify file " << pb->get_association_id() << ", " << pb->get_path() << endl;
-                }
-            }
-            else if(waited == nps.get_handle()) // pipe client(dcmmkdir) connect incoming
-            {
-                gle = nps.pipe_client_connect_incoming();
-                if(gle)
-                {
-                    displayErrorToCerr("watch_notify() named_pipe_server::pipe_client_connect_incoming()", gle, &flog);
-                    break;
                 }
             }
             else
