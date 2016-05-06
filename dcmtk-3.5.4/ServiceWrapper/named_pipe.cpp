@@ -342,3 +342,19 @@ named_pipe_server::~named_pipe_server()
     ostream *pflog2 = pflog;
     for_each(map_study.begin(), map_study.end(), [pflog2](const STUDY_PAIR &p) { p.second->print_state(*pflog2); delete p.second; });
 }
+
+void named_pipe_server::check_study_timeout()
+{
+    STUDY_MAP::iterator it = map_study.begin();
+    while(it != map_study.end())
+    {
+        if(it->second && it->second->is_time_out())
+        {
+            handle_study *phs = it->second;
+            map_study.erase(it);
+            if(opt_verbose) phs->print_state(*pflog);
+            // todo: jdf
+        }
+        ++it;
+    }
+}

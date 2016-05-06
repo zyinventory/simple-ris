@@ -10,8 +10,7 @@ const char* handle_context::translate_action_type(ACTION_TYPE t)
     switch(t)
     {
     case NO_ACTION: return "NO_ACTION";
-    case BURN_PER_STUDY_RELEASE: return "BURN_PER_STUDY_RELEASE";
-    case BURN_PER_STUDY_ABORT: return "BURN_PER_STUDY_ABORT";
+    case BURN_PER_STUDY: return "BURN_PER_STUDY";
     case BURN_MULTI: return "BURN_MULTI";
     case INDEX_INSTANCE:  return "INDEX_INSTANCE";
     default: return "ERROR_ACTION_TYPE";
@@ -65,6 +64,7 @@ handle_dir& handle_dir::operator=(const handle_dir &r)
     calledAE = r.calledAE;
     calledAddr = r.calledAddr;
     expected_xfer = r.expected_xfer;
+    auto_publish = r.auto_publish;
     port = r.port;
     last_association_notify_filename = r.last_association_notify_filename;
     assoc_disconn = r.assoc_disconn;
@@ -186,26 +186,26 @@ void handle_dir::process_notify_association(std::istream &ifs, unsigned int tag,
     switch(tag)
     {
     case NOTIFY_ASSOC_ESTA:
-        ifs >> store_assoc_id >> callingAE >> callingAddr >> calledAE >> dec >> port >> expected_xfer >> calledAddr;
+        ifs >> store_assoc_id >> callingAE >> callingAddr >> calledAE >> dec >> port >> expected_xfer >> auto_publish >> calledAddr;
         if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_association_id() << " "
             << callingAE << " " << callingAddr<< " " << calledAE<< " " << dec << port << " " << expected_xfer << " "<< calledAddr << endl;
         break;
     case NOTIFY_ASSOC_RELEASE:
         assoc_disconn = true;
         disconn_release = true;
-        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_association_id() << " disconnect release" << endl;
+        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_association_id() << " disconnect release." << endl;
         break;
     case NOTIFY_ASSOC_ABORT:
         assoc_disconn = true;
         disconn_release = false;
-        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_association_id() << " disconnect abort" << endl;
+        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_association_id() << " disconnect abort." << endl;
         break;
     default:
         {
             char otherbuf[1024] = "";
             ifs.getline(otherbuf, sizeof(otherbuf));
             if(!opt_verbose) time_header_out(flog) << NOTIFY_STORE_TAG << " " << hex << uppercase << setw(8) << setfill('0') << tag << " "
-                << " " << otherbuf << ", encounter error" << endl;
+                << " " << otherbuf << ", encounter error." << endl;
         }
         break;
     }
@@ -361,9 +361,9 @@ void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps) const
             if(assoc_disconn)
             {
                 action_from_association *paaa = NULL;
-                paaa = new action_from_association(
-                    (disconn_release ? ACTION_TYPE::BURN_PER_STUDY_RELEASE : ACTION_TYPE::BURN_PER_STUDY_ABORT),
-                    get_path());
+                ACTION_TYPE type = NO_ACTION;
+                if(auto_publish != "MANUAL") type = BURN_PER_STUDY;
+                paaa = new action_from_association(type, get_path(), disconn_release);
                 DWORD gle = phs->append_action(*paaa);
                 delete paaa;
             }
@@ -492,7 +492,7 @@ handle_study& handle_study::operator=(const handle_study &r)
     blocked = r.blocked;
     disconnect = r.disconnect;
     release = r.release;
-    last_disconnect_time = r.last_disconnect_time;
+    last_idle_time = r.last_idle_time;
     study_uid = r.study_uid;
     dicomdir_path = r.dicomdir_path;
     copy(r.set_association_path.begin(), r.set_association_path.end(), inserter(set_association_path, set_association_path.end()));
@@ -554,17 +554,14 @@ DWORD handle_study::write_message_to_pipe()
             release = false;
             write_message_ok = true;
             break;
-        case ACTION_TYPE::BURN_PER_STUDY_RELEASE:
-            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " erase association " << it->get_association_path() << ", release." << endl;
-            erase_association(it->get_association_path());
+        case ACTION_TYPE::BURN_PER_STUDY:
+        case ACTION_TYPE::NO_ACTION:
+            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " erase association " << it->get_association_path() << ", disconnect ";
+            if(it->release) *pflog << " release." << endl;
+            else *pflog << " abort." << endl;
+            erase_association_and_update_last_idle_time(it->get_association_path());
             disconnect = true;
-            release = true;
-            break;
-        case ACTION_TYPE::BURN_PER_STUDY_ABORT:
-            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " erase association " << it->get_association_path() << ", abort." << endl;
-            erase_association(it->get_association_path());
-            disconnect = true;
-            release = false;
+            release = it->release;
             break;
         default:
             time_header_out(*pflog) << __FUNCSIG__" encounter " << translate_action_type(it->type) << " action." << endl;
@@ -632,12 +629,12 @@ void handle_study::action_compress_ok(const string &filename, const string &xfer
     else time_header_out(*pflog) << __FUNCSIG__ " NamePipe read file's name is not in queue: " << filename << endl;
 }
 
-void handle_study::erase_association(const string &assoc_path)
+void handle_study::erase_association_and_update_last_idle_time(const string &assoc_path)
 {
     set_association_path.erase(assoc_path);
     if(opt_verbose) time_header_out(*pflog) << "handle_study::erease_association() " << study_uid << endl
         << "\tand erease assoc " << assoc_path << endl;
-    if(set_association_path.size() == 0) time(&last_disconnect_time);
+    if(set_association_path.size() == 0) time(&last_idle_time);
 }
 
 void handle_study::print_state(ostream &flog) const
@@ -661,9 +658,21 @@ void handle_study::print_state(ostream &flog) const
     }
 }
 
+bool handle_study::is_time_out() const
+{
+    if(disconnect && list_action.size() == 0 && set_association_path.size() == 0)
+    {
+        time_t now = 0;
+        time(&now);
+        if(now - last_idle_time > 15) return true;
+    }
+    return false;
+}
+
 action_from_association& action_from_association::operator=(const action_from_association &r)
 {
     type = r.type;
+    release = r.release;
     burn_multi_id = r.burn_multi_id;
     if(r.pnfc)
     {
@@ -680,18 +689,26 @@ bool action_from_association::operator<(const action_from_association &r) const
     else if(r.type < type) return false;
     else // type == r.type
     {
-        if(association_path < r.association_path) return true;
-        else if(r.association_path < association_path) return false;
-        else // association_path == r.association_path
+        if(type) return false;
+        else
         {
-            if(pnfc == r.pnfc) return false;
-            else if(pnfc == NULL) return true; // r.pnfc != NULL
-            else if(r.pnfc == NULL) return false; // pnfc != NULL
-            else // all is not NULL
+            if(r.type) return true;
+            else // type == false && r.type == false
             {
-                if(*pnfc < *r.pnfc) return true;
-                else if(*r.pnfc < *pnfc) return false;
-                else return burn_multi_id < r.burn_multi_id; // ==
+                if(association_path < r.association_path) return true;
+                else if(r.association_path < association_path) return false;
+                else // association_path == r.association_path
+                {
+                    if(pnfc == r.pnfc) return false;
+                    else if(pnfc == NULL) return true; // r.pnfc != NULL
+                    else if(r.pnfc == NULL) return false; // pnfc != NULL
+                    else // all is not NULL
+                    {
+                        if(*pnfc < *r.pnfc) return true;
+                        else if(*r.pnfc < *pnfc) return false;
+                        else return burn_multi_id < r.burn_multi_id; // ==
+                    }
+                }
             }
         }
     }

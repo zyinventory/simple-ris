@@ -46,9 +46,9 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
     }
     base_dir->insert_complete(notify_file); // if(gle != ERROR_SHARING_VIOLATION) find_files() must insert complete
 
-    string cmd, path, assoc_id, calling, called, remote, port, transfer_syntax;
+    string cmd, path, assoc_id, calling, called, remote, port, transfer_syntax, auto_publish;
     DWORD tag, pid, gle = 0;
-    ntff >> cmd >> hex >> tag >> path >> dec >> pid >> assoc_id >> calling >> remote >> called >> port >> transfer_syntax;
+    ntff >> cmd >> hex >> tag >> path >> dec >> pid >> assoc_id >> calling >> remote >> called >> port >> transfer_syntax >> auto_publish;
     if(ntff.is_open()) ntff.close();
 #ifdef _DEBUG
     time_header_out(cerr) << cmd << " " << hex << tag << " " << path << " " << dec << pid << " " << assoc_id << " " << calling << " " << remote << " " << called << " " << port << endl;
@@ -167,7 +167,7 @@ int watch_notify(string &cmd, ostream &flog)
 
         if(wr == WAIT_TIMEOUT)
         {
-            //if(opt_verbose) time_header_out(flog) << "WaitForMultipleObjectsEx() timeout." << endl;
+            nps.check_study_timeout();
         }
         else if(wr == WAIT_IO_COMPLETION)
         {
@@ -205,7 +205,7 @@ int watch_notify(string &cmd, ostream &flog)
                     handle_dir *phd = NULL;
                     const HANDLE_MAP::iterator it_assoc = find_if(map_handle_context.begin(), map_handle_context.end(),
                         [&assoc_id, &phd](const HANDLE_PAIR &p) -> bool {
-                            if(p.second == NULL) return false; // todo: print map_handle_context state after set and erase
+                            if(p.second == NULL) return false;
                             if(0 == assoc_id.compare(p.second->get_association_id()))
                             {
                                 phd = dynamic_cast<handle_dir*>(p.second);
@@ -230,7 +230,7 @@ int watch_notify(string &cmd, ostream &flog)
                         gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, flog); });
                         if(phdir->is_association_disconnect() && phdir->file_complete_remain() == 0)
                         {
-                            phdir->check_complete_remain(flog);
+                            if(opt_verbose) phdir->check_complete_remain(flog);
                             map_handle_context.erase(waited);
                             if(opt_verbose) time_header_out(flog) << "watch_notify() association " << phdir->get_association_id() << " complete, erease from map_handle_context." << endl;
                             // close monitor handle, all_compress_ok_notify is a comment.
@@ -241,7 +241,7 @@ int watch_notify(string &cmd, ostream &flog)
                             // todo: if cmove assoc, start batch burning function in another dir.
                         }
                     }
-                    else // new file in store_notify
+                    else // new file in meta notify dir(store_notify)
                         gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return process_meta_notify_file(phdir, filename, flog); });
                 }
                 else if(phproc = dynamic_cast<handle_proc*>(pb))

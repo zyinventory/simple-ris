@@ -449,9 +449,9 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                     assoc_context.storageArea, assoc_context.associationId, assoc_context.associationId);
                 const char *xfer = config_->getXferName(assoc_context.calledAPTitle);
                 if(xfer == NULL) xfer = "DEFAULT";
-                int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d %s %s\n",
-                    NOTIFY_ASSOC_ESTA, assoc_context.associationId, assoc_context.callingAPTitle, assoc_context.remoteHostName, 
-                    assoc_context.calledAPTitle, assoc_context.port, xfer, assoc_context.localHostName);
+                int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d %s %s %s\n",
+                    NOTIFY_ASSOC_ESTA, assoc_context.associationId, assoc_context.callingAPTitle, assoc_context.remoteHostName, assoc_context.calledAPTitle,
+                    assoc_context.port, xfer, config_->getAutoPublish(assoc_context.calledAPTitle), assoc_context.localHostName);
                 if(fplog = fopen(filename, "w"))
                 {
                     fwrite(content, content_used, 1, fplog);
@@ -468,11 +468,11 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                     pPacsBase, assoc_context.associationId);
                 const char *xfer = config_->getXferName(assoc_context.calledAPTitle);
                 if(xfer == NULL) xfer = "DEFAULT";
-                int content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s\\%s %d %s %s %s %s %d %s %s\n",
+                int content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s\\%s %d %s %s %s %s %d %s %s %s\n",
                     NOTIFY_PROC_STOR_START, assoc_context.storageArea, assoc_context.associationId, 
                     _getpid(), assoc_context.associationId,
                     assoc_context.callingAPTitle, assoc_context.remoteHostName, assoc_context.calledAPTitle,
-                    assoc_context.port, xfer, assoc_context.localHostName);
+                    assoc_context.port, xfer, config_->getAutoPublish(assoc_context.calledAPTitle), assoc_context.localHostName);
                 FILE *fplog = NULL;
                 if(fplog = fopen(filename, "w"))
                 {
