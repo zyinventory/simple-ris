@@ -354,6 +354,8 @@ void named_pipe_server::check_study_timeout()
             map_study.erase(it);
             if(opt_verbose) phs->print_state(*pflog);
             // todo: jdf
+
+            delete phs;
         }
         ++it;
     }
