@@ -179,7 +179,8 @@ int watch_notify(string &cmd, ostream &flog)
             handle_compress *phcompr = NULL;
             handle_proc *phproc = NULL;
             handle_dir *phdir = NULL;
-            notify_file *pb = map_handle_context[waited];
+            notify_file *pb = map_handle_context.count(waited) ? map_handle_context[waited] : NULL;
+            
             if(waited == nps.get_handle()) // pipe client(dcmmkdir) connect incoming
             {
                 gle = nps.pipe_client_connect_incoming();
