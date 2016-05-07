@@ -8,6 +8,11 @@
 
 #define NOTIFY_BASE "store_notify"
 
+namespace MSXML2
+{
+    struct IXMLDOMDocument2;
+}
+
 namespace handle_context
 {
     typedef struct _tag_NOTIFY_FILE_CONTEXT_FILE_SECTION {
@@ -29,10 +34,13 @@ namespace handle_context
         char seriesUID[65], modality[17];
     } NOTIFY_FILE_CONTEXT_SERIES_SECTION;
 
-    class handle_dir;
+    typedef struct _tag_NOTIFY_ASSOC_SECTION {
+        char id[32], callingAE[65], callingAddr[65], calledAE[65], calledAddr[65], path[MAX_PATH];
+        unsigned short port;
+    } NOTIFY_ASSOC_SECTION;
 
     typedef struct _tag_NOTIFY_FILE_CONTEXT {
-        handle_dir *handle_dir_ptr; // FK to association
+        NOTIFY_ASSOC_SECTION assoc; // FK to association
         char src_notify_filename[64];
         unsigned int file_seq;
         NOTIFY_FILE_CONTEXT_FILE_SECTION file;
@@ -116,6 +124,7 @@ namespace handle_context
         bool operator<(const action_from_association &r) const;
         bool operator==(const action_from_association &r) const { return (!(*this < r) && !(r < *this)); };
         ACTION_TYPE get_type() const { return type; };
+        const NOTIFY_FILE_CONTEXT* get_notify_file_context() const { return pnfc; };
         bool is_disconnect() const { return type == NO_ACTION || type == BURN_PER_STUDY; };
         bool is_auto_publish() const { return release && type == BURN_PER_STUDY; };
     };
@@ -134,11 +143,12 @@ namespace handle_context
         
         void process_notify_association(std::istream &ifs, unsigned int tag, std::ostream &flog);
         NOTIFY_FILE_CONTEXT* process_notify_file(std::istream &ifs, unsigned int file_tag, std::ostream &flog);
+        void fill_association_section(NOTIFY_ASSOC_SECTION & nas) const;
 
     public:
         handle_dir(HANDLE h, const std::string &assoc_id, const std::string &file, const std::string notify_filename, std::ostream *plog)
             : meta_notify_file(assoc_id, file, notify_filename, plog), handle(h), last_find_error(false), last_association_notify_filename(notify_filename),
-            assoc_disconn(false), disconn_release(true), port(104) {}; // todo: shall set action_after_assoc by association params
+            assoc_disconn(false), disconn_release(true), port(104) {};
 
         handle_dir(const handle_dir& o) : meta_notify_file(o), handle(o.handle), last_find_error(o.last_find_error),
             list_file(o.list_file), set_complete(o.set_complete), set_study(o.set_study), port(o.port), last_association_notify_filename(o.last_association_notify_filename),
@@ -149,6 +159,7 @@ namespace handle_context
         handle_dir& operator=(const handle_dir &r);
         void print_state() const;
         HANDLE get_handle() const { return handle; };
+        void clean_handle() { handle = NULL; };
         bool insert_study(const std::string &study_uid) { return set_study.insert(study_uid).second; };
         bool insert_complete(const std::string &filename) { return set_complete.insert(filename).second; };
         std::string& get_find_filter(std::string&) const;
@@ -193,8 +204,8 @@ namespace handle_context
         NOTIFY_FILE_CONTEXT notify_ctx;
         
     protected:
-        handle_compress(handle_dir *dir_ptr, const std::string &cmd, const std::string &exec_prog_name, const NOTIFY_FILE_CONTEXT &nfc, std::ostream *plog)
-            : handle_proc(dir_ptr->get_association_id(), dir_ptr->get_path(), cmd, exec_prog_name, plog), notify_ctx(nfc) { };
+        handle_compress(const std::string &assoc_id, const std::string &path, const std::string &cmd, const std::string &exec_prog_name, const NOTIFY_FILE_CONTEXT &nfc, std::ostream *plog)
+            : handle_proc(assoc_id, path, cmd, exec_prog_name, plog), notify_ctx(nfc) { };
 
     public:
         static handle_compress* make_handle_compress(const NOTIFY_FILE_CONTEXT &nfc, std::ostream &flog);
@@ -284,6 +295,26 @@ namespace handle_context
         handle_study* make_handle_study(const std::string &study);
         handle_study* find_handle_study(const std::string &study) { return map_study[study]; };
         void check_study_timeout_to_generate_jdf();
+    };
+
+    typedef std::map<std::string, MSXML2::IXMLDOMDocument2*> XML_MAP;
+
+    class xml_index : public base_path
+    {
+    private:
+        XML_MAP map_xml;
+
+        MSXML2::IXMLDOMDocument2* create_xmldom(const NOTIFY_FILE_CONTEXT &clc);
+        void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const NOTIFY_FILE_CONTEXT &nfc);
+
+    public:
+        static xml_index *singleton_ptr;
+
+        xml_index(std::ostream *plog) : base_path("", plog) { if(plog == NULL) plog = &std::cerr; };
+        xml_index(const xml_index &r) : base_path(r), map_xml(r.map_xml) {};
+        xml_index& operator=(const xml_index &r);
+        void make_index(const NOTIFY_FILE_CONTEXT &nfc);
+        bool unload_and_sync_study(const std::string &study_uid);
     };
 }
 

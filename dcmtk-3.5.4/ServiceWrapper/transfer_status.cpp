@@ -274,6 +274,17 @@ void handle_dir::process_notify_association(std::istream &ifs, unsigned int tag,
     }
 }
 
+void handle_dir::fill_association_section(NOTIFY_ASSOC_SECTION & nas) const
+{
+    strcpy_s(nas.id, get_association_id().c_str());
+    strcpy_s(nas.callingAE, callingAE.c_str());
+    strcpy_s(nas.callingAddr, callingAddr.c_str());
+    strcpy_s(nas.calledAE, calledAE.c_str());
+    strcpy_s(nas.calledAddr, calledAddr.c_str());
+    strcpy_s(nas.path, get_path().c_str());
+    nas.port = port;
+}
+
 DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog)
 {
     DWORD gle = 0, tag;
@@ -296,7 +307,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
         NOTIFY_FILE_CONTEXT *pnfc = process_notify_file(ifs, tag, flog);
         if(pnfc)
         {
-            pnfc->handle_dir_ptr = this;
+            this->fill_association_section(pnfc->assoc);
             strcpy_s(pnfc->src_notify_filename, filename.c_str());
             pnfc->file.StorePath();
             if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK." << endl;
@@ -530,7 +541,7 @@ handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT
     ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "..\\..\\archdir\\v0000000\\%s\\%s\\", nfc.file.hash, nfc.file.studyUID);
     strcpy_s(cmd + ctn, sizeof(cmd) - ctn, nfc.file.unique_filename);
 
-    return new handle_compress(nfc.handle_dir_ptr, cmd, "dcmcjpeg", nfc, &flog);
+    return new handle_compress(nfc.assoc.id, nfc.assoc.path, cmd, "dcmcjpeg", nfc, &flog);
 }
 
 handle_compress& handle_compress::operator=(const handle_compress &r)
@@ -565,6 +576,7 @@ handle_study& handle_study::operator=(const handle_study &r)
 
 handle_study::~handle_study()
 {
+    if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__ << " " << study_uid << endl;
     if(pipe_context)
     {
         if(pipe_context->hPipeInst && pipe_context->hPipeInst != INVALID_HANDLE_VALUE)
@@ -577,7 +589,7 @@ handle_study::~handle_study()
         delete pipe_context;
         pipe_context = NULL;
     }
-    if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__ << endl;
+    xml_index::singleton_ptr->unload_and_sync_study(study_uid);
 }
 
 DWORD handle_study::append_action(const action_from_association &action)
@@ -635,7 +647,7 @@ DWORD handle_study::write_message_to_pipe()
             time_header_out(*pflog) << __FUNCSIG__" encounter " << action_from_association::translate_action_type(it->type) << " action." << endl;
             break;
         }
-        it = list_action.erase(it);
+        if(!write_message_ok) it = list_action.erase(it); // don't delete INDEX_INSTANCE action, action_compress_ok shall use it
     }
     if(!write_message_ok) blocked = true; // if(list_action is empty || last message is not INDEX_INSTANCE) blocked = true;
     return gle;
@@ -650,7 +662,7 @@ void handle_study::action_compress_ok(const string &filename, const string &xfer
         cout << "trigger make_dicomdir " << study_uid << "\\" << it_clc->pnfc->file.filename << endl;
 
         strcpy_s(it_clc->pnfc->file.xfer_new, xfer.c_str());
-        // todo: make_index(*it_clc);
+        xml_index::singleton_ptr->make_index(*it_clc->get_notify_file_context());
 
         // send notification of a file dicomdir and index OK to state dir
         stringstream output;

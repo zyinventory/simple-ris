@@ -19,7 +19,7 @@ using namespace std;
 
 static map<string, MSXML2::IXMLDOMDocument2*> study_map;
 
-static MSXML2::IXMLDOMDocument2* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
+MSXML2::IXMLDOMDocument2* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
 {
     try
     {
@@ -57,7 +57,7 @@ static MSXML2::IXMLDOMDocument2* create_xmldom(const CMOVE_LOG_CONTEXT &clc)
             return pdom;
         }
     }
-    CATCH_COM_ERROR("create_xmldom()")
+    CATCH_COM_ERROR("create_xmldom()", cerr)
     return NULL;
 }
 
@@ -127,7 +127,7 @@ static bool save_index_study_date(MSXML2::IXMLDOMDocument2 *pDomStudy)
         else throw runtime_error(xml_path.insert(0, "save ").append(" error"));
         return true;
     }
-    CATCH_COM_ERROR("save_index_study_date()")
+    CATCH_COM_ERROR("save_index_study_date()", cerr)
     return false;
 }
 
@@ -196,7 +196,7 @@ static bool save_index_patient(MSXML2::IXMLDOMDocument2 *pDomStudy)
         else throw runtime_error(xml_path.insert(0, "save ").append(" error"));
         return true;
     }
-    CATCH_COM_ERROR("save_index_patient()")
+    CATCH_COM_ERROR("save_index_patient()", cerr)
     return false;
 }
 
@@ -246,7 +246,7 @@ static void add_association(map<string, MSXML2::IXMLDOMDocument2*> &association_
             }
         }
     }
-    CATCH_COM_ERROR("add_association()")
+    CATCH_COM_ERROR("add_association()", cerr)
 }
 
 #define CLUSTER_SIZE 4096LL
@@ -336,7 +336,7 @@ void save_index_study_receive_to_session()
                 throw logic_error(msg);
             }
         }
-        CATCH_COM_ERROR("save_index_study_receive_to_session() study phase")
+        CATCH_COM_ERROR("save_index_study_receive_to_session() study phase", cerr)
     }
     study_map.clear();
 
@@ -364,7 +364,7 @@ void save_index_study_receive_to_session()
             }
             pDomAssoc->Release();
         }
-        CATCH_COM_ERROR("save_index_study_receive_to_session() association phase")
+        CATCH_COM_ERROR("save_index_study_receive_to_session() association phase", cerr)
     }
     association_map.clear();
 }
@@ -562,7 +562,7 @@ static void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const CMOVE_LOG_CONT
             }
         }
     }
-    CATCH_COM_ERROR("add_instance()")
+    CATCH_COM_ERROR("add_instance()", cerr)
 }
 
 static int line_num = 0;
@@ -623,7 +623,7 @@ static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML
             cerr << endl;
             */
         }
-        CATCH_COM_ERROR("merge_node() node " << (LPCSTR)xpath << (LPCSTR)nodeName)
+        CATCH_COM_ERROR("merge_node() node " << (LPCSTR)xpath << (LPCSTR)nodeName, cerr)
     }
 
     MSXML2::IXMLDOMNodeListPtr nodes = nodeSrc->childNodes;
@@ -659,7 +659,7 @@ static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML
                 nodeDest->appendChild(child->cloneNode(VARIANT_TRUE));
             }
         }
-        CATCH_COM_ERROR("merge_node() node " << (LPCSTR)currentNodeXPath)
+        CATCH_COM_ERROR("merge_node() node " << (LPCSTR)currentNodeXPath, cerr)
     }
     // process text node
     try
@@ -688,7 +688,7 @@ static bool merge_node(const _bstr_t &xpath, MSXML2::IXMLDOMNode *nodeSrc, MSXML
             nodeDest->removeChild(textNodeDest);
         }
     }
-    CATCH_COM_ERROR("merge_node() text node " << (LPCSTR)xpath << "/#text")
+    CATCH_COM_ERROR("merge_node() text node " << (LPCSTR)xpath << "/#text", cerr)
     return true;
 }
 
@@ -833,7 +833,7 @@ void merge_index_study_patient_date(bool overwrite, std::map<std::string, LARGE_
                 }
             }
         }
-        CATCH_COM_ERROR("merge_index_study_patient_date()")
+        CATCH_COM_ERROR("merge_index_study_patient_date()", cerr)
     }
 }
 

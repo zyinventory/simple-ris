@@ -103,6 +103,8 @@ int watch_notify(string &cmd, ostream &flog)
     }
     if(opt_verbose) time_header_out(flog) << "watch_notify() dcmqrscp start" << endl;
     
+    xml_index::singleton_ptr = new xml_index(&flog);
+
     in_process_sequence_dll(buff, sizeof(buff), "");
     named_pipe_server nps(buff, &flog);
     named_pipe_server::register_named_pipe_server(&nps);

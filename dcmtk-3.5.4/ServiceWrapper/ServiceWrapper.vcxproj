@@ -109,6 +109,7 @@
   <ItemGroup>
     <ClCompile Include="coordinator.cpp" />
     <ClCompile Include="deleteStudy.cpp" />
+    <ClCompile Include="xml_index.cpp" />
     <ClCompile Include="named_pipe.cpp" />
     <ClCompile Include="process_notify.cpp" />
     <ClCompile Include="ServiceWrapper.cpp" />
