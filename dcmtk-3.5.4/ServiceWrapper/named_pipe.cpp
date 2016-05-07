@@ -154,7 +154,7 @@ void named_pipe_server::client_connect_callback(DWORD dwErr, DWORD cbBytesRead, 
                 disconnect_connection_auto_detect(lpPipeInst);
             }
             else // OK
-                if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" client connect OK, client write: " << study_uid << "|" << otherMessage << endl;
+                if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" client connect OK." << endl;
         }
         else
         {
