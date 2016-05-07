@@ -339,8 +339,7 @@ named_pipe_server::~named_pipe_server()
         hPipeEvent = NULL;
     }
     if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::~named_pipe_server()" << endl;
-    ostream *pflog2 = pflog;
-    for_each(map_study.begin(), map_study.end(), [pflog2](const STUDY_PAIR &p) { p.second->print_state(*pflog2); delete p.second; });
+    for_each(map_study.begin(), map_study.end(), [](const STUDY_PAIR &p) { p.second->print_state(); delete p.second; });
 }
 
 void named_pipe_server::check_study_timeout()
@@ -348,14 +347,21 @@ void named_pipe_server::check_study_timeout()
     STUDY_MAP::iterator it = map_study.begin();
     while(it != map_study.end())
     {
-        if(it->second && it->second->is_time_out())
+        handle_study *phs = it->second;
+        if(phs && phs->is_time_out())
         {
-            handle_study *phs = it->second;
-            map_study.erase(it);
-            if(opt_verbose) phs->print_state(*pflog);
-            // todo: jdf
-
-            delete phs;
+            if(opt_verbose)
+            {
+                time_header_out(*pflog) << "named_pipe_server::check_study_timeout() prepare jdf " << phs->get_study_uid() << endl;
+                phs->print_state();
+            }
+            if(0 == generateStudyJDF("0020000d", phs->get_study_uid().c_str(), *pflog))
+            {
+                time_header_out(*pflog) << "jdf OK, delete handle_study " << phs->get_study_uid() << endl;
+                it = map_study.erase(it);
+                delete phs;
+                continue;
+            }
         }
         ++it;
     }

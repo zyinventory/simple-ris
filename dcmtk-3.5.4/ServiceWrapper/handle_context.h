@@ -58,26 +58,32 @@ namespace handle_context
     public:
         handle_waitable(const handle_waitable &r) : path(r.path), pflog(r.pflog) {};
         handle_waitable& operator=(const handle_waitable &r) { path = r.path; pflog = r.pflog; return *this; };
+        virtual void print_state() const;
         virtual HANDLE get_handle() const { return NULL; };
         const std::string& get_path() const { return path; };
     };
 
-    class notify_file : public handle_waitable
+    class meta_notify_file : public handle_waitable
     {
     private:
-        std::string association_id;
+        std::string association_id, meta_notify_filename;
 
     protected:
-        notify_file(const std::string &assoc_id, const std::string &p, std::ostream *plog) : handle_waitable(p, plog), association_id(assoc_id) {};
+        meta_notify_file(const std::string &assoc_id, const std::string &p, std::ostream *plog)
+            : handle_waitable(p, plog), association_id(assoc_id) {};
+        meta_notify_file(const std::string &assoc_id, const std::string &p, const std::string &filename, std::ostream *plog)
+            : handle_waitable(p, plog), association_id(assoc_id), meta_notify_filename(filename) {};
 
     public:
-        notify_file(const notify_file& r) : handle_waitable(r), association_id(r.association_id) {};
-        notify_file& operator=(const notify_file &r);
+        meta_notify_file(const meta_notify_file& r) : handle_waitable(r), association_id(r.association_id), meta_notify_filename(r.meta_notify_filename) {};
+        meta_notify_file& operator=(const meta_notify_file &r);
+        void print_state() const;
         const std::string& get_association_id() const { return association_id; };
+        const std::string& get_meta_notify_filename() const { return meta_notify_filename; };
     };
 
-    typedef std::map<HANDLE, notify_file*> HANDLE_MAP;
-    typedef std::pair<HANDLE, notify_file*> HANDLE_PAIR;
+    typedef std::map<HANDLE, meta_notify_file*> HANDLE_MAP;
+    typedef std::pair<HANDLE, meta_notify_file*> HANDLE_PAIR;
     class handle_study;
     typedef std::map<std::string, handle_study*> STUDY_MAP;
     typedef std::pair<std::string, handle_study*> STUDY_PAIR;
@@ -112,7 +118,7 @@ namespace handle_context
     
     class named_pipe_server;
 
-    class handle_dir : public notify_file // handle_dir is association
+    class handle_dir : public meta_notify_file // handle_dir is association
     {
     private:
         HANDLE handle;
@@ -127,16 +133,17 @@ namespace handle_context
 
     public:
         handle_dir(HANDLE h, const std::string &assoc_id, const std::string &file, const std::string notify_filename, std::ostream *plog)
-            : notify_file(assoc_id, file, plog), handle(h), last_find_error(false), last_association_notify_filename(notify_filename),
+            : meta_notify_file(assoc_id, file, notify_filename, plog), handle(h), last_find_error(false), last_association_notify_filename(notify_filename),
             assoc_disconn(false), disconn_release(true), port(104) {}; // todo: shall set action_after_assoc by association params
 
-        handle_dir(const handle_dir& o) : notify_file(o), handle(o.handle), last_find_error(o.last_find_error),
+        handle_dir(const handle_dir& o) : meta_notify_file(o), handle(o.handle), last_find_error(o.last_find_error),
             list_file(o.list_file), set_complete(o.set_complete), set_study(o.set_study), port(o.port), last_association_notify_filename(o.last_association_notify_filename),
             store_assoc_id(o.store_assoc_id), callingAE(o.callingAE), callingAddr(o.callingAE), calledAE(o.calledAE), calledAddr(o.calledAddr),
             expected_xfer(o.expected_xfer), assoc_disconn(o.assoc_disconn), disconn_release(o.disconn_release), auto_publish(o.auto_publish) {};
+        virtual ~handle_dir();
 
         handle_dir& operator=(const handle_dir &r);
-        virtual ~handle_dir() { if(handle) FindCloseChangeNotification(handle); };
+        void print_state() const;
         HANDLE get_handle() const { return handle; };
         bool insert_study(const std::string &study_uid) { return set_study.insert(study_uid).second; };
         bool insert_complete(const std::string &filename) { return set_complete.insert(filename).second; };
@@ -148,12 +155,11 @@ namespace handle_context
         DWORD find_files(std::ostream &flog, std::function<DWORD(const std::string&)> p);
         DWORD process_notify(const std::string &filename, std::ostream &flog);
         void send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phdir, std::ostream &flog);
-        void check_complete_remain(std::ostream &flog) const;
         void broadcast_action_to_all_study(named_pipe_server &nps) const;
         void send_all_compress_ok_notify_and_close_handle(std::ostream &flog);
     };
 
-    class handle_proc : public notify_file
+    class handle_proc : public meta_notify_file
     {
     private:
         HANDLE hlog;
@@ -162,14 +168,17 @@ namespace handle_context
 
     public:
         handle_proc(const std::string &assoc_id, const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name, std::ostream *plog) 
-            : notify_file(assoc_id, cwd, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name) { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
-        handle_proc(const handle_proc& o) : notify_file(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
+            : meta_notify_file(assoc_id, cwd, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name) { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
+        handle_proc(const handle_proc& o) : meta_notify_file(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
             log_path(o.log_path), procinfo(o.procinfo) {};
 
         handle_proc& operator=(const handle_proc &r);
+        void print_state() const;
         virtual ~handle_proc();
         HANDLE get_handle() const { return procinfo.hProcess; };
         const std::string& get_exec_cmd() const { return exec_cmd; };
+        const std::string& get_exec_name() const { return exec_name; };
+        const std::string& get_log_path() const { return log_path; };
         const PROCESS_INFORMATION& get_procinfo() const { return procinfo; };
         int start_process(std::ostream &flog);
     };
@@ -187,6 +196,7 @@ namespace handle_context
         static handle_compress* make_handle_compress(const NOTIFY_FILE_CONTEXT &nfc, std::ostream &flog);
         handle_compress(const handle_compress& o) : handle_proc(o), notify_ctx(o.notify_ctx) {};
         handle_compress& operator=(const handle_compress &r);
+        void print_state() const;
         NOTIFY_FILE_CONTEXT& get_notify_context() { return notify_ctx; };
     };
 
@@ -223,13 +233,13 @@ namespace handle_context
         
         virtual ~handle_study();
         handle_study& operator=(const handle_study &r);
+        void print_state() const;
         void bind_pipe_context(LPPIPEINST p_context) { pipe_context = p_context; };
         DWORD write_message_to_pipe();
         void action_compress_ok(const std::string &filename, const std::string &xfer);
         const std::string& get_study_uid() const { return study_uid; };
         const std::string& get_dicomdir_path() const { return dicomdir_path; };
         const std::set<std::string>& get_set_association_path() const { return set_association_path; };
-        void print_state(std::ostream &flog) const;
         bool insert_association_path(const std::string &assoc_path) { return set_association_path.insert(assoc_path).second; };
         //DWORD instance_add_to_dicomdir_ok(const std::string &filename, const std::string &xfer_new, LPOVERLAPPED_COMPLETION_ROUTINE write_complete_callback, std::ostream &flog);
         DWORD append_action(const action_from_association &action);

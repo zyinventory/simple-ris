@@ -15,7 +15,7 @@ const char UNIT_SEPARATOR = 0x1F;
 const size_t BUFF_SIZE = 1024;
 const int RMDIR_WAIT_SECONDS = 10;
 static char buffer[BUFF_SIZE];
-static string archivePath("archdir");
+static string archivePath("archdir\\v0000000");
 static string indexBase("indexdir");
 static string baseurl, downloadUrl, studyDatePath;
 
@@ -534,80 +534,58 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 {
 	if(!strcmp(tag, "0020000d"))
 	{
-		string pacsBase;
-		size_t requiredSize;
-        char jobIdBuf[41] = "";
-		getenv_s( &requiredSize, NULL, 0, "PACS_BASE");
-		if(requiredSize > 0)
+        string pacsBase(GetPacsBase());
+        char jobIdBuf[41] = "", hashBuf[9];
+		__int64 hashStudy = HashStr(tagValue, hashBuf, sizeof(hashBuf));
+        in_process_sequence_dll(jobIdBuf, sizeof(jobIdBuf), "job_");
+		sprintf_s(buffer, BUFF_SIZE, "%s\\tdd\\%s.jdf", pacsBase.c_str(), jobIdBuf);
+
+		string jdfPath(buffer);
+        sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s.txt", pacsBase.c_str(), indexBase.c_str(), tag,
+			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tagValue);
+		string fieldsPath(buffer);
+		sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s", pacsBase.c_str(), archivePath.c_str(),
+			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tagValue);
+		if (_access_s( buffer, 4 ))
 		{
-			char* pPacsBase = NULL;
-			pPacsBase = new char[requiredSize];
-			getenv_s( &requiredSize, pPacsBase, requiredSize, "PACS_BASE");
-			pacsBase = pPacsBase;
-			delete pPacsBase;
+			errstrm << "data don't exist: " << buffer << endl;
+			return -4;
 		}
-		if(!pacsBase.empty())
+
+		try
 		{
-			char hashBuf[9];
-			__int64 hashStudy = HashStr(tagValue, hashBuf, sizeof(hashBuf));
-            GetNextUniqueNo("job_", jobIdBuf, sizeof(jobIdBuf));
-			sprintf_s(buffer, BUFF_SIZE, "%s\\tdd\\%s.jdf", pacsBase.c_str(), jobIdBuf);
-
-			string jdfPath(buffer);
-			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s.txt", pacsBase.c_str(), indexBase.c_str(), tag,
-				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tagValue);
-			string fieldsPath(buffer);
-			sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s", pacsBase.c_str(), archivePath.c_str(),
-				hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tagValue);
-			if (_access_s( buffer, 4 ))
+			ofstream ofs(jdfPath.c_str(), ios_base::out | ios_base::trunc);
+			if(ofs.good())
 			{
-				errstrm << "data don't exist: " << buffer << endl;
-				return -4;
-			}
-
-			try
-			{
-				ofstream ofs(jdfPath.c_str(), ios_base::out | ios_base::trunc);
-				if(ofs.good())
-				{
-					string valid_publisher;
-					bool valid_found = SelectValidPublisher(TDB_STATUS, valid_publisher);
-					if(valid_found || valid_publisher.find("error:", 0) == string::npos)
-						ofs << "PUBLISHER=" << valid_publisher << endl;
-                    ofs << "JOB_ID=" << jobIdBuf << endl;
-					ofs << "FORMAT=UDF102" << endl;
-					if(strcmp(MEDIA_AUTO, media))
-						ofs << "DISC_TYPE=" << media << endl;
-					else
-						ofs << "DISC_TYPE=" << detectMediaType(NULL) << endl;
-					ofs << "COPIES=1" << endl;
-					ofs << "DATA=" << pacsBase << "\\viewer" << endl;
-					ofs << "DATA=" << buffer << endl;
-					ofs << "VOLUME_LABEL=SMARTPUB" << endl;
-					ofs << "LABEL=" << pacsBase << "\\tdd\\patientInfo.tdd" << endl;
-					ofs << "REPLACE_FIELD=" << fieldsPath << endl;
-					ofs.close();
-				}
+                ofs << "JOB_ID=" << jobIdBuf << endl;
+				ofs << "FORMAT=UDF102" << endl;
+				if(strcmp(MEDIA_AUTO, media))
+					ofs << "DISC_TYPE=" << media << endl;
 				else
-				{
-					throw jdfPath;
-				}
+					ofs << "DISC_TYPE=" << detectMediaType(NULL) << endl;
+				ofs << "COPIES=1" << endl;
+				ofs << "DATA=" << pacsBase << "\\viewer" << endl;
+				ofs << "DATA=" << buffer << endl;
+				ofs << "VOLUME_LABEL=SMARTPUB" << endl;
+				ofs << "LABEL=" << pacsBase << "\\tdd\\patientInfo.tdd" << endl;
+				ofs << "REPLACE_FIELD=" << fieldsPath << endl;
+				ofs.close();
+                return 0;
 			}
-			catch(string &outPath)
-			{
-				errstrm << "create file failed: " << outPath << endl;
-				return -2;
-			}
-			catch(...)
-			{
-				errstrm << "write jdf error" << endl;
-				return -3;
-			}
-			sprintf_s(buffer, BUFF_SIZE, "%s\\orders\\%s.jdf", pacsBase.c_str(), jobIdBuf);
-			if(!rename(jdfPath.c_str(), buffer))
-				return 0;
 			else
-				errstrm << "move " << jdfPath << " to " << buffer << " failed" << endl;
+			{
+				throw jdfPath;
+			}
+		}
+		catch(const string &outPath)
+		{
+			errstrm << "create file failed: " << outPath << endl;
+			return -2;
+		}
+		catch(...)
+		{
+			errstrm << "write jdf error" << endl;
+			return -3;
 		}
 	}
 	return -1;

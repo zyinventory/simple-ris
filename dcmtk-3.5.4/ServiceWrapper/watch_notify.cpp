@@ -9,7 +9,7 @@ static char buff[FILE_BUF_SIZE];
 static HANDLE_MAP map_handle_context;
 NOTIFY_LIST compress_queue;
 
-static bool select_handle_dir_by_association_path(const notify_file* pnf, const string &association_id, const string &path, ostream &flog)
+static bool select_handle_dir_by_association_path(const meta_notify_file* pnf, const string &association_id, const string &path, ostream &flog)
 {
     if(pnf == NULL) return false;
     bool same_assoc = (association_id.compare(pnf->get_association_id()) == 0);
@@ -171,7 +171,7 @@ int watch_notify(string &cmd, ostream &flog)
         }
         else if(wr == WAIT_IO_COMPLETION)
         {
-            if(opt_verbose) time_header_out(flog) << "WaitForMultipleObjectsEx() WAIT_IO_COMPLETION." << endl;
+            ;
         }
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + hsize)
         {
@@ -179,7 +179,7 @@ int watch_notify(string &cmd, ostream &flog)
             handle_compress *phcompr = NULL;
             handle_proc *phproc = NULL;
             handle_dir *phdir = NULL;
-            notify_file *pb = map_handle_context.count(waited) ? map_handle_context[waited] : NULL;
+            meta_notify_file *pb = map_handle_context.count(waited) ? map_handle_context[waited] : NULL;
             
             if(waited == nps.get_handle()) // pipe client(dcmmkdir) connect incoming
             {
@@ -199,6 +199,11 @@ int watch_notify(string &cmd, ostream &flog)
                     NOTIFY_FILE_CONTEXT nfc = phcompr->get_notify_context();
 
                     string study_uid(nfc.file.studyUID), assoc_path(phcompr->get_path()), assoc_id(phcompr->get_association_id());
+                    if(opt_verbose)
+                    {
+                        time_header_out(flog) << "watch_notify() compress proc exit:" << endl;
+                        phcompr->print_state();
+                    }
                     delete phcompr;
                     
                     if(opt_verbose) time_header_out(flog) << "watch_notify() dcmcjpeg complete, find association " << assoc_id << " to set complete." << endl;
@@ -230,12 +235,16 @@ int watch_notify(string &cmd, ostream &flog)
                         gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, flog); });
                         if(phdir->is_association_disconnect() && phdir->file_complete_remain() == 0)
                         {
-                            if(opt_verbose) phdir->check_complete_remain(flog);
                             map_handle_context.erase(waited);
                             if(opt_verbose) time_header_out(flog) << "watch_notify() association " << phdir->get_association_id() << " complete, erease from map_handle_context." << endl;
                             // close monitor handle, all_compress_ok_notify is a comment.
                             phdir->send_all_compress_ok_notify_and_close_handle(flog);
                             phdir->broadcast_action_to_all_study(nps);
+                            if(opt_verbose)
+                            {
+                                time_header_out(flog) << "watch_notify() handle_dir exit:" << endl;
+                                phdir->print_state();
+                            }
                             delete phdir;
 
                             // todo: if cmove assoc, start batch burning function in another dir.
@@ -349,7 +358,7 @@ clean_child_proc:
     for(HANDLE_MAP::iterator it = map_handle_context.begin(); it != map_handle_context.end(); ++it)
     {
         handle_dir *pha = dynamic_cast<handle_dir*>(it->second);
-        if(pha) pha->check_complete_remain(flog);
+        if(pha) pha->print_state();
         delete it->second;
     }
     return gle;

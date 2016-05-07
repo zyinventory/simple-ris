@@ -47,16 +47,29 @@ bool _tag_NOTIFY_FILE_CONTEXT::operator<(const struct _tag_NOTIFY_FILE_CONTEXT &
     }
 }
 
-notify_file& notify_file::operator=(const notify_file &r)
+void handle_waitable::print_state() const
+{
+    *pflog << "handle_waitable::print_state() path: " << path << endl;
+}
+
+void meta_notify_file::print_state() const
+{
+    *pflog << "meta_notify_file::print_state() association_id: " << association_id << endl
+        << "\tmeta_notify_filename: " << meta_notify_filename << endl;
+    handle_waitable::print_state();
+}
+
+meta_notify_file& meta_notify_file::operator=(const meta_notify_file &r)
 {
     handle_waitable::operator=(r);
     association_id = r.association_id;
+    meta_notify_filename = r.meta_notify_filename;
     return *this;
 }
 
 handle_dir& handle_dir::operator=(const handle_dir &r)
 {
-    notify_file::operator=(r);
+    meta_notify_file::operator=(r);
     handle = r.handle;
     store_assoc_id = r.store_assoc_id;
     callingAE = r.callingAE;
@@ -69,10 +82,60 @@ handle_dir& handle_dir::operator=(const handle_dir &r)
     last_association_notify_filename = r.last_association_notify_filename;
     assoc_disconn = r.assoc_disconn;
     disconn_release = r.disconn_release;
+    last_find_error = r.last_find_error;
     copy(r.list_file.begin(), r.list_file.end(), back_inserter(list_file));
     copy(r.set_study.begin(), r.set_study.end(), inserter(set_study, set_study.end()));
     copy(r.set_complete.begin(), r.set_complete.end(), inserter(set_complete, set_complete.end()));
     return *this;
+}
+
+handle_dir::~handle_dir()
+{
+    if(handle) FindCloseChangeNotification(handle);
+
+    string meta_file(get_meta_notify_filename());
+    if(meta_file.length())
+    {
+        meta_file.insert(0, 1, '\\').insert(0, NOTIFY_BASE);
+        if(_unlink(meta_file.c_str()))
+        {
+            char msg[1024];
+            strerror_s(msg, errno);
+            time_header_out(*pflog) << __FUNCSIG__" _unlink(" << meta_file << ") failed: " << msg << endl;
+        }
+    }
+}
+
+void handle_dir::print_state() const
+{
+    *pflog << "handle_dir::print_state()" << endl
+        << "\tstore_assoc_id: " << store_assoc_id << endl
+        << "\tcallingAE: " << callingAE << endl
+        << "\tcallingAddr: " << callingAddr << endl
+        << "\tcalledAE: " << calledAE << endl
+        << "\tcalledAddr: " << calledAddr << endl
+        << "\texpected_xfer: " << expected_xfer << endl
+        << "\tauto_publish: " << auto_publish << endl
+        << "\tport: " << dec << port << endl
+        << "\tlast_association_notify_filename: " << last_association_notify_filename << endl
+        << "\tassoc_disconn: " << assoc_disconn << endl
+        << "\tdisconn_release: " << disconn_release << endl
+        << "\tlast_find_error: " << last_find_error << endl;
+    set<string> remain(set_complete);
+    *pflog << "\tassociation " << get_association_id() << " " << get_path() << " file " << dec << list_file.size() << ", complete " << set_complete.size() << endl;
+    for(list<string>::const_iterator it = list_file.begin(); it != list_file.end(); ++it)
+    {
+        if(remain.find(*it) == remain.end())
+            *pflog << "\t" << *it << " not complete" << endl;
+        else
+            remain.erase(*it);
+    }
+    for(set<string>::iterator it = remain.begin(); it != remain.end(); ++it)
+        *pflog << "\t" << *it << " unexcepted complete" << endl;
+    for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
+        *pflog << "\tstudy " << *it << endl;
+
+    meta_notify_file::print_state();
 }
 
 string& handle_dir::get_find_filter(std::string &filter) const
@@ -309,23 +372,6 @@ void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, h
     }
 }
 
-void handle_dir::check_complete_remain(std::ostream &flog) const
-{
-    set<string> remain(set_complete);
-    time_header_out(flog) << "association " << get_association_id() << " " << get_path() << " file " << dec << list_file.size() << ", complete " << set_complete.size() << endl;
-    for(list<string>::const_iterator it = list_file.begin(); it != list_file.end(); ++it)
-    {
-        if(remain.find(*it) == remain.end())
-            flog << "\t" << *it << " not complete" << endl;
-        else
-            remain.erase(*it);
-    }
-    for(set<string>::iterator it = remain.begin(); it != remain.end(); ++it)
-        flog << "\t" << *it << " unexcepted complete" << endl;
-    for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
-        flog << "\tstudy " << *it << endl;
-}
-
 void handle_dir::send_all_compress_ok_notify_and_close_handle(ostream &flog)
 {
     // close motinor handle, avoid all_compress_ok notify loop
@@ -375,13 +421,22 @@ void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps) const
 
 handle_proc& handle_proc::operator=(const handle_proc &r)
 {
-    notify_file::operator=(r);
+    meta_notify_file::operator=(r);
     hlog = r.hlog;
     exec_cmd = r.exec_cmd;
     exec_name = r.exec_name;
     log_path = r.log_path;
     procinfo = r.procinfo;
     return *this;
+}
+
+void handle_proc::print_state() const
+{
+    *pflog << "handle_proc::print_state()" << endl
+        << "\texec_name: " << exec_name << endl
+        << "\tlog_path: " << log_path << endl
+        << "\texec_cmd: " << exec_cmd << endl;
+    meta_notify_file::print_state();
 }
 
 handle_proc::~handle_proc()
@@ -485,6 +540,15 @@ handle_compress& handle_compress::operator=(const handle_compress &r)
     return *this;
 }
 
+void handle_compress::print_state() const
+{
+    *pflog << "handle_compress::print_state() " << notify_ctx.file.unique_filename << endl
+        << "\tnotify_ctx.src_notify_filename: " << notify_ctx.src_notify_filename << endl
+        << "\tnotify_ctx.file_seq: " << hex << setw(8) << setfill('0') << uppercase << notify_ctx.file_seq << endl
+        << "\tnotify_ctx.file.studyUID: " << notify_ctx.file.studyUID << endl;
+    handle_proc::print_state();
+}
+
 handle_study& handle_study::operator=(const handle_study &r)
 {
     handle_proc::operator=(r);
@@ -506,6 +570,7 @@ handle_study::~handle_study()
     {
         if(pipe_context->hPipeInst && pipe_context->hPipeInst != INVALID_HANDLE_VALUE)
         {
+            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" delete pipe context: " << pipe_context->study_uid << endl;
             if (! DisconnectNamedPipe(pipe_context->hPipeInst))
                 displayErrorToCerr(__FUNCSIG__ " DisconnectNamedPipe()", GetLastError(), pflog);
             CloseHandle(pipe_context->hPipeInst);
@@ -513,6 +578,7 @@ handle_study::~handle_study()
         delete pipe_context;
         pipe_context = NULL;
     }
+    if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__ << endl;
 }
 
 DWORD handle_study::append_action(const action_from_association &action)
@@ -637,25 +703,30 @@ void handle_study::erase_association_and_update_last_idle_time(const string &ass
     if(set_association_path.size() == 0) time(&last_idle_time);
 }
 
-void handle_study::print_state(ostream &flog) const
+void handle_study::print_state() const
 {
-    time_header_out(flog) << "study " << study_uid << endl;
+    *pflog << "handle_study::print_state() " << study_uid << endl
+        << "\tdicomdir_path: " << dicomdir_path << endl
+        << "\tblocked: " << blocked << endl
+        << "\tdisconnect: " << disconnect << endl
+        << "\trelease: " << release << endl;
     // print associations
     for(set<string>::const_iterator it = set_association_path.begin(); it != set_association_path.end(); ++it)
-        flog << "\tassociation path " << *it << endl;
+        *pflog << "\tassociation_path " << *it << endl;
     // print actions
-    flog << "actions:" << endl;
+    *pflog << "\tactions:" << endl;
     for(list<action_from_association>::const_iterator it = list_action.begin(); it != list_action.end(); ++it)
     {
-        flog << "\t" << translate_action_type(it->type);
+        *pflog << "\t" << translate_action_type(it->type);
         if(it->type == ACTION_TYPE::INDEX_INSTANCE)
         {
-            if(it->pnfc) flog << " " << it->pnfc->file.unique_filename;
-            else flog << " pnfc is NULL";
+            if(it->pnfc) *pflog << " " << it->pnfc->file.unique_filename;
+            else *pflog << " pnfc is NULL";
         }
-        else if(it->type == ACTION_TYPE::BURN_MULTI) flog << it->burn_multi_id;
-        flog << endl;
+        else if(it->type == ACTION_TYPE::BURN_MULTI) *pflog << it->burn_multi_id;
+        *pflog << endl;
     }
+    handle_proc::print_state();
 }
 
 bool handle_study::is_time_out() const
