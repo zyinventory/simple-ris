@@ -17,14 +17,14 @@ void named_pipe_server::register_named_pipe_server(named_pipe_server *p)
 { singleton_ptr = p; }
 
 named_pipe_server::named_pipe_server(const char *pipe_path, std::ostream *plog)
-    : handle_waitable(pipe_path, plog), hPipeEvent(NULL), hPipe(NULL)
+    : base_path(pipe_path, plog), hPipeEvent(NULL), hPipe(NULL)
 {
     memset(&olPipeConnectOnly, 0, sizeof(OVERLAPPED));
 }
 
 named_pipe_server& named_pipe_server::operator=(const named_pipe_server &r)
 {
-    handle_waitable::operator=(r);
+    base_path::operator=(r);
     pflog = r.pflog;
     hPipeEvent = r.hPipeEvent;
     hPipe = r.hPipe;
@@ -103,8 +103,7 @@ void named_pipe_server::disconnect_connection_auto_detect(LPPIPEINST lpPipeInst)
 {
     if(lpPipeInst == NULL) return;
     string study_uid(lpPipeInst->study_uid);
-    STUDY_MAP::iterator it = map_study.find(study_uid);
-    if(it == map_study.end())
+    if(0 == map_study.count(study_uid))
     {
         if(lpPipeInst->hPipeInst && lpPipeInst->hPipeInst != INVALID_HANDLE_VALUE)
         {
@@ -322,9 +321,18 @@ handle_study* named_pipe_server::make_handle_study(const std::string &study_uid)
         if(phs)
         {
             if(0 == phs->start_process(*pflog)) map_study[study_uid] = phs;
-            else { delete phs; phs = NULL; }
+            else
+            {
+                map_study.erase(study_uid);
+                delete phs;
+                phs = NULL;
+            }
         }
-        else time_header_out(*pflog) << __FUNCSIG__" new handle_study() failed." << endl;
+        else
+        {
+            map_study.erase(study_uid);
+            time_header_out(*pflog) << __FUNCSIG__" new handle_study() failed." << endl;
+        }
     }
     return phs;
 }
@@ -342,7 +350,7 @@ named_pipe_server::~named_pipe_server()
     for_each(map_study.begin(), map_study.end(), [](const STUDY_PAIR &p) { p.second->print_state(); delete p.second; });
 }
 
-void named_pipe_server::check_study_timeout()
+void named_pipe_server::check_study_timeout_to_generate_jdf()
 {
     STUDY_MAP::iterator it = map_study.begin();
     while(it != map_study.end())
@@ -352,16 +360,18 @@ void named_pipe_server::check_study_timeout()
         {
             if(opt_verbose)
             {
-                time_header_out(*pflog) << "named_pipe_server::check_study_timeout() prepare jdf " << phs->get_study_uid() << endl;
+                time_header_out(*pflog) << "named_pipe_server::check_study_timeout_to_generate_jdf() study timeout: " << phs->get_study_uid() << endl;
                 phs->print_state();
             }
-            if(0 == generateStudyJDF("0020000d", phs->get_study_uid().c_str(), *pflog))
+            if(phs->get_last_association_action().is_auto_publish())
             {
-                time_header_out(*pflog) << "jdf OK, delete handle_study " << phs->get_study_uid() << endl;
-                it = map_study.erase(it);
-                delete phs;
-                continue;
+                if(0 == generateStudyJDF("0020000d", phs->get_study_uid().c_str(), *pflog))
+                    if(opt_verbose) time_header_out(*pflog) << "jdf OK" << endl;
             }
+            if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::check_study_timeout_to_generate_jdf() delete study " << phs->get_study_uid() << endl;
+            it = map_study.erase(it);
+            delete phs;
+            continue;
         }
         ++it;
     }

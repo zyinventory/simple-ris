@@ -45,37 +45,36 @@ namespace handle_context
 
     typedef std::list<NOTIFY_FILE_CONTEXT> NOTIFY_LIST;
 
-    class handle_waitable
+    class base_path
     {
     private:
         std::string path;
 
     protected:
         std::ostream *pflog;
-        handle_waitable(const std::string p) : path(p), pflog(&std::cerr) {};
-        handle_waitable(const std::string p, std::ostream *plog) : path(p), pflog(plog) { if(pflog == NULL) pflog = &std::cerr; };
+        base_path(const std::string p, std::ostream *plog) : path(p), pflog(plog) { if(pflog == NULL) pflog = &std::cerr; };
 
     public:
-        handle_waitable(const handle_waitable &r) : path(r.path), pflog(r.pflog) {};
-        handle_waitable& operator=(const handle_waitable &r) { path = r.path; pflog = r.pflog; return *this; };
+        base_path(const base_path &r) : path(r.path), pflog(r.pflog) {};
+        base_path& operator=(const base_path &r) { path = r.path; pflog = r.pflog; return *this; };
         virtual void print_state() const;
         virtual HANDLE get_handle() const { return NULL; };
         const std::string& get_path() const { return path; };
     };
 
-    class meta_notify_file : public handle_waitable
+    class meta_notify_file : public base_path
     {
     private:
         std::string association_id, meta_notify_filename;
 
     protected:
         meta_notify_file(const std::string &assoc_id, const std::string &p, std::ostream *plog)
-            : handle_waitable(p, plog), association_id(assoc_id) {};
+            : base_path(p, plog), association_id(assoc_id) {};
         meta_notify_file(const std::string &assoc_id, const std::string &p, const std::string &filename, std::ostream *plog)
-            : handle_waitable(p, plog), association_id(assoc_id), meta_notify_filename(filename) {};
+            : base_path(p, plog), association_id(assoc_id), meta_notify_filename(filename) {};
 
     public:
-        meta_notify_file(const meta_notify_file& r) : handle_waitable(r), association_id(r.association_id), meta_notify_filename(r.meta_notify_filename) {};
+        meta_notify_file(const meta_notify_file& r) : base_path(r), association_id(r.association_id), meta_notify_filename(r.meta_notify_filename) {};
         meta_notify_file& operator=(const meta_notify_file &r);
         void print_state() const;
         const std::string& get_association_id() const { return association_id; };
@@ -89,31 +88,36 @@ namespace handle_context
     typedef std::pair<std::string, handle_study*> STUDY_PAIR;
 
     enum ACTION_TYPE { NO_ACTION = 0, BURN_PER_STUDY, BURN_MULTI, INDEX_INSTANCE };
-    const char *translate_action_type(ACTION_TYPE t);
 
-    class action_from_association
+    class action_from_association : public base_path
     {
         friend class std::hash<action_from_association>;
     public:
         ACTION_TYPE type;
         bool release;
-        std::string association_path, burn_multi_id;
+        std::string burn_multi_id;
         NOTIFY_FILE_CONTEXT *pnfc;
 
-        action_from_association() : type(NO_ACTION), pnfc(NULL), release(false) {};
-        action_from_association(ACTION_TYPE action_type, std::string path, bool is_release) : type(action_type), association_path(path), pnfc(NULL), release(is_release) {};
-        action_from_association(const NOTIFY_FILE_CONTEXT &nfc, std::string path) : type(INDEX_INSTANCE), association_path(path), release(false) { pnfc = new NOTIFY_FILE_CONTEXT; *pnfc = nfc; };
-        action_from_association(const action_from_association& r) : type(r.type), association_path(r.association_path), burn_multi_id(r.burn_multi_id), release(r.release)
+        static const char *translate_action_type(ACTION_TYPE t);
+
+        action_from_association(ACTION_TYPE action_type, std::string path, bool is_release, std::ostream *plog)
+            : base_path(path, plog), type(action_type), pnfc(NULL), release(is_release) {};
+        action_from_association(const NOTIFY_FILE_CONTEXT &nfc, std::string path, std::ostream *plog)
+            : base_path(path, plog), type(INDEX_INSTANCE), release(false) { pnfc = new NOTIFY_FILE_CONTEXT; *pnfc = nfc; };
+        action_from_association(const action_from_association& r)
+            : base_path(r), type(r.type), burn_multi_id(r.burn_multi_id), release(r.release)
         {
             if(r.pnfc) { pnfc = new NOTIFY_FILE_CONTEXT; *pnfc = *r.pnfc; }
             else pnfc = NULL;
         };
         virtual ~action_from_association() { if(pnfc) delete pnfc; };
         action_from_association& operator=(const action_from_association &r);
+        void print_state() const;
         bool operator<(const action_from_association &r) const;
         bool operator==(const action_from_association &r) const { return (!(*this < r) && !(r < *this)); };
-        const std::string& get_association_path() const { return association_path; };
         ACTION_TYPE get_type() const { return type; };
+        bool is_disconnect() const { return type == NO_ACTION || type == BURN_PER_STUDY; };
+        bool is_auto_publish() const { return release && type == BURN_PER_STUDY; };
     };
     
     class named_pipe_server;
@@ -213,23 +217,23 @@ namespace handle_context
     {
     private:
         LPPIPEINST pipe_context;
-        bool blocked, disconnect, release;
+        bool blocked;
         std::string study_uid;
         std::string dicomdir_path;
         std::list<action_from_association> list_action;
         std::set<std::string> set_association_path;
         time_t last_idle_time;
-
-        void erase_association_and_update_last_idle_time(const std::string &assoc_path);
+        action_from_association last_association_action;
 
     public:
         handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
             const std::string &dicomdir, const std::string &study, std::ostream *plog)
             : handle_proc("", cwd, cmd, exec_prog_name, plog), pipe_context(NULL), dicomdir_path(dicomdir),
-            study_uid(study), blocked(false), disconnect(false), release(false), last_idle_time(0) {};
+            study_uid(study), blocked(false), last_association_action(ACTION_TYPE::INDEX_INSTANCE, cwd, false, plog)
+            { time(&last_idle_time); };
         handle_study(const handle_study &r) : handle_proc(r), pipe_context(r.pipe_context), study_uid(r.study_uid),
             dicomdir_path(r.dicomdir_path), set_association_path(r.set_association_path), list_action(r.list_action),
-            blocked(r.blocked), disconnect(r.disconnect), release(r.release), last_idle_time(r.last_idle_time) {};
+            blocked(r.blocked), last_idle_time(r.last_idle_time), last_association_action(r.last_association_action) {};
         
         virtual ~handle_study();
         handle_study& operator=(const handle_study &r);
@@ -239,6 +243,7 @@ namespace handle_context
         void action_compress_ok(const std::string &filename, const std::string &xfer);
         const std::string& get_study_uid() const { return study_uid; };
         const std::string& get_dicomdir_path() const { return dicomdir_path; };
+        const action_from_association& get_last_association_action() const { return last_association_action; };
         const std::set<std::string>& get_set_association_path() const { return set_association_path; };
         bool insert_association_path(const std::string &assoc_path) { return set_association_path.insert(assoc_path).second; };
         //DWORD instance_add_to_dicomdir_ok(const std::string &filename, const std::string &xfer_new, LPOVERLAPPED_COMPLETION_ROUTINE write_complete_callback, std::ostream &flog);
@@ -246,7 +251,7 @@ namespace handle_context
         bool is_time_out() const;
     };
 
-    class named_pipe_server : public handle_waitable
+    class named_pipe_server : public base_path
     {
     private:
         static named_pipe_server *singleton_ptr;
@@ -256,7 +261,7 @@ namespace handle_context
 
     public:
         named_pipe_server(const char *pipe_path, std::ostream *plog);
-        named_pipe_server(const named_pipe_server &r) : handle_waitable(r),
+        named_pipe_server(const named_pipe_server &r) : base_path(r),
             hPipeEvent(r.hPipeEvent), hPipe(r.hPipe), olPipeConnectOnly(r.olPipeConnectOnly) {};
         named_pipe_server& operator=(const named_pipe_server &r);
         virtual ~named_pipe_server();
@@ -278,7 +283,7 @@ namespace handle_context
         void disconnect_connection_auto_detect(LPPIPEINST lpPipeInst);
         handle_study* make_handle_study(const std::string &study);
         handle_study* find_handle_study(const std::string &study) { return map_study[study]; };
-        void check_study_timeout();
+        void check_study_timeout_to_generate_jdf();
     };
 }
 

@@ -5,7 +5,7 @@
 using namespace std;
 using namespace handle_context;
 
-const char* handle_context::translate_action_type(ACTION_TYPE t)
+const char* action_from_association::translate_action_type(ACTION_TYPE t)
 {
     switch(t)
     {
@@ -47,21 +47,21 @@ bool _tag_NOTIFY_FILE_CONTEXT::operator<(const struct _tag_NOTIFY_FILE_CONTEXT &
     }
 }
 
-void handle_waitable::print_state() const
+void base_path::print_state() const
 {
-    *pflog << "handle_waitable::print_state() path: " << path << endl;
+    *pflog << "base_path::print_state() path: " << path << endl;
 }
 
 void meta_notify_file::print_state() const
 {
     *pflog << "meta_notify_file::print_state() association_id: " << association_id << endl
         << "\tmeta_notify_filename: " << meta_notify_filename << endl;
-    handle_waitable::print_state();
+    base_path::print_state();
 }
 
 meta_notify_file& meta_notify_file::operator=(const meta_notify_file &r)
 {
-    handle_waitable::operator=(r);
+    base_path::operator=(r);
     association_id = r.association_id;
     meta_notify_filename = r.meta_notify_filename;
     return *this;
@@ -351,7 +351,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
 
 void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phs, ostream &flog)
 {
-    if(phs) phs->append_action(action_from_association(nfc, get_path()));
+    if(phs) phs->append_action(action_from_association(nfc, get_path(), &flog));
 
     char notify_file_name[MAX_PATH];
     string prefix(get_path());
@@ -409,7 +409,7 @@ void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps) const
                 action_from_association *paaa = NULL;
                 ACTION_TYPE type = NO_ACTION;
                 if(auto_publish != "MANUAL") type = BURN_PER_STUDY;
-                paaa = new action_from_association(type, get_path(), disconn_release);
+                paaa = new action_from_association(type, get_path(), disconn_release, pflog);
                 DWORD gle = phs->append_action(*paaa);
                 delete paaa;
             }
@@ -554,9 +554,8 @@ handle_study& handle_study::operator=(const handle_study &r)
     handle_proc::operator=(r);
     pipe_context = r.pipe_context;
     blocked = r.blocked;
-    disconnect = r.disconnect;
-    release = r.release;
     last_idle_time = r.last_idle_time;
+    last_association_action = r.last_association_action;
     study_uid = r.study_uid;
     dicomdir_path = r.dicomdir_path;
     copy(r.set_association_path.begin(), r.set_association_path.end(), inserter(set_association_path, set_association_path.end()));
@@ -583,9 +582,8 @@ handle_study::~handle_study()
 
 DWORD handle_study::append_action(const action_from_association &action)
 {
-    size_t previous_size = list_action.size();
     list_action.push_back(action);
-    if(previous_size == 0 && (blocked || disconnect)) return write_message_to_pipe();
+    if(blocked) return write_message_to_pipe();
     return 0;
 }
 
@@ -603,6 +601,9 @@ DWORD handle_study::write_message_to_pipe()
     bool write_message_ok = false;
     while(!write_message_ok && it != list_action.end())
     {
+        blocked = false;
+        last_association_action = *it;
+        time(&last_idle_time);
         switch(it->type)
         {
         case ACTION_TYPE::INDEX_INSTANCE:
@@ -615,27 +616,28 @@ DWORD handle_study::write_message_to_pipe()
                 return displayErrorToCerr(__FUNCSIG__ " WriteFileEx()", GetLastError(), pflog);
             }
             if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " write message " << pipe_context->chBuffer << endl;
-            blocked = false;
-            disconnect = false;
-            release = false;
             write_message_ok = true;
             break;
         case ACTION_TYPE::BURN_PER_STUDY:
         case ACTION_TYPE::NO_ACTION:
-            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " erase association " << it->get_association_path() << ", disconnect ";
-            if(it->release) *pflog << " release." << endl;
-            else *pflog << " abort." << endl;
-            erase_association_and_update_last_idle_time(it->get_association_path());
-            disconnect = true;
-            release = it->release;
+            if(opt_verbose)
+            {
+                time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " erase association " << it->get_path() << ", disconnect ";
+                if(it->release) *pflog << " release." << endl;
+                else *pflog << " abort." << endl;
+            }
+
+            set_association_path.erase(it->get_path());
+            if(opt_verbose) time_header_out(*pflog) << "handle_study::write_message_to_pipe() erease_association " << study_uid << endl
+                << "\tand erease assoc " << it->get_path() << endl;
             break;
         default:
-            time_header_out(*pflog) << __FUNCSIG__" encounter " << translate_action_type(it->type) << " action." << endl;
+            time_header_out(*pflog) << __FUNCSIG__" encounter " << action_from_association::translate_action_type(it->type) << " action." << endl;
             break;
         }
         it = list_action.erase(it);
     }
-    if(!write_message_ok) blocked = true;
+    if(!write_message_ok) blocked = true; // if(list_action is empty || last message is not INDEX_INSTANCE) blocked = true;
     return gle;
 }
 
@@ -695,21 +697,13 @@ void handle_study::action_compress_ok(const string &filename, const string &xfer
     else time_header_out(*pflog) << __FUNCSIG__ " NamePipe read file's name is not in queue: " << filename << endl;
 }
 
-void handle_study::erase_association_and_update_last_idle_time(const string &assoc_path)
-{
-    set_association_path.erase(assoc_path);
-    if(opt_verbose) time_header_out(*pflog) << "handle_study::erease_association() " << study_uid << endl
-        << "\tand erease assoc " << assoc_path << endl;
-    if(set_association_path.size() == 0) time(&last_idle_time);
-}
-
 void handle_study::print_state() const
 {
     *pflog << "handle_study::print_state() " << study_uid << endl
         << "\tdicomdir_path: " << dicomdir_path << endl
         << "\tblocked: " << blocked << endl
-        << "\tdisconnect: " << disconnect << endl
-        << "\trelease: " << release << endl;
+        << "\tlast_association_action: " << endl;
+    last_association_action.print_state();
     // print associations
     for(set<string>::const_iterator it = set_association_path.begin(); it != set_association_path.end(); ++it)
         *pflog << "\tassociation_path " << *it << endl;
@@ -717,7 +711,7 @@ void handle_study::print_state() const
     *pflog << "\tactions:" << endl;
     for(list<action_from_association>::const_iterator it = list_action.begin(); it != list_action.end(); ++it)
     {
-        *pflog << "\t" << translate_action_type(it->type);
+        *pflog << "\t" << action_from_association::translate_action_type(it->type);
         if(it->type == ACTION_TYPE::INDEX_INSTANCE)
         {
             if(it->pnfc) *pflog << " " << it->pnfc->file.unique_filename;
@@ -731,17 +725,35 @@ void handle_study::print_state() const
 
 bool handle_study::is_time_out() const
 {
-    if(disconnect && list_action.size() == 0 && set_association_path.size() == 0)
+    time_t now = 0;
+    time(&now);
+    if(last_association_action.is_disconnect() && list_action.size() == 0 && set_association_path.size() == 0)
     {
-        time_t now = 0;
-        time(&now);
         if(now - last_idle_time > 15) return true;
     }
+    else if(now - last_idle_time > 600) return true;
     return false;
+}
+
+void action_from_association::print_state() const
+{
+    *pflog << "action_from_association::print_state()" << endl
+        << "\ttype: " << action_from_association::translate_action_type(type) << endl
+        << "\trelease: " << release << endl
+        << "\tburn_multi_id: " << burn_multi_id << endl;
+    if(pnfc)
+    {
+        *pflog << "\tNOTIFY_FILE_CONTEXT pnfc: " << pnfc->file.unique_filename << endl
+        << "\tpnfc->src_notify_filename: " << pnfc->src_notify_filename << endl
+        << "\tpnfc->file_seq: " << hex << setw(8) << setfill('0') << uppercase << pnfc->file_seq << endl
+        << "\tpnfc->file.studyUID: " << pnfc->file.studyUID << endl;
+    }
+    base_path::print_state();
 }
 
 action_from_association& action_from_association::operator=(const action_from_association &r)
 {
+    base_path::operator=(r);
     type = r.type;
     release = r.release;
     burn_multi_id = r.burn_multi_id;
@@ -766,8 +778,8 @@ bool action_from_association::operator<(const action_from_association &r) const
             if(r.type) return true;
             else // type == false && r.type == false
             {
-                if(association_path < r.association_path) return true;
-                else if(r.association_path < association_path) return false;
+                if(get_path() < r.get_path()) return true;
+                else if(r.get_path() < get_path()) return false;
                 else // association_path == r.association_path
                 {
                     if(pnfc == r.pnfc) return false;

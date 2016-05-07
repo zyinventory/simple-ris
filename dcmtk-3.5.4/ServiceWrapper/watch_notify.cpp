@@ -167,7 +167,7 @@ int watch_notify(string &cmd, ostream &flog)
 
         if(wr == WAIT_TIMEOUT)
         {
-            nps.check_study_timeout();
+            nps.check_study_timeout_to_generate_jdf();
         }
         else if(wr == WAIT_IO_COMPLETION)
         {
