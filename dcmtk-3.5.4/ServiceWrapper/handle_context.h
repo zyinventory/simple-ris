@@ -306,6 +306,7 @@ namespace handle_context
 
         MSXML2::IXMLDOMDocument2* create_xmldom(const NOTIFY_FILE_CONTEXT &clc);
         void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const NOTIFY_FILE_CONTEXT &nfc);
+        void generate_replace_fields(const std::string &replace_fields_path, MSXML2::IXMLDOMDocument2 *pXMLDom);
 
     public:
         static xml_index *singleton_ptr;

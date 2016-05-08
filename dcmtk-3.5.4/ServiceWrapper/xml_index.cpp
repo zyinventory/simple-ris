@@ -75,10 +75,8 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const NOTIFY_FIL
         char filter[128];
         MSXML2::IXMLDOMElementPtr root = pXMLDom->documentElement;
         if(root == NULL)
-        {
-            cerr << "xml_index::add_instance() XMLDOM can't find associations element." << endl;
-            return;
-        }
+            throw runtime_error("xml_index::add_instance() XMLDOM can't find associations element.");
+
         if(strcmp(nfc.file.studyUID, nfc.study.studyUID) == 0)
         {
             root->setAttribute(L"accession_number", nfc.study.accessionNumber);
@@ -291,7 +289,97 @@ void xml_index::make_index(const NOTIFY_FILE_CONTEXT &nfc)
 
         if(pXMLDom) add_instance(pXMLDom, nfc);
     }
-    CATCH_COM_ERROR("xml_index::make_index()", *pflog)
+    CATCH_COM_ERROR("xml_index::make_index()", *pflog);
+}
+
+void xml_index::generate_replace_fields(const string &replace_fields_path, MSXML2::IXMLDOMDocument2 *pXMLDom)
+{
+    ostringstream outbuff;
+    try
+    {
+        if(pXMLDom == NULL) throw runtime_error("XMLDOM is NULL.");
+        MSXML2::IXMLDOMElementPtr root = pXMLDom->documentElement;
+        if(root == NULL) throw runtime_error("XMLDOM can't find root study element.");
+
+        _bstr_t studyUid(root->getAttribute(L"id").bstrVal);
+        if(studyUid.length() == 0) studyUid = L"";
+        outbuff << "StudyUID=" << (LPCSTR)studyUid << endl;
+
+        _bstr_t accessionNumber(root->getAttribute(L"accession_number").bstrVal);
+        if(accessionNumber.length() == 0) accessionNumber = L"";
+        outbuff << "AccessionNumber=" << (LPCSTR)accessionNumber << endl;
+
+        _bstr_t studyDate(root->getAttribute(L"date").bstrVal);
+        if(studyDate.length() == 0) studyDate = L"";
+        outbuff << "StudyDate=" << (LPCSTR)studyDate << endl;
+
+        _bstr_t studyTime(root->getAttribute(L"time").bstrVal);
+        if(studyTime.length() == 0) studyTime = L"";
+        outbuff << "StudyTime=" << (LPCSTR)studyTime << endl;
+
+        _bstr_t modality(root->getAttribute(L"modality").bstrVal);
+        if(modality.length() == 0) modality = L"";
+        outbuff << "Modality=" << (LPCSTR)modality << endl;
+
+        MSXML2::IXMLDOMElementPtr pat = root->selectSingleNode(L"patient");
+        if(pat == NULL) throw runtime_error("XMLDOM can't find patient element.");
+
+        _bstr_t patientId(pat->getAttribute(L"id").bstrVal);
+        if(patientId.length() == 0) patientId = L"";
+        outbuff << "PatientID=" << (LPCSTR)patientId << endl;
+
+        _bstr_t patientName(pat->getAttribute(L"name").bstrVal);
+        if(patientName.length() == 0) patientName = L"";
+        outbuff << "PatientName=" << (LPCSTR)patientName << endl;
+
+        _bstr_t sex(pat->getAttribute(L"sex").bstrVal);
+        if(sex.length() == 0) sex = L"";
+        if(sex == _bstr_t(L"M")) sex = L"ÄÐ";
+        else if(sex == _bstr_t(L"F")) sex = L"Å®";
+        else if(sex == _bstr_t(L"O")) sex = L"ÆäËû";
+        else sex = L"";
+        outbuff << "Gender=" << (LPCSTR)sex << endl;
+
+        _bstr_t birthday(pat->getAttribute(L"birthday").bstrVal);
+        if(birthday.length() == 0) birthday = L"";
+        string bd((LPCSTR)birthday);
+        if(bd.length() >= 8)
+        {
+            bd.insert(6, 1, '/');
+            bd.insert(4, 1, '/');
+        }
+        outbuff << "Birthday=" << bd << endl;
+
+        time_t now = 0;
+        struct tm tm_now;
+        time(&now);
+        int age = 0;
+        if(0 == localtime_s(&tm_now, &now))
+        {
+            age = atoi(bd.c_str());
+            if(age) age = 1900 + tm_now.tm_year - age;
+        }
+        outbuff << "Age=" << age << endl;
+    }
+    CATCH_COM_ERROR("xml_index::generate_replace_fields()", *pflog);
+
+    string fields_content(outbuff.str());
+    if(fields_content.length() == 0)
+    {
+        time_header_out(*pflog) << "xml_index::generate_replace_fields() failed, content is empty." << endl;
+        return;
+    }
+
+    ofstream fxml(replace_fields_path, ios_base::trunc | ios_base::out, _SH_DENYNO);
+    if(fxml.fail())
+    {
+        time_header_out(*pflog) << "xml_index::generate_replace_fields() open " << replace_fields_path << " failed." << endl;
+        return;
+    }
+    fxml << fields_content;
+    fxml.flush();
+    fxml.close();
+    cout << "trigger index_study_uid_fields " << replace_fields_path << endl;
 }
 
 bool xml_index::unload_and_sync_study(const std::string &study_uid)
@@ -317,10 +405,25 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
             fxml << XML_HEADER << (LPCSTR)it->second->documentElement->xml << endl;
             fxml.close();
 
-            cout << "trigger index_study_uid " << xml_path << endl;
+            cout << "trigger index_study_uid_xml " << xml_path << endl;
+
+            char *p = strrchr(xml_path, '.');
+            if(p)
+            {
+                *p = '\0';
+                strcat_s(xml_path, ".txt");
+                generate_replace_fields(xml_path, it->second);
+            }
 
             it->second->Release();
             map_xml.erase(study_uid);
+
+            if(p == NULL)
+            {
+                string msg("can't find '.' in ");
+                msg.append(xml_path);
+                throw runtime_error(msg);
+            }
             return true;
         }
         else
@@ -329,6 +432,6 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
             throw runtime_error(msg.append(xml_path).append(" error"));
         }
     }
-    CATCH_COM_ERROR("xml_index::unload_and_sync_study()", *pflog)
+    CATCH_COM_ERROR("xml_index::unload_and_sync_study()", *pflog);
     return false;
 }
