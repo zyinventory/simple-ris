@@ -530,6 +530,61 @@ COMMONLIB_API const char* detectMediaType(size_t *pSize)
 	}
 }
 
+static int CreateMapFields(map<string, string> &map_field, istream &ff, ostream &index_log, bool opt_verbose)
+{
+    char line[1024];
+    ff.getline(line, sizeof(line));
+    int cnt = 0;
+    while(ff.good())
+    {
+        if(strlen(line) <= 0) goto next_line;
+        char *p = strchr(line, '=');
+        if(p)
+        {
+            *p++ = '\0';
+            map_field[line] = p;
+        }
+        else
+        {
+            map_field[line] = string();
+        }
+        if(opt_verbose) index_log << "CreateMapFields() " << line << " " << p << endl;
+        ++cnt;
+next_line:
+        ff.getline(line, sizeof(line));
+    }
+    return cnt;
+}
+
+static map<string, string> settings;
+
+COMMONLIB_API int LoadSettings(const char *iniPath, ostream &oslog, bool opt_verbose)
+{
+    int lineCnt = 0;
+    ifstream fsetting(iniPath);
+    if(fsetting.good())
+    {
+        lineCnt = CreateMapFields(settings, fsetting, cerr, opt_verbose);
+        fsetting.close();
+    }
+    else if(opt_verbose)
+    {
+        time_header_out(oslog) <<  "LoadSettings() can't open " << iniPath << endl;
+    }
+    return lineCnt;
+}
+
+COMMONLIB_API size_t GetSetting(const string &key, char *buff, size_t buff_size)
+{
+    map<string, string>::iterator it = settings.find(key);
+    if(it == settings.end() || it->second.length() == 0) return 0;
+    if(buff == NULL) return it->second.length() + 1;
+    if(strcpy_s(buff, buff_size, it->second.c_str()))
+        return 0;
+    else
+        return it->second.length();
+}
+
 COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, const char *media)
 {
 	if(!strcmp(tag, "0020000d"))

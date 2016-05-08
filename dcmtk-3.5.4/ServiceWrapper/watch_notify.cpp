@@ -95,7 +95,7 @@ int watch_notify(string &cmd, ostream &flog)
     // start dcmqrscp.exe parent proc
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
     handle_proc *phproc = new handle_proc("", buff, cmd, "dcmqrscp", &flog);
-    DWORD gle = phproc->start_process(flog);
+    DWORD gle = phproc->start_process(true);
     if(gle)
     {
         displayErrorToCerr("watch_notify() handle_proc::create_process(dcmqrscp) at beginning", gle, &flog);
@@ -179,6 +179,7 @@ int watch_notify(string &cmd, ostream &flog)
         {
             HANDLE waited = pha[wr - WAIT_OBJECT_0];
             handle_compress *phcompr = NULL;
+            handle_ris_integration *pris = NULL;
             handle_proc *phproc = NULL;
             handle_dir *phdir = NULL;
             meta_notify_file *pb = map_handle_context.count(waited) ? map_handle_context[waited] : NULL;
@@ -226,7 +227,7 @@ int watch_notify(string &cmd, ostream &flog)
                         handle_study *phs = nps.find_handle_study(study_uid);
                         if(phs == NULL)
                             time_header_out(flog) << "watch_notify() src file " << nfc.src_notify_filename << " can't send action to dicomdir: missing study " << study_uid << endl;
-                        phd->send_compress_complete_notify(nfc, phs, flog); // phs->append_action(action_from_association(nfc)); 
+                        phd->send_compress_complete_notify(nfc, phs, flog); // phs->append_action(action_from_association(nfc));
                     }
                     else time_header_out(flog) << "watch_notify() set src file " << nfc.src_notify_filename << " complete failed: missing association " << assoc_id << endl;
                 }
@@ -258,7 +259,7 @@ int watch_notify(string &cmd, ostream &flog)
                 else if(phproc = dynamic_cast<handle_proc*>(pb))
                 {
                     time_header_out(flog) << "watch_notify() dcmqrscp encounter error, restart." << endl;
-                    gle = phproc->start_process(flog);
+                    gle = phproc->start_process(true);
                     if(gle)
                     {
                         displayErrorToCerr("watch_notify() handle_proc::create_process(dcmqrscp) restart", gle, &flog);
@@ -311,7 +312,7 @@ int watch_notify(string &cmd, ostream &flog)
                             handle_compress* compr_ptr = handle_compress::make_handle_compress(nfc, flog);
                             if(compr_ptr)
                             {
-                                if(compr_ptr->start_process(flog))
+                                if(compr_ptr->start_process(true))
                                 {   // failed
                                     time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << nfc.src_notify_filename << " " << nfc.file.filename << endl;
                                     delete compr_ptr;

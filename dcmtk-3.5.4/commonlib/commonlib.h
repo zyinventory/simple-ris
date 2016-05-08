@@ -169,6 +169,8 @@ COMMONLIB_API void ReleaseUniqueNoResource();
 
 COMMONLIB_API int scp_store_main_loop(const char *sessionId, bool verbose);
 COMMONLIB_API size_t in_process_sequence_dll(char *buff, size_t buff_size, const char *prefix);
+COMMONLIB_API int LoadSettings(const char *iniPath, std::ostream &oslog, bool opt_verbose);
+COMMONLIB_API size_t GetSetting(const std::string &key, char *buff, size_t buff_size);
 
 // common_public.cpp
 #define GetSignalInterruptValue GetSignalInterruptValue_dll

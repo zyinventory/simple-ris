@@ -9,12 +9,13 @@
 using namespace std;
 
 static int argcSV;
-static char **argvSV, timeBuffer[48];
+static char **argvSV, timeBuffer[48], ris_integration_header[] = "RisIntegration=";
 static bool startXCS = false, xcsFound = false;
 static ofstream flog;
 
 const char *dirmakerCommand;
 bool opt_verbose = false;
+char ris_integration[MAX_PATH] = "";
 
 static size_t checkDiskFreeSpaceInMB(const char * path)
 {
@@ -169,6 +170,8 @@ static int realMain(int argc, char **argv)
 	cmdStream.clear();
 	opt_verbose = (string::npos != cmd.find(" -v "));
     
+    LoadSettings("..\\etc\\settings.ini", flog, opt_verbose);
+
     return watch_notify(cmd, flog);
 }
 

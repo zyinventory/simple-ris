@@ -149,7 +149,6 @@ namespace handle_context
         handle_dir(HANDLE h, const std::string &assoc_id, const std::string &file, const std::string notify_filename, std::ostream *plog)
             : meta_notify_file(assoc_id, file, notify_filename, plog), handle(h), last_find_error(false), last_association_notify_filename(notify_filename),
             assoc_disconn(false), disconn_release(true), port(104) {};
-
         handle_dir(const handle_dir& o) : meta_notify_file(o), handle(o.handle), last_find_error(o.last_find_error),
             list_file(o.list_file), set_complete(o.set_complete), set_study(o.set_study), port(o.port), last_association_notify_filename(o.last_association_notify_filename),
             store_assoc_id(o.store_assoc_id), callingAE(o.callingAE), callingAddr(o.callingAE), calledAE(o.calledAE), calledAddr(o.calledAddr),
@@ -183,7 +182,8 @@ namespace handle_context
 
     public:
         handle_proc(const std::string &assoc_id, const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name, std::ostream *plog) 
-            : meta_notify_file(assoc_id, cwd, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name) { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
+            : meta_notify_file(assoc_id, cwd, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name)
+            { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
         handle_proc(const handle_proc& o) : meta_notify_file(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
             log_path(o.log_path), procinfo(o.procinfo) {};
 
@@ -195,7 +195,7 @@ namespace handle_context
         const std::string& get_exec_name() const { return exec_name; };
         const std::string& get_log_path() const { return log_path; };
         const PROCESS_INFORMATION& get_procinfo() const { return procinfo; };
-        int start_process(std::ostream &flog);
+        int start_process(bool out_redirect);
     };
 
     class handle_compress : public handle_proc
@@ -215,6 +215,23 @@ namespace handle_context
         NOTIFY_FILE_CONTEXT& get_notify_context() { return notify_ctx; };
     };
 
+    class handle_ris_integration : public handle_proc
+    {
+    private:
+        time_t last_access;
+
+        handle_ris_integration(const std::string &pat_id, const std::string &path, const std::string &cmd, const std::string &exec_prog_name, std::ostream *plog)
+            : handle_proc(pat_id, path, cmd, exec_prog_name, plog) { time(&last_access); };
+    public:
+        static bool make_handle_ris_integration(const std::string &patient, const std::string &prog_path, std::ostream &flog);
+        handle_ris_integration(const handle_ris_integration& r) : handle_proc(r), last_access(r.last_access) {};
+        handle_ris_integration& operator=(const handle_ris_integration &r);
+        void print_state() const;
+        const std::string& get_patient_id() const { return get_association_id(); };
+        time_t get_last_access() const { return last_access; };
+        time_t refresh_last_access() { return time(&last_access); };
+    };
+
     typedef struct _tag_PIPEINST
     {
 	    OVERLAPPED oOverlap;
@@ -228,7 +245,7 @@ namespace handle_context
     {
     private:
         LPPIPEINST pipe_context;
-        bool blocked;
+        bool blocked, ris_integration_start;
         std::string study_uid;
         std::string dicomdir_path;
         std::list<action_from_association> list_action;
@@ -239,12 +256,13 @@ namespace handle_context
     public:
         handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
             const std::string &dicomdir, const std::string &study, std::ostream *plog)
-            : handle_proc("", cwd, cmd, exec_prog_name, plog), pipe_context(NULL), dicomdir_path(dicomdir),
-            study_uid(study), blocked(false), last_association_action(ACTION_TYPE::INDEX_INSTANCE, cwd, false, plog)
+            : handle_proc("", cwd, cmd, exec_prog_name, plog), pipe_context(NULL), dicomdir_path(dicomdir), study_uid(study),
+            blocked(false), ris_integration_start(false), last_association_action(ACTION_TYPE::INDEX_INSTANCE, cwd, false, plog)
             { time(&last_idle_time); };
         handle_study(const handle_study &r) : handle_proc(r), pipe_context(r.pipe_context), study_uid(r.study_uid),
             dicomdir_path(r.dicomdir_path), set_association_path(r.set_association_path), list_action(r.list_action),
-            blocked(r.blocked), last_idle_time(r.last_idle_time), last_association_action(r.last_association_action) {};
+            blocked(r.blocked), ris_integration_start(r.ris_integration_start), last_idle_time(r.last_idle_time),
+            last_association_action(r.last_association_action) {};
         
         virtual ~handle_study();
         handle_study& operator=(const handle_study &r);

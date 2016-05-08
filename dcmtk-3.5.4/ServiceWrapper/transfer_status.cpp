@@ -472,7 +472,7 @@ handle_proc::~handle_proc()
 
 #define START_PROCESS_BUFF_SIZE 1024
 
-int handle_proc::start_process(std::ostream &flog)
+int handle_proc::start_process(bool out_redirect)
 {
     STARTUPINFO sinfo;
 	memset(&sinfo, 0, sizeof(STARTUPINFO));
@@ -481,40 +481,50 @@ int handle_proc::start_process(std::ostream &flog)
     if(procinfo.hThread) CloseHandle(procinfo.hThread);
     if(procinfo.hProcess) CloseHandle(procinfo.hProcess);
     memset(&procinfo, 0, sizeof(PROCESS_INFORMATION));
-
-	SECURITY_ATTRIBUTES logSA;
-	logSA.bInheritHandle = TRUE;
-	logSA.lpSecurityDescriptor = NULL;
-	logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
+    if(hlog && hlog != INVALID_HANDLE_VALUE) CloseHandle(hlog);
+    hlog = NULL;
 
 	HANDLE logFile = INVALID_HANDLE_VALUE;
     char buff[START_PROCESS_BUFF_SIZE];
-	size_t pos = GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", buff, START_PROCESS_BUFF_SIZE);
-    sprintf_s(buff + pos, START_PROCESS_BUFF_SIZE - pos, "%s_%x.txt", exec_name.c_str(), this);
+    if(out_redirect)
+    {
+	    SECURITY_ATTRIBUTES logSA;
+	    logSA.bInheritHandle = TRUE;
+	    logSA.lpSecurityDescriptor = NULL;
+	    logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
 
-	if(PrepareFileDir(buff))
-		logFile = CreateFile(buff, GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+        size_t pos = GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", buff, START_PROCESS_BUFF_SIZE);
+        sprintf_s(buff + pos, START_PROCESS_BUFF_SIZE - pos, "%s_%x.txt", exec_name.c_str(), this);
+	    if(PrepareFileDir(buff))
+		    logFile = CreateFile(buff, GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+	    if(logFile != INVALID_HANDLE_VALUE)
+	    {
+		    sinfo.dwFlags |= STARTF_USESTDHANDLES;
+		    sinfo.hStdOutput = logFile;
+		    sinfo.hStdError = logFile;
+		    sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+            log_path = buff;
+	    }
+    }
 
-	if(logFile != INVALID_HANDLE_VALUE)
-	{
-		sinfo.dwFlags |= STARTF_USESTDHANDLES;
-		sinfo.hStdOutput = logFile;
-		sinfo.hStdError = logFile;
-		sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-        log_path = buff;
-	}
     strcpy_s(buff, START_PROCESS_BUFF_SIZE, exec_cmd.c_str());
-    if( CreateProcess(NULL, buff, NULL, NULL, TRUE, CREATE_NEW_PROCESS_GROUP, NULL, get_path().c_str(), &sinfo, &procinfo) )
+    BOOL inheritance = out_redirect ? TRUE : FALSE;
+    if( CreateProcess(NULL, buff, NULL, NULL, inheritance, CREATE_NEW_PROCESS_GROUP, NULL, get_path().c_str(), &sinfo, &procinfo) )
 	{
-        if(FALSE == DuplicateHandle(GetCurrentProcess(), logFile, GetCurrentProcess(), &hlog, DUPLICATE_SAME_ACCESS, FALSE, DUPLICATE_CLOSE_SOURCE))
-            hlog = NULL;
-        if(opt_verbose) time_header_out(flog) << "handle_proc::start_process(" << exec_cmd << ") OK" << endl;
+        if(logFile != INVALID_HANDLE_VALUE)
+        {
+            if(FALSE == DuplicateHandle(GetCurrentProcess(), logFile, GetCurrentProcess(), &hlog, DUPLICATE_SAME_ACCESS, FALSE, 
+                DUPLICATE_CLOSE_SOURCE)) // logFile will be closed whether DuplicateHandle() successfully or not.
+                hlog = NULL;
+        }
+        if(opt_verbose) time_header_out(*pflog) << "handle_proc::start_process(" << exec_cmd << ") OK" << endl;
 		return 0;
 	}
 	else
     {
-        CloseHandle(logFile);
-        return displayErrorToCerr(__FUNCSIG__, GetLastError(), &flog);
+        DWORD gle = GetLastError();
+        if(logFile != INVALID_HANDLE_VALUE) CloseHandle(logFile);
+        return displayErrorToCerr(__FUNCSIG__, gle, &*pflog);
     }
 }
 
@@ -560,11 +570,72 @@ void handle_compress::print_state() const
     handle_proc::print_state();
 }
 
+handle_ris_integration& handle_ris_integration::operator=(const handle_ris_integration &r)
+{
+    handle_proc::operator=(r);
+    last_access = r.last_access;
+    return *this;
+}
+
+void handle_ris_integration::print_state() const
+{
+    *pflog << "handle_ris_integration::print_state() " << get_patient_id() << endl
+        << "\tlast_access: ";
+    
+    struct tm tm_last;
+    if(0 == localtime_s(&tm_last, &last_access))
+    {
+        char time_buf[32];
+        if(strftime(time_buf, sizeof(time_buf), "%Y/%m/%d %H:%M:%S", &tm_last))
+        {
+            *pflog << time_buf << endl;
+            goto convert_time_ok;
+        }
+    }
+    *pflog << last_access << endl;
+convert_time_ok:
+    handle_proc::print_state();
+}
+
+bool handle_ris_integration::make_handle_ris_integration(const string &patient, const string &prog_path, ostream &flog)
+{
+    char path[MAX_PATH], hash[9];
+    HashStr(patient.c_str(), hash, sizeof(hash));
+    sprintf_s(path, "%s\\pacs\\indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c", GetPacsBase(),
+        hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7]);
+    if(!MkdirRecursive(path))
+    {
+        time_header_out(flog) << "handle_ris_integration::make_handle_ris_integration() can't create dir " << path << endl;
+        return NULL;
+    }
+
+    string cmd(GetPacsBase());
+    cmd.append(1, '\\').append(prog_path).append(1, ' ').append(patient);
+    handle_ris_integration *pris = new handle_ris_integration(patient, path, cmd, "RisIntegration", &flog);
+    if(pris)
+    {
+        DWORD gle = pris->start_process(false);
+        if(gle)
+        {
+            displayErrorToCerr(__FUNCSIG__" start_process()", gle, &flog);
+            delete pris;
+            return false;
+        }
+        else
+        {
+            delete pris;
+            return true;
+        }
+    }
+    else return false;
+}
+
 handle_study& handle_study::operator=(const handle_study &r)
 {
     handle_proc::operator=(r);
     pipe_context = r.pipe_context;
     blocked = r.blocked;
+    ris_integration_start = r.ris_integration_start;
     last_idle_time = r.last_idle_time;
     last_association_action = r.last_association_action;
     study_uid = r.study_uid;
@@ -664,6 +735,15 @@ void handle_study::action_compress_ok(const string &filename, const string &xfer
         strcpy_s(it_clc->pnfc->file.xfer_new, xfer.c_str());
         xml_index::singleton_ptr->make_index(*it_clc->get_notify_file_context());
 
+        if(!ris_integration_start) // start handle_ris_integration once per study.
+        {
+            char ris_integration_prog[MAX_PATH];
+            if(GetSetting("RisIntegration", ris_integration_prog, sizeof(ris_integration_prog)))
+            {
+                ris_integration_start = handle_ris_integration::make_handle_ris_integration(it_clc->pnfc->file.patientID, ris_integration_prog, *pflog);
+                if(!ris_integration_start) time_header_out(*pflog) << __FUNCSIG__" start ris integration failed." << endl;
+            }
+        }
         // send notification of a file dicomdir and index OK to state dir
         stringstream output;
         output << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_COMPRESS_OK << endl;

@@ -295,6 +295,7 @@ void xml_index::make_index(const NOTIFY_FILE_CONTEXT &nfc)
 void xml_index::generate_replace_fields(const string &replace_fields_path, MSXML2::IXMLDOMDocument2 *pXMLDom)
 {
     ostringstream outbuff;
+    _bstr_t patientId;
     try
     {
         if(pXMLDom == NULL) throw runtime_error("XMLDOM is NULL.");
@@ -324,7 +325,7 @@ void xml_index::generate_replace_fields(const string &replace_fields_path, MSXML
         MSXML2::IXMLDOMElementPtr pat = root->selectSingleNode(L"patient");
         if(pat == NULL) throw runtime_error("XMLDOM can't find patient element.");
 
-        _bstr_t patientId(pat->getAttribute(L"id").bstrVal);
+        patientId = pat->getAttribute(L"id").bstrVal;
         if(patientId.length() == 0) patientId = L"";
         outbuff << "PatientID=" << (LPCSTR)patientId << endl;
 
@@ -362,6 +363,30 @@ void xml_index::generate_replace_fields(const string &replace_fields_path, MSXML
         outbuff << "Age=" << age << endl;
     }
     CATCH_COM_ERROR("xml_index::generate_replace_fields()", *pflog);
+
+    char ris_path[MAX_PATH];
+    if(GetSetting("RisIntegration", ris_path, sizeof(ris_path)))
+    {
+        char hash[9];
+        HashStr((LPCSTR)patientId, hash, sizeof(hash));
+        sprintf_s(ris_path, "%s\\pacs\\indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s_ris.txt", GetPacsBase(),
+            hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], (LPCSTR)patientId);
+        ifstream ris(ris_path);
+        if(ris.good())
+        {
+            char line[1024];
+            ris.getline(line, sizeof(line));
+            while(ris.good())
+            {
+                if(strlen(line) <= 0) goto ris_next_line;
+                outbuff << line << endl;
+ris_next_line:
+                ris.getline(line, sizeof(line));
+            }
+            ris.close();
+        }
+        else time_header_out(*pflog) << "xml_index::generate_replace_fields() open ris info failed: " << ris_path << endl;
+    }
 
     string fields_content(outbuff.str());
     if(fields_content.length() == 0)

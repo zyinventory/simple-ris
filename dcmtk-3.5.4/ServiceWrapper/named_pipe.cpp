@@ -320,7 +320,7 @@ handle_study* named_pipe_server::make_handle_study(const std::string &study_uid)
         phs = new handle_study(dicomdir, cmd, "dcmmkdir", dicomdir, study_uid, pflog);
         if(phs)
         {
-            if(0 == phs->start_process(*pflog)) map_study[study_uid] = phs;
+            if(0 == phs->start_process(true)) map_study[study_uid] = phs;
             else
             {
                 map_study.erase(study_uid);
@@ -347,7 +347,10 @@ named_pipe_server::~named_pipe_server()
         hPipeEvent = NULL;
     }
     if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::~named_pipe_server()" << endl;
-    for_each(map_study.begin(), map_study.end(), [](const STUDY_PAIR &p) { p.second->print_state(); delete p.second; });
+    for_each(map_study.begin(), map_study.end(), [](const STUDY_PAIR &p) {
+        p.second->print_state();
+        delete p.second;
+    });
 }
 
 void named_pipe_server::check_study_timeout_to_generate_jdf()
