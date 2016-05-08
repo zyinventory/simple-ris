@@ -90,6 +90,8 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
     return 0;
 }
 
+static const string jdf_debug_header("JDFLoadBalanceDebug");
+
 int watch_notify(string &cmd, ostream &flog)
 {
     // start dcmqrscp.exe parent proc
@@ -103,6 +105,13 @@ int watch_notify(string &cmd, ostream &flog)
     }
     if(opt_verbose) time_header_out(flog) << "watch_notify() dcmqrscp start" << endl;
     
+    bool jdf_debug = false;
+    if(GetSetting(jdf_debug_header, buff, sizeof(buff)))
+    {
+        int debug_flag = atoi(buff);
+        if(debug_flag) jdf_debug = true;
+    }
+
     xml_index::singleton_ptr = new xml_index(&flog);
 
     in_process_sequence_dll(buff, sizeof(buff), "");
@@ -169,11 +178,9 @@ int watch_notify(string &cmd, ostream &flog)
 
         if(wr == WAIT_TIMEOUT)
         {
-            nps.check_study_timeout_to_generate_jdf();
         }
         else if(wr == WAIT_IO_COMPLETION)
         {
-            ;
         }
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + hsize)
         {
@@ -342,7 +349,14 @@ int watch_notify(string &cmd, ostream &flog)
                 // else WAIT_TIMEOUT, compress process is too much.
             }
         }
-    }
+        // jdf
+        nps.check_study_timeout_to_generate_jdf();
+        ClearGenerateIndexLog();
+        TryPublishJDF(jdf_debug); // jdf_debug is controlled by JDFLoadBalanceDebug in settings.ini
+        const char *msg = GetGenerateIndexLog();
+        if(msg) time_header_out(flog) << "watch_notify() jdf work:" << endl << msg << endl;
+        ClearGenerateIndexLog();
+    } // end while
     if(GetSignalInterruptValue())
     {
         if(opt_verbose) time_header_out(flog) << "watch_notify() WaitForMultipleObjects() get Ctrl-C" << endl;

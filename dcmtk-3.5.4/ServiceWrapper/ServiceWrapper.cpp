@@ -9,13 +9,13 @@
 using namespace std;
 
 static int argcSV;
-static char **argvSV, timeBuffer[48], ris_integration_header[] = "RisIntegration=";
+static char buff[FILE_BUF_SIZE], **argvSV, ris_integration_header[] = "RisIntegration=";
 static bool startXCS = false, xcsFound = false;
 static ofstream flog;
 
 const char *dirmakerCommand;
 bool opt_verbose = false;
-char ris_integration[MAX_PATH] = "";
+int store_timeout = 15;  // default 15 sec
 
 static size_t checkDiskFreeSpaceInMB(const char * path)
 {
@@ -170,8 +170,14 @@ static int realMain(int argc, char **argv)
 	cmdStream.clear();
 	opt_verbose = (string::npos != cmd.find(" -v "));
     
-    LoadSettings("..\\etc\\settings.ini", flog, opt_verbose);
-
+    if(LoadSettings("..\\etc\\settings.ini", flog, opt_verbose))
+    {
+        if(GetSetting("StoreTimeout", buff, sizeof(buff)))
+        {
+            int timeout = atoi(buff);
+            if(timeout) store_timeout = timeout;
+        }
+    }
     return watch_notify(cmd, flog);
 }
 
@@ -212,13 +218,13 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	if(ChangeToPacsWebSub(COMMONLIB_PACS_BASE, sizeof(COMMONLIB_PACS_BASE))) return -3;
 
-	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", timeBuffer, sizeof(timeBuffer));
-	if(PrepareFileDir(timeBuffer))
+	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", buff, sizeof(buff));
+	if(PrepareFileDir(buff))
     {
-        flog.open(timeBuffer);
+        flog.open(buff);
         if(flog.fail())
         {
-            cerr << "ServiceWrapper open " << timeBuffer << " failed" << endl;
+            cerr << "ServiceWrapper open " << buff << " failed" << endl;
             return -4;
         }
     }

@@ -21,6 +21,26 @@ static string baseurl, downloadUrl, studyDatePath;
 
 COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
+static stringstream errstrm;
+static string generateIndexLog;
+COMMONLIB_API const char *GetGenerateIndexLog()
+{
+    if(generateIndexLog.length() == 0)
+    {
+        generateIndexLog = errstrm.str();
+        errstrm.str(string());
+    }
+    if(generateIndexLog.length())
+        return generateIndexLog.c_str();
+    else
+        return NULL;
+}
+COMMONLIB_API void ClearGenerateIndexLog()
+{
+    generateIndexLog.clear();
+    errstrm.str(string());
+}
+
 static string parsePatientName(string &patient)
 {
 	char outbuf[64];
@@ -1073,89 +1093,306 @@ COMMONLIB_API long long diskUsage(const char *pacsBase, const char *studyUID)
 	return filesizes;
 }
 
-COMMONLIB_API bool SelectValidPublisher(const char *ini_path, string &valid_publisher)
+// one job time is 250 secs
+#define ONE_JOB_TIME 250
+
+COMMONLIB_API bool SelectValidPublisher(const char *ini_path, char *valid_publisher, size_t buff_size, bool opt_verbose)
 {
+    map<string, int> pubs;
+
     CSimpleIni ini(false, false, false);
     //std::ifstream instream;
     //instream.open("..\\orders\\TDBStatus.txt", std::ifstream::in | std::ifstream::binary, _SH_DENYNO);
-	SI_Error rc = SI_OK;
-	for(int i = 0; i < 500; ++i)
-	{
-		rc = ini.LoadFile(ini_path);
-		if(rc >= 0) break;
-		Sleep(10);
-	}
+	SI_Error rc = ini.LoadFile(ini_path);
 	//instream.close();
     if (rc < 0) {
-		valid_publisher = "error:没有任务";
+        time_header_out(errstrm) << "SelectValidPublisher() 无法打开status文件 " << ini_path << endl;
+		strcpy_s(valid_publisher, buff_size, "error:无法打开status文件");
 		return false;
 	}
 	CSimpleIni::TNamesDepend sections;
 	ini.GetAllSections(sections);
 	CSimpleIni::TNamesDepend::iterator sec = sections.begin();
-	string default_publisher;
 	while(sec != sections.end())
 	{
-		string currentSection((*sec).pItem);
+		string currentSection(sec->pItem);
 		if(string::npos == currentSection.find("PUBLISHER", 0))
 		{
 			++sec;
 			continue;
 		}
-		CSimpleIni::TNamesDepend keys;
-		ini.GetAllKeys((*sec).pItem, keys);
-		CSimpleIni::TNamesDepend::iterator key = keys.begin();
-		bool valid = true;
-		long stack1 = 0, stack2 = 0, d1_status = -1, d1_life = 100, d2_status = -1, d2_life = 100;
+		int capacity = ONE_JOB_TIME * 2;
+		long stack1 = 0, stack2 = 0, d1_status = -1, d1_life_damage = 100, d2_status = -1, d2_life_damage = 100;
+
 		const char *pname = ini.GetValue(currentSection.c_str(), "NAME", NULL);
-		string name;
 		if(pname == NULL || *pname == '\0')
 		{
 			++sec;
 			continue;
 		}
-		else
-			name = pname;
+        
+        if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() publisher " << pname << " is found" << endl;
 
-		if(default_publisher.empty()) default_publisher = name;
-
+        CSimpleIni::TNamesDepend keys;
+		ini.GetAllKeys(sec->pItem, keys);
+		CSimpleIni::TNamesDepend::iterator key = keys.begin();
 		while(key != keys.end())
 		{
-			string currentKey((*key).pItem);
-			if(currentKey == "INFO1")
-			{
-				const char *pv = ini.GetValue(currentSection.c_str(), currentKey.c_str(), NULL);
-				valid = (pv == NULL || *pv == '\0');
-			}
-			else if(currentKey == "STACKER1") { stack1 = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 0); }
+			string currentKey(key->pItem);
+			if(currentKey == "STACKER1") { stack1 = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 0); }
 			else if(currentKey == "STACKER2") { stack2 = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 0); }
-			else if(0 == currentKey.find("INK_", 0)) { valid = (0 < ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1)); }
+			else if(0 == currentKey.find("INK_", 0))
+            {
+                if(0 >= ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1))
+                    capacity -= ONE_JOB_TIME * 2;
+            }
 			else if(currentKey == "PRINTER_STATUS")
 			{
 				long prn_status = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1);
-				valid = (prn_status == 1 || prn_status == 2 || prn_status == 3 || prn_status == 4 || prn_status == 6);
+				if(prn_status == 5 || prn_status == 7)
+                    capacity -= ONE_JOB_TIME * 2;
 			}
-			else if(currentKey == "MAINTENANCE_BOX_FREE_SPACE") { valid = (0 < ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1)); }
+			else if(currentKey == "MAINTENANCE_BOX_FREE_SPACE")
+            {
+                if(0 >= ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1))
+                    capacity -= ONE_JOB_TIME * 2;
+            }
 			else if(currentKey == "DRIVE1_STATUS") { d1_status = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1); }
 			else if(currentKey == "DRIVE2_STATUS") { d2_status = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), -1); }
-			else if(currentKey == "DRIVE1_LIFE") { d1_life = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 100); }
-			else if(currentKey == "DRIVE2_LIFE") { d2_life = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 100); }
-			if(!valid) break;
+			else if(currentKey == "DRIVE1_LIFE") { d1_life_damage = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 100); }
+			else if(currentKey == "DRIVE2_LIFE") { d2_life_damage = ini.GetLongValue(currentSection.c_str(), currentKey.c_str(), 100); }
+            
 			++key;
 		}
-		if(valid)
-		{
-			valid = ((stack1 + stack2) > 0 && ((d1_status == 1 && d1_life < 100) || (d2_status == 1 && d2_life < 100)));
-			if(valid)
-			{
-				valid_publisher = name;
-				return true;
-			}
-		}
-		++sec;
+
+		if(capacity > 0) {
+            if((stack1 + stack2) <= 0 )
+                capacity -= ONE_JOB_TIME * 2;
+        }
+        if(capacity > 0) {
+            if(d1_life_damage < 0 || d1_life_damage >= 99 || d1_status == 4 || d1_status == 5 || d1_status == 7)
+                capacity -= ONE_JOB_TIME;
+        }
+        if(capacity > 0) {
+            if(d2_life_damage < 0 || d2_life_damage >= 99 || d2_status == 4 || d2_status == 5 || d2_status == 7)
+                capacity -= ONE_JOB_TIME;
+        }
+        
+		if(capacity > 0)
+        {
+            if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() publisher " << pname << " is good, capacity is " << capacity << endl;
+            pubs[pname] = capacity;
+        }
+        else
+        {
+            if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() publisher " << pname << " is bad, capacity is " << capacity << endl;
+        }
+        ++sec;
 	}
-	valid_publisher = default_publisher.empty() ? "error:没有可用的刻录机" : default_publisher;
-	return false;
+    if(pubs.size() == 1)
+    {
+        strcpy_s(valid_publisher, buff_size, pubs.begin()->first.c_str());
+        if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() only one publisher " << valid_publisher << " is candidate" << endl;
+        return true;
+    }
+    else if(pubs.size() == 0)
+    {
+        strcpy_s(valid_publisher, buff_size, "error:没有可用的刻录机");
+        if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() none of publisher is candidate" << endl;
+        return false;
+    }
+
+    list<string> active_job;
+    sec = sections.begin();
+	while(sec != sections.end())
+    {
+        bool active = false;
+        string currentSection(sec->pItem);
+		if(string::npos != currentSection.find("ACTIVE_JOB", 0)) active = true;
+        if(active)
+        {
+            CSimpleIni::TNamesDepend keys;
+		    ini.GetAllKeys(sec->pItem, keys);
+		    CSimpleIni::TNamesDepend::iterator key = keys.begin();
+		    while(key != keys.end())
+		    {
+			    string currentKey(key->pItem);
+                if(string::npos != currentKey.find("JOB", 0))
+                {
+                    const char *job_name = ini.GetValue(currentSection.c_str(), currentKey.c_str());
+                    if(job_name && strlen(job_name))
+                    {
+                        if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() find active job " << job_name << endl;
+                        active_job.push_back(job_name);
+                    }
+                }
+                ++key;
+            }
+        }
+        ++sec;
+    }
+
+    for(list<string>::iterator it = active_job.begin(); it != active_job.end(); ++it)
+    {
+        const CSimpleIni::TKeyVal *psec = ini.GetSection(it->c_str());
+        if(psec)
+        {
+            CSimpleIni::TKeyVal::const_iterator pkey = psec->find(CSimpleIni::Entry("PUBLISHER"));
+            if(pkey != psec->end())
+            {
+                long remain = ini.GetLongValue(it->c_str(), "ESTIMATION_TIME_REMAIN", -1);
+                if(remain == -1)
+                {
+                    time_header_out(errstrm) << "SelectValidPublisher() active job " << *it << " has no ESTIMATION_TIME_REMAIN" << endl;
+                    strcpy_s(valid_publisher, buff_size, "error:任务没有预估剩余时间");
+                    return false;
+                }
+                else
+                {
+                    if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() active job " << *it << " remain " << remain << endl;
+                    map<string, int>::iterator itpub = pubs.find(pkey->second);
+                    if(itpub != pubs.end())
+                    {
+                        if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() publisher " << itpub->first << ": " << itpub->second << " - " << remain;
+                        itpub->second -= remain;
+                        if(opt_verbose) errstrm << " = " << itpub->second << endl;
+                    }
+                }
+            }
+            else
+            {
+                CSimpleIni::TKeyVal::const_iterator pstatus = psec->find(CSimpleIni::Entry("DETAIL_STATUS"));
+                if(pstatus != psec->end() && 0 == strcmp("1", pstatus->second))
+                {   // if DETAIL_STATUS == 1, it means job is receiving.
+                    if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() active job " << *it << " is receiving(status detail: 1)" << endl;
+                    strcpy_s(valid_publisher, buff_size, "error:正在接受任务");
+                    return false;
+                }
+                else
+                {
+                    time_header_out(errstrm) << "SelectValidPublisher() active job " << *it << " has no publisher, status detail: " << (pstatus == psec->end() ? "NULL" : pstatus->second) << endl;
+                }
+            }
+        }
+    }
+
+    multimap<int, string> ordered_pubs;
+    for(map<string, int>::iterator it = pubs.begin(); it != pubs.end(); ++it)
+    {
+        ordered_pubs.insert(pair<int, string>(it->second, it->first));
+    }
+
+    if(opt_verbose)
+    {
+        for_each(ordered_pubs.begin(), ordered_pubs.end(), [](const pair<int, string> &p) {
+            time_header_out(errstrm) << "SelectValidPublisher() publisher " << p.first << " is selected, capacity is " << p.second << endl;
+        });
+    }
+    pair<multimap<int, string>::iterator, multimap<int, string>::iterator > range = ordered_pubs.equal_range((--ordered_pubs.end())->first);
+    list<pair<int, string> > idle_list;
+    for(multimap<int, string>::iterator itsrc = range.first; itsrc != range.second; ++itsrc)
+        idle_list.push_back(*itsrc);
+    idle_list.sort([](const pair<int, string> &p1, const pair<int, string> &p2) {
+        return p1.second < p2.second;
+    });
+    if(opt_verbose) for_each(idle_list.begin(), idle_list.end(), [](const pair<int, string> &p) {
+        time_header_out(errstrm) << "SelectValidPublisher() idle_list " << p.second << endl;
+    });
+    strcpy_s(valid_publisher, buff_size, idle_list.begin()->second.c_str());
+    if(opt_verbose) time_header_out(errstrm) << "SelectValidPublisher() select publisher " << valid_publisher << endl;
+	return true;
+}
+
+static size_t find_jdf(const char *filter, list<string> &collector)
+{
+    WIN32_FIND_DATA wfd;
+    HANDLE hfind = FindFirstFile(filter, &wfd);
+    if(hfind == INVALID_HANDLE_VALUE) return collector.size();
+    do {
+        if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+        collector.push_back(wfd.cFileName);
+    } while(FindNextFile(hfind, &wfd));
+    FindClose(hfind);
+    return collector.size();
+}
+
+COMMONLIB_API bool TryPublishJDF(bool opt_verbose)
+{
+    list<string> candidate_jdf, exist_jdf;
+    string filter("..\\orders\\*.rjd");
+    if(find_jdf(filter.c_str(), exist_jdf))
+    {
+        if(opt_verbose)
+        {
+            time_header_out(errstrm) << "TryPublishJDF() some job has not been processed:" << endl;
+            for_each(exist_jdf.begin(), exist_jdf.end(), [](const string &str) {
+                errstrm << "TryPublishJDF() exist rjd: " << str << endl;
+            });
+        }
+        return false;
+    }
+    filter = "..\\orders\\*.jdf";
+    if(find_jdf(filter.c_str(), exist_jdf))
+    {
+        if(opt_verbose)
+        {
+            time_header_out(errstrm) << "TryPublishJDF() some job has not been processed:" << endl;
+            for_each(exist_jdf.begin(), exist_jdf.end(), [](const string &str) {
+                errstrm << "TryPublishJDF() exist jdf: " << str << endl;
+            });
+        }
+        return false;
+    }
+
+    filter = "..\\tdd\\*.jdf";
+    if(find_jdf(filter.c_str(), candidate_jdf) == 0)
+    {
+        //if(opt_verbose) errstrm << "TryPublishJDF() no candidate jdf" << endl;
+        return false;
+    }
+
+    filter = "..\\orders\\TDBStatus.txt";
+    char publisher[256];
+    if(SelectValidPublisher(filter.c_str(), publisher, sizeof(publisher), opt_verbose))
+    {
+        string src("..\\tdd\\"), dest("..\\orders\\");
+        candidate_jdf.sort();
+        list<string>::iterator it = candidate_jdf.begin();
+        src.append(*it);
+        dest.append(*it);
+
+        ofstream ofs(src.c_str(), ios_base::out | ios_base::app);
+		if(ofs.good())
+		{
+            ofs << "PUBLISHER=" << publisher << endl;
+			ofs.close();
+            if(rename(src.c_str(), dest.c_str()))
+            {
+                char msg[1024];
+                _strerror_s(msg, "");
+                time_header_out(errstrm) << "TryPublishJDF() move " << src << " to " << dest << " error " << msg << endl;
+                // mark bad jdf
+                dest = "..\\tdd\\";
+                dest.append(*it).append(".bad");
+                if(rename(src.c_str(), dest.c_str()))
+                {
+                    _strerror_s(msg, "");
+                    time_header_out(errstrm) << "TryPublishJDF() mark bad jdf(" << src << ") to " << dest << " error " << msg << endl;
+                }
+                return false;
+            }
+            else
+            {
+                if(opt_verbose) time_header_out(errstrm) << "TryPublishJDF() move " << src << " to " << dest << " OK" << endl;
+                return true;
+            }
+        }
+        else
+        {
+            displayErrorToCerr("TryPublishJDF() append publisher to jdf error", GetLastError(), &errstrm);
+        }
+    }
+    return false;
 }
 
 COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int licenseCnt, std::ostream &outputbuf)

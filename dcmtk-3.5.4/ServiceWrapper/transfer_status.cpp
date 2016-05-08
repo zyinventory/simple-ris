@@ -821,7 +821,7 @@ bool handle_study::is_time_out() const
     time(&now);
     if(last_association_action.is_disconnect() && list_action.size() == 0 && set_association_path.size() == 0)
     {
-        if(now - last_idle_time > 15) return true;
+        if(now - last_idle_time > store_timeout) return true;
     }
     else if(now - last_idle_time > 600) return true;
     return false;

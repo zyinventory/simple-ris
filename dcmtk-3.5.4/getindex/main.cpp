@@ -322,9 +322,9 @@ static bool generateJDF(Volume &vol, char *volbufNoSeq, const char *mediaType, c
 	ofstream ofs(jdfpath);
 	if(ofs.good())
 	{
-		string valid_publisher;
-		bool valid_found = SelectValidPublisher(TDB_STATUS, valid_publisher);
-		if(valid_found || valid_publisher.find("error:", 0) == string::npos)
+		char valid_publisher[256];
+		bool valid_found = SelectValidPublisher(TDB_STATUS, valid_publisher, sizeof(valid_publisher), false);
+		if(valid_found || strstr(valid_publisher, "error:") == NULL)
 			ofs << "PUBLISHER=" << valid_publisher << endl;
 		size_t jobpos = strlen(jobPrefix);
 		ofs << "JOB_ID=" << timeString << "_" << vol.sequence << endl;

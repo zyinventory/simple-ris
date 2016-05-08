@@ -160,7 +160,6 @@ COMMONLIB_API bool DeleteTree(const char *dirpath, std::ostream *ostrm = NULL);
 COMMONLIB_API bool deleteStudyFromIndex(const char *mode, const char *modeValue, const char *studyUid);
 COMMONLIB_API size_t extractStudyUid(char *buffer, const size_t bufferSize, const wchar_t *body);
 COMMONLIB_API errno_t SeriesInstancePath(const char *series, const std::string &instance, char *outputBuffer, size_t bufLen, char pathSeparator = '\\');
-COMMONLIB_API bool SelectValidPublisher(const char *ini_path, std::string &valid_publisher);
 COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int licenseCnt, std::ostream &outputbuf);
 COMMONLIB_API bool EncodeBase32(const char *src, char *enc, size_t enc_buf_size);
 COMMONLIB_API bool DecodeBase32(const char *src, char *dec, size_t dec_buf_size);
@@ -171,6 +170,10 @@ COMMONLIB_API int scp_store_main_loop(const char *sessionId, bool verbose);
 COMMONLIB_API size_t in_process_sequence_dll(char *buff, size_t buff_size, const char *prefix);
 COMMONLIB_API int LoadSettings(const char *iniPath, std::ostream &oslog, bool opt_verbose);
 COMMONLIB_API size_t GetSetting(const std::string &key, char *buff, size_t buff_size);
+COMMONLIB_API const char *GetGenerateIndexLog();
+COMMONLIB_API void ClearGenerateIndexLog();
+COMMONLIB_API bool SelectValidPublisher(const char *ini_path, char *valid_publisher, size_t buff_size, bool opt_verbose);
+COMMONLIB_API bool TryPublishJDF(bool opt_verbose);
 
 // common_public.cpp
 #define GetSignalInterruptValue GetSignalInterruptValue_dll
