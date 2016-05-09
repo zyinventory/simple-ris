@@ -22,11 +22,11 @@ xml_index* xml_index::singleton_ptr = NULL;
 xml_index& xml_index::operator=(const xml_index &r)
 {
     base_path::operator=(r);
-    copy(r.map_xml.cbegin(), r.map_xml.cend(), inserter(map_xml, map_xml.end()));
+    copy(r.map_xml_study.cbegin(), r.map_xml_study.cend(), inserter(map_xml_study, map_xml_study.end()));
     return *this;
 }
 
-MSXML2::IXMLDOMDocument2* xml_index::create_xmldom(const NOTIFY_FILE_CONTEXT &clc)
+MSXML2::IXMLDOMDocument2* xml_index::create_study_dom(const NOTIFY_FILE_CONTEXT &clc)
 {
     try
     {
@@ -64,7 +64,36 @@ MSXML2::IXMLDOMDocument2* xml_index::create_xmldom(const NOTIFY_FILE_CONTEXT &cl
             return pdom;
         }
     }
-    CATCH_COM_ERROR("xml_index::create_xmldom()", *pflog)
+    CATCH_COM_ERROR("xml_index::create_study_dom()", *pflog)
+    return NULL;
+}
+
+MSXML2::IXMLDOMDocument2* xml_index::create_assoc_dom(const NOTIFY_FILE_CONTEXT &nfc)
+{
+    try
+    {
+        MSXML2::IXMLDOMDocument2Ptr pXMLDom;
+        HRESULT hr = pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        if(SUCCEEDED(hr))
+        {
+            pXMLDom->preserveWhiteSpace = VARIANT_FALSE;
+	        pXMLDom->async = VARIANT_FALSE;
+            pXMLDom->appendChild(pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"receive_association", L"http://www.kurumi.com.cn/xsd/study"));
+            MSXML2::IXMLDOMElementPtr asso = pXMLDom->documentElement;
+            if(asso)
+            {
+                asso->setAttribute(L"id", nfc.assoc.id);
+                asso->setAttribute(L"calling_ae", nfc.assoc.callingAE);
+                asso->setAttribute(L"calling_address", nfc.assoc.callingAddr);
+                asso->setAttribute(L"called_ae", nfc.assoc.calledAE);
+                asso->setAttribute(L"called_address", nfc.assoc.calledAddr);
+                asso->setAttribute(L"port", nfc.assoc.port);
+            }
+            MSXML2::IXMLDOMDocument2 *pdom = pXMLDom.Detach();
+            return pdom;
+        }
+    }
+    CATCH_COM_ERROR("xml_index::create_assoc_dom()", *pflog)
     return NULL;
 }
 
@@ -125,7 +154,7 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const NOTIFY_FIL
                 root->appendChild(pat);
             }
             else
-                cerr << "add_instance() create patient node " << nfc.file.patientID << " failed." << endl;
+                *pflog << "add_instance() create patient node " << nfc.file.patientID << " failed." << endl;
         }
         if(pat && strcmp(nfc.patient.patientID, nfc.file.patientID) == 0)
         {
@@ -148,7 +177,7 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const NOTIFY_FIL
                 root->appendChild(series);
             }
             else
-                cerr << "add_instance() create series node " << nfc.file.seriesUID << " failed." << endl;
+                *pflog << "add_instance() create series node " << nfc.file.seriesUID << " failed." << endl;
         }
         if(series && strcmp(nfc.file.seriesUID, nfc.series.seriesUID) == 0)
         {
@@ -222,7 +251,7 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const NOTIFY_FIL
             }
             else
             {
-                cerr << "add_instance() create instance node " << nfc.file.instanceUID << " failed." << endl;
+                *pflog << "add_instance() create instance node " << nfc.file.instanceUID << " failed." << endl;
             }
 
             if(strlen(nfc.assoc.id) > 0)
@@ -262,15 +291,47 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const NOTIFY_FIL
     CATCH_COM_ERROR("xml_index::add_instance()", *pflog)
 }
 
+static void add_study_to_assoc_dom(MSXML2::IXMLDOMDocument2 *pAssocDom, const string &study_uid, const string &assoc_id) throw(...) 
+{
+    if(pAssocDom) // append study node(only id attr) to assoc dom
+    {
+        _bstr_t filter(L"study[@id='");
+        filter += study_uid.c_str();
+        filter += L"']";
+        MSXML2::IXMLDOMNodePtr ps = pAssocDom->documentElement->selectSingleNode(filter);
+        if(ps == NULL)
+        {
+            ps = pAssocDom->createNode(MSXML2::NODE_ELEMENT, L"study", L"http://www.kurumi.com.cn/xsd/study");
+            if(ps)
+            {
+                MSXML2::IXMLDOMNodePtr attr_id = pAssocDom->createAttribute(L"id");
+                attr_id->text = study_uid.c_str();
+                ps->attributes->setNamedItem(attr_id);
+                pAssocDom->documentElement->appendChild(ps);
+            }
+            else
+            {
+                string msg("can't create study node ");
+                throw runtime_error(msg.append(study_uid).append(" in assoc dom ").append(assoc_id));
+            }
+        }
+    }
+    else
+    {
+        string msg("can't find or create association dom ");
+        throw runtime_error(msg.append(assoc_id));
+    }
+}
+
 void xml_index::make_index(const NOTIFY_FILE_CONTEXT &nfc)
 {
-    string study_uid(nfc.file.studyUID);
-    MSXML2::IXMLDOMDocument2* pXMLDom = NULL;
+    string study_uid(nfc.file.studyUID), assoc_id(nfc.assoc.id);
+    MSXML2::IXMLDOMDocument2* pStudyDom = NULL, *pAssocDom = NULL;
     try
     {
-        XML_MAP::iterator it = map_xml.find(study_uid);
-        if(it != map_xml.end()) pXMLDom = it->second;
-        if(pXMLDom == NULL)
+        XML_MAP::iterator it = map_xml_study.find(study_uid);
+        if(it != map_xml_study.end()) pStudyDom = it->second;
+        if(pStudyDom == NULL)
         {
             string xml_path(GetPacsBase());
             xml_path.append("\\pacs\\indexdir\\0020000d\\").append(nfc.file.hash).append(1, '\\').append(study_uid).append(".xml");
@@ -279,15 +340,31 @@ void xml_index::make_index(const NOTIFY_FILE_CONTEXT &nfc)
             if(SUCCEEDED(hr))
             {
                 if(pdom->load(xml_path.c_str()) == VARIANT_TRUE)
-                    pXMLDom = pdom.Detach();
+                    pStudyDom = pdom.Detach();
                 else
-                    pXMLDom = create_xmldom(nfc);
+                    pStudyDom = create_study_dom(nfc);
 
-                if(pXMLDom) map_xml[study_uid] = pXMLDom;
+                if(pStudyDom) map_xml_study[study_uid] = pStudyDom;
             }
         }
 
-        if(pXMLDom) add_instance(pXMLDom, nfc);
+        // find or create assoc dom
+        it = map_xml_assoc.find(assoc_id);
+        if(it == map_xml_assoc.end())
+        {
+            pAssocDom = create_assoc_dom(nfc);
+            if(pAssocDom) map_xml_assoc[assoc_id] = pAssocDom;
+        }
+        else pAssocDom = it->second;
+        
+        if(pStudyDom) add_instance(pStudyDom, nfc);
+        else
+        {
+            string msg("can't find or create study dom ");
+            throw runtime_error(msg.append(study_uid));
+        }
+
+        add_study_to_assoc_dom(pAssocDom, study_uid, assoc_id);
     }
     CATCH_COM_ERROR("xml_index::make_index()", *pflog);
 }
@@ -416,10 +493,69 @@ ris_next_line:
     //cout << "trigger index_study_uid_fields " << replace_fields_path << endl;
 }
 
-bool xml_index::unload_and_sync_study(const std::string &study_uid)
+#define CLUSTER_SIZE 4096LL
+#define ALIGNED_SIZE(x) (((x) & ~(CLUSTER_SIZE - 1LL)) + CLUSTER_SIZE)
+static void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument2 *pXMLDom)
 {
-    XML_MAP::iterator it = map_xml.find(study_uid);
-    if(it == map_xml.end() || it->second == NULL) return false;
+    size_t series_count = 0, instance_count = 0;
+    __int64 size_aligned = 0;
+    MSXML2::IXMLDOMNodeListPtr seriesNodes = pXMLDom->documentElement->selectNodes(L"series");
+    while(MSXML2::IXMLDOMNodePtr s = seriesNodes->nextNode())
+    {
+        size_t current_instance_count = 0;
+        MSXML2::IXMLDOMNodeListPtr instances = s->selectNodes(L"instance[@state='new_in' or @state='on_in']");
+        while(MSXML2::IXMLDOMNodePtr n = instances->nextNode())
+        {
+            __int64 fs = _atoi64((LPCSTR)n->attributes->getNamedItem(L"file_size")->text);
+            size_aligned += ALIGNED_SIZE(fs);
+            ++current_instance_count;
+        }
+        MSXML2::IXMLDOMAttributePtr attr = pXMLDom->createAttribute(L"collection_state");
+        if(current_instance_count)
+        {
+            ++series_count;
+            instance_count += current_instance_count;
+            attr->PutnodeValue(L"include");
+        }
+        else
+            attr->PutnodeValue(L"exclude");
+        s->attributes->setNamedItem(attr);
+    }
+    pXMLDom->documentElement->setAttribute(L"study_size_cluster_aligned", size_aligned);
+    pXMLDom->documentElement->setAttribute(L"series_count", series_count);
+    pXMLDom->documentElement->setAttribute(L"instance_count", instance_count);
+}
+
+bool xml_index::save_receive(MSXML2::IXMLDOMDocument2 *pAssocDom)
+{
+    if(pAssocDom == NULL) return true;
+    try
+    {
+        string xmlpath((LPCSTR)pAssocDom->documentElement->attributes->getNamedItem(L"id")->text);
+        xmlpath.insert(8, 1, '/');
+        xmlpath.insert(6, 1, '/');
+        xmlpath.insert(4, 1, '/');
+        xmlpath.insert(0, "indexdir/receive/");
+        xmlpath.append(".xml");
+        if(PrepareFileDir(xmlpath.c_str()))
+        {
+            ofstream fxml(xmlpath.c_str(), ios_base::trunc | ios_base::out, _SH_DENYNO);
+            if(fxml.good())
+            {
+                fxml << XML_HEADER << (LPCSTR)pAssocDom->xml << endl;
+                fxml.close();
+            }
+        }
+        pAssocDom->Release();
+        return true;
+    }
+    CATCH_COM_ERROR("xml_index::save_receive()", *pflog);
+    return false;
+}
+
+bool xml_index::save_study(const string &study_uid, MSXML2::IXMLDOMDocument2 *pStudyDom)
+{
+    if(pStudyDom == NULL) return true;
     try
     {
         char xml_path[MAX_PATH], hash[9];
@@ -436,7 +572,7 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
         ofstream fxml(xml_path, ios_base::trunc | ios_base::out, _SH_DENYNO);
         if(fxml.good())
         {
-            fxml << XML_HEADER << (LPCSTR)it->second->documentElement->xml << endl;
+            fxml << XML_HEADER << (LPCSTR)pStudyDom->documentElement->xml << endl;
             fxml.close();
 
             //cout << "trigger index_study_uid_xml " << xml_path << endl;
@@ -446,17 +582,7 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
             {
                 *p = '\0';
                 strcat_s(xml_path, ".txt");
-                generate_replace_fields(xml_path, it->second);
-            }
-
-            it->second->Release();
-            map_xml.erase(study_uid);
-
-            if(p == NULL)
-            {
-                string msg("can't find '.' in ");
-                msg.append(xml_path);
-                throw runtime_error(msg);
+                generate_replace_fields(xml_path, pStudyDom);
             }
             return true;
         }
@@ -466,6 +592,76 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
             throw runtime_error(msg.append(xml_path).append(" error"));
         }
     }
+    CATCH_COM_ERROR("xml_index::save_study()", *pflog);
+    return false;
+}
+
+bool xml_index::unload_and_sync_study(const std::string &study_uid)
+{
+    XML_MAP::iterator its = map_xml_study.find(study_uid);
+    if(its == map_xml_study.end() || its->second == NULL) return false;
+    MSXML2::IXMLDOMDocument2 *pStudyDom = its->second;
+
+    try
+    {
+        char xml_path[MAX_PATH];
+
+        calculate_size_cluster_aligned(pStudyDom);
+
+        // try complete association
+        _bstr_t filter_not_complete(L"study[not(@hash_prefix)]"), filter(L"study[@id='");
+        filter += study_uid.c_str();
+        filter += L"']";
+        XML_MAP::iterator ita = map_xml_assoc.begin();
+        while(ita != map_xml_assoc.end())
+        {
+            MSXML2::IXMLDOMNodePtr ps = ita->second->documentElement->selectSingleNode(filter);
+            if(ps)
+            {
+                ita->second->documentElement->removeChild(ps);
+                // shallow copy study node
+                MSXML2::IXMLDOMNodePtr study = pStudyDom->documentElement->cloneNode(VARIANT_FALSE);
+                if(study) ita->second->documentElement->appendChild(study);
+            }
+            
+            MSXML2::IXMLDOMNodeListPtr nodes = ita->second->documentElement->selectNodes(filter_not_complete);
+            if(nodes->length == 0) // association is complete
+            {
+                if(save_receive(ita->second))
+                    ita = map_xml_assoc.erase(ita);
+            }
+            else ++ita;
+        }
+
+        if(save_study(study_uid, pStudyDom))
+        {
+            pStudyDom->Release();
+            map_xml_study.erase(its);
+            return true;
+        }
+        else throw runtime_error("can't save study");
+    }
     CATCH_COM_ERROR("xml_index::unload_and_sync_study()", *pflog);
     return false;
+}
+
+xml_index::~xml_index()
+{
+    XML_MAP::iterator it = map_xml_study.begin();
+    while(it != map_xml_study.end())
+    {
+        save_study(it->first, it->second);
+        if(it->second) it->second->Release();
+        time_header_out(*pflog) << "xml_index::~xml_index() remain study " << it->first << endl;
+        it = map_xml_study.erase(it);
+    }
+
+    it = map_xml_assoc.begin();
+    while(it != map_xml_assoc.end())
+    {
+        save_receive(it->second);
+        if(it->second) it->second->Release();
+        time_header_out(*pflog) << "xml_index::~xml_index() remain association " << it->first << endl;
+        it = map_xml_assoc.erase(it);
+    }
 }

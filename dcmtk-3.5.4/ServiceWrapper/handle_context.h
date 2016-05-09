@@ -320,9 +320,10 @@ namespace handle_context
     class xml_index : public base_path
     {
     private:
-        XML_MAP map_xml;
+        XML_MAP map_xml_study, map_xml_assoc;
 
-        MSXML2::IXMLDOMDocument2* create_xmldom(const NOTIFY_FILE_CONTEXT &clc);
+        MSXML2::IXMLDOMDocument2* create_study_dom(const NOTIFY_FILE_CONTEXT &nfc);
+        MSXML2::IXMLDOMDocument2* create_assoc_dom(const NOTIFY_FILE_CONTEXT &nfc);
         void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const NOTIFY_FILE_CONTEXT &nfc);
         void generate_replace_fields(const std::string &replace_fields_path, MSXML2::IXMLDOMDocument2 *pXMLDom);
 
@@ -330,9 +331,12 @@ namespace handle_context
         static xml_index *singleton_ptr;
 
         xml_index(std::ostream *plog) : base_path("", plog) { if(plog == NULL) plog = &std::cerr; };
-        xml_index(const xml_index &r) : base_path(r), map_xml(r.map_xml) {};
+        xml_index(const xml_index &r) : base_path(r), map_xml_study(r.map_xml_study) {};
+        virtual ~xml_index();
         xml_index& operator=(const xml_index &r);
         void make_index(const NOTIFY_FILE_CONTEXT &nfc);
+        bool save_receive(MSXML2::IXMLDOMDocument2 *pAssocDom);
+        bool save_study(const std::string &study_uid, MSXML2::IXMLDOMDocument2 *pStudyDom);
         bool unload_and_sync_study(const std::string &study_uid);
     };
 }
