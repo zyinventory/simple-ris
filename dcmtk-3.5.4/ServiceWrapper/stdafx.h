@@ -45,6 +45,7 @@ void send_all_compress_ok_notify(const std::string &association_base, std::ostre
 int x_www_form_codec_encode_to_ostream(const char *str, std::ostream *output);
 
 extern bool opt_verbose;
+extern bool debug_mode;
 extern int store_timeout;
 extern handle_context::NOTIFY_LIST compress_queue;
 

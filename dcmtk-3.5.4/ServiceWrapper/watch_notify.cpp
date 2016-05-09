@@ -90,7 +90,7 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
     return 0;
 }
 
-static const string jdf_debug_header("JDFLoadBalanceDebug");
+static const string debug_mode_header("DebugMode");
 
 int watch_notify(string &cmd, ostream &flog)
 {
@@ -105,11 +105,10 @@ int watch_notify(string &cmd, ostream &flog)
     }
     if(opt_verbose) time_header_out(flog) << "watch_notify() dcmqrscp start" << endl;
     
-    bool jdf_debug = false;
-    if(GetSetting(jdf_debug_header, buff, sizeof(buff)))
+    if(GetSetting(debug_mode_header, buff, sizeof(buff)))
     {
         int debug_flag = atoi(buff);
-        if(debug_flag) jdf_debug = true;
+        if(debug_flag) debug_mode = true;
     }
 
     xml_index::singleton_ptr = new xml_index(&flog);
@@ -212,7 +211,7 @@ int watch_notify(string &cmd, ostream &flog)
                     if(opt_verbose)
                     {
                         time_header_out(flog) << "watch_notify() compress proc exit:" << endl;
-                        phcompr->print_state();
+                        if(debug_mode) phcompr->print_state();
                     }
                     delete phcompr;
                     
@@ -247,13 +246,13 @@ int watch_notify(string &cmd, ostream &flog)
                         {
                             map_handle_context.erase(waited);
                             if(opt_verbose) time_header_out(flog) << "watch_notify() association " << phdir->get_association_id() << " complete, erease from map_handle_context." << endl;
-                            // close monitor handle, all_compress_ok_notify is a comment.
+                            // close monitor handle, all_compress_ok_notify is not processed.
                             phdir->send_all_compress_ok_notify_and_close_handle(flog);
                             phdir->broadcast_action_to_all_study(nps);
                             if(opt_verbose)
                             {
                                 time_header_out(flog) << "watch_notify() handle_dir exit:" << endl;
-                                phdir->print_state();
+                                if(debug_mode) phdir->print_state();
                             }
                             delete phdir;
 
@@ -352,9 +351,11 @@ int watch_notify(string &cmd, ostream &flog)
         // jdf
         nps.check_study_timeout_to_generate_jdf();
         ClearGenerateIndexLog();
-        TryPublishJDF(jdf_debug); // jdf_debug is controlled by JDFLoadBalanceDebug in settings.ini
+        TryPublishJDF(debug_mode); // debug_mode is controlled by DebugMode in settings.ini
+#ifdef _DEBUG
         const char *msg = GetGenerateIndexLog();
         if(msg) time_header_out(flog) << "watch_notify() jdf work:" << endl << msg << endl;
+#endif
         ClearGenerateIndexLog();
     } // end while
     if(GetSignalInterruptValue())
@@ -375,7 +376,7 @@ clean_child_proc:
     for(HANDLE_MAP::iterator it = map_handle_context.begin(); it != map_handle_context.end(); ++it)
     {
         handle_dir *pha = dynamic_cast<handle_dir*>(it->second);
-        if(pha) pha->print_state();
+        if(debug_mode && pha) pha->print_state();
         delete it->second;
     }
     return gle;

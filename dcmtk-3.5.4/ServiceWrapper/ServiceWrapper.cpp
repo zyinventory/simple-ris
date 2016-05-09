@@ -14,7 +14,7 @@ static bool startXCS = false, xcsFound = false;
 static ofstream flog;
 
 const char *dirmakerCommand;
-bool opt_verbose = false;
+bool opt_verbose = false, debug_mode = false;
 int store_timeout = 15;  // default 15 sec
 
 static size_t checkDiskFreeSpaceInMB(const char * path)

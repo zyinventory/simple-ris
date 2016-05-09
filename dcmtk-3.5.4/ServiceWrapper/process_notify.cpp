@@ -27,7 +27,7 @@ int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_co
             time_header_out(flog) << "Unexpected empty patientID " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
         else
         {
-            if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp << endl;
+            if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp << endl;
             x_www_form_codec<char>::decode(temp.c_str(), lc.file.patientID, sizeof(lc.file.patientID));
         }
         break;
@@ -35,28 +35,28 @@ int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_co
         cmdstrm >> lc.file.studyUID;
         if(strlen(lc.file.studyUID) == 0)
             time_header_out(flog) << "Unexpected empty studyUID " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
-        else if(opt_verbose)
+        else if(debug_mode)
             time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.studyUID << endl;
         break;
     case 0x0020000E:
         cmdstrm >> lc.file.seriesUID;
         if(strlen(lc.file.seriesUID) == 0)
             time_header_out(flog) << "Unexpected empty seriesUID " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
-        else if(opt_verbose)
+        else if(debug_mode)
             time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.seriesUID << endl;
         break;
     case 0x00080018:
         cmdstrm >> lc.file.instanceUID;
         if(strlen(lc.file.instanceUID) == 0)
             time_header_out(flog) << "Unexpected empty instanceUID " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
-        else if(opt_verbose)
+        else if(debug_mode)
             time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.instanceUID << endl;
         break;
     case 0x00020010:
         cmdstrm >> lc.file.xfer >> lc.file.isEncapsulated;
         if(strlen(lc.file.xfer) == 0)
             time_header_out(flog) << "Unexpected empty xfer " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
-        else if(opt_verbose)
+        else if(debug_mode)
             time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.xfer << " " << lc.file.isEncapsulated << endl;
         break;
     default:
@@ -88,13 +88,13 @@ int cmd_patient(const std::string &type, std::istringstream &cmdstrm, handle_con
         else
         {
             x_www_form_codec<char>::decode(temp_patients_name.c_str(), lc.patient.patientsName, sizeof(lc.patient.patientsName));
-            if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp_patients_name << endl;
+            if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp_patients_name << endl;
         }
         break;
     case 0x00100030:
         cmdstrm >> lc.patient.birthday;
         dirty = true;
-        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.birthday << endl;
+        if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.birthday << endl;
         break;
     case 0x00100040:
         cmdstrm >> lc.patient.sex;
@@ -104,17 +104,17 @@ int cmd_patient(const std::string &type, std::istringstream &cmdstrm, handle_con
             lc.patient.sex[1] = '\0';
         }
         else if(strlen(lc.patient.patientID) == 0) dirty = true;
-        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.sex << endl;
+        if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.sex << endl;
         break;
     case 0x00101020:
         cmdstrm >> lc.patient.height;
         dirty = true;
-        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.height << endl;
+        if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.height << endl;
         break;
     case 0x00101030:
         cmdstrm >> lc.patient.weight;
         dirty = true;
-        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.weight << endl;
+        if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.weight << endl;
         break;
     default:
         {
@@ -142,18 +142,18 @@ int cmd_study(const std::string &type, std::istringstream &cmdstrm, handle_conte
     case 0x00080020:
         cmdstrm >> lc.study.studyDate;
         dirty = true;
-        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.study.studyDate << endl;
+        if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.study.studyDate << endl;
         break;
     case 0x00080030:
         cmdstrm >> lc.study.studyTime;
         dirty = true;
-        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.study.studyTime << endl;
+        if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.study.studyTime << endl;
         break;
     case 0x00080050:
         cmdstrm >> temp;
         dirty = true;
         x_www_form_codec<char>::decode(temp.c_str(), lc.study.accessionNumber, sizeof(lc.study.accessionNumber));
-        if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp << endl;
+        if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp << endl;
         break;
     default:
         {
@@ -185,7 +185,7 @@ int cmd_series(const std::string &type, std::istringstream &cmdstrm, handle_cont
         else
         {
             dirty = true;
-            if(opt_verbose) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.series.modality << endl;
+            if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.series.modality << endl;
         }
         break;
     default:

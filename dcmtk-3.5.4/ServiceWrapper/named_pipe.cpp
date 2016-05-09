@@ -348,7 +348,7 @@ named_pipe_server::~named_pipe_server()
     }
     if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::~named_pipe_server()" << endl;
     for_each(map_study.begin(), map_study.end(), [](const STUDY_PAIR &p) {
-        p.second->print_state();
+        if(debug_mode) p.second->print_state();
         delete p.second;
     });
 }
@@ -364,7 +364,7 @@ void named_pipe_server::check_study_timeout_to_generate_jdf()
             if(opt_verbose)
             {
                 time_header_out(*pflog) << "named_pipe_server::check_study_timeout_to_generate_jdf() study timeout: " << phs->get_study_uid() << endl;
-                phs->print_state();
+                if(debug_mode) phs->print_state();
             }
             if(phs->get_last_association_action().is_auto_publish())
             {
