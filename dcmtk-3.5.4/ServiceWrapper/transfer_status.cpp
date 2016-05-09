@@ -347,14 +347,11 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
             set_complete.insert(filename); // complete ack self
             if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify() recieve compress complete notify " << filename << "(" << src_notify_file << ")." << endl;
         }
-        else if(tag == NOTIFY_ALL_COMPRESS_OK)
-            set_complete.insert(filename);
-        else
-            time_header_out(flog) << "handle_dir::process_notify() ignore ack file " << filename << endl
-                << cmd << " " << hex << uppercase << tag << " ..." << endl;
+        else if(tag == NOTIFY_ALL_COMPRESS_OK) set_complete.insert(filename);
+        else time_header_out(flog) << "handle_dir::process_notify() ignore ack file " << filename << endl
+            << cmd << " " << hex << uppercase << tag << " ..." << endl;
     }
-    else
-        time_header_out(flog) << "handle_dir::process_notify() ignore " << filename << endl;
+    else time_header_out(flog) << "handle_dir::process_notify() ignore " << filename << endl;
 
     if(ifs.is_open()) ifs.close();
     return 0;
@@ -493,17 +490,31 @@ int handle_proc::start_process(bool out_redirect)
 	    logSA.lpSecurityDescriptor = NULL;
 	    logSA.nLength = sizeof(SECURITY_ATTRIBUTES);
 
-        size_t pos = GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_", buff, START_PROCESS_BUFF_SIZE);
-        sprintf_s(buff + pos, START_PROCESS_BUFF_SIZE - pos, "%s_%x.txt", exec_name.c_str(), this);
-	    if(PrepareFileDir(buff))
-		    logFile = CreateFile(buff, GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-	    if(logFile != INVALID_HANDLE_VALUE)
+        in_process_sequence_dll(buff, sizeof(buff), "pacs_log\\");
+        string logFilePath(buff);
+        string::size_type pos = logFilePath.find('\\');
+        pos +=5;
+        logFilePath.insert(pos, 1, '\\');
+        pos +=3;
+        logFilePath.insert(pos, 1, '\\');
+        pos +=3;
+        logFilePath.insert(pos, 1, '\\').append(1, '_').append(exec_name).append(".txt");
+
+        if(PrepareFileDir(logFilePath.c_str()))
+            logFile = CreateFile(logFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+	    if(logFile == INVALID_HANDLE_VALUE)
+        {
+            string msg(__FUNCSIG__" create log file failed: ");
+            msg.append(logFilePath);
+            displayErrorToCerr(msg.c_str(), GetLastError(), pflog);
+        }
+        else
 	    {
 		    sinfo.dwFlags |= STARTF_USESTDHANDLES;
 		    sinfo.hStdOutput = logFile;
 		    sinfo.hStdError = logFile;
 		    sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-            log_path = buff;
+            log_path = logFilePath;
 	    }
     }
 
@@ -730,7 +741,7 @@ void handle_study::action_compress_ok(const string &filename, const string &xfer
         [&filename](const action_from_association &lc){ return lc.pnfc && filename.compare(lc.pnfc->file.unique_filename) == 0; });
     if(it_clc != list_action.end())
     {
-        cout << "trigger make_dicomdir " << study_uid << "\\" << it_clc->pnfc->file.filename << endl;
+        //cout << "trigger make_dicomdir " << study_uid << "\\" << it_clc->pnfc->file.filename << endl;
 
         strcpy_s(it_clc->pnfc->file.xfer_new, xfer.c_str());
         xml_index::singleton_ptr->make_index(*it_clc->get_notify_file_context());
@@ -744,45 +755,6 @@ void handle_study::action_compress_ok(const string &filename, const string &xfer
                 if(!ris_integration_start) time_header_out(*pflog) << __FUNCSIG__" start ris integration failed." << endl;
             }
         }
-        // send notification of a file dicomdir and index OK to state dir
-        stringstream output;
-        output << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_COMPRESS_OK << endl;
-        output << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << it_clc->pnfc->file_seq
-            << " " << it_clc->pnfc->file.filename << " " << it_clc->pnfc->file.unique_filename << endl;
-        output << NOTIFY_LEVEL_INSTANCE << " 00100020 ";
-        x_www_form_codec_encode_to_ostream(it_clc->pnfc->file.patientID, &output);
-        output << endl;
-        output << NOTIFY_LEVEL_INSTANCE << " 0020000D " << it_clc->pnfc->file.studyUID << endl;
-        output << NOTIFY_LEVEL_INSTANCE << " 0020000E " << it_clc->pnfc->file.seriesUID << endl;
-        output << NOTIFY_LEVEL_INSTANCE << " 00080018 " << it_clc->pnfc->file.instanceUID << endl;
-        output << NOTIFY_LEVEL_INSTANCE << " 00020010 " << it_clc->pnfc->file.xfer << " " << it_clc->pnfc->file.isEncapsulated << " " << it_clc->pnfc->file.xfer_new << endl;
-        output << NOTIFY_LEVEL_PATIENT << " 00100010 ";
-        x_www_form_codec_encode_to_ostream(it_clc->pnfc->patient.patientsName, &output);
-        output << endl;
-        output << NOTIFY_LEVEL_PATIENT << " 00100030 " << it_clc->pnfc->patient.birthday << endl;
-        output << NOTIFY_LEVEL_PATIENT << " 00100040 " << it_clc->pnfc->patient.sex << endl;
-        output << NOTIFY_LEVEL_PATIENT << " 00101020 " << it_clc->pnfc->patient.height << endl;
-        output << NOTIFY_LEVEL_PATIENT << " 00101030 " << it_clc->pnfc->patient.weight << endl;
-        output << NOTIFY_LEVEL_STUDY << " 00080020 " << it_clc->pnfc->study.studyDate << endl;
-        output << NOTIFY_LEVEL_STUDY << " 00080030 " << it_clc->pnfc->study.studyTime << endl;
-        output << NOTIFY_LEVEL_STUDY << " 00080050 ";
-        x_www_form_codec_encode_to_ostream(it_clc->pnfc->study.accessionNumber, &output);
-        output << endl;
-        output << NOTIFY_LEVEL_SERIES << " 00080060 " << it_clc->pnfc->series.modality << endl;
-        string notify = output.str();
-        output.str("");
-
-        char notify_file_name[MAX_PATH];
-        size_t pos = in_process_sequence_dll(notify_file_name, sizeof(notify_file_name), STATE_DIR);
-        sprintf_s(notify_file_name + pos, sizeof(notify_file_name) - pos, "_%s.dfc", NOTIFY_ACKN_TAG);
-        ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out);
-        if(ntf.good())
-        {
-            ntf << notify ;
-            ntf.close();
-        }
-        else time_header_out(*pflog) << notify;
-
         // this instance is all OK, erase it from queue
         list_action.erase(it_clc);
     }

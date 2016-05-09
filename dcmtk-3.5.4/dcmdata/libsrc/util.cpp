@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <sys/timeb.h>
@@ -38,7 +39,7 @@ size_t in_process_sequence(char *buff, size_t buff_size, const char *prefix)
     size_t sf_size = strftime(buff + buff_used, buff_size - buff_used, "%Y%m%d%H%M%S", &localtime);
     if(sf_size == 0) return 0;
     buff_used += sf_size;
-    int sp_size = sprintf_s(buff + buff_used, buff_size - buff_used, ".%03hd-%lld-%x", 
+    int sp_size = sprintf_s(buff + buff_used, buff_size - buff_used, "_%03hd-%lld-%x", 
         storeTimeThis.millitm, current_sequence_val_diff, _getpid());
     if(sp_size == -1) return 0;
     buff_used += sp_size;

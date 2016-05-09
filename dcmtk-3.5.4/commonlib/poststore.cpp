@@ -568,7 +568,9 @@ static int CreateMapFields(map<string, string> &map_field, istream &ff, ostream 
         {
             map_field[line] = string();
         }
+#ifdef _DEBUG
         if(opt_verbose) index_log << "CreateMapFields() " << line << " " << p << endl;
+#endif
         ++cnt;
 next_line:
         ff.getline(line, sizeof(line));
@@ -584,7 +586,7 @@ COMMONLIB_API int LoadSettings(const char *iniPath, ostream &oslog, bool opt_ver
     ifstream fsetting(iniPath);
     if(fsetting.good())
     {
-        lineCnt = CreateMapFields(settings, fsetting, cerr, opt_verbose);
+        lineCnt = CreateMapFields(settings, fsetting, oslog, opt_verbose);
         fsetting.close();
     }
     else if(opt_verbose)
@@ -641,6 +643,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 				ofs << "COPIES=1" << endl;
 				ofs << "DATA=" << pacsBase << "\\viewer" << endl;
 				ofs << "DATA=" << buffer << endl;
+                ofs << "DATA=" << buffer << ".dir\tDICOMDIR" << endl;
 				ofs << "VOLUME_LABEL=SMARTPUB" << endl;
 				ofs << "LABEL=" << pacsBase << "\\tdd\\patientInfo.tdd" << endl;
 				ofs << "REPLACE_FIELD=" << fieldsPath << endl;
