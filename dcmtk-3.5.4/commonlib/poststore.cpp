@@ -615,7 +615,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
         char jobIdBuf[41] = "", hashBuf[9];
 		__int64 hashStudy = HashStr(tagValue, hashBuf, sizeof(hashBuf));
         in_process_sequence_dll(jobIdBuf, sizeof(jobIdBuf), "job_");
-		sprintf_s(buffer, BUFF_SIZE, "%s\\tdd\\%s.jdf", pacsBase.c_str(), jobIdBuf);
+		sprintf_s(buffer, BUFF_SIZE, "%s\\orders_notify\\%s.jdf", pacsBase.c_str(), jobIdBuf);
 
 		string jdfPath(buffer);
         sprintf_s(buffer, BUFF_SIZE, "%s\\pacs\\%s\\%s\\%c%c\\%c%c\\%c%c\\%c%c\\%s.txt", pacsBase.c_str(), indexBase.c_str(), tag,
@@ -1347,7 +1347,7 @@ COMMONLIB_API bool TryPublishJDF(bool opt_verbose)
         return false;
     }
 
-    filter = "..\\tdd\\*.jdf";
+    filter = "..\\orders_balance\\*.jdf";
     if(find_jdf(filter.c_str(), candidate_jdf) == 0)
     {
         //if(opt_verbose) errstrm << "TryPublishJDF() no candidate jdf" << endl;
@@ -1358,7 +1358,7 @@ COMMONLIB_API bool TryPublishJDF(bool opt_verbose)
     char publisher[256];
     if(SelectValidPublisher(filter.c_str(), publisher, sizeof(publisher), opt_verbose))
     {
-        string src("..\\tdd\\"), dest("..\\orders\\");
+        string src("..\\orders_balance\\"), dest("..\\orders\\");
         candidate_jdf.sort();
         list<string>::iterator it = candidate_jdf.begin();
         src.append(*it);
@@ -1375,7 +1375,7 @@ COMMONLIB_API bool TryPublishJDF(bool opt_verbose)
                 _strerror_s(msg, "");
                 time_header_out(errstrm) << "TryPublishJDF() move " << src << " to " << dest << " error " << msg << endl;
                 // mark bad jdf
-                dest = "..\\tdd\\";
+                dest = "..\\orders_balance\\";
                 dest.append(*it).append(".bad");
                 if(rename(src.c_str(), dest.c_str()))
                 {

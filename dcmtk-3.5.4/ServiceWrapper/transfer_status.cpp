@@ -97,11 +97,20 @@ handle_dir::~handle_dir()
     if(meta_file.length())
     {
         meta_file.insert(0, 1, '\\').insert(0, NOTIFY_BASE);
-        if(_unlink(meta_file.c_str()))
+        char newname[MAX_PATH];
+        strcpy_s(newname, meta_file.c_str());
+        char *p = strrchr(newname, '.');
+        if(p)
         {
-            char msg[1024];
-            strerror_s(msg, errno);
-            time_header_out(*pflog) << __FUNCSIG__" _unlink(" << meta_file << ") failed: " << msg << endl;
+            ++p;
+            *p = '\0';
+            strcat_s(newname, "txt");
+            if(rename(meta_file.c_str(), newname))
+            {
+                char msg[1024];
+                strerror_s(msg, errno);
+                time_header_out(*pflog) << __FUNCSIG__" rename(" << meta_file << ", " << newname << ") failed: " << msg << endl;
+            }
         }
     }
 }
