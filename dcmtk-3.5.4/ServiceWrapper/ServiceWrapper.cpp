@@ -178,6 +178,8 @@ static int realMain(int argc, char **argv)
             if(timeout) store_timeout = timeout;
         }
     }
+    if(GetSetting("ACSETimeout", buff, sizeof(buff))) cmd.append(" -ta ").append(buff);
+
     return watch_notify(cmd, flog);
 }
 
