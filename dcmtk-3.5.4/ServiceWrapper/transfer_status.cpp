@@ -416,24 +416,29 @@ void handle_dir::send_all_compress_ok_notify_and_close_handle(ostream &flog)
 
 void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps) const
 {
+    action_from_association *paaa = NULL;
+    if(assoc_disconn)
+    {
+        ACTION_TYPE type = NO_ACTION;
+        if(auto_publish != "MANUAL") type = BURN_PER_STUDY;
+        paaa = new action_from_association(type, get_path(), disconn_release, pflog);
+    }
+    else
+    {
+        time_header_out(*pflog) << "handle_dir::broadcast_action_to_all_study() failed: association " << get_association_id() << " is not disconnected." << endl;
+        return;
+    }
+
     for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
     {
         handle_study *phs = nps.find_handle_study(*it);
         if(phs)
         {
-            if(assoc_disconn)
-            {
-                action_from_association *paaa = NULL;
-                ACTION_TYPE type = NO_ACTION;
-                if(auto_publish != "MANUAL") type = BURN_PER_STUDY;
-                paaa = new action_from_association(type, get_path(), disconn_release, pflog);
-                DWORD gle = phs->append_action(*paaa);
-                delete paaa;
-            }
-            else time_header_out(*pflog) << "handle_dir::broadcast_action_to_all_study() " << *it << " : association is not disconnected." << endl;
+            DWORD gle = phs->append_action(*paaa);
         }
         else time_header_out(*pflog) << "handle_dir::broadcast_action_to_all_study() can't find study " << *it << endl;
     }
+    if(paaa) delete paaa;
 }
 
 handle_proc& handle_proc::operator=(const handle_proc &r)
@@ -681,6 +686,19 @@ handle_study::~handle_study()
         pipe_context = NULL;
     }
     xml_index::singleton_ptr->unload_and_sync_study(study_uid);
+    
+    string notify_old_path;
+    char path_buff[MAX_PATH];
+    int pos = sprintf_s(path_buff, "%s\\orders_study\\", GetPacsBase());
+    notify_old_path = path_buff;
+    pos += in_process_sequence_dll(path_buff + pos, sizeof(path_buff) - pos, "");
+    notify_old_path.append(study_uid).append(".ini");
+    sprintf_s(path_buff + pos, sizeof(path_buff) - pos, "_%s.txt", study_uid.c_str());
+    if(rename(notify_old_path.c_str(), path_buff))
+    {
+        strerror_s(path_buff, errno);
+        time_header_out(*pflog) << __FUNCSIG__" rename " << notify_old_path << " failed: " << path_buff << endl;
+    }
 }
 
 DWORD handle_study::append_action(const action_from_association &action)
@@ -688,6 +706,126 @@ DWORD handle_study::append_action(const action_from_association &action)
     list_action.push_back(action);
     if(blocked) return write_message_to_pipe();
     return 0;
+}
+
+static int CreateMapFieldsLocal(map<string, string> &map_field, istream &ff, ostream &index_log, bool opt_verbose)
+{
+    char line[1024];
+    ff.getline(line, sizeof(line));
+    int cnt = 0;
+    while(ff.good())
+    {
+        if(strlen(line) <= 0) goto next_line;
+        char *p = strchr(line, '=');
+        if(p)
+        {
+            *p++ = '\0';
+            map_field[line] = p;
+        }
+        else
+        {
+            map_field[line] = string();
+        }
+#ifdef _DEBUG
+        if(opt_verbose) index_log << "CreateMapFieldsLocal() " << line << " " << p << endl;
+#endif
+        ++cnt;
+next_line:
+        ff.getline(line, sizeof(line));
+    }
+    return cnt;
+}
+
+bool handle_study::open_study_lock_file(map<string, string> &map_ini)
+{
+    string study_notify_path(GetPacsBase());
+    study_notify_path.append("\\orders_study\\").append(study_uid).append(".ini");
+    if(_access(study_notify_path.c_str(), 6))
+    {
+        errno_t en = errno;
+        if(en == ENOENT) return true;
+        else
+        {
+            char msg[1024];
+            strerror_s(msg, en);
+            time_header_out(*pflog) << __FUNCSIG__" failed: access " << study_notify_path << " : " << msg << endl;
+        }
+    }
+    else
+    {
+        ifstream sfs(study_notify_path.c_str(), ios_base::in, _SH_DENYWR);
+        if(sfs.good())
+        {
+            CreateMapFieldsLocal(map_ini, sfs, *pflog, opt_verbose);
+            sfs.close();
+            return true;
+        }
+        else
+        {
+            string msg(__FUNCSIG__" open ");
+            displayErrorToCerr(msg.append(study_notify_path).c_str(), GetLastError(), pflog);
+        }
+    }
+
+    return false;
+}
+
+void handle_study::save_and_close_lock_file(std::map<std::string, std::string> &map_ini)
+{
+    string study_notify_path(GetPacsBase());
+    study_notify_path.append("\\orders_study\\").append(study_uid).append(".ini");
+    ofstream sfs(study_notify_path, ios_base::out | ios_base::trunc, _SH_DENYWR);
+    if(sfs.good())
+    {
+        map<string, string>::iterator itm = map_ini.begin();
+        while(itm != map_ini.end())
+        {
+            if(itm->second.length())
+            {
+                sfs << itm->first << "=" << itm->second << endl;
+                ++itm;
+            }
+            else
+            {
+                time_header_out(*pflog) << __FUNCSIG__" state empty error: " << itm->first << endl;
+                itm = map_ini.erase(itm);
+            }
+        }
+        sfs.close();
+    }
+    else
+        time_header_out(*pflog) << __FUNCSIG__" failed: can't refresh " << study_notify_path << endl;
+}
+
+bool handle_study::insert_association_path(const std::string &assoc_path)
+{
+    bool insert_result = set_association_path.insert(assoc_path).second;
+
+    map<string, string> map_ini;
+    bool loadOK = open_study_lock_file(map_ini);
+
+    for(set<string>::const_iterator it = set_association_path.cbegin(); it != set_association_path.cend(); ++it)
+    {
+        map<string, string>::iterator itm = map_ini.find(*it);
+        if(itm == map_ini.end()) map_ini[*it] = "ALIVE";
+    }
+
+    if(loadOK) save_and_close_lock_file(map_ini);
+
+    return insert_result;
+}
+
+void handle_study::remove_association_path(const string &assoc_path)
+{
+    set_association_path.erase(assoc_path);
+
+    map<string, string> map_ini;
+    bool loadOK = open_study_lock_file(map_ini);
+    
+    map<string, string>::iterator itm = map_ini.find(assoc_path);
+    if(itm != map_ini.end()) map_ini[assoc_path] = "OFF";
+
+    if(loadOK) save_and_close_lock_file(map_ini);
 }
 
 DWORD handle_study::write_message_to_pipe()
@@ -730,7 +868,7 @@ DWORD handle_study::write_message_to_pipe()
                 else *pflog << " abort." << endl;
             }
 
-            set_association_path.erase(it->get_path());
+            remove_association_path(it->get_path());
             if(opt_verbose) time_header_out(*pflog) << "handle_study::write_message_to_pipe() erease_association " << study_uid << endl
                 << "\tand erease assoc " << it->get_path() << endl;
             break;

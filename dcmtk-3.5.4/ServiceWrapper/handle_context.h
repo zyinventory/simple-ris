@@ -252,6 +252,8 @@ namespace handle_context
         std::set<std::string> set_association_path;
         time_t last_idle_time;
         action_from_association last_association_action;
+        bool open_study_lock_file(std::map<std::string, std::string> &map_ini);
+        void save_and_close_lock_file(std::map<std::string, std::string> &map_ini);
 
     public:
         handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
@@ -274,7 +276,8 @@ namespace handle_context
         const std::string& get_dicomdir_path() const { return dicomdir_path; };
         const action_from_association& get_last_association_action() const { return last_association_action; };
         const std::set<std::string>& get_set_association_path() const { return set_association_path; };
-        bool insert_association_path(const std::string &assoc_path) { return set_association_path.insert(assoc_path).second; };
+        bool insert_association_path(const std::string &assoc_path);
+        void remove_association_path(const std::string &assoc_path);
         //DWORD instance_add_to_dicomdir_ok(const std::string &filename, const std::string &xfer_new, LPOVERLAPPED_COMPLETION_ROUTINE write_complete_callback, std::ostream &flog);
         DWORD append_action(const action_from_association &action);
         bool is_time_out() const;
