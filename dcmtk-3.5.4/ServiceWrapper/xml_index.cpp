@@ -738,7 +738,6 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
     if(its == map_xml_study.end() || its->second == NULL) return false;
     try
     {
-        char xml_path[MAX_PATH];
         MSXML2::IXMLDOMDocument2Ptr pStudyDom;
         HRESULT hr = pStudyDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
         if(FAILED(hr)) throw runtime_error("can't create IXMLDOMDocument2Ptr");
