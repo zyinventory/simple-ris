@@ -19,6 +19,19 @@ using namespace handle_context;
 
 xml_index* xml_index::singleton_ptr = NULL;
 
+static MSXML2::IXMLDOMNode *shallow_copy_study(MSXML2::IXMLDOMNode *root)
+{
+    MSXML2::IXMLDOMNodePtr study = root->cloneNode(VARIANT_FALSE);
+    if(study)
+    {
+        MSXML2::IXMLDOMNodePtr patient = root->selectSingleNode(L"patient");
+        if(patient) study->appendChild(patient->cloneNode(VARIANT_TRUE));
+        return study.Detach();
+    }
+    else
+        return NULL;
+}
+
 xml_index& xml_index::operator=(const xml_index &r)
 {
     base_path::operator=(r);
@@ -567,23 +580,22 @@ bool xml_index::save_study(const string &study_uid, MSXML2::IXMLDOMDocument2 *pS
             sprintf_s(xml_path + pos, sizeof(xml_path) - pos, " mkdir error", study_uid.c_str());
             throw runtime_error(xml_path);
         }
-        sprintf_s(xml_path + pos, sizeof(xml_path) - pos, "\\%s.xml", study_uid.c_str());
+        sprintf_s(xml_path + pos, sizeof(xml_path) - pos, "\\%s.txt", study_uid.c_str());
+        
+        generate_replace_fields(xml_path, pStudyDom);
 
+        char *p = strrchr(xml_path, '.');
+        if(p) // replace .txt to .xml
+        {
+            *p = '\0';
+            strcat_s(xml_path, ".xml");
+        }
         ofstream fxml(xml_path, ios_base::trunc | ios_base::out, _SH_DENYNO);
         if(fxml.good())
         {
             fxml << XML_HEADER << (LPCSTR)pStudyDom->documentElement->xml << endl;
             fxml.close();
-
             //cout << "trigger index_study_uid_xml " << xml_path << endl;
-
-            char *p = strrchr(xml_path, '.');
-            if(p)
-            {
-                *p = '\0';
-                strcat_s(xml_path, ".txt");
-                generate_replace_fields(xml_path, pStudyDom);
-            }
             return true;
         }
         else
@@ -596,17 +608,149 @@ bool xml_index::save_study(const string &study_uid, MSXML2::IXMLDOMDocument2 *pS
     return false;
 }
 
+bool xml_index::save_index_study_date(MSXML2::IXMLDOMDocument2 *pDomStudy)
+{
+    try
+    {
+        MSXML2::IXMLDOMNodePtr study = shallow_copy_study(pDomStudy->documentElement);
+        if(study == NULL) throw logic_error("shallow_copy_study() return NULL");
+        MSXML2::IXMLDOMNodePtr dateNode = study->attributes->getNamedItem(L"date");
+        _bstr_t attr_value;
+        if(dateNode && dateNode->text.length()) attr_value = dateNode->text;
+        else attr_value = L"19700102";
+        string xml_path((LPCSTR)attr_value);
+        xml_path.insert(6, 1, '\\').insert(4, 1, '\\').insert(0, "\\pacs\\indexdir\\00080020\\").insert(0, GetPacsBase()).append(".xml");
+        if(!PrepareFileDir(xml_path.c_str())) throw logic_error(xml_path.insert(0, "PrepareFileDir ").append(" failed"));
+        MSXML2::IXMLDOMDocument2Ptr pDom;
+        pDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        errno_t en = _access_s(xml_path.c_str(), 6);
+        if(en == ENOENT)
+        {   // not exist
+            pDom->appendChild(pDom->createNode(MSXML2::NODE_ELEMENT, L"study_date", L"http://www.kurumi.com.cn/xsd/study"));
+        }
+        else if(en == 0)
+        {   // exist, rw OK
+            if(VARIANT_FALSE == pDom->load(xml_path.c_str()))
+                throw logic_error(xml_path.insert(0, "load exist xml ").append(" failed"));
+        }
+        else
+        {   // other error: EACCES EINVAL
+            char msg[1024] = " ";
+            strerror_s(msg + 1, sizeof(msg) - 1, en);
+            throw logic_error(xml_path.insert(0, "open xml ").append(msg));
+        }
+        if(pDom == NULL || pDom->documentElement == NULL)
+            throw logic_error(xml_path.insert(0, "open xml ").append(" failed"));
+        
+        _bstr_t query_exist_study(L"study[@id='");
+        query_exist_study += pDomStudy->documentElement->getAttribute(L"id").bstrVal;
+        query_exist_study += "']";
+        if(MSXML2::IXMLDOMNodePtr exist_study = pDom->documentElement->selectSingleNode(query_exist_study))
+            pDom->documentElement->removeChild(exist_study);
+        pDom->documentElement->appendChild(study);
+
+        ofstream fxml(xml_path.c_str(), ios_base::trunc | ios_base::out, _SH_DENYNO);
+        if(fxml.good())
+        {
+            fxml << XML_HEADER << (LPCSTR)pDom->documentElement->xml << endl;
+            fxml.close();
+            //cout << "trigger index_study_date " << xml_path << endl;
+        }
+        else throw runtime_error(xml_path.insert(0, "save ").append(" error"));
+        return true;
+    }
+    CATCH_COM_ERROR("save_index_study_date()", cerr)
+    return false;
+}
+
+bool xml_index::save_index_patient(MSXML2::IXMLDOMDocument2 *pDomStudy)
+{
+    try
+    {
+        MSXML2::IXMLDOMNodePtr study = shallow_copy_study(pDomStudy->documentElement);
+        if(study == NULL) throw logic_error("shallow_copy_study() return NULL");
+        MSXML2::IXMLDOMNodePtr patient = study->selectSingleNode(L"patient");
+        if(patient == NULL) throw logic_error("shallow_copy_study()'s patient node is NULL");
+
+        _bstr_t hash_prefix, encoded;
+        MSXML2::IXMLDOMNodePtr hash_prefix_attr = patient->attributes->getNamedItem(L"hash_prefix");
+        if(hash_prefix_attr == NULL) throw logic_error("shallow_copy_study()'s patient[prefix] attr is NULL");
+        hash_prefix = hash_prefix_attr->text;
+        if(hash_prefix.length() == 0) throw logic_error("shallow_copy_study()'s patient[prefix] value is NULL");
+        string hash_prefix_str((LPCSTR)hash_prefix);
+        replace(hash_prefix_str.begin(), hash_prefix_str.end(), '/', '\\');
+
+        MSXML2::IXMLDOMNodePtr encoded_attr = patient->attributes->getNamedItem(L"encoded");
+        if(encoded_attr == NULL) throw logic_error("shallow_copy_study()'s patient[encoded] attr is NULL");
+        encoded = encoded_attr->text;
+        if(encoded.length() == 0) throw logic_error("shallow_copy_study()'s patient[encoded] value is NULL");
+
+        string xml_path(GetPacsBase());
+        xml_path.append("\\pacs\\indexdir\\00100020\\").append(hash_prefix_str)
+            .append(1, '\\').append((LPCSTR)encoded).append(".xml");
+        if(!PrepareFileDir(xml_path.c_str())) throw logic_error(xml_path.insert(0, "PrepareFileDir ").append(" failed"));
+
+        MSXML2::IXMLDOMDocument2Ptr pDom;
+        pDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        errno_t en = _access_s(xml_path.c_str(), 6);
+        if(en == ENOENT)
+        {   // not exist
+            pDom->appendChild(pDom->createNode(MSXML2::NODE_ELEMENT, L"patient_all_study", L"http://www.kurumi.com.cn/xsd/study"));
+        }
+        else if(en == 0)
+        {   // exist, rw OK
+            if(VARIANT_FALSE == pDom->load(xml_path.c_str()))
+                throw logic_error(xml_path.insert(0, "load exist xml ").append(" failed"));
+        }
+        else
+        {   // other error: EACCES EINVAL
+            char msg[1024] = " ";
+            strerror_s(msg + 1, sizeof(msg) - 1, en);
+            throw logic_error(xml_path.insert(0, "open xml ").append(msg));
+        }
+        if(pDom == NULL || pDom->documentElement == NULL)
+            throw logic_error(xml_path.insert(0, "open xml ").append(" failed"));
+        
+        _bstr_t query_exist_study(L"study[@id='");
+        query_exist_study += pDomStudy->documentElement->getAttribute(L"id").bstrVal;
+        query_exist_study += "']";
+        if(MSXML2::IXMLDOMNodePtr exist_study = pDom->documentElement->selectSingleNode(query_exist_study))
+            pDom->documentElement->removeChild(exist_study);
+        pDom->documentElement->appendChild(study);
+
+        ofstream fxml(xml_path.c_str(), ios_base::trunc | ios_base::out, _SH_DENYNO);
+        if(fxml.good())
+        {
+            fxml << XML_HEADER << (LPCSTR)pDom->documentElement->xml << endl;
+            fxml.close();
+            //cout << "trigger index_patient " << xml_path << endl;
+        }
+        else throw runtime_error(xml_path.insert(0, "save ").append(" error"));
+        return true;
+    }
+    CATCH_COM_ERROR("save_index_patient()", cerr)
+    return false;
+}
+
 bool xml_index::unload_and_sync_study(const std::string &study_uid)
 {
     XML_MAP::iterator its = map_xml_study.find(study_uid);
     if(its == map_xml_study.end() || its->second == NULL) return false;
-    MSXML2::IXMLDOMDocument2 *pStudyDom = its->second;
-
     try
     {
         char xml_path[MAX_PATH];
+        MSXML2::IXMLDOMDocument2Ptr pStudyDom;
+        HRESULT hr = pStudyDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        if(FAILED(hr)) throw runtime_error("can't create IXMLDOMDocument2Ptr");
 
-        calculate_size_cluster_aligned(pStudyDom);
+        calculate_size_cluster_aligned(its->second);
+
+        if(save_study(study_uid, its->second))
+        {
+            pStudyDom.Attach(its->second); // ensure its->second shall release ptr
+            map_xml_study.erase(its);
+        }
+        else throw runtime_error("can't save study");
 
         // try complete association
         _bstr_t filter_not_complete(L"study[not(@hash_prefix)]"), filter(L"study[@id='");
@@ -615,31 +759,28 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
         XML_MAP::iterator ita = map_xml_assoc.begin();
         while(ita != map_xml_assoc.end())
         {
+            //replace study node in receive_association.
             MSXML2::IXMLDOMNodePtr ps = ita->second->documentElement->selectSingleNode(filter);
             if(ps)
             {
                 ita->second->documentElement->removeChild(ps);
                 // shallow copy study node
-                MSXML2::IXMLDOMNodePtr study = pStudyDom->documentElement->cloneNode(VARIANT_FALSE);
+                MSXML2::IXMLDOMNodePtr study = shallow_copy_study(pStudyDom->documentElement);
                 if(study) ita->second->documentElement->appendChild(study);
             }
             
+            // if all study nodes are complete, association is complete.
             MSXML2::IXMLDOMNodeListPtr nodes = ita->second->documentElement->selectNodes(filter_not_complete);
             if(nodes->length == 0) // association is complete
             {
-                if(save_receive(ita->second))
-                    ita = map_xml_assoc.erase(ita);
+                if(save_receive(ita->second)) ita = map_xml_assoc.erase(ita);
             }
             else ++ita;
         }
 
-        if(save_study(study_uid, pStudyDom))
-        {
-            pStudyDom->Release();
-            map_xml_study.erase(its);
-            return true;
-        }
-        else throw runtime_error("can't save study");
+        save_index_study_date(pStudyDom);
+        save_index_patient(pStudyDom);
+        return true;
     }
     CATCH_COM_ERROR("xml_index::unload_and_sync_study()", *pflog);
     return false;

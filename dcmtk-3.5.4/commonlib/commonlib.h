@@ -174,6 +174,7 @@ COMMONLIB_API const char *GetGenerateIndexLog();
 COMMONLIB_API void ClearGenerateIndexLog();
 COMMONLIB_API bool SelectValidPublisher(const char *ini_path, char *valid_publisher, size_t buff_size, bool opt_verbose);
 COMMONLIB_API bool TryPublishJDF(bool opt_verbose);
+COMMONLIB_API int UTF8ToGBK(unsigned char *lpUTF8Str, char *lpGBKStr, int nGBKStrLen);
 
 // common_public.cpp
 #define GetSignalInterruptValue GetSignalInterruptValue_dll

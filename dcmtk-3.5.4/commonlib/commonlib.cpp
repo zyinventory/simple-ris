@@ -34,6 +34,31 @@ COMMONLIB_API bool IsASCII(const char *str)
   return isAscii;
 }
 
+COMMONLIB_API int UTF8ToGBK(unsigned char *lpUTF8Str, char *lpGBKStr, int nGBKStrLen)
+{
+    wchar_t * lpUnicodeStr = NULL;
+    int nRetLen = 0;
+
+    //如果UTF8字符串为NULL则出错退出
+    //输出缓冲区为空则返回转换后需要的空间大小
+    if(lpUTF8Str == NULL || lpGBKStr == NULL || nGBKStrLen <= 0) return 0; 
+
+    nRetLen = MultiByteToWideChar(CP_UTF8, 0, (char*)lpUTF8Str, -1, NULL, NULL);  //获取转换到Unicode编码后所需要的字符空间长度
+    lpUnicodeStr = new wchar_t[nRetLen + 1];  //为Unicode字符串空间
+
+    nRetLen = MultiByteToWideChar(CP_UTF8, 0, (char*)lpUTF8Str, -1, lpUnicodeStr, nRetLen);  //转换到Unicode编码
+    if(nRetLen == 0) goto clean_allocated_memory; //转换失败则出错退出
+
+    nRetLen = WideCharToMultiByte(936, 0, lpUnicodeStr, -1, NULL, NULL, NULL, NULL);  //获取转换到GBK编码后所需要的字符空间长度
+    if(nGBKStrLen < nRetLen) goto clean_allocated_memory; //如果输出缓冲区长度不够则退出
+
+    nRetLen = WideCharToMultiByte(936, 0, lpUnicodeStr, -1, lpGBKStr, nRetLen, NULL, NULL);  //转换到GBK编码
+
+clean_allocated_memory:
+    if(lpUnicodeStr) delete []lpUnicodeStr;
+    return nRetLen;
+}
+
 COMMONLIB_API const char *trim_const(const char *s, int maxStrLen, const char **ptail)
 {
 	const char *head = NULL, *tail = NULL;

@@ -329,6 +329,8 @@ namespace handle_context
         MSXML2::IXMLDOMDocument2* create_assoc_dom(const NOTIFY_FILE_CONTEXT &nfc);
         void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const NOTIFY_FILE_CONTEXT &nfc);
         void generate_replace_fields(const std::string &replace_fields_path, MSXML2::IXMLDOMDocument2 *pXMLDom);
+        bool save_index_study_date(MSXML2::IXMLDOMDocument2 *pDomStudy);
+        bool save_index_patient(MSXML2::IXMLDOMDocument2 *pDomStudy);
 
     public:
         static xml_index *singleton_ptr;
