@@ -300,11 +300,11 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     string cmd, filepath(get_path());
     filepath.append("\\state\\").append(filename);
     if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_file(" << filepath << ") " << get_association_id() << endl;
-    ifstream ifs(filepath, ios_base::in, _SH_DENYRW);
+    ifstream ifs(filepath, ios_base::in, _SH_DENYWR);
     if(ifs.fail())
     {
         gle = GetLastError();
-        string msg("handle_dir::process_notify_file() open file ");
+        string msg("handle_dir::process_notify_file() open file failed: ");
         msg.append(filepath);
         return displayErrorToCerr(msg.c_str(), gle, &flog);
     }
