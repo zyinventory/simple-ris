@@ -352,7 +352,49 @@ int watch_notify(string &cmd, ostream &flog)
         // jdf
         nps.check_study_timeout_to_generate_jdf();
         ClearGenerateIndexLog();
-        TryPublishJDF(debug_mode); // debug_mode is controlled by DebugMode in settings.ini
+        
+        WIN32_FIND_DATA wfd;
+        size_t candidate_jdf_num = 0;
+        HANDLE h_jdf_find = FindFirstFile("..\\orders_balance\\*.jdf", &wfd);
+        if(h_jdf_find != INVALID_HANDLE_VALUE)
+        {
+            do {
+                if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+                ++candidate_jdf_num;
+            } while(FindNextFile(h_jdf_find, &wfd));
+            FindClose(h_jdf_find);
+        }
+        if(candidate_jdf_num)
+        {
+#ifdef NDEBUG
+            SEED_SIV siv;
+            char rw_passwd[9] = "";
+            if(lock_number != -1 && 0 == loadPublicKeyContentRW(lock_file_name, &siv, lock_number, rw_passwd))
+		    {
+			    if(!invalidLock("..\\etc\\license.key", lock_file_name, &siv))
+			    {
+                    int license_count = currentCount(rw_passwd);
+				    if(license_count > 0)
+				    {
+#endif
+                        ClearGenerateIndexLog();
+                        if(TryPublishJDF(debug_mode)) // debug_mode is controlled by DebugMode in settings.ini
+                        {
+#ifdef NDEBUG
+                            license_count = decreaseCount(rw_passwd);
+                            if(ptr_license_count) *ptr_license_count = license_count;
+#endif
+                            if(opt_verbose) time_header_out(flog) << "watch_notify() TryPublishJDF() OK" << endl;
+                        }
+                        const char *msg = GetGenerateIndexLog();
+                        if(msg) time_header_out(flog) << "watch_notify() TryPublishJDF() log message:" << endl << msg << endl;
+                        ClearGenerateIndexLog();
+#ifdef NDEBUG
+                    }
+                }
+            }
+#endif
+        }
 #ifdef _DEBUG
         const char *msg = GetGenerateIndexLog();
         if(msg) time_header_out(flog) << "watch_notify() jdf work:" << endl << msg << endl;

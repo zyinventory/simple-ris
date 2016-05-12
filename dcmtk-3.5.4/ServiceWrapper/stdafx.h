@@ -32,6 +32,11 @@
 #include <algorithm>
 #include <functional>
 
+#ifdef NDEBUG
+#include <liblock.h>
+#include <lock.h>
+#endif
+
 #define FILE_BUF_SIZE 1024
 #include "handle_context.h"
 
@@ -46,7 +51,8 @@ int x_www_form_codec_encode_to_ostream(const char *str, std::ostream *output);
 
 extern bool opt_verbose;
 extern bool debug_mode;
-extern int store_timeout;
+extern int store_timeout, lock_number, *ptr_license_count;
+extern char lock_file_name[64];
 extern handle_context::NOTIFY_LIST compress_queue;
 
 // ------- old ServiceWrapper -------

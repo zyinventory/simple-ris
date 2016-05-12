@@ -15,7 +15,8 @@ static ofstream flog;
 
 const char *dirmakerCommand;
 bool opt_verbose = false, debug_mode = false;
-int store_timeout = 15;  // default 15 sec
+int lock_number = -1, *ptr_license_count = NULL, store_timeout = 15;  // default 15 sec
+char lock_file_name[64] = "..\\etc\\*.key";
 
 static size_t checkDiskFreeSpaceInMB(const char * path)
 {
@@ -248,7 +249,30 @@ int _tmain(int argc, _TCHAR* argv[])
 		ret = -1;
         goto exit_service_wrapper;
     }
-    
+
+    HANDLE hmap = NULL, hfile = INVALID_HANDLE_VALUE;
+    ptr_license_count = reinterpret_cast<int*>(create_shared_memory_mapping("service_inter_proc", sizeof(int), &hmap, &hfile, &flog));
+
+    int license_count = -1;
+#ifdef NDEBUG
+	if(InitiateLock(0))
+    {
+		lock_number = getLockNumber(lock_file_name, FALSE, lock_file_name + 7, sizeof(lock_file_name) - 7);
+        char rw_passwd[9] = "";
+        SEED_SIV siv;
+        if(lock_number != -1 && 0 == loadPublicKeyContentRW(lock_file_name, &siv, lock_number, rw_passwd))
+		{
+            license_count = currentCount(rw_passwd);
+            if(ptr_license_count) *ptr_license_count = license_count;
+            //time_header_out(flog) << "lock counter is " << license_count << endl;
+        }
+        //else time_header_out(flog) << "get lock number failed:" << lock_number << endl;
+    }
+	//else time_header_out(flog) << "init lock failed:" << hex << LYFGetLastErr() << endl;
+#endif
+
+    if(ptr_license_count) *ptr_license_count = license_count;
+
 	if( StartServiceCtrlDispatcher( serviceTableEntry ) )
 	{
 		// This call returns when the service has stopped. 
@@ -267,7 +291,12 @@ int _tmain(int argc, _TCHAR* argv[])
 		flog << "ServiceWrapper start error" << endl;
 		ret = -1;
 	}
-	
+#ifdef NDEBUG
+    TerminateLock(0);
+#endif
+    
+    close_shared_mapping(ptr_license_count, hmap, hfile);
+
     if(hMutex) { ReleaseMutex(hMutex); CloseHandle(hMutex); }
 exit_service_wrapper:
 	//releaseStdout(flog);

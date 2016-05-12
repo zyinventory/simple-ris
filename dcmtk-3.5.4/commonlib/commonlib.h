@@ -195,6 +195,10 @@ COMMONLIB_API size_t GenerateTime_dll(const char *format, char *timeBuffer, size
 COMMONLIB_API DWORD displayErrorToCerr_dll(const TCHAR *lpszFunction, DWORD dw, std::ostream *perrstrm = NULL);
 #define DisplayErrorToFileHandle DisplayErrorToFileHandle_dll
 COMMONLIB_API DWORD DisplayErrorToFileHandle_dll(TCHAR *lpszFunction, DWORD dw, HANDLE fh);
+#define create_shared_memory_mapping create_shared_memory_mapping_dll
+COMMONLIB_API void* create_shared_memory_mapping_dll(const char *mapping_name, size_t mapping_size, HANDLE *phmap, HANDLE *phfile, std::ostream *plog);
+#define close_shared_mapping close_shared_mapping_dll
+COMMONLIB_API void close_shared_mapping_dll(void *shared_mem_ptr, HANDLE h_map, HANDLE h_file);
 // common_public.cpp
 
 #ifdef _DEBUG

@@ -369,7 +369,9 @@ void named_pipe_server::check_study_timeout_to_generate_jdf()
             if(phs->get_last_association_action().is_auto_publish())
             {
                 if(0 == generateStudyJDF("0020000d", phs->get_study_uid().c_str(), *pflog))
-                    if(opt_verbose) time_header_out(*pflog) << "jdf OK" << endl;
+                {
+                    if(opt_verbose) time_header_out(*pflog) << "jdf OK: " << it->first << endl;
+                }
             }
             if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::check_study_timeout_to_generate_jdf() delete study " << phs->get_study_uid() << endl;
             it = map_study.erase(it);

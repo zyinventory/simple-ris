@@ -247,6 +247,132 @@ static BOOL SetPrivilege(LPCTSTR lpszPrivilege, BOOL bEnablePrivilege)
     return TRUE;
 }
 
+#ifdef COMMONLIB_EXPORTS
+#define create_shared_memory_mapping create_shared_memory_mapping_dll
+COMMONLIB_API void* create_shared_memory_mapping_dll(const char *mapping_name, size_t mapping_size, HANDLE *phmap, HANDLE *phfile, std::ostream *plog)
+#else
+#define create_shared_memory_mapping create_shared_memory_mapping_internal
+void* create_shared_memory_mapping_internal(const char *mapping_name, size_t mapping_size, HANDLE *phmap, HANDLE *phfile, std::ostream *plog)
+#endif
+{
+    if(phmap && *phmap) return NULL;
+    BOOL ownerPrivilege = SetPrivilege(SE_CREATE_GLOBAL_NAME, TRUE);
+    std::string seq_mapping_name_g("Global\\"), seq_mapping_name_l("Local\\");
+    seq_mapping_name_g.append(mapping_name);
+    seq_mapping_name_l.append(mapping_name);
+
+    //try to open global mapping
+    HANDLE h_map = OpenFileMapping(FILE_MAP_WRITE, FALSE, seq_mapping_name_g.c_str());
+    DWORD dw = GetLastError();
+    if(h_map == NULL && !ownerPrivilege)
+    {   // global mapping does not exist, try to open local mapping
+        SetLastError(0);
+        dw = 0;
+        h_map = OpenFileMapping(FILE_MAP_WRITE, FALSE, seq_mapping_name_l.c_str());
+        dw = GetLastError();
+    }
+    if(h_map) goto create_hmap_OK;
+
+    size_t baselen = 0;
+    char sequence_path[MAX_PATH] = "";
+    DWORD sessionId = 0;
+    std::string &mappingName = seq_mapping_name_g;
+    if(sequence_path[0] == '\0')
+    {
+        const char *basedir = GetPacsBase();
+        strcpy_s(sequence_path, basedir);
+        baselen = strlen(sequence_path);
+        if(ownerPrivilege)
+        {
+            sprintf_s(sequence_path + baselen, sizeof(sequence_path) - baselen, "\\temp\\%s-000.dat", mapping_name);
+        }
+        else
+        {
+            sessionId = WTSGetActiveConsoleSessionId();
+            sprintf_s(sequence_path + baselen, sizeof(sequence_path) - baselen, "\\temp\\%s-%03d.dat", mapping_name, sessionId);
+            mappingName = seq_mapping_name_l;
+        }
+    }
+    
+    HANDLE h_file = INVALID_HANDLE_VALUE;
+    if(phfile) h_file = *phfile;
+    if(h_file == INVALID_HANDLE_VALUE)
+    {
+        h_file = CreateFile(sequence_path, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        dw = GetLastError();
+        if(h_file == INVALID_HANDLE_VALUE)
+        {
+            char prefix[MAX_PATH];
+            sprintf_s(prefix, "CreateFile(%s)", sequence_path);
+            displayErrorToCerr(prefix, dw, plog);
+        }
+    }
+    h_map = CreateFileMapping(h_file, NULL, PAGE_READWRITE | SEC_COMMIT, 0, mapping_size, mappingName.c_str());
+    dw = GetLastError();
+    if(h_map == NULL && dw != ERROR_ALREADY_EXISTS)
+    {
+        char msg[MAX_PATH];
+        sprintf_s(msg, "create mapping %s", mappingName.c_str());
+        displayErrorToCerr(msg, dw, plog);
+    }
+    if(h_map && ownerPrivilege)
+    {
+        PACL pDacl=NULL;
+        PACL pNewDacl=NULL;
+        PSECURITY_DESCRIPTOR pSD=NULL;
+        EXPLICIT_ACCESS ea;
+        dw = GetSecurityInfo(h_map, SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pDacl, NULL, &pSD);
+        ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
+        ea.grfAccessPermissions = GENERIC_WRITE;
+        ea.grfAccessMode = GRANT_ACCESS;
+        ea.grfInheritance= NO_INHERITANCE;
+        ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
+        ea.Trustee.TrusteeType = TRUSTEE_IS_GROUP;
+        ea.Trustee.ptstrName = "Users";
+        if(pDacl)
+        {
+            dw = SetEntriesInAcl(1,&ea,pDacl,&pNewDacl);
+            if(dw == ERROR_SUCCESS)
+                dw = SetSecurityInfo(h_map, SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDacl, NULL);
+        }
+        if(pSD) LocalFree(pSD);
+        if(pNewDacl) LocalFree(pNewDacl);
+        if(dw != ERROR_SUCCESS) displayErrorToCerr("SetSecurityInfo()", dw, plog);
+    }
+create_hmap_OK:
+    void *mem_mapped = NULL;
+    if(h_map)
+    {
+        // MAKE_QWORD(offset_high, offset_low) must be times of sysinfo.dwAllocationGranularity
+        mem_mapped = MapViewOfFile(h_map, FILE_MAP_WRITE, 0, 0, mapping_size);
+        dw = GetLastError();
+        if(mem_mapped == NULL)
+        {
+            displayErrorToCerr("MapViewOfFile()", dw, plog);
+            CloseHandle(h_map);
+            h_map = NULL;
+        }
+    }
+    else displayErrorToCerr("OpenFileMapping() or CreateFileMapping()", dw, plog);
+
+    if(phmap) *phmap = h_map;
+    if(phfile) *phfile = h_file;
+    return mem_mapped;
+}
+
+#ifdef COMMONLIB_EXPORTS
+#define close_shared_mapping close_shared_mapping_dll
+COMMONLIB_API void close_shared_mapping_dll(void *shared_mem_ptr, HANDLE h_map, HANDLE h_file)
+#else
+#define close_shared_mapping close_shared_mapping_internal
+void close_shared_mapping_internal(void *shared_mem_ptr, HANDLE h_map, HANDLE h_file)
+#endif
+{
+    if(shared_mem_ptr) UnmapViewOfFile(shared_mem_ptr);
+    if(h_map) CloseHandle(h_map);
+    if(h_file != INVALID_HANDLE_VALUE) CloseHandle(h_file);
+}
+
 typedef struct
 {
     struct
@@ -269,14 +395,10 @@ typedef struct
 } MapHistory;
 
 #define SEQ_MUTEX_NAME "Global\\DCM_GetNextUniqueNo"
-#define SEQ_MAPPING_NAME_G "Global\\DCM_MappingUniqueNo"
-#define SEQ_MAPPING_NAME_L "Local\\DCM_MappingUniqueNo"
-static const char *mappingName = SEQ_MAPPING_NAME_G;
-static char sequence_path[MAX_PATH] = "";
+#define SEQ_MAPPING_NAME "DCM_MappingUniqueNo"
 static HANDLE mutex_seq = NULL, hfile = INVALID_HANDLE_VALUE, hmap = NULL;
 static MapHistory *pMapHistory = NULL;
 static SYSTEM_INFO sysinfo = {0, 0, NULL, NULL, 0, 0, 0, 0, 0, 0};
-static DWORD sessionId = 0;
 
 #ifdef COMMONLIB_EXPORTS
 COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t buf_size)
@@ -284,6 +406,9 @@ COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t b
 int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_size)
 #endif
 {
+    DWORD sessionId = 0;
+    const char *mappingName = SEQ_MAPPING_NAME;
+    char sequence_path[MAX_PATH] = "";
     struct _timeb storeTimeThis;
     if(buf_size < 40) return -1;
     if(sysinfo.dwPageSize == 0) GetSystemInfo(&sysinfo);
@@ -308,104 +433,7 @@ int GetNextUniqueNo_internal(const char *prefix, char *pbuf, const size_t buf_si
         owner_mutex = true;
         if(hmap == NULL)
         {
-            BOOL ownerPrivilege = SetPrivilege(SE_CREATE_GLOBAL_NAME, TRUE);
-            //try to open global mapping
-            hmap = OpenFileMapping(FILE_MAP_WRITE, FALSE, SEQ_MAPPING_NAME_G);
-            dw = GetLastError();
-            if(hmap == NULL && !ownerPrivilege)
-            {   // global mapping does not exist, try to open local mapping
-                SetLastError(0);
-                dw = 0;
-                hmap = OpenFileMapping(FILE_MAP_WRITE, FALSE, SEQ_MAPPING_NAME_L);
-                dw = GetLastError();
-            }
-            if(hmap) goto hmap_OK;
-
-            size_t baselen = 0;
-            if(sequence_path[0] == '\0')
-            {
-                const char *basedir = GetPacsBase();
-                strcpy_s(sequence_path, basedir);
-                baselen = strlen(sequence_path);
-                if(ownerPrivilege)
-                {
-                    strcpy_s(sequence_path + baselen, sizeof(sequence_path) - baselen, "\\temp\\sequence-000.dat");
-                    mappingName =  SEQ_MAPPING_NAME_G;
-                }
-                else
-                {
-                    sessionId = WTSGetActiveConsoleSessionId();
-                    sprintf_s(sequence_path + baselen, sizeof(sequence_path) - baselen, "\\temp\\sequence-%03d.dat", sessionId);
-                    mappingName = SEQ_MAPPING_NAME_L;
-                }
-            }
-
-            if(hfile == INVALID_HANDLE_VALUE)
-            {
-                hfile = CreateFile(sequence_path, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                    NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-                dw = GetLastError();
-                if(hfile == INVALID_HANDLE_VALUE)
-                {
-                    char prefix[MAX_PATH];
-                    sprintf_s(prefix, "CreateFile(%s)", sequence_path);
-                    displayErrorToCerr(prefix, dw, NULL);
-                }
-            }
-            hmap = CreateFileMapping(hfile, NULL, PAGE_READWRITE | SEC_COMMIT, 0, sizeof(MapHistory), mappingName);
-            dw = GetLastError();
-            if(hmap == NULL && dw != ERROR_ALREADY_EXISTS)
-            {
-                char msg[MAX_PATH];
-                sprintf_s(msg, "create mapping %s", mappingName);
-                displayErrorToCerr(msg, dw, NULL);
-            }
-            if(hmap && ownerPrivilege)
-            {
-                PACL pDacl=NULL;
-                PACL pNewDacl=NULL;
-                PSECURITY_DESCRIPTOR pSD=NULL;
-                EXPLICIT_ACCESS ea;
-                dw = GetSecurityInfo(hmap,SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION,NULL,NULL,&pDacl,NULL,&pSD);
-                ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
-                ea.grfAccessPermissions = GENERIC_WRITE;
-                ea.grfAccessMode = GRANT_ACCESS;
-                ea.grfInheritance= NO_INHERITANCE;
-                ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
-                ea.Trustee.TrusteeType = TRUSTEE_IS_GROUP;
-                ea.Trustee.ptstrName = "Users";
-                if(pDacl)
-                {
-                    dw = SetEntriesInAcl(1,&ea,pDacl,&pNewDacl);
-                    if(dw == ERROR_SUCCESS)
-                        dw = SetSecurityInfo(hmap, SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDacl, NULL);
-                }
-                if(pSD) LocalFree(pSD);
-                if(pNewDacl) LocalFree(pNewDacl);
-                if(dw != ERROR_SUCCESS)
-                    displayErrorToCerr("SetSecurityInfo()", dw, NULL);
-            }
-hmap_OK:
-            if(hmap)
-            {
-                if(pMapHistory) delete pMapHistory;
-                // MAKE_QWORD(offset_high, offset_low) must be times of sysinfo.dwAllocationGranularity
-                pMapHistory = static_cast<MapHistory*>(MapViewOfFile(hmap, FILE_MAP_WRITE, 0, 0, sizeof(MapHistory)));
-                dw = GetLastError();
-                if(pMapHistory == NULL)
-                {
-                    displayErrorToCerr("MapViewOfFile()", dw, NULL);
-                    CloseHandle(hmap);
-                    hmap = NULL;
-                }
-                else if(! pMapHistory->verify())
-                {
-                    fputs("pMapHistory is damaged\n", stderr);
-                    memset(pMapHistory, 0, sizeof(MapHistory));
-                }
-            }
-            else
-                displayErrorToCerr("OpenFileMapping() or CreateFileMapping()", dw, NULL);
+            pMapHistory = reinterpret_cast<MapHistory*>(create_shared_memory_mapping(SEQ_MAPPING_NAME, sizeof(MapHistory), &hmap, &hfile, NULL));
         }
     }
     if(pMapHistory == NULL)
