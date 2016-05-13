@@ -173,7 +173,11 @@ COMMONLIB_API size_t GetSetting(const std::string &key, char *buff, size_t buff_
 COMMONLIB_API const char *GetGenerateIndexLog();
 COMMONLIB_API void ClearGenerateIndexLog();
 COMMONLIB_API bool SelectValidPublisher(const char *ini_path, char *valid_publisher, size_t buff_size, bool opt_verbose);
-COMMONLIB_API bool TryPublishJDF(bool opt_verbose);
+#define TryPublishJDF_PublishOK     1
+#define TryPublishJDF_PublisherBusy 0
+#define TryPublishJDF_SrcOpenError  -1
+#define TryPublishJDF_SrcMarkError  -2
+COMMONLIB_API int TryPublishJDF(bool opt_verbose = false, const char *filename = NULL);
 COMMONLIB_API int UTF8ToGBK(unsigned char *lpUTF8Str, char *lpGBKStr, int nGBKStrLen);
 
 // common_public.cpp

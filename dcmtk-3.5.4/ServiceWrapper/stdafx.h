@@ -32,11 +32,6 @@
 #include <algorithm>
 #include <functional>
 
-#ifdef NDEBUG
-#include <liblock.h>
-#include <lock.h>
-#endif
-
 #define FILE_BUF_SIZE 1024
 #include "handle_context.h"
 

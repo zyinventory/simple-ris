@@ -105,6 +105,18 @@ int watch_notify(string &cmd, ostream &flog)
     }
     if(opt_verbose) time_header_out(flog) << "watch_notify() dcmqrscp start" << endl;
     
+    sprintf_s(buff, "%s\\bin\\jobloader.exe dcmtk_ServiceWrapper", GetPacsBase());
+    cmd = buff;
+    sprintf_s(buff, "%s\\pacs", GetPacsBase());
+    handle_proc *phproc_job = new handle_proc("", buff, cmd, "jobloader", &flog);
+    gle = phproc_job->start_process(true);
+    if(gle)
+    {
+        displayErrorToCerr("watch_notify() handle_proc::create_process(jobloader) at beginning", gle, &flog);
+        return gle;
+    }
+    if(opt_verbose) time_header_out(flog) << "watch_notify() jobloader start" << endl;
+    
     if(GetSetting(debug_mode_header, buff, sizeof(buff)))
     {
         int debug_flag = atoi(buff);
@@ -127,8 +139,10 @@ int watch_notify(string &cmd, ostream &flog)
 
 #ifdef _DEBUG
     WaitForInputIdle(phproc->get_handle(), INFINITE);
+    WaitForInputIdle(phproc_job->get_handle(), INFINITE);
 #endif
     map_handle_context[phproc->get_handle()] = phproc;
+    map_handle_context[phproc_job->get_handle()] = phproc_job;
 
     SYSTEM_INFO sysInfo;
 	GetSystemInfo(&sysInfo);
@@ -265,11 +279,13 @@ int watch_notify(string &cmd, ostream &flog)
                 }
                 else if(phproc = dynamic_cast<handle_proc*>(pb))
                 {
-                    time_header_out(flog) << "watch_notify() dcmqrscp encounter error, restart." << endl;
+                    time_header_out(flog) << "watch_notify() " << phproc->get_exec_name() << " encounter error, restart." << endl;
                     gle = phproc->start_process(true);
                     if(gle)
                     {
-                        displayErrorToCerr("watch_notify() handle_proc::create_process(dcmqrscp) restart", gle, &flog);
+                        string msg("watch_notify() handle_proc::create_process(");
+                        msg.append(phproc->get_exec_name()).append(") restart");
+                        displayErrorToCerr(msg.c_str(), gle, &flog);
                         goto clean_child_proc;
                     }
                 }
@@ -349,58 +365,10 @@ int watch_notify(string &cmd, ostream &flog)
                 // else WAIT_TIMEOUT, compress process is too much.
             }
         }
-        // jdf
+        // write jdf to orders_notify
         nps.check_study_timeout_to_generate_jdf();
-        ClearGenerateIndexLog();
-        
-        WIN32_FIND_DATA wfd;
-        size_t candidate_jdf_num = 0;
-        HANDLE h_jdf_find = FindFirstFile("..\\orders_balance\\*.jdf", &wfd);
-        if(h_jdf_find != INVALID_HANDLE_VALUE)
-        {
-            do {
-                if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
-                ++candidate_jdf_num;
-            } while(FindNextFile(h_jdf_find, &wfd));
-            FindClose(h_jdf_find);
-        }
-        if(candidate_jdf_num)
-        {
-#ifdef NDEBUG
-            SEED_SIV siv;
-            char rw_passwd[9] = "";
-            if(lock_number != -1 && 0 == loadPublicKeyContentRW(lock_file_name, &siv, lock_number, rw_passwd))
-		    {
-			    if(!invalidLock("..\\etc\\license.key", lock_file_name, &siv))
-			    {
-                    int license_count = currentCount(rw_passwd);
-				    if(license_count > 0)
-				    {
-#endif
-                        ClearGenerateIndexLog();
-                        if(TryPublishJDF(debug_mode)) // debug_mode is controlled by DebugMode in settings.ini
-                        {
-#ifdef NDEBUG
-                            license_count = decreaseCount(rw_passwd);
-                            if(ptr_license_count) *ptr_license_count = license_count;
-#endif
-                            if(opt_verbose) time_header_out(flog) << "watch_notify() TryPublishJDF() OK" << endl;
-                        }
-                        const char *msg = GetGenerateIndexLog();
-                        if(msg) time_header_out(flog) << "watch_notify() TryPublishJDF() log message:" << endl << msg << endl;
-                        ClearGenerateIndexLog();
-#ifdef NDEBUG
-                    }
-                }
-            }
-#endif
-        }
-#ifdef _DEBUG
-        const char *msg = GetGenerateIndexLog();
-        if(msg) time_header_out(flog) << "watch_notify() jdf work:" << endl << msg << endl;
-#endif
-        ClearGenerateIndexLog();
-    } // end while
+    } // end while(GetSignalInterruptValue() == 0)
+
     if(GetSignalInterruptValue())
     {
         if(opt_verbose) time_header_out(flog) << "watch_notify() WaitForMultipleObjects() get Ctrl-C" << endl;

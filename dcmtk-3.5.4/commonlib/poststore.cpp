@@ -1319,10 +1319,12 @@ static size_t find_jdf(const char *filter, list<string> &collector)
     return collector.size();
 }
 
-COMMONLIB_API bool TryPublishJDF(bool opt_verbose)
+COMMONLIB_API int TryPublishJDF(bool opt_verbose, const char *filename)
 {
-    list<string> candidate_jdf, exist_jdf;
-    string filter("..\\orders\\*.rjd");
+    string filter, src("..\\orders_balance\\"), dest("..\\orders\\"), failback("..\\orders_balance\\");
+    list<string> exist_jdf;
+
+    filter = "..\\orders\\*.rjd";
     if(find_jdf(filter.c_str(), exist_jdf))
     {
         if(opt_verbose)
@@ -1332,7 +1334,7 @@ COMMONLIB_API bool TryPublishJDF(bool opt_verbose)
                 errstrm << "TryPublishJDF() exist rjd: " << str << endl;
             });
         }
-        return false;
+        return TryPublishJDF_PublisherBusy;
     }
     filter = "..\\orders\\*.jdf";
     if(find_jdf(filter.c_str(), exist_jdf))
@@ -1344,26 +1346,36 @@ COMMONLIB_API bool TryPublishJDF(bool opt_verbose)
                 errstrm << "TryPublishJDF() exist jdf: " << str << endl;
             });
         }
-        return false;
+        return TryPublishJDF_PublisherBusy;
     }
 
-    filter = "..\\orders_balance\\*.jdf";
-    if(find_jdf(filter.c_str(), candidate_jdf) == 0)
+    if(filename)
     {
-        //if(opt_verbose) errstrm << "TryPublishJDF() no candidate jdf" << endl;
-        return false;
+        src.append(filename);
+        dest.append(filename);
+        failback.append(filename).append(".bad");
+    }
+    else
+    {
+        list<string> candidate_jdf;
+        filter = "..\\orders_balance\\*.jdf";
+        if(find_jdf(filter.c_str(), candidate_jdf) == 0)
+        {
+            //if(opt_verbose) errstrm << "TryPublishJDF() no candidate jdf" << endl;
+            return TryPublishJDF_SrcOpenError;
+        }
+
+        candidate_jdf.sort();
+        list<string>::iterator it = candidate_jdf.begin();
+        src.append(*it);
+        dest.append(*it);
+        failback.append(*it).append(".bad");
     }
 
     filter = "..\\orders\\TDBStatus.txt";
     char publisher[256];
     if(SelectValidPublisher(filter.c_str(), publisher, sizeof(publisher), opt_verbose))
     {
-        string src("..\\orders_balance\\"), dest("..\\orders\\");
-        candidate_jdf.sort();
-        list<string>::iterator it = candidate_jdf.begin();
-        src.append(*it);
-        dest.append(*it);
-
         ofstream ofs(src.c_str(), ios_base::out | ios_base::app);
 		if(ofs.good())
 		{
@@ -1375,27 +1387,26 @@ COMMONLIB_API bool TryPublishJDF(bool opt_verbose)
                 _strerror_s(msg, "");
                 time_header_out(errstrm) << "TryPublishJDF() move " << src << " to " << dest << " error " << msg << endl;
                 // mark bad jdf
-                dest = "..\\orders_balance\\";
-                dest.append(*it).append(".bad");
-                if(rename(src.c_str(), dest.c_str()))
+                if(rename(src.c_str(), failback.c_str()))
                 {
                     _strerror_s(msg, "");
-                    time_header_out(errstrm) << "TryPublishJDF() mark bad jdf(" << src << ") to " << dest << " error " << msg << endl;
+                    time_header_out(errstrm) << "TryPublishJDF() mark bad jdf(" << src << ") to " << failback << " error " << msg << endl;
                 }
-                return false;
+                return TryPublishJDF_SrcMarkError;
             }
             else
             {
                 if(opt_verbose) time_header_out(errstrm) << "TryPublishJDF() move " << src << " to " << dest << " OK" << endl;
-                return true;
+                return TryPublishJDF_PublishOK;
             }
         }
         else
         {
             displayErrorToCerr("TryPublishJDF() append publisher to jdf error", GetLastError(), &errstrm);
+            return TryPublishJDF_SrcOpenError;
         }
     }
-    return false;
+    else return TryPublishJDF_PublisherBusy;
 }
 
 COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int licenseCnt, std::ostream &outputbuf)
