@@ -293,8 +293,11 @@ int watch_notify(string &cmd, ostream &flog)
                 }
                 else if(phproc = dynamic_cast<handle_proc*>(pb))
                 {
-                    time_header_out(flog) << "watch_notify() " << phproc->get_exec_name() << " encounter error, restart." << endl;
-                    gle = phproc->start_process(true);
+                    time_header_out(flog) << "watch_notify() " << phproc->get_exec_name() << " encounter error, exit." << endl;
+                    map_handle_context.erase(waited);
+                    goto clean_child_proc;
+                    /*
+                    gle = phproc->start_process(phproc->get_exec_name().compare("jobloader"));
                     if(gle)
                     {
                         string msg("watch_notify() handle_proc::create_process(");
@@ -302,6 +305,8 @@ int watch_notify(string &cmd, ostream &flog)
                         displayErrorToCerr(msg.c_str(), gle, &flog);
                         goto clean_child_proc;
                     }
+                    map_handle_context[phproc->get_handle()] = phproc;
+                    */
                 }
                 else
                 {

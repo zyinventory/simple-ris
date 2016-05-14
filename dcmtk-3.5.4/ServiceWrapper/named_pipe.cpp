@@ -42,13 +42,14 @@ DWORD named_pipe_server::start_listening()
 
     string pipe_path("\\\\.\\pipe\\");
     pipe_path.append(get_path());
-    if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" listen on " << pipe_path << endl;
     hPipe = CreateNamedPipe(pipe_path.c_str(), PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
         PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, // message-type pipe, message read mode, blocking mode
         PIPE_UNLIMITED_INSTANCES, FILE_BUF_SIZE, FILE_BUF_SIZE, // output, input buffer size 
         0, NULL); // time-out for client run WaitNamedPipe(NMPWAIT_USE_DEFAULT_WAIT), 0 means default(50 ms)
     if(hPipe == INVALID_HANDLE_VALUE)
         return displayErrorToCerr(__FUNCSIG__ " CreateNamedPipe()", GetLastError(), pflog);
+    else if(opt_verbose)
+        time_header_out(*pflog) << __FUNCSIG__" listen on " << hPipe << ": " << pipe_path << endl;
 
     DWORD gle = 0;
     BOOL fConnected = ConnectNamedPipe(hPipe, &olPipeConnectOnly);

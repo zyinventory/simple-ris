@@ -258,7 +258,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	else if( ERROR_FAILED_SERVICE_CONTROLLER_CONNECT == GetLastError() )
 	{
 		// console mode
-		CoInitialize(NULL);
+		CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 		ret = realMain(argcSV, argvSV);
 		CoUninitialize();
 	}

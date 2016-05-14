@@ -679,7 +679,8 @@ handle_study::~handle_study()
     {
         if(pipe_context->hPipeInst && pipe_context->hPipeInst != INVALID_HANDLE_VALUE)
         {
-            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" delete pipe context: " << pipe_context->study_uid << endl;
+            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" delete pipe context " << pipe_context->hPipeInst
+                << ", " << pipe_context->study_uid << endl;
             if (! DisconnectNamedPipe(pipe_context->hPipeInst))
                 displayErrorToCerr(__FUNCSIG__ " DisconnectNamedPipe()", GetLastError(), pflog);
             CloseHandle(pipe_context->hPipeInst);
