@@ -5,13 +5,9 @@
 
 #include <time.h>
 #include <string>
+#import <msxml3.dll>
 
 #define NOTIFY_BASE "store_notify"
-
-namespace MSXML2
-{
-    struct IXMLDOMDocument2;
-}
 
 namespace handle_context
 {
@@ -325,12 +321,14 @@ namespace handle_context
     private:
         XML_MAP map_xml_study, map_xml_assoc;
 
-        MSXML2::IXMLDOMDocument2* create_study_dom(const NOTIFY_FILE_CONTEXT &nfc);
-        MSXML2::IXMLDOMDocument2* create_assoc_dom(const NOTIFY_FILE_CONTEXT &nfc);
-        void add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const NOTIFY_FILE_CONTEXT &nfc);
+        bool create_study_dom(const NOTIFY_FILE_CONTEXT &nfc, MSXML2::IXMLDOMDocument2Ptr &pXMLDom);
+        bool create_assoc_dom(const NOTIFY_FILE_CONTEXT &nfc, MSXML2::IXMLDOMDocument2Ptr &pXMLDom);
+        void add_instance(MSXML2::IXMLDOMDocument2Ptr &pXMLDom, const NOTIFY_FILE_CONTEXT &nfc);
         void generate_replace_fields(const std::string &replace_fields_path, MSXML2::IXMLDOMDocument2 *pXMLDom);
-        bool save_index_study_date(MSXML2::IXMLDOMDocument2 *pDomStudy);
-        bool save_index_patient(MSXML2::IXMLDOMDocument2 *pDomStudy);
+        bool save_index_study_date(MSXML2::IXMLDOMDocument2Ptr &pDomStudy);
+        bool save_index_patient(MSXML2::IXMLDOMDocument2Ptr &pDomStudy);
+        bool save_receive(MSXML2::IXMLDOMDocument2 *pAssocDom);
+        bool save_study(const std::string &study_uid, MSXML2::IXMLDOMDocument2 *pStudyDom);
 
     public:
         static xml_index *singleton_ptr;
@@ -340,8 +338,6 @@ namespace handle_context
         virtual ~xml_index();
         xml_index& operator=(const xml_index &r);
         void make_index(const NOTIFY_FILE_CONTEXT &nfc);
-        bool save_receive(MSXML2::IXMLDOMDocument2 *pAssocDom);
-        bool save_study(const std::string &study_uid, MSXML2::IXMLDOMDocument2 *pStudyDom);
         bool unload_and_sync_study(const std::string &study_uid);
     };
 }

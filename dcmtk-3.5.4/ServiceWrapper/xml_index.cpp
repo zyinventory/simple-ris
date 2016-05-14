@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "commonlib.h"
-#import <msxml3.dll>
 /*
 instance state : [backup state]_[include state]
 backup state:
@@ -39,85 +38,74 @@ xml_index& xml_index::operator=(const xml_index &r)
     return *this;
 }
 
-MSXML2::IXMLDOMDocument2* xml_index::create_study_dom(const NOTIFY_FILE_CONTEXT &clc)
+bool xml_index::create_study_dom(const NOTIFY_FILE_CONTEXT &clc, MSXML2::IXMLDOMDocument2Ptr &pXMLDom)
 {
     try
     {
-        MSXML2::IXMLDOMDocument2Ptr pXMLDom;
-        HRESULT hr = pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
-        if(SUCCEEDED(hr))
+        pXMLDom->preserveWhiteSpace = VARIANT_FALSE;
+	    pXMLDom->async = VARIANT_FALSE;
+        pXMLDom->appendChild(pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"study", L"http://www.kurumi.com.cn/xsd/study"));
+        MSXML2::IXMLDOMElementPtr pRoot = pXMLDom->documentElement;
+        if(pRoot)
         {
-            pXMLDom->preserveWhiteSpace = VARIANT_FALSE;
-	        pXMLDom->async = VARIANT_FALSE;
-            pXMLDom->appendChild(pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"study", L"http://www.kurumi.com.cn/xsd/study"));
-            MSXML2::IXMLDOMElementPtr pRoot = pXMLDom->documentElement;
-            if(pRoot)
+            HRESULT hr = pRoot->setAttribute(L"id", clc.file.studyUID);
+            if(clc.file.PathSeparator() == '/')
+                hr = pRoot->setAttribute(L"hash_prefix", clc.file.hash);
+            else
             {
-                hr = pRoot->setAttribute(L"id", clc.file.studyUID);
-                if(clc.file.PathSeparator() == '/')
-                    hr = pRoot->setAttribute(L"hash_prefix", clc.file.hash);
-                else
-                {
-                    char buff[sizeof(clc.file.hash)];
-                    strcpy_s(buff, clc.file.hash);
-                    replace(buff, buff + sizeof(clc.file.hash), '\\', '/');
-                    hr = pRoot->setAttribute(L"hash_prefix", buff);
-                }
-                if(strcmp(clc.file.studyUID, clc.study.studyUID) == 0)
-                {
-                    hr = pRoot->setAttribute(L"accession_number", clc.study.accessionNumber);
-                    hr = pRoot->setAttribute(L"date", clc.study.studyDate);
-                    hr = pRoot->setAttribute(L"time", clc.study.studyTime);
-                }
-                
-                MSXML2::IXMLDOMNodePtr pAssociations = pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"associations", L"http://www.kurumi.com.cn/xsd/study");
-                pXMLDom->documentElement->appendChild(pAssociations);
+                char buff[sizeof(clc.file.hash)];
+                strcpy_s(buff, clc.file.hash);
+                replace(buff, buff + sizeof(clc.file.hash), '\\', '/');
+                hr = pRoot->setAttribute(L"hash_prefix", buff);
             }
-            MSXML2::IXMLDOMDocument2 *pdom = pXMLDom.Detach();
-            return pdom;
+            if(strcmp(clc.file.studyUID, clc.study.studyUID) == 0)
+            {
+                hr = pRoot->setAttribute(L"accession_number", clc.study.accessionNumber);
+                hr = pRoot->setAttribute(L"date", clc.study.studyDate);
+                hr = pRoot->setAttribute(L"time", clc.study.studyTime);
+            }
+                
+            MSXML2::IXMLDOMNodePtr pAssociations = pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"associations", L"http://www.kurumi.com.cn/xsd/study");
+            pXMLDom->documentElement->appendChild(pAssociations);
+            return true;
         }
+        else time_header_out(*pflog) << __FUNCSIG__" study dom's documentElement is NULL." << endl;
     }
     CATCH_COM_ERROR("xml_index::create_study_dom()", *pflog)
-    return NULL;
+    return false;
 }
 
-MSXML2::IXMLDOMDocument2* xml_index::create_assoc_dom(const NOTIFY_FILE_CONTEXT &nfc)
+bool xml_index::create_assoc_dom(const NOTIFY_FILE_CONTEXT &nfc, MSXML2::IXMLDOMDocument2Ptr &pXMLDom)
 {
     try
     {
-        MSXML2::IXMLDOMDocument2Ptr pXMLDom;
-        HRESULT hr = pXMLDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
-        if(SUCCEEDED(hr))
+        pXMLDom->preserveWhiteSpace = VARIANT_FALSE;
+	    pXMLDom->async = VARIANT_FALSE;
+        pXMLDom->appendChild(pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"receive_association", L"http://www.kurumi.com.cn/xsd/study"));
+        MSXML2::IXMLDOMElementPtr asso = pXMLDom->documentElement;
+        if(asso)
         {
-            pXMLDom->preserveWhiteSpace = VARIANT_FALSE;
-	        pXMLDom->async = VARIANT_FALSE;
-            pXMLDom->appendChild(pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"receive_association", L"http://www.kurumi.com.cn/xsd/study"));
-            MSXML2::IXMLDOMElementPtr asso = pXMLDom->documentElement;
-            if(asso)
-            {
-                asso->setAttribute(L"id", nfc.assoc.id);
-                asso->setAttribute(L"calling_ae", nfc.assoc.callingAE);
-                asso->setAttribute(L"calling_address", nfc.assoc.callingAddr);
-                asso->setAttribute(L"called_ae", nfc.assoc.calledAE);
-                asso->setAttribute(L"called_address", nfc.assoc.calledAddr);
-                asso->setAttribute(L"port", nfc.assoc.port);
-            }
-            MSXML2::IXMLDOMDocument2 *pdom = pXMLDom.Detach();
-            return pdom;
+            asso->setAttribute(L"id", nfc.assoc.id);
+            asso->setAttribute(L"calling_ae", nfc.assoc.callingAE);
+            asso->setAttribute(L"calling_address", nfc.assoc.callingAddr);
+            asso->setAttribute(L"called_ae", nfc.assoc.calledAE);
+            asso->setAttribute(L"called_address", nfc.assoc.calledAddr);
+            asso->setAttribute(L"port", nfc.assoc.port);
         }
+        return true;
     }
     CATCH_COM_ERROR("xml_index::create_assoc_dom()", *pflog)
-    return NULL;
+    return false;
 }
 
-void xml_index::add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const NOTIFY_FILE_CONTEXT &nfc)
+void xml_index::add_instance(MSXML2::IXMLDOMDocument2Ptr &pXMLDom, const NOTIFY_FILE_CONTEXT &nfc)
 {
     try
     {
         char filter[128];
         MSXML2::IXMLDOMElementPtr root = pXMLDom->documentElement;
         if(root == NULL)
-            throw runtime_error("xml_index::add_instance() XMLDOM can't find associations element.");
+            throw runtime_error("xml_index::add_instance() XMLDOM can't find document element.");
 
         if(strcmp(nfc.file.studyUID, nfc.study.studyUID) == 0)
         {
@@ -304,7 +292,7 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2 *pXMLDom, const NOTIFY_FIL
     CATCH_COM_ERROR("xml_index::add_instance()", *pflog)
 }
 
-static void add_study_to_assoc_dom(MSXML2::IXMLDOMDocument2 *pAssocDom, const string &study_uid, const string &assoc_id) throw(...) 
+static void add_study_to_assoc_dom(MSXML2::IXMLDOMDocument2Ptr &pAssocDom, const string &study_uid, const string &assoc_id) throw(...) 
 {
     if(pAssocDom) // append study node(only id attr) to assoc dom
     {
@@ -339,25 +327,34 @@ static void add_study_to_assoc_dom(MSXML2::IXMLDOMDocument2 *pAssocDom, const st
 void xml_index::make_index(const NOTIFY_FILE_CONTEXT &nfc)
 {
     string study_uid(nfc.file.studyUID), assoc_id(nfc.assoc.id);
-    MSXML2::IXMLDOMDocument2* pStudyDom = NULL, *pAssocDom = NULL;
     try
     {
+        MSXML2::IXMLDOMDocument2Ptr pStudyDom, pAssocDom;
+        HRESULT hr = pStudyDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        if(FAILED(hr)) throw _com_error(hr);
+        hr = pAssocDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        if(FAILED(hr)) throw _com_error(hr);
+
         XML_MAP::iterator it = map_xml_study.find(study_uid);
-        if(it != map_xml_study.end()) pStudyDom = it->second;
-        if(pStudyDom == NULL)
+        if(it != map_xml_study.end())
+        {
+            pStudyDom.Attach(it->second, true); // addref
+            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" study dom is found: " << study_uid << endl;
+        }
+        else
         {
             string xml_path(GetPacsBase());
             xml_path.append("\\pacs\\indexdir\\0020000d\\").append(nfc.file.hash).append(1, '\\').append(study_uid).append(".xml");
-            MSXML2::IXMLDOMDocument2Ptr pdom;
-            HRESULT hr = pdom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
-            if(SUCCEEDED(hr))
+            if(pStudyDom->load(xml_path.c_str()) == VARIANT_FALSE) create_study_dom(nfc, pStudyDom);
+            else
             {
-                if(pdom->load(xml_path.c_str()) == VARIANT_TRUE)
-                    pStudyDom = pdom.Detach();
-                else
-                    pStudyDom = create_study_dom(nfc);
+                if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" study dom load OK: " << xml_path << endl;
+            }
 
-                if(pStudyDom) map_xml_study[study_uid] = pStudyDom;
+            if(pStudyDom)
+            {
+                pStudyDom.AddRef();
+                map_xml_study[study_uid] = pStudyDom;
             }
         }
 
@@ -365,10 +362,13 @@ void xml_index::make_index(const NOTIFY_FILE_CONTEXT &nfc)
         it = map_xml_assoc.find(assoc_id);
         if(it == map_xml_assoc.end())
         {
-            pAssocDom = create_assoc_dom(nfc);
-            if(pAssocDom) map_xml_assoc[assoc_id] = pAssocDom;
+            if(create_assoc_dom(nfc, pAssocDom))
+            {
+                pAssocDom.AddRef();
+                map_xml_assoc[assoc_id] = pAssocDom;
+            }
         }
-        else pAssocDom = it->second;
+        else pAssocDom.Attach(it->second, true); // add ref
         
         if(pStudyDom) add_instance(pStudyDom, nfc);
         else
@@ -508,7 +508,7 @@ ris_next_line:
 
 #define CLUSTER_SIZE 4096LL
 #define ALIGNED_SIZE(x) (((x) & ~(CLUSTER_SIZE - 1LL)) + CLUSTER_SIZE)
-static void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument2 *pXMLDom)
+static void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument2Ptr &pXMLDom)
 {
     size_t series_count = 0, instance_count = 0;
     __int64 size_aligned = 0;
@@ -559,7 +559,6 @@ bool xml_index::save_receive(MSXML2::IXMLDOMDocument2 *pAssocDom)
                 fxml.close();
             }
         }
-        pAssocDom->Release();
         return true;
     }
     CATCH_COM_ERROR("xml_index::save_receive()", *pflog);
@@ -608,7 +607,7 @@ bool xml_index::save_study(const string &study_uid, MSXML2::IXMLDOMDocument2 *pS
     return false;
 }
 
-bool xml_index::save_index_study_date(MSXML2::IXMLDOMDocument2 *pDomStudy)
+bool xml_index::save_index_study_date(MSXML2::IXMLDOMDocument2Ptr &pDomStudy)
 {
     try
     {
@@ -663,7 +662,7 @@ bool xml_index::save_index_study_date(MSXML2::IXMLDOMDocument2 *pDomStudy)
     return false;
 }
 
-bool xml_index::save_index_patient(MSXML2::IXMLDOMDocument2 *pDomStudy)
+bool xml_index::save_index_patient(MSXML2::IXMLDOMDocument2Ptr &pDomStudy)
 {
     try
     {
@@ -741,16 +740,16 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
         MSXML2::IXMLDOMDocument2Ptr pStudyDom;
         HRESULT hr = pStudyDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
         if(FAILED(hr)) throw runtime_error("can't create IXMLDOMDocument2Ptr");
+        pStudyDom.Attach(its->second, false); // don't add ref
 
-        calculate_size_cluster_aligned(its->second);
+        calculate_size_cluster_aligned(pStudyDom);
 
-        if(save_study(study_uid, its->second))
+        if(save_study(study_uid, pStudyDom)) map_xml_study.erase(its);
+        else
         {
-            pStudyDom.Attach(its->second); // ensure its->second shall release ptr
-            map_xml_study.erase(its);
+            pStudyDom.Detach();  // don't release interface ptr
+            throw runtime_error("can't save study");
         }
-        else throw runtime_error("can't save study");
-
         // try complete association
         _bstr_t filter_not_complete(L"study[not(@hash_prefix)]"), filter(L"study[@id='");
         filter += study_uid.c_str();
@@ -772,7 +771,13 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
             MSXML2::IXMLDOMNodeListPtr nodes = ita->second->documentElement->selectNodes(filter_not_complete);
             if(nodes->length == 0) // association is complete
             {
-                if(save_receive(ita->second)) ita = map_xml_assoc.erase(ita);
+                if(save_receive(ita->second))
+                {
+                    if(ita->second) ita->second->Release();
+                    if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" map_xml_assoc.erase(" << ita->first << ")." << endl;
+                    ita = map_xml_assoc.erase(ita);
+                }
+                else if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" map_xml_assoc.erase(" << ita->first << ") failed." << endl;
             }
             else ++ita;
         }

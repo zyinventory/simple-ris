@@ -463,6 +463,8 @@ void handle_proc::print_state() const
 
 handle_proc::~handle_proc()
 {
+    time_header_out(*pflog) << "handle_proc destory " << exec_name << ": "
+        << hex << setw(8) << setfill('0') << uppercase << procinfo.hThread << ", " << procinfo.hProcess << endl;
     if(procinfo.hThread && procinfo.hThread != INVALID_HANDLE_VALUE) CloseHandle(procinfo.hThread);
     if(procinfo.hProcess && procinfo.hProcess != INVALID_HANDLE_VALUE) CloseHandle(procinfo.hProcess);
     if(hlog && hlog != INVALID_HANDLE_VALUE)
@@ -475,7 +477,7 @@ handle_proc::~handle_proc()
             {
                 char msg[1024];
                 strerror_s(msg, errno);
-                time_header_out(cerr) << "handle_proc::~handle_proc() _unlink(" << log_path << ") failed: " << msg << endl;
+                time_header_out(*pflog) << "handle_proc::~handle_proc() _unlink(" << log_path << ") failed: " << msg << endl;
             }
         }
     }

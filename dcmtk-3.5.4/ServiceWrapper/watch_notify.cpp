@@ -104,12 +104,26 @@ int watch_notify(string &cmd, ostream &flog)
         return gle;
     }
     if(opt_verbose) time_header_out(flog) << "watch_notify() dcmqrscp start" << endl;
-    
+#ifdef _DEBUG
+    strcpy_s(buff, __FILE__);
+    char *p = strrchr(buff, '\\');
+    if(p)
+    {
+        *p = '\0';
+        p = strrchr(buff, '\\');
+        if(p)
+        {
+            *p = '\0';
+            strcat_s(buff, "\\Debug\\jobloader.exe dcmtk_ServiceWrapper");
+        } else sprintf_s(buff, "%s\\bin\\jobloader.exe dcmtk_ServiceWrapper", GetPacsBase());
+    } else sprintf_s(buff, "%s\\bin\\jobloader.exe dcmtk_ServiceWrapper", GetPacsBase());
+#else
     sprintf_s(buff, "%s\\bin\\jobloader.exe dcmtk_ServiceWrapper", GetPacsBase());
+#endif
     cmd = buff;
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
     handle_proc *phproc_job = new handle_proc("", buff, cmd, "jobloader", &flog);
-    gle = phproc_job->start_process(true);
+    gle = phproc_job->start_process(false);
     if(gle)
     {
         displayErrorToCerr("watch_notify() handle_proc::create_process(jobloader) at beginning", gle, &flog);

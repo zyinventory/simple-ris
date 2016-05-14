@@ -39,6 +39,8 @@ int _tmain(int argc, _TCHAR* argv[])
         }
     }
     else time_header_out(flog) << "Load Settings failed." << endl;
+    
+    if(debug_mode) time_header_out(flog) << "enable debug mode." << endl;
 
     hMutex = CreateMutex(NULL, TRUE, "Global\\publisher_job_load_balance_mutex");
     if(hMutex == NULL)
@@ -47,6 +49,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		ret = -1;
         goto exit_job_loader;
     }
+    if(debug_mode) time_header_out(flog) << "create mutex OK: Global\\publisher_job_load_balance_mutex." << endl;
+
     if(argc > 1)
     {
         sprintf_s(buff, "Global\\%s", argv[1]);
@@ -58,7 +62,9 @@ int _tmain(int argc, _TCHAR* argv[])
             ret = -2;
             goto exit_job_loader;
         }
+        if(debug_mode) time_header_out(flog) << "open mutex OK: Global\\" << argv[1] << endl;
     }
+
     sprintf_s(buff, "%s\\orders_balance", GetPacsBase());
     hdir = FindFirstChangeNotification(buff, FALSE, FILE_NOTIFY_CHANGE_SIZE);
     if(hdir == INVALID_HANDLE_VALUE)
@@ -68,6 +74,7 @@ int _tmain(int argc, _TCHAR* argv[])
         displayErrorToCerr(buff, ret, &flog);
         goto exit_job_loader;
     }
+    if(debug_mode) time_header_out(flog) << "dir monitor OK: " << buff << endl;
 
     ptr_license_count = reinterpret_cast<int*>(create_shared_memory_mapping("job_loader_lock_counter", sizeof(int), &hmap, &hfile, &flog));
 
@@ -115,6 +122,8 @@ int _tmain(int argc, _TCHAR* argv[])
         DWORD wr = WaitForMultipleObjects(hServiceMutex ? 2 : 1, wa, FALSE, 1000);
         if(wr == WAIT_OBJECT_0 || wr == WAIT_ABANDONED_0)
         {   // orders_balance dir change
+            if(debug_mode) time_header_out(flog) << "orders_balance dir is changed." << endl;
+
             pending_jdf.clear();
             WIN32_FIND_DATA wfd;
             HANDLE h_jdf_find = FindFirstFile("..\\orders_balance\\*.jdf", &wfd);
