@@ -343,7 +343,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     else if(cmd.compare(NOTIFY_STORE_TAG) == 0)
     {
         process_notify_association(ifs, tag, flog);
-        last_association_notify_filename = filename;
+        if(tag == NOTIFY_ASSOC_ESTA) last_association_notify_filename = filename;
         set_complete.insert(filename);
     }
     else if(cmd.compare(NOTIFY_ACKN_ITEM) == 0)
