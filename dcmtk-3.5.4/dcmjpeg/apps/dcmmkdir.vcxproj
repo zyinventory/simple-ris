@@ -274,6 +274,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\dcmdata\apps\notify_context.cpp" />
+    <ClCompile Include="..\..\dcmdata\apps\xml_index.cpp" />
     <ClCompile Include="dcmmkdir.cxx" />
   </ItemGroup>
   <ItemGroup>
