@@ -98,14 +98,11 @@ int main(int argc, char *argv[])
         return -2;  /* DcmDicomDir class dumps core when no data dictionary */
     }
 
-    string storedir(_getcwd(NULL, 0));
-    //CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
-    bool verbose = opt_verbose;
-    for_each(fileNames.begin(), fileNames.end(), [&storedir, verbose](const string &seid) { call_process_log(storedir, seid, verbose); });
-    
-    clear_resource();
-    //CoUninitialize();
-    return 0;
-	//return MergeDicomDir(fileNames, opt_output, opt_fileset, CERR, opt_verbose);
+    //string storedir(_getcwd(NULL, 0));
+    //bool verbose = opt_verbose;
+    //for_each(fileNames.begin(), fileNames.end(), [&storedir, verbose](const string &seid) { call_process_log(storedir, seid, verbose); });
+    //clear_resource();
+    //return 0;
+	return MergeDicomDir(fileNames, opt_output, opt_fileset, CERR, opt_verbose);
 	//return DicomDir2Xml(fileNames.front().c_str(), opt_output) ? 0 : -1;
 }
