@@ -4,12 +4,16 @@
 #define _XML_INDEX_CLASS_
 
 #include "notify_context.h"
+#include <list>
 #include <map>
+#include <iterator>
+#include <algorithm>
 #import <msxml3.dll>
 
 namespace handle_context
 {
     typedef std::map<std::string, MSXML2::IXMLDOMDocument2*> XML_MAP;
+    typedef std::pair<std::string, MSXML2::IXMLDOMDocument2*> XML_PAIR;
 
     class xml_index : public base_path
     {
@@ -34,6 +38,7 @@ namespace handle_context
         xml_index& operator=(const xml_index &r);
         void make_index(const NOTIFY_FILE_CONTEXT &nfc);
         bool unload_and_sync_study(const std::string &study_uid);
+        void find_all_study_uid(std::list<std::string> &uids) const;
     };
 }
 

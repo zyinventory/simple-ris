@@ -3804,7 +3804,7 @@ void DicomDirInterface::inventMissingInstanceLevelAttributes(DcmDirectoryRecord 
 
 // add DICOM file to the current DICOMDIR object
 OFCondition DicomDirInterface::addDicomFile(const char *filename,
-                                            const char *directory, E_TransferSyntax *xfer)
+                                            const char *directory, E_TransferSyntax *xfer, void(*notifyCallback)(DcmDataset*))
 {
     OFCondition result = EC_IllegalParameter;
     /* first make sure that a DICOMDIR object exists */
@@ -3824,6 +3824,7 @@ OFCondition DicomDirInterface::addDicomFile(const char *filename,
             DcmDirectoryRecord *rootRecord = &(DicomDir->getRootRecord());
             DcmMetaInfo *metainfo = fileformat.getMetaInfo();
             DcmDataset *dataset = fileformat.getDataset();
+            if(notifyCallback) notifyCallback(dataset);
             if(xfer) *xfer = dataset->getOriginalXfer();
 
             /* massage filename into DICOM format (DOS conventions for path separators, uppercase) */

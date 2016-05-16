@@ -164,6 +164,85 @@ static void checkValueGE(DcmMetaInfo *metainfo,
     }
 }
 
+static handle_context::NOTIFY_FILE_CONTEXT nfc;
+static char association_buff[1024];
+
+static void fill_notify_from_dcmdataset(DcmDataset *dataset)
+{
+    istringstream ia(association_buff);
+    ia  >> nfc.assoc.path >> nfc.file.filename >> nfc.file.xfer 
+        >> nfc.assoc.id >> nfc.assoc.store_assoc_id >> nfc.assoc.callingAE >> nfc.assoc.callingAddr >> nfc.assoc.calledAE 
+        >> dec >> nfc.assoc.port >> nfc.assoc.expected_xfer >> nfc.assoc.auto_publish >> nfc.assoc.calledAddr;
+    
+    const char *patientID = NULL, *patientsName = NULL, *patientsBirthDate = NULL, 
+        *patientsSex = NULL, *patientsSize = NULL, *patientsWeight = NULL,
+        *studyUID = NULL, *studyDate = NULL, *studyTime = NULL, *accessionNumber = NULL, 
+        *seriesUID = NULL, *modality = NULL, *instanceUID = NULL;
+    // file level
+	dataset->findAndGetString(DCM_PatientID, patientID);
+    if(patientID)
+    {
+        strcpy_s(nfc.file.patientID, patientID);
+        strcpy_s(nfc.patient.patientID, patientID);
+    }
+    dataset->findAndGetString(DCM_StudyInstanceUID, studyUID);
+    if(studyUID)
+    {
+        strcpy_s(nfc.file.studyUID, studyUID);
+        strcpy_s(nfc.study.studyUID, studyUID);
+    }
+    dataset->findAndGetString(DCM_SeriesInstanceUID, seriesUID);
+    if(seriesUID)
+    {
+        strcpy_s(nfc.file.seriesUID, seriesUID);
+        strcpy_s(nfc.series.seriesUID, seriesUID);
+    }
+    dataset->findAndGetString(DCM_SOPInstanceUID, instanceUID);
+    if(instanceUID) strcpy_s(nfc.file.instanceUID, instanceUID);
+
+    DcmXfer xfer(dataset->getOriginalXfer());
+    strcpy_s(nfc.file.xfer_new, xfer.getXferShortName());
+    nfc.file.isEncapsulated = xfer.isEncapsulated();
+    
+    //patient level
+    dataset->findAndGetString(DCM_PatientsName, patientsName);
+    if(patientsName) strcpy_s(nfc.patient.patientsName, patientsName);
+
+    dataset->findAndGetString(DCM_PatientsBirthDate, patientsBirthDate);
+    if(patientsBirthDate) strcpy_s(nfc.patient.birthday, patientsBirthDate);
+
+    dataset->findAndGetString(DCM_PatientsSex, patientsSex);
+    if(patientsSex) strcpy_s(nfc.patient.sex, patientsSex);
+
+    dataset->findAndGetString(DCM_PatientsSize, patientsSize);
+    if(patientsSize) strcpy_s(nfc.patient.height, patientsSize);
+
+    dataset->findAndGetString(DCM_PatientsWeight, patientsWeight);
+    if(patientsWeight) strcpy_s(nfc.patient.weight, patientsWeight);
+
+    //study level
+    dataset->findAndGetString(DCM_StudyDate, studyDate);
+    if(studyDate) strcpy_s(nfc.study.studyDate, studyDate);
+
+    dataset->findAndGetString(DCM_StudyTime, studyTime);
+    if(studyTime) strcpy_s(nfc.study.studyTime, studyTime);
+
+    dataset->findAndGetString(DCM_AccessionNumber, accessionNumber);
+    if(accessionNumber) strcpy_s(nfc.study.accessionNumber, accessionNumber);
+
+    //series level
+    dataset->findAndGetString(DCM_Modality, modality);
+    if(modality) strcpy_s(nfc.series.modality, modality);
+    
+    nfc.file.StorePath();
+}
+
+static bool com_init = false;
+static void exitHook()
+{
+    if(com_init) CoUninitialize();
+}
+
 int main(int argc, char *argv[])
 {
 	int opt_debug = 0;
@@ -592,6 +671,17 @@ int main(int argc, char *argv[])
 	int clientId = _getpid();
     HANDLE hPipe = INVALID_HANDLE_VALUE;
 
+    if(FAILED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED)))
+    {
+        time_header_out(CERR) << "dicomdir maker: CoInitializeEx() failed." << endl;
+        return -3;
+    }
+    else
+    {
+        com_init = true;
+        atexit(exitHook);
+    }
+
     if(readPipe)
     {
         bool pipeStandby = false;
@@ -655,6 +745,9 @@ int main(int argc, char *argv[])
 		result = ddir.createNewDicomDir(opt_profile, opt_output, opt_fileset);
 
 	if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: begin to add files" << endl;
+
+    handle_context::xml_index xi(&CERR);
+    handle_context::xml_index::singleton_ptr = &xi;
 
 	// If scu split study into series and one association per series,
 	// dcmmkdir must collect csv files as fileNameList, otherwise xml index will be incorrect.
@@ -724,7 +817,9 @@ int main(int argc, char *argv[])
                     {
                         *assoc_text++ = '\0';
                         time_header_out(CERR) << assoc_text << endl;
+                        strcpy_s(association_buff, assoc_text);
                     }
+                    else association_buff[0] = '\0';
                     // split studyUID(fnbuf) and filename(pfn)
                     pfn = strchr(fnbuf, '|');
 					if(pfn)
@@ -736,7 +831,12 @@ int main(int argc, char *argv[])
 
                     /* add files to the DICOMDIR */
                     E_TransferSyntax xfer = EXS_Unknown;
-					result = ddir.addDicomFile(pfn, dir && *dir != '\0' ? dir : opt_directory, &xfer);
+                    memset(&nfc, 0, sizeof(nfc));
+					
+                    result = ddir.addDicomFile(pfn, dir && *dir != '\0' ? dir : opt_directory, &xfer, fill_notify_from_dcmdataset);
+                    
+                    xi.make_index(nfc);
+
                     DcmXfer dcmxfer(xfer);
                     // save filename for response message that is written to sender
                     sprintf_s(last_file_name, "%s|%s", pfn, dcmxfer.getXferShortName());
@@ -757,6 +857,14 @@ int main(int argc, char *argv[])
                     }
                 }
                 CloseHandle(hPipe);
+                
+                list<string> uids;
+                xi.find_all_study_uid(uids);
+                for(list<string>::iterator it = uids.begin(); it != uids.end(); ++it)
+                {
+                    time_header_out(CERR) << "unload study " << *it << endl;
+                    xi.unload_and_sync_study(*it);
+                }
             }
             else if(readStdin)
 			{

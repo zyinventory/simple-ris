@@ -637,7 +637,7 @@ handle_study::~handle_study()
         delete pipe_context;
         pipe_context = NULL;
     }
-    xml_index::singleton_ptr->unload_and_sync_study(study_uid);
+    //xml_index::singleton_ptr->unload_and_sync_study(study_uid);
     
     string notify_old_path;
     char path_buff[MAX_PATH];
@@ -800,8 +800,9 @@ DWORD handle_study::write_message_to_pipe()
         switch(it->type)
         {
         case ACTION_TYPE::INDEX_INSTANCE:
-            pipe_context->cbShouldWrite = sprintf_s(pipe_context->chBuffer, "%s|%s\n%s %s %s %s %s %d %s %s %s",
-                it->pnfc->file.studyUID, it->pnfc->file.unique_filename, it->pnfc->assoc.id, it->pnfc->assoc.store_assoc_id,
+            pipe_context->cbShouldWrite = sprintf_s(pipe_context->chBuffer, "%s|%s\n%s %s %s %s %s %s %s %s %d %s %s %s",
+                it->pnfc->file.studyUID, it->pnfc->file.unique_filename, 
+                it->pnfc->assoc.path, it->pnfc->file.filename, it->pnfc->file.xfer, it->pnfc->assoc.id, it->pnfc->assoc.store_assoc_id,
                 it->pnfc->assoc.callingAE, it->pnfc->assoc.callingAddr, it->pnfc->assoc.calledAE, it->pnfc->assoc.port,
                 it->pnfc->assoc.expected_xfer, it->pnfc->assoc.auto_publish, it->pnfc->assoc.calledAddr);
             //replace(lpPipeInst->chBuffer, lpPipeInst->chBuffer + strlen(lpPipeInst->chBuffer), '/', '\\');
@@ -846,7 +847,6 @@ void handle_study::action_compress_ok(const string &filename, const string &xfer
         //cout << "trigger make_dicomdir " << study_uid << "\\" << it_clc->pnfc->file.filename << endl;
 
         strcpy_s(it_clc->pnfc->file.xfer_new, xfer.c_str());
-        //xml_index::singleton_ptr->make_index(*it_clc->get_notify_file_context());
 
         if(!ris_integration_start) // start handle_ris_integration once per study.
         {

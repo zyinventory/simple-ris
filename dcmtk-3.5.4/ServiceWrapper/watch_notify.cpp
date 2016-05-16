@@ -137,8 +137,8 @@ int watch_notify(string &cmd, ostream &flog)
         if(debug_flag) debug_mode = true;
     }
 
-    xml_index xi(&flog);
-    xml_index::singleton_ptr = &xi;
+    //xml_index xi(&flog);
+    //xml_index::singleton_ptr = &xi;
 
     in_process_sequence_dll(buff, sizeof(buff), "");
     named_pipe_server nps(buff, &flog);

@@ -243,7 +243,7 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2Ptr &pXMLDom, const NOTIFY_
             {
                 instance->setAttribute(L"xfer", nfc.file.xfer_new);
                 char instance_path[MAX_PATH];
-                int path_len = sprintf_s(instance_path, "archdir\\v0000000\\%s\\%s\\%s", nfc.file.hash, nfc.file.studyUID, nfc.file.unique_filename);
+                int path_len = sprintf_s(instance_path, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\%s", GetPacsBase(), nfc.file.hash, nfc.file.studyUID, nfc.file.unique_filename);
                 if(nfc.file.PathSeparator() == '/')
                     replace(instance_path, instance_path + path_len, '/', '\\');
                 if(_stat64(instance_path, &fs))
@@ -310,6 +310,7 @@ static void add_study_to_assoc_dom(MSXML2::IXMLDOMDocument2Ptr &pAssocDom, const
 {
     if(pAssocDom) // append study node(only id attr) to assoc dom
     {
+        if(opt_verbose) time_header_out(cerr) << __FUNCSIG__" start." << endl;
         _bstr_t filter(L"study[@id='");
         filter += study_uid.c_str();
         filter += L"']";
@@ -334,7 +335,7 @@ static void add_study_to_assoc_dom(MSXML2::IXMLDOMDocument2Ptr &pAssocDom, const
     else
     {
         string msg("can't find or create association dom ");
-        throw runtime_error(msg.append(assoc_id));
+        throw runtime_error(msg.append(assoc_id).append(", pAssocDom is NULL."));
     }
 }
 
@@ -376,11 +377,14 @@ void xml_index::make_index(const NOTIFY_FILE_CONTEXT &nfc)
         it = map_xml_assoc.find(assoc_id);
         if(it == map_xml_assoc.end())
         {
+            if(opt_verbose) time_header_out(*pflog) << "association " << assoc_id << " is not found, create_assoc_dom()." << endl;
             if(create_assoc_dom(nfc, pAssocDom))
             {
+                if(opt_verbose) time_header_out(*pflog) << "association " << assoc_id << " create OK." << endl;
                 pAssocDom.AddRef();
                 map_xml_assoc[assoc_id] = pAssocDom;
             }
+            else if(opt_verbose) time_header_out(*pflog) << "association " << assoc_id << " create failed." << endl;
         }
         else pAssocDom.Attach(it->second, true); // add ref
         
@@ -522,7 +526,7 @@ ris_next_line:
 
 #define CLUSTER_SIZE 4096LL
 #define ALIGNED_SIZE(x) (((x) & ~(CLUSTER_SIZE - 1LL)) + CLUSTER_SIZE)
-static void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument2Ptr &pXMLDom)
+static void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument2 *pXMLDom)
 {
     size_t series_count = 0, instance_count = 0;
     __int64 size_aligned = 0;
@@ -559,11 +563,8 @@ bool xml_index::save_receive(MSXML2::IXMLDOMDocument2 *pAssocDom)
     try
     {
         string xmlpath((LPCSTR)pAssocDom->documentElement->attributes->getNamedItem(L"id")->text);
-        xmlpath.insert(8, 1, '/');
-        xmlpath.insert(6, 1, '/');
-        xmlpath.insert(4, 1, '/');
-        xmlpath.insert(0, "indexdir/receive/");
-        xmlpath.append(".xml");
+        xmlpath.insert(8, 1, '\\').insert(6, 1, '\\').insert(4, 1, '\\')
+            .insert(0, "\\pacs\\indexdir\\receive\\").insert(0, GetPacsBase()).append(".xml");
         if(PrepareFileDir(xmlpath.c_str()))
         {
             ofstream fxml(xmlpath.c_str(), ios_base::trunc | ios_base::out, _SH_DENYNO);
@@ -573,6 +574,7 @@ bool xml_index::save_receive(MSXML2::IXMLDOMDocument2 *pAssocDom)
                 fxml.close();
             }
         }
+        else if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" PrepareFileDir(" << xmlpath << ") failed." << endl;
         return true;
     }
     CATCH_COM_ERROR("xml_index::save_receive()", *pflog);
@@ -594,7 +596,8 @@ bool xml_index::save_study(const string &study_uid, MSXML2::IXMLDOMDocument2 *pS
             throw runtime_error(xml_path);
         }
         sprintf_s(xml_path + pos, sizeof(xml_path) - pos, "\\%s.txt", study_uid.c_str());
-        
+
+        if(opt_verbose) time_header_out(*pflog) << "xml_index::save_study() ready to generate_replace_fields()" << endl;
         generate_replace_fields(xml_path, pStudyDom);
 
         char *p = strrchr(xml_path, '.');
@@ -672,7 +675,7 @@ bool xml_index::save_index_study_date(MSXML2::IXMLDOMDocument2Ptr &pDomStudy)
         else throw runtime_error(xml_path.insert(0, "save ").append(" error"));
         return true;
     }
-    CATCH_COM_ERROR("save_index_study_date()", cerr)
+    CATCH_COM_ERROR("save_index_study_date()", *pflog)
     return false;
 }
 
@@ -741,8 +744,14 @@ bool xml_index::save_index_patient(MSXML2::IXMLDOMDocument2Ptr &pDomStudy)
         else throw runtime_error(xml_path.insert(0, "save ").append(" error"));
         return true;
     }
-    CATCH_COM_ERROR("save_index_patient()", cerr)
+    CATCH_COM_ERROR("save_index_patient()", *pflog)
     return false;
+}
+
+void xml_index::find_all_study_uid(std::list<std::string> &uids) const
+{
+    std::transform(map_xml_study.begin(), map_xml_study.end(), back_inserter(uids),
+        [](const XML_PAIR &p) { return p.first; });
 }
 
 bool xml_index::unload_and_sync_study(const std::string &study_uid)
@@ -751,19 +760,12 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
     if(its == map_xml_study.end() || its->second == NULL) return false;
     try
     {
-        MSXML2::IXMLDOMDocument2Ptr pStudyDom;
-        HRESULT hr = pStudyDom.CreateInstance(__uuidof(MSXML2::DOMDocument30), NULL, CLSCTX_INPROC_SERVER);
-        if(FAILED(hr)) throw runtime_error("can't create IXMLDOMDocument2Ptr");
-        pStudyDom.Attach(its->second, false); // don't add ref
+        MSXML2::IXMLDOMDocument2 *pdom = its->second;
+        calculate_size_cluster_aligned(pdom);
 
-        calculate_size_cluster_aligned(pStudyDom);
+        if(save_study(study_uid, pdom)) map_xml_study.erase(its);
+        else throw runtime_error("can't save study");
 
-        if(save_study(study_uid, pStudyDom)) map_xml_study.erase(its);
-        else
-        {
-            pStudyDom.Detach();  // don't release interface ptr
-            throw runtime_error("can't save study");
-        }
         // try complete association
         _bstr_t filter_not_complete(L"study[not(@hash_prefix)]"), filter(L"study[@id='");
         filter += study_uid.c_str();
@@ -777,7 +779,7 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
             {
                 ita->second->documentElement->removeChild(ps);
                 // shallow copy study node
-                MSXML2::IXMLDOMNodePtr study = shallow_copy_study(pStudyDom->documentElement);
+                MSXML2::IXMLDOMNodePtr study = shallow_copy_study(pdom->documentElement);
                 if(study) ita->second->documentElement->appendChild(study);
             }
             
@@ -796,6 +798,13 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
             else ++ita;
         }
 
+        MSXML2::IXMLDOMDocument2Ptr pStudyDom;
+        HRESULT hr = pStudyDom.CreateInstance(__uuidof(MSXML2::DOMDocument30), NULL, CLSCTX_INPROC_SERVER);
+        if(FAILED(hr)) throw runtime_error("can't create IXMLDOMDocument2Ptr");
+
+        pStudyDom.Attach(pdom, false); // don't add ref
+
+        if(opt_verbose) time_header_out(*pflog) << "xml_index::unload_and_sync_study() ready to save study date and patient." << endl;
         save_index_study_date(pStudyDom);
         save_index_patient(pStudyDom);
         return true;
@@ -809,18 +818,18 @@ xml_index::~xml_index()
     XML_MAP::iterator it = map_xml_study.begin();
     while(it != map_xml_study.end())
     {
+        time_header_out(*pflog) << "xml_index::~xml_index() remain study " << it->first << endl;
         save_study(it->first, it->second);
         if(it->second) it->second->Release();
-        time_header_out(*pflog) << "xml_index::~xml_index() remain study " << it->first << endl;
         it = map_xml_study.erase(it);
     }
 
     it = map_xml_assoc.begin();
     while(it != map_xml_assoc.end())
     {
+        time_header_out(*pflog) << "xml_index::~xml_index() remain association " << it->first << endl;
         save_receive(it->second);
         if(it->second) it->second->Release();
-        time_header_out(*pflog) << "xml_index::~xml_index() remain association " << it->first << endl;
         it = map_xml_assoc.erase(it);
     }
 }
