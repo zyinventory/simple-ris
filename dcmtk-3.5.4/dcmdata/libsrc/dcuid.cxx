@@ -1091,7 +1091,7 @@ static unsigned char *getMACAddress(unsigned char buffer[6])
                 UINT OID_ipMACEntAddr[] = {1, 3, 6, 1, 2, 1, 2, 2, 1, 6};
                 AsnObjectIdentifier MIB_ifMACEntAddr = {sizeof(OID_ipMACEntAddr) / sizeof(UINT), OID_ipMACEntAddr};
                 AsnObjectIdentifier MIB_ifEntryType = {sizeof(OID_ifEntryType) / sizeof(UINT), OID_ifEntryType};
-                AsnObjectIdentifier MIB_ifEntryNum = {sizeof(OID_ifEntryNum) / sizeof(UINT), OID_ifEntryNum};
+                // bug fix crash on win8+ : AsnObjectIdentifier MIB_ifEntryNum = {sizeof(OID_ifEntryNum) / sizeof(UINT), OID_ifEntryNum};
                 SnmpVarBindList varBindList;
                 SnmpVarBind varBind[2];
                 AsnInteger32 errorStatus;
@@ -1110,9 +1110,9 @@ static unsigned char *getMACAddress(unsigned char buffer[6])
                 varBind[0].name = MIB_NULL;
                 varBind[1].name = MIB_NULL;
                 /* copy in the OID to find the number of entries in the inteface table */
-                varBindList.len = 1;        /* only retrieving one item */
-                m_Copy(&varBind[0].name, &MIB_ifEntryNum);
-                ret = m_Query(SNMP_PDU_GETNEXT, &varBindList, &errorStatus, &errorIndex);
+                // bug fix crash on win8+ : varBindList.len = 1;        /* only retrieving one item */
+                // bug fix crash on win8+ : m_Copy(&varBind[0].name, &MIB_ifEntryNum);
+                // bug fix crash on win8+ : ret = m_Query(SNMP_PDU_GETNEXT, &varBindList, &errorStatus, &errorIndex);
                 m_Free(&varBind[0].name);
                 varBind[0].name = MIB_NULL;
                 varBindList.len = 2;
