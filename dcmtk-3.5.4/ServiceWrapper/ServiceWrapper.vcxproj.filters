@@ -48,7 +48,7 @@
     <ClCompile Include="named_pipe.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="xml_index.cpp">
+    <ClCompile Include="..\dcmdata\apps\notify_context.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -60,6 +60,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="handle_context.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dcmdata\include\dcmtk\dcmdata\notify_context.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

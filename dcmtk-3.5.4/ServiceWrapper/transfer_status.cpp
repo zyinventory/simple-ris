@@ -17,41 +17,6 @@ const char* action_from_association::translate_action_type(ACTION_TYPE t)
     }
 }
 
-const char* _tag_NOTIFY_FILE_CONTEXT_FILE_SECTION::StorePath(char sp)
-{
-    HashStr(studyUID, unique_filename, sizeof(unique_filename));
-    unique_filename[8] = sp;
-    SeriesInstancePath(seriesUID, instanceUID, unique_filename + 9, sizeof(unique_filename) - 9, sp);
-    sprintf_s(hash, "%c%c%c%c%c%c%c%c%c%c%c",
-        unique_filename[0], unique_filename[1], sp, unique_filename[2], unique_filename[3], sp, 
-        unique_filename[4], unique_filename[5], sp, unique_filename[6], unique_filename[7]);
-    return unique_filename;
-}
-
-bool _tag_NOTIFY_FILE_CONTEXT::operator<(const struct _tag_NOTIFY_FILE_CONTEXT &r) const
-{
-    int cmp = strcmp(src_notify_filename, r.src_notify_filename);
-    if(cmp < 0) return true;
-    else if(cmp > 0) return false;
-    else
-    {
-        cmp = strcmp(file.unique_filename, r.file.unique_filename);
-        if(cmp < 0) return true;
-        else if(cmp > 0) return false;
-        else
-        {
-            cmp = strcmp(file.filename, r.file.filename);
-            if(cmp < 0) return true;
-            else return false;
-        }
-    }
-}
-
-void base_path::print_state() const
-{
-    *pflog << "base_path::print_state() path: " << path << endl;
-}
-
 void meta_notify_file::print_state() const
 {
     *pflog << "meta_notify_file::print_state() association_id: " << association_id << endl
@@ -71,14 +36,7 @@ handle_dir& handle_dir::operator=(const handle_dir &r)
 {
     meta_notify_file::operator=(r);
     handle = r.handle;
-    store_assoc_id = r.store_assoc_id;
-    callingAE = r.callingAE;
-    callingAddr = r.calledAddr;
-    calledAE = r.calledAE;
-    calledAddr = r.calledAddr;
-    expected_xfer = r.expected_xfer;
-    auto_publish = r.auto_publish;
-    port = r.port;
+    assoc = r.assoc;
     last_association_notify_filename = r.last_association_notify_filename;
     assoc_disconn = r.assoc_disconn;
     disconn_release = r.disconn_release;
@@ -118,14 +76,14 @@ handle_dir::~handle_dir()
 void handle_dir::print_state() const
 {
     *pflog << "handle_dir::print_state()" << endl
-        << "\tstore_assoc_id: " << store_assoc_id << endl
-        << "\tcallingAE: " << callingAE << endl
-        << "\tcallingAddr: " << callingAddr << endl
-        << "\tcalledAE: " << calledAE << endl
-        << "\tcalledAddr: " << calledAddr << endl
-        << "\texpected_xfer: " << expected_xfer << endl
-        << "\tauto_publish: " << auto_publish << endl
-        << "\tport: " << dec << port << endl
+        << "\tstore_assoc_id: " << assoc.store_assoc_id << endl
+        << "\tcallingAE: " << assoc.callingAE << endl
+        << "\tcallingAddr: " << assoc.callingAddr << endl
+        << "\tcalledAE: " << assoc.calledAE << endl
+        << "\tcalledAddr: " << assoc.calledAddr << endl
+        << "\texpected_xfer: " << assoc.expected_xfer << endl
+        << "\tauto_publish: " << assoc.auto_publish << endl
+        << "\tport: " << dec << assoc.port << endl
         << "\tlast_association_notify_filename: " << last_association_notify_filename << endl
         << "\tassoc_disconn: " << assoc_disconn << endl
         << "\tdisconn_release: " << disconn_release << endl
@@ -258,9 +216,11 @@ void handle_dir::process_notify_association(std::istream &ifs, unsigned int tag,
     switch(tag)
     {
     case NOTIFY_ASSOC_ESTA:
-        ifs >> store_assoc_id >> callingAE >> callingAddr >> calledAE >> dec >> port >> expected_xfer >> auto_publish >> calledAddr;
-        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_association_id() << " "
-            << callingAE << " " << callingAddr<< " " << calledAE<< " " << dec << port << " " << expected_xfer << " "<< calledAddr << endl;
+        strcpy_s(assoc.id, get_association_id().c_str());
+        strcpy_s(assoc.path, get_path().c_str());
+        ifs >> assoc.store_assoc_id >> assoc.callingAE >> assoc.callingAddr >> assoc.calledAE >> dec >> assoc.port >> assoc.expected_xfer >> assoc.auto_publish >> assoc.calledAddr;
+        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << assoc.id << " "
+            << assoc.callingAE << " " << assoc.callingAddr<< " " << assoc.calledAE<< " " << dec << assoc.port << " " << assoc.expected_xfer << " "<< assoc.calledAddr << endl;
         break;
     case NOTIFY_ASSOC_RELEASE:
         assoc_disconn = true;
@@ -281,17 +241,6 @@ void handle_dir::process_notify_association(std::istream &ifs, unsigned int tag,
         }
         break;
     }
-}
-
-void handle_dir::fill_association_section(NOTIFY_ASSOC_SECTION & nas) const
-{
-    strcpy_s(nas.id, get_association_id().c_str());
-    strcpy_s(nas.callingAE, callingAE.c_str());
-    strcpy_s(nas.callingAddr, callingAddr.c_str());
-    strcpy_s(nas.calledAE, calledAE.c_str());
-    strcpy_s(nas.calledAddr, calledAddr.c_str());
-    strcpy_s(nas.path, get_path().c_str());
-    nas.port = port;
 }
 
 DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog)
@@ -420,7 +369,7 @@ void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps) const
     if(assoc_disconn)
     {
         ACTION_TYPE type = NO_ACTION;
-        if(auto_publish != "MANUAL") type = BURN_PER_STUDY;
+        if(assoc.auto_publish != "MANUAL") type = BURN_PER_STUDY;
         paaa = new action_from_association(type, get_path(), disconn_release, pflog);
     }
     else
@@ -851,7 +800,10 @@ DWORD handle_study::write_message_to_pipe()
         switch(it->type)
         {
         case ACTION_TYPE::INDEX_INSTANCE:
-            pipe_context->cbShouldWrite = sprintf_s(pipe_context->chBuffer, "%s|%s", it->pnfc->file.studyUID, it->pnfc->file.unique_filename);
+            pipe_context->cbShouldWrite = sprintf_s(pipe_context->chBuffer, "%s|%s\n%s %s %s %s %s %d %s %s %s",
+                it->pnfc->file.studyUID, it->pnfc->file.unique_filename, it->pnfc->assoc.id, it->pnfc->assoc.store_assoc_id,
+                it->pnfc->assoc.callingAE, it->pnfc->assoc.callingAddr, it->pnfc->assoc.calledAE, it->pnfc->assoc.port,
+                it->pnfc->assoc.expected_xfer, it->pnfc->assoc.auto_publish, it->pnfc->assoc.calledAddr);
             //replace(lpPipeInst->chBuffer, lpPipeInst->chBuffer + strlen(lpPipeInst->chBuffer), '/', '\\');
 
             if(!WriteFileEx(pipe_context->hPipeInst, pipe_context->chBuffer, pipe_context->cbShouldWrite, 
@@ -894,7 +846,7 @@ void handle_study::action_compress_ok(const string &filename, const string &xfer
         //cout << "trigger make_dicomdir " << study_uid << "\\" << it_clc->pnfc->file.filename << endl;
 
         strcpy_s(it_clc->pnfc->file.xfer_new, xfer.c_str());
-        xml_index::singleton_ptr->make_index(*it_clc->get_notify_file_context());
+        //xml_index::singleton_ptr->make_index(*it_clc->get_notify_file_context());
 
         if(!ris_integration_start) // start handle_ris_integration once per study.
         {

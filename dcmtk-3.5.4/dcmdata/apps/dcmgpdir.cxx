@@ -76,6 +76,9 @@
 #include "dcmtk/ofstd/oftimer.h"        /* for windows.h */
 #include <process.h>
 #include "commonlib.h"
+#include "../include/dcmtk/dcmdata/xml_index.h"
+
+bool opt_verbose = false;
 
 #ifdef WITH_ZLIB
 #include <zlib.h>         /* for zlibVersion() */
@@ -322,7 +325,10 @@ int main(int argc, char *argv[])
 		/* general options */
 		cmd.beginOptionBlock();
 		if (cmd.findOption("--verbose"))
+        {
 			ddir.enableVerboseMode();
+            opt_verbose = true;
+        }
 		if (cmd.findOption("--quiet"))
 		{
 			ddir.enableVerboseMode(OFFalse);
@@ -710,9 +716,15 @@ int main(int argc, char *argv[])
                         break;
                     }
                     fnbuf[cbRead] = '\0';
-                    if(ddir.verboseMode())
-                        time_header_out(CERR) << "dcmmkdir ReadFile(): " << fnbuf << endl;
-
+                    if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir ReadFile(): " << fnbuf << endl;
+                    
+                    char *assoc_text = strchr(fnbuf, '\n');
+                    //split association info
+                    if(assoc_text)
+                    {
+                        *assoc_text++ = '\0';
+                        time_header_out(CERR) << assoc_text << endl;
+                    }
                     // split studyUID(fnbuf) and filename(pfn)
                     pfn = strchr(fnbuf, '|');
 					if(pfn)

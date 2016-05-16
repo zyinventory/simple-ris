@@ -1,5 +1,19 @@
-#include "stdafx.h"
+#include <io.h>
+#include <time.h>
+#include <sys/stat.h>
+#include <string>
+#include <iterator>
+#include <algorithm>
+#include <sstream>
+#include <fstream>
+
+#include <windows.h>
+#include <atlbase.h>
 #include "commonlib.h"
+#include "../include/dcmtk/dcmdata/xml_index.h"
+
+extern bool opt_verbose;
+
 /*
 instance state : [backup state]_[include state]
 backup state:

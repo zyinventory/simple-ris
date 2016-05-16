@@ -5,66 +5,13 @@
 
 #include <time.h>
 #include <string>
-#import <msxml3.dll>
+#include "../dcmdata/include/dcmtk/dcmdata/notify_context.h"
 
 #define NOTIFY_BASE "store_notify"
 
 namespace handle_context
 {
-    typedef struct _tag_NOTIFY_FILE_CONTEXT_FILE_SECTION {
-        char filename[MAX_PATH], hash[12], unique_filename[65], patientID[65], studyUID[65], seriesUID[65], instanceUID[65], xfer[16], xfer_new[16];
-        bool isEncapsulated;
-        const char* StorePath(char sp = '\\');
-        char PathSeparator() const { return unique_filename[8]; }
-    } NOTIFY_FILE_CONTEXT_FILE_SECTION;
-
-    typedef struct _tag_NOTIFY_FILE_CONTEXT_PATIENT_SECTION {
-        char patientID[65], patientsName[65], birthday[9], height[10], weight[10], sex[3];
-    } NOTIFY_FILE_CONTEXT_PATIENT_SECTION;
-
-    typedef struct _tag_NOTIFY_FILE_CONTEXT_STUDY_SECTION {
-        char studyUID[65], studyDate[9], studyTime[15], accessionNumber[65];
-    } NOTIFY_FILE_CONTEXT_STUDY_SECTION;
-
-    typedef struct _tag_NOTIFY_FILE_CONTEXT_SERIES_SECTION {
-        char seriesUID[65], modality[17];
-    } NOTIFY_FILE_CONTEXT_SERIES_SECTION;
-
-    typedef struct _tag_NOTIFY_ASSOC_SECTION {
-        char id[32], callingAE[65], callingAddr[65], calledAE[65], calledAddr[65], path[MAX_PATH];
-        unsigned short port;
-    } NOTIFY_ASSOC_SECTION;
-
-    typedef struct _tag_NOTIFY_FILE_CONTEXT {
-        NOTIFY_ASSOC_SECTION assoc; // FK to association
-        char src_notify_filename[64];
-        unsigned int file_seq;
-        NOTIFY_FILE_CONTEXT_FILE_SECTION file;
-        NOTIFY_FILE_CONTEXT_PATIENT_SECTION patient;
-        NOTIFY_FILE_CONTEXT_STUDY_SECTION study;
-        NOTIFY_FILE_CONTEXT_SERIES_SECTION series;
-        bool operator<(const struct _tag_NOTIFY_FILE_CONTEXT &r) const;
-        bool operator==(const struct _tag_NOTIFY_FILE_CONTEXT &r) const { return (!(*this < r) && !(r < *this)); };
-    } NOTIFY_FILE_CONTEXT;
-
     typedef std::list<NOTIFY_FILE_CONTEXT> NOTIFY_LIST;
-
-    class base_path
-    {
-    private:
-        std::string path;
-
-    protected:
-        std::ostream *pflog;
-        base_path(const std::string p, std::ostream *plog) : path(p), pflog(plog) { if(pflog == NULL) pflog = &std::cerr; };
-
-    public:
-        base_path(const base_path &r) : path(r.path), pflog(r.pflog) {};
-        base_path& operator=(const base_path &r) { path = r.path; pflog = r.pflog; return *this; };
-        virtual void print_state() const;
-        virtual HANDLE get_handle() const { return NULL; };
-        const std::string& get_path() const { return path; };
-    };
 
     class meta_notify_file : public base_path
     {
@@ -134,21 +81,20 @@ namespace handle_context
         std::list<std::string> list_file;
         std::set<std::string> set_complete, set_study; // set_study: association[1] -> study[n]
         bool last_find_error, assoc_disconn, disconn_release;
-        std::string store_assoc_id, callingAE, callingAddr, calledAE, calledAddr, expected_xfer, auto_publish, last_association_notify_filename;
-        unsigned short port;
+        std::string last_association_notify_filename;
+        NOTIFY_ASSOC_SECTION assoc;
         
         void process_notify_association(std::istream &ifs, unsigned int tag, std::ostream &flog);
         NOTIFY_FILE_CONTEXT* process_notify_file(std::istream &ifs, unsigned int file_tag, std::ostream &flog);
-        void fill_association_section(NOTIFY_ASSOC_SECTION & nas) const;
+        void fill_association_section(NOTIFY_ASSOC_SECTION &nas) const { nas = assoc; };
 
     public:
         handle_dir(HANDLE h, const std::string &assoc_id, const std::string &file, const std::string notify_filename, std::ostream *plog)
             : meta_notify_file(assoc_id, file, notify_filename, plog), handle(h), last_find_error(false), last_association_notify_filename(notify_filename),
-            assoc_disconn(false), disconn_release(true), port(104) {};
+            assoc_disconn(false), disconn_release(true) { memset(&assoc, 0, sizeof(NOTIFY_ASSOC_SECTION)); assoc.port = 104; };
         handle_dir(const handle_dir& o) : meta_notify_file(o), handle(o.handle), last_find_error(o.last_find_error),
-            list_file(o.list_file), set_complete(o.set_complete), set_study(o.set_study), port(o.port), last_association_notify_filename(o.last_association_notify_filename),
-            store_assoc_id(o.store_assoc_id), callingAE(o.callingAE), callingAddr(o.callingAE), calledAE(o.calledAE), calledAddr(o.calledAddr),
-            expected_xfer(o.expected_xfer), assoc_disconn(o.assoc_disconn), disconn_release(o.disconn_release), auto_publish(o.auto_publish) {};
+            list_file(o.list_file), set_complete(o.set_complete), set_study(o.set_study), last_association_notify_filename(o.last_association_notify_filename),
+            assoc_disconn(o.assoc_disconn), disconn_release(o.disconn_release), assoc(o.assoc) {};
         virtual ~handle_dir();
 
         handle_dir& operator=(const handle_dir &r);
@@ -312,33 +258,6 @@ namespace handle_context
         handle_study* make_handle_study(const std::string &study);
         handle_study* find_handle_study(const std::string &study) { return map_study[study]; };
         void check_study_timeout_to_generate_jdf();
-    };
-
-    typedef std::map<std::string, MSXML2::IXMLDOMDocument2*> XML_MAP;
-
-    class xml_index : public base_path
-    {
-    private:
-        XML_MAP map_xml_study, map_xml_assoc;
-
-        bool create_study_dom(const NOTIFY_FILE_CONTEXT &nfc, MSXML2::IXMLDOMDocument2Ptr &pXMLDom);
-        bool create_assoc_dom(const NOTIFY_FILE_CONTEXT &nfc, MSXML2::IXMLDOMDocument2Ptr &pXMLDom);
-        void add_instance(MSXML2::IXMLDOMDocument2Ptr &pXMLDom, const NOTIFY_FILE_CONTEXT &nfc);
-        void generate_replace_fields(const std::string &replace_fields_path, MSXML2::IXMLDOMDocument2 *pXMLDom);
-        bool save_index_study_date(MSXML2::IXMLDOMDocument2Ptr &pDomStudy);
-        bool save_index_patient(MSXML2::IXMLDOMDocument2Ptr &pDomStudy);
-        bool save_receive(MSXML2::IXMLDOMDocument2 *pAssocDom);
-        bool save_study(const std::string &study_uid, MSXML2::IXMLDOMDocument2 *pStudyDom);
-
-    public:
-        static xml_index *singleton_ptr;
-
-        xml_index(std::ostream *plog) : base_path("", plog) { if(plog == NULL) plog = &std::cerr; };
-        xml_index(const xml_index &r) : base_path(r), map_xml_study(r.map_xml_study) {};
-        virtual ~xml_index();
-        xml_index& operator=(const xml_index &r);
-        void make_index(const NOTIFY_FILE_CONTEXT &nfc);
-        bool unload_and_sync_study(const std::string &study_uid);
     };
 }
 
