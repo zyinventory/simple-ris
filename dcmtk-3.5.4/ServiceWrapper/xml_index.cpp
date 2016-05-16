@@ -330,9 +330,9 @@ void xml_index::make_index(const NOTIFY_FILE_CONTEXT &nfc)
     try
     {
         MSXML2::IXMLDOMDocument2Ptr pStudyDom, pAssocDom;
-        HRESULT hr = pStudyDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        HRESULT hr = pStudyDom.CreateInstance(__uuidof(MSXML2::DOMDocument30), NULL, CLSCTX_INPROC_SERVER);
         if(FAILED(hr)) throw _com_error(hr);
-        hr = pAssocDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        hr = pAssocDom.CreateInstance(__uuidof(MSXML2::DOMDocument30), NULL, CLSCTX_INPROC_SERVER);
         if(FAILED(hr)) throw _com_error(hr);
 
         XML_MAP::iterator it = map_xml_study.find(study_uid);
@@ -621,7 +621,7 @@ bool xml_index::save_index_study_date(MSXML2::IXMLDOMDocument2Ptr &pDomStudy)
         xml_path.insert(6, 1, '\\').insert(4, 1, '\\').insert(0, "\\pacs\\indexdir\\00080020\\").insert(0, GetPacsBase()).append(".xml");
         if(!PrepareFileDir(xml_path.c_str())) throw logic_error(xml_path.insert(0, "PrepareFileDir ").append(" failed"));
         MSXML2::IXMLDOMDocument2Ptr pDom;
-        pDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        pDom.CreateInstance(__uuidof(MSXML2::DOMDocument30), NULL, CLSCTX_INPROC_SERVER);
         errno_t en = _access_s(xml_path.c_str(), 6);
         if(en == ENOENT)
         {   // not exist
@@ -690,7 +690,7 @@ bool xml_index::save_index_patient(MSXML2::IXMLDOMDocument2Ptr &pDomStudy)
         if(!PrepareFileDir(xml_path.c_str())) throw logic_error(xml_path.insert(0, "PrepareFileDir ").append(" failed"));
 
         MSXML2::IXMLDOMDocument2Ptr pDom;
-        pDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        pDom.CreateInstance(__uuidof(MSXML2::DOMDocument30), NULL, CLSCTX_INPROC_SERVER);
         errno_t en = _access_s(xml_path.c_str(), 6);
         if(en == ENOENT)
         {   // not exist
@@ -738,7 +738,7 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
     try
     {
         MSXML2::IXMLDOMDocument2Ptr pStudyDom;
-        HRESULT hr = pStudyDom.CreateInstance(__uuidof(MSXML2::DOMDocument30));
+        HRESULT hr = pStudyDom.CreateInstance(__uuidof(MSXML2::DOMDocument30), NULL, CLSCTX_INPROC_SERVER);
         if(FAILED(hr)) throw runtime_error("can't create IXMLDOMDocument2Ptr");
         pStudyDom.Attach(its->second, false); // don't add ref
 
