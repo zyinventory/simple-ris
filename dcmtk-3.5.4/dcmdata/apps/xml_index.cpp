@@ -406,7 +406,7 @@ void xml_index::generate_replace_fields(const string &replace_fields_path, MSXML
     _bstr_t patientId;
     char ris_path[MAX_PATH];
     string patientNameChs;
-
+    
     try
     {
         if(pXMLDom == NULL) throw runtime_error("XMLDOM is NULL.");
@@ -440,7 +440,10 @@ void xml_index::generate_replace_fields(const string &replace_fields_path, MSXML
         if(patientId.length() == 0) patientId = L"";
         outbuff << "PatientID=" << (LPCSTR)patientId << endl;
 
-        if(GetSetting("RisIntegration", ris_path, sizeof(ris_path)))
+        ris_path[0] = '\0';
+        size_t ris_prog = GetSetting("RisIntegration", ris_path, sizeof(ris_path));
+
+        if(ris_prog)
         {
             char hash[9];
             HashStr((LPCSTR)patientId, hash, sizeof(hash));
@@ -454,13 +457,14 @@ void xml_index::generate_replace_fields(const string &replace_fields_path, MSXML
                 while(ris.good())
                 {
                     if(strlen(line) <= 0) goto ris_next_line;
-                    outbuff << line << endl;
+                    outbuff << line << endl; // save PatientNameChs to field replace file
                     if(strstr(line, "PatientNameChs="))
                     {
                         char *p = strchr(line, '=');
                         if(p) ++p;
                         patientNameChs = p;
                         pat->setAttribute(L"PatientNameChs", patientNameChs.c_str());
+                        if(opt_verbose) time_header_out(*pflog) << "xml_index::generate_replace_fields() set PatientNameChs = " << patientNameChs << endl;
                     }
 ris_next_line:
                     ris.getline(line, sizeof(line));

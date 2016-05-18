@@ -117,9 +117,17 @@ int _tmain(int argc, _TCHAR* argv[])
 
     wa[0] = hdir;
     wa[1] = hServiceMutex;
+    bool first_boot = true;
     while(true)
     {
-        DWORD wr = WaitForMultipleObjects(hServiceMutex ? 2 : 1, wa, FALSE, 1000);
+        DWORD wr = WAIT_TIMEOUT;
+        if(first_boot)
+        {
+            wr = WAIT_OBJECT_0;
+            first_boot = false;
+        }
+        else wr = WaitForMultipleObjects(hServiceMutex ? 2 : 1, wa, FALSE, 1000);
+
         if(wr == WAIT_OBJECT_0 || wr == WAIT_ABANDONED_0)
         {   // orders_balance dir change
             if(debug_mode) time_header_out(flog) << "orders_balance dir is changed." << endl;
@@ -147,6 +155,9 @@ int _tmain(int argc, _TCHAR* argv[])
 #endif
                     list<string>::iterator it = pending_jdf.begin();
                     string jdf_file(*it);
+                    
+                    if(debug_mode) time_header_out(flog) << "TryPublishJDF(" << *it << ")." << endl;
+
                     ClearGenerateIndexLog();
                     try_publish_ret = TryPublishJDF(debug_mode, it->c_str());
                     if(try_publish_ret == TryPublishJDF_PublishOK) // debug_mode is controlled by DebugMode in settings.ini
@@ -174,6 +185,7 @@ int _tmain(int argc, _TCHAR* argv[])
                     ClearGenerateIndexLog();
 #ifdef NDEBUG
                 }
+                else time_header_out(flog) << "lock counter is 0." << endl;
 #endif
                 if(try_publish_ret >= 0) // busy or publish OK, wait 5 sec
                 {

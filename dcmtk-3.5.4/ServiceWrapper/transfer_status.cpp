@@ -369,7 +369,7 @@ void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps) const
     if(assoc_disconn)
     {
         ACTION_TYPE type = NO_ACTION;
-        if(assoc.auto_publish != "MANUAL") type = BURN_PER_STUDY;
+        if(strcmp(assoc.auto_publish, "MANUAL")) type = BURN_PER_STUDY;
         paaa = new action_from_association(type, get_path(), disconn_release, pflog);
     }
     else
@@ -796,6 +796,13 @@ DWORD handle_study::write_message_to_pipe()
     {
         blocked = false;
         last_association_action = *it;
+        
+        if(opt_verbose)
+        {
+            *pflog << "update ";
+            last_association_action.print_state();
+        }
+
         time(&last_idle_time);
         switch(it->type)
         {

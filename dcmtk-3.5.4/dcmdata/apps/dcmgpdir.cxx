@@ -688,6 +688,10 @@ int main(int argc, char *argv[])
         char pipe_name[MAX_PATH] = "\\\\.\\pipe\\";
         strcat_s(pipe_name, opt_pipename);
 
+        char settings_path[MAX_PATH];
+        sprintf_s(settings_path, "%s\\etc\\settings.ini", GetPacsBase());
+        LoadSettings(settings_path, CERR, ddir.verboseMode());
+
         if(ddir.verboseMode())
             time_header_out(CERR) << "dcmmkdir " << clientId << ": StudyUID is " << opt_directory << endl;
 
