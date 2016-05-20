@@ -369,7 +369,7 @@ void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps) const
     if(assoc_disconn)
     {
         ACTION_TYPE type = NO_ACTION;
-        if(strcmp(assoc.auto_publish, "MANUAL")) type = BURN_PER_STUDY;
+        if(strcmp(assoc.auto_publish, "STUDY") == 0) type = BURN_PER_STUDY;
         paaa = new action_from_association(type, get_path(), disconn_release, pflog);
     }
     else
@@ -506,28 +506,43 @@ int handle_proc::start_process(bool out_redirect)
 
 handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT &nfc, ostream &flog)
 {
-    const char *verbose_flag = opt_verbose ? "-v" : "";
-#ifdef _DEBUG
-    int mkdir_pos = 0;
-    char cmd[1024] = __FILE__;
-    char *p = strrchr(cmd, '\\');
-    if(p)
-    {
-        ++p;
-        mkdir_pos = p - cmd;
-        mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", verbose_flag, nfc.file.filename);
-    }
-    else
-        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, nfc.file.filename);
-#else
     char cmd[1024];
-	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s --encode-jpeg2k-lossless --uid-never %s ", COMMONLIB_PACS_BASE, verbose_flag, nfc.file.filename);
-#endif
-    int ctn = mkdir_pos;
-    ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "..\\..\\archdir\\v0000000\\%s\\%s\\", nfc.file.hash, nfc.file.studyUID);
-    strcpy_s(cmd + ctn, sizeof(cmd) - ctn, nfc.file.unique_filename);
+    if(strcmp("KEEP", nfc.assoc.expected_xfer) == 0)
+    {
+        int mkdir_pos = sprintf_s(cmd, "cmd.exe /c move /y %s ", nfc.file.filename);
+        int ctn = mkdir_pos;
+        ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), nfc.file.hash, nfc.file.studyUID);
+        strcpy_s(cmd + ctn, sizeof(cmd) - ctn, nfc.file.unique_filename);
+        PrepareFileDir(cmd + mkdir_pos);
+        return new handle_compress(nfc.assoc.id, nfc.assoc.path, cmd, "dcmcjpeg", nfc, &flog);
+    }
+    else // compress
+    {
+        const char *verbose_flag = opt_verbose ? "-v" : "";
+        const char *codec = ""; // JpegLess14SV1
+        if(strcmp("Jp2kLossLess", nfc.assoc.expected_xfer) == 0) codec = "--encode-jpeg2k-lossless";
 
-    return new handle_compress(nfc.assoc.id, nfc.assoc.path, cmd, "dcmcjpeg", nfc, &flog);
+#ifdef _DEBUG
+        int mkdir_pos = 0;
+        char cmd[1024] = __FILE__;
+        char *p = strrchr(cmd, '\\');
+        if(p)
+        {
+            ++p;
+            mkdir_pos = p - cmd;
+            mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s %s --uid-never %s ", verbose_flag, codec, nfc.file.filename);
+        }
+        else
+            mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
+#else
+        char cmd[1024];
+	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
+#endif
+        int ctn = mkdir_pos;
+        ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "..\\..\\archdir\\v0000000\\%s\\%s\\", nfc.file.hash, nfc.file.studyUID);
+        strcpy_s(cmd + ctn, sizeof(cmd) - ctn, nfc.file.unique_filename);
+        return new handle_compress(nfc.assoc.id, nfc.assoc.path, cmd, "dcmcjpeg", nfc, &flog);
+    }
 }
 
 handle_compress& handle_compress::operator=(const handle_compress &r)

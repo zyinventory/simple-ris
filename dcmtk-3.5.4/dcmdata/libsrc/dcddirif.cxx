@@ -4391,8 +4391,8 @@ OFBool DicomDirInterface::warnAboutInconsistentAttributes(DcmDirectoryRecord *re
                 {
                     if (delem->getTag().getEVR() == EVR_SQ)
                     {
-                        /* do not check ContentSequence (see addConceptModContentItems()) */
-                        if (delem->getTag() != DCM_ContentSequence)
+                        /* do not check ContentSequence (see addConceptModContentItems()), and DCM_IconImageSequence */
+                        if (delem->getTag() != DCM_ContentSequence && delem->getTag() != DCM_IconImageSequence)
                             result &= compareSequenceAttributes(dataset, tag, record, sourceFilename);
                     } else {
                         /* everything else can be compared as a string */

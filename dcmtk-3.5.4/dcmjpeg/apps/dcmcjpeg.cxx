@@ -74,6 +74,102 @@ OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 #define SHORTCOL 4
 #define LONGCOL 21
 
+static int copy_file(const char *opt_ifname, const char *opt_ofname, bool opt_verbose)
+{
+    FILE *fpsrc = NULL, *fpdest = NULL;
+    errno_t en = 0;
+    if(fopen_s(&fpsrc, opt_ifname, "rb"))
+    {
+        char msg[1024];
+        en = errno;
+        strerror_s(msg, en);
+        time_header_out(CERR) << "compress failed, copy it. open src failed: " << msg << endl;
+        fpsrc = NULL;
+        goto clear_file_pointer_src_and_dest;
+    }
+    if(!PrepareFileDir(opt_ofname) || fopen_s(&fpdest, opt_ofname, "wb"))
+    {
+        char msg[1024];
+        en = errno;
+        strerror_s(msg, en);
+        time_header_out(CERR) << "compress failed, copy it. open dest failed: " << msg << endl;
+        fpdest = NULL;
+        goto clear_file_pointer_src_and_dest;
+    }
+    if(fpsrc && fpdest)
+    {
+        char *filebuf = new char[64 * 1024];
+        while(!feof(fpsrc) && !ferror(fpsrc) && filebuf)
+        {
+            size_t read_bytes = fread(filebuf, 1, 64 * 1024, fpsrc);
+            if(read_bytes) fwrite(filebuf, 1, read_bytes, fpdest);
+        }
+        if(filebuf) delete[] filebuf;
+    }
+
+clear_file_pointer_src_and_dest:
+    if(fpsrc) fclose(fpsrc);
+    if(fpdest) fclose(fpdest);
+    return en;
+}
+
+static int move_file(const char *opt_ifname, const char *opt_ofname, bool opt_verbose)
+{
+    int en = 0;
+	char backupName[MAX_PATH];
+	if (opt_verbose) CERR << "move " << opt_ifname << " to " << opt_ofname << endl;
+	if(OFStandard::fileExists(opt_ofname))
+	{
+		strcpy_s(backupName, opt_ofname);
+		strcat_s(backupName, ".XXXXXX");
+		_mktemp_s(backupName);
+		if( rename(opt_ifname, backupName) )
+        {
+            char msg[1024];
+            en = errno;
+            strerror_s(msg, en);
+            time_header_out(CERR) << "rename " << opt_ifname << " to " << backupName << " failed: "<< msg << endl;
+        }
+		else
+		{
+			if(remove(opt_ofname))
+			{
+                char msg[1024];
+                en = errno;
+                strerror_s(msg, en);
+                time_header_out(CERR) << "remove " << opt_ofname << " failed: "<< msg << endl;
+                if( rename(backupName, opt_ifname) )
+                {
+                    en = errno;
+                    strerror_s(msg, en);
+                    time_header_out(CERR) << "rename " << backupName << " to " << opt_ifname << " failed: "<< msg << endl;
+                }
+			}
+			else
+			{
+				if( rename(backupName, opt_ofname) )
+                {
+                    char msg[1024];
+                    en = errno;
+                    strerror_s(msg, en);
+                    time_header_out(CERR) << "rename " << backupName << " to " << opt_ofname << " failed: "<< msg << endl;
+                }
+			}
+		}
+	}
+	else
+	{
+		PrepareFileDir(opt_ofname);
+		if( rename(opt_ifname, opt_ofname) )
+        {
+            en = errno;
+            strerror_s(backupName, en);
+            time_header_out(CERR) << "rename " << opt_ifname << " to " << opt_ofname << " failed: "<< backupName << endl;
+        }
+	}
+    return en;
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -289,7 +385,7 @@ int main(int argc, char *argv[])
 				CERR << "- ZLIB, Version " << zlibVersion() << endl;
 #endif
 				CERR << "- " << DiJPEGPlugin::getLibraryVersionString() << endl;
-				return 0;
+				return -1;
 			}
 		}
 
@@ -603,7 +699,7 @@ int main(int argc, char *argv[])
 
 	}
 
-	OFBool needMove = OFFalse;
+	OFBool isEncapsulated = OFFalse;
 	SetDebugLevel((opt_debugMode));
 
 	// register global decompression codecs
@@ -652,7 +748,7 @@ int main(int argc, char *argv[])
 	if ((opt_ifname == NULL) || (strlen(opt_ifname) == 0))
 	{
 		CERR << "invalid filename: <empty string>" << endl;
-		return 1;
+		return -2;
 	}
 
 	E_TransferSyntax opt_oxferBak = opt_oxfer;
@@ -759,7 +855,7 @@ int main(int argc, char *argv[])
 		}
 
 		opt_oxfer = opt_oxferBak;
-		needMove = OFFalse;
+		isEncapsulated = OFFalse;
 
 		if (opt_verbose) CERR << "Client " << clientId << ": reading input file " << opt_ifname << endl;
 
@@ -773,145 +869,101 @@ int main(int argc, char *argv[])
 		if (error.bad())
 		{
 			CERR << "Client " << clientId << ": " << error.text() << ": reading file: " <<  opt_ifname << endl;
-			if(readpipe) continue; else return 1;
+			if(readpipe) continue; else return -3;
 		}
 		DcmDataset *dataset = fileformat.getDataset();
+        bool compress_fail = false;
 
 		DcmXfer original_xfer(dataset->getOriginalXfer());
-		if (original_xfer.isEncapsulated() && ( ! opt_skipCompressed ))
-		{
-			if (opt_verbose)
-				CERR << "DICOM file is already compressed, convert to uncompressed xfer syntax first\n";
-			if (EC_Normal != dataset->chooseRepresentation(EXS_LittleEndianExplicit, NULL))
-			{
-				CERR << "No conversion from compressed original to uncompressed xfer syntax possible!\n";
-				if(readpipe) continue; else return 1;
-			}
-		}
+        isEncapsulated = original_xfer.isEncapsulated();
 
-		if( original_xfer.isEncapsulated()  && opt_skipCompressed )
-		{
-			if (opt_verbose)
-				CERR << "Convert DICOM file is already compressed, skip compressing, move original\n";
-			opt_oxfer = original_xfer.getXfer();
-			needMove = OFTrue;
-		}
-		else
-		{
-			if (opt_verbose)
-				CERR << "Convert DICOM file to compressed transfer syntax\n";
+        if(opt_skipCompressed || isEncapsulated)
+        {
+		    if (opt_verbose) CERR << "Convert DICOM file is already compressed or skip compressing, copy or move it." << endl;
+		    opt_oxfer = original_xfer.getXfer();
+            if(opt_deleteSourceFile) move_file(opt_ifname, opt_ofname, opt_verbose);
+            else copy_file(opt_ifname, opt_ofname, opt_verbose);
+        }
+        else
+        {
+	        if (opt_verbose) CERR << "Convert DICOM file to compressed transfer syntax." << endl;
 
-			DcmXfer opt_oxferSyn(opt_oxfer);
+            bool compress_ok = true;
+	        DcmXfer opt_oxferSyn(opt_oxfer);
 
-			// create representation parameters for lossy and lossless
-			DJ_RPLossless rp_lossless((int)opt_selection_value, (int)opt_point_transform);
-			DJ_RPLossy rp_lossy((int)opt_quality);
+	        // create representation parameters for lossy and lossless
+	        DJ_RPLossless rp_lossless((int)opt_selection_value, (int)opt_point_transform);
+	        DJ_RPLossy rp_lossy((int)opt_quality);
 
-			const DcmRepresentationParameter *rp = &rp_lossy;
-			if ((opt_oxfer == EXS_JPEGProcess14SV1TransferSyntax)||
-				(opt_oxfer == EXS_JPEGProcess14TransferSyntax)||
-				(opt_oxfer == EXS_JPEG2000LosslessOnly))
-			{
-				if (opt_verbose) CERR << "Representation Parameter is lossless" << endl;
-				rp = &rp_lossless;
-			}
-			else
-			{
-				if (opt_verbose) CERR << "Representation Parameter is lossy" << endl;
-			}
+	        const DcmRepresentationParameter *rp = &rp_lossy;
+	        if ((opt_oxfer == EXS_JPEGProcess14SV1TransferSyntax)||
+		        (opt_oxfer == EXS_JPEGProcess14TransferSyntax)||
+		        (opt_oxfer == EXS_JPEG2000LosslessOnly))
+	        {
+		        if (opt_verbose) CERR << "Representation Parameter is lossless." << endl;
+		        rp = &rp_lossless;
+	        }
+	        else
+	        {
+		        if (opt_verbose) CERR << "Representation Parameter is lossy." << endl;
+	        }
 
-			error = dataset->chooseRepresentation(opt_oxfer, rp);
-			if(error.good())
-			{
-				if (dataset->canWriteXfer(opt_oxfer))
-				{
-					if (opt_verbose)
-						CERR << "Output transfer syntax " << opt_oxferSyn.getXferName() << " can be written\n";
-				} else {
-					CERR << "No conversion to transfer syntax " << opt_oxferSyn.getXferName() << " possible!\n";
-					if(readpipe) continue; else return 1;
-				}
-			}
-			else
-			{
-				needMove = OFTrue;
-				CERR << "compress " << opt_ifname << " failed, move to " << opt_ofname << endl;
-			}
-		}
+	        OFCondition error = dataset->chooseRepresentation(opt_oxfer, rp);
+	        if(error.good())
+	        {
+		        if (dataset->canWriteXfer(opt_oxfer))
+		        {
+			        if (opt_verbose) CERR << "Output transfer syntax " << opt_oxferSyn.getXferName() << " can be written." << endl;
 
-		if(needMove)
-		{
-			if (opt_verbose) CERR << "move " << opt_ifname << " to " << opt_ofname << endl;
-			if(OFStandard::fileExists(opt_ofname))
-			{
-				char backupName[MAX_PATH];
-				strcpy_s(backupName, opt_ofname);
-				strcat_s(backupName, ".XXXXXX");
-				_mktemp_s(backupName);
-				if( rename(opt_ifname, backupName) ) perror(opt_ifname);
-				else
-				{
-					if(remove(opt_ofname))
-					{
-						perror(opt_ofname);
-						if( rename(backupName, opt_ifname) ) perror(backupName);
-					}
-					else
-					{
-						if( rename(backupName, opt_ofname) ) perror(opt_ofname);
-					}
-				}
-			}
-			else
-			{
-				PrepareFileDir(opt_ofname);
-				if( rename(opt_ifname, opt_ofname) ) perror(opt_ofname);
-			}
-		}
-		else
-		{
-			// force meta-header to refresh SOP Class/Instance UIDs.
-			DcmItem *metaInfo = fileformat.getMetaInfo();
-			if (metaInfo)
-			{
-				delete metaInfo->remove(DCM_MediaStorageSOPClassUID);
-				delete metaInfo->remove(DCM_MediaStorageSOPInstanceUID);
-			}
+			        // force meta-header to refresh SOP Class/Instance UIDs.
+			        DcmItem *metaInfo = fileformat.getMetaInfo();
+			        if (metaInfo)
+			        {
+				        delete metaInfo->remove(DCM_MediaStorageSOPClassUID);
+				        delete metaInfo->remove(DCM_MediaStorageSOPInstanceUID);
+			        }
 
-			if (opt_verbose)
-				CERR << "creating output file " << opt_ofname << endl;
-			PrepareFileDir(opt_ofname);
+			        if (opt_verbose) CERR << "creating output file " << opt_ofname << endl;
+			        PrepareFileDir(opt_ofname);
 
-			//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
-			//CERR << "before load into mem " << GetTickCount() - timerbase << endl;
-			fileformat.loadAllDataIntoMemory();
-			//CERR << "after load into mem " << GetTickCount() - timerbase << endl;
-			error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc,
-				opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
-			//CERR << "after save " << GetTickCount() - timerbase << endl;
-			//if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END) ) displayErrorToCerr("SetPriorityClass");
+			        //if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
+			        //CERR << "before load into mem " << GetTickCount() - timerbase << endl;
+			        fileformat.loadAllDataIntoMemory();
+			        //CERR << "after load into mem " << GetTickCount() - timerbase << endl;
+			        error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc, opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
+			        //CERR << "after save " << GetTickCount() - timerbase << endl;
+			        //if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_END) ) displayErrorToCerr("SetPriorityClass");
 
-			if (error.bad())
+			        if (error.bad())
+			        {
+                        compress_ok = false;
+				        CERR << "Client " << clientId << " Error: " << error.text() << ": writing file: " <<  opt_ofname << endl;
+			        }
+                    else if (opt_verbose)  CERR << "Client " << clientId << ": conversion successful" << endl;
+		        }
+                else
+                {
+                    compress_ok = false;
+			        CERR << "No conversion to transfer syntax " << opt_oxferSyn.getXferName() << " possible!" << endl;
+		        }
+	        }
+            else compress_ok = false;
+
+            if(compress_ok)
 			{
-				CERR << "Client " << clientId << " Error: "
-					<< error.text()
-					<< ": writing file: " <<  opt_ofname << endl;
-				if(readpipe) continue; else return 1;
-			}
-            else if (opt_verbose)
-				CERR << "Client " << clientId << ": conversion successful" << endl;
-
-			if(opt_deleteSourceFile)
-			{
-				if (opt_verbose) CERR << "Client " << clientId << ": delete source file: " << opt_ifname << endl;
-				if( remove(opt_ifname) )
-				{
-					int errnoRmdir = 0;
-					_get_errno(&errnoRmdir);
-					if(errnoRmdir != ENOENT) perror(opt_ifname);
-				}
-			}
-		}
+                if(opt_deleteSourceFile)
+                {
+				    if (opt_verbose) CERR << "Client " << clientId << ": delete source file: " << opt_ifname << endl;
+				    if( remove(opt_ifname) )
+				    {
+                        char msg[1024];
+                        strerror_s(msg, errno);
+                        time_header_out(CERR) << "delete source file failed: " << msg << endl;
+				    }
+                }
+            }
+            else copy_file(opt_ifname, opt_ofname, opt_verbose); // if compress failed, ignore opt_deleteSourceFile.
+        }
 
 		if(!readpipe) break;
 	}

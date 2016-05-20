@@ -354,7 +354,7 @@ int watch_notify(string &cmd, ostream &flog)
                             handle_compress* compr_ptr = handle_compress::make_handle_compress(nfc, flog);
                             if(compr_ptr)
                             {
-                                if(compr_ptr->start_process(true))
+                                if(compr_ptr->start_process(false))
                                 {   // failed
                                     time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << nfc.src_notify_filename << " " << nfc.file.filename << endl;
                                     delete compr_ptr;
