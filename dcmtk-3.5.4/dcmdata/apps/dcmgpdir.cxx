@@ -815,6 +815,9 @@ int main(int argc, char *argv[])
                     fnbuf[cbRead] = '\0';
                     if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir ReadFile(): " << fnbuf << endl;
                     
+                    memset(&nfc, 0, sizeof(nfc));
+
+                    // fnbuf: <study uid>|<unique filename>|<file size receive><LF><assoc_text>
                     char *assoc_text = strchr(fnbuf, '\n');
                     //split association info
                     if(assoc_text)
@@ -824,24 +827,31 @@ int main(int argc, char *argv[])
                         strcpy_s(association_buff, assoc_text);
                     }
                     else association_buff[0] = '\0';
-                    // split studyUID(fnbuf) and filename(pfn)
+                    // split studyUID(fnbuf) and unique filename(pfn)
                     pfn = strchr(fnbuf, '|');
 					if(pfn)
 					{
 						*pfn++ = '\0';
-						dir = fnbuf;
+						dir = fnbuf; // study uid is input directory(same as +id option)
+
+                        char *receive_size = strchr(pfn, '|');
+                        if(receive_size)
+                        {
+                            *receive_size++ = '\0';
+                            nfc.file.file_size_receive = _atoi64(receive_size);
+                            if(ddir.verboseMode()) time_header_out(CERR) << fnbuf << "|" << pfn << "|" << receive_size << endl;
+                        }
 					}
 					else pfn = fnbuf;
+                    // split studyUID(fnbuf) and filename(pfn)
 
                     /* add files to the DICOMDIR */
-                    E_TransferSyntax xfer = EXS_Unknown;
-                    memset(&nfc, 0, sizeof(nfc));
-					
-                    result = ddir.addDicomFile(pfn, dir && *dir != '\0' ? dir : opt_directory, &xfer, fill_notify_from_dcmdataset);
+                    result = ddir.addDicomFile(pfn, dir && *dir != '\0' ? dir : opt_directory, fill_notify_from_dcmdataset);
                     
+                    if(ddir.verboseMode()) time_header_out(CERR) << "file size receive: " << nfc.file.file_size_receive << endl;
                     xi.make_index(nfc);
 
-                    DcmXfer dcmxfer(xfer);
+                    DcmXfer dcmxfer(nfc.file.xfer_new);
                     // save filename for response message that is written to sender
                     sprintf_s(last_file_name, "%s|%s", pfn, dcmxfer.getXferShortName());
 

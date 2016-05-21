@@ -3578,110 +3578,118 @@ DcmDirectoryRecord *DicomDirInterface::addRecord(DcmDirectoryRecord *parent,
                                                  const OFString &sourceFilename)
 {
     DcmDirectoryRecord *record = NULL;
+    /* check whether record already exists */
+    if(recordType == ERT_Image)
+    {
+        record = findExistingRecord(parent, recordType, dataset);
+        if(record)
+        {
+            record = parent->removeSub(record);
+            delete record;
+            record = NULL;
+        }
+    }
     if (parent != NULL)
     {
-        /* check whether record already exists */
-        record = findExistingRecord(parent, recordType, dataset);
-        if (record == NULL)
+        /* if not, create a new one */
+        switch (recordType)
         {
-            /* if not, create a new one */
-            switch (recordType)
+            case ERT_Patient:
+                record = buildPatientRecord(dataset, sourceFilename);
+                break;
+            case ERT_Study:
+                record = buildStudyRecord(dataset, sourceFilename);
+                break;
+            case ERT_Series:
+                record = buildSeriesRecord(dataset, sourceFilename);
+                break;
+            case ERT_Overlay:
+                record = buildOverlayRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_ModalityLut:
+                record = buildModalityLutRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_VoiLut:
+                record = buildVoiLutRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_Curve:
+                record = buildCurveRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_StructReport:
+                record = buildStructReportRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_Presentation:
+                record = buildPresentationRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_Waveform:
+                record = buildWaveformRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_RTDose:
+                record = buildRTDoseRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_RTStructureSet:
+                record = buildRTStructureSetRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_RTPlan:
+                record = buildRTPlanRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_RTTreatRecord:
+                record = buildRTTreatmentRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_StoredPrint:
+                record = buildStoredPrintRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_KeyObjectDoc:
+                record = buildKeyObjectDocRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_Registration:
+                record = buildRegistrationRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_Fiducial:
+                record = buildFiducialRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_RawData:
+                record = buildRawDataRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_Spectroscopy:
+                record = buildSpectroscopyRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_EncapDoc:
+                record = buildEncapDocRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_ValueMap:
+                record = buildValueMapRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            case ERT_HangingProtocol:
+                record = buildHangingProtocolRecord(dataset, referencedFileID, sourceFilename);
+                break;
+            default:
+                /* it can only be an image */
+                record = buildImageRecord(dataset, referencedFileID, sourceFilename);
+        }
+        if (record != NULL)
+        {
+            OFCondition status = EC_Normal;
+            /* perform consistency check */
+            if (ConsistencyCheck)
             {
-                case ERT_Patient:
-                    record = buildPatientRecord(dataset, sourceFilename);
-                    break;
-                case ERT_Study:
-                    record = buildStudyRecord(dataset, sourceFilename);
-                    break;
-                case ERT_Series:
-                    record = buildSeriesRecord(dataset, sourceFilename);
-                    break;
-                case ERT_Overlay:
-                    record = buildOverlayRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_ModalityLut:
-                    record = buildModalityLutRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_VoiLut:
-                    record = buildVoiLutRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_Curve:
-                    record = buildCurveRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_StructReport:
-                    record = buildStructReportRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_Presentation:
-                    record = buildPresentationRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_Waveform:
-                    record = buildWaveformRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_RTDose:
-                    record = buildRTDoseRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_RTStructureSet:
-                    record = buildRTStructureSetRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_RTPlan:
-                    record = buildRTPlanRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_RTTreatRecord:
-                    record = buildRTTreatmentRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_StoredPrint:
-                    record = buildStoredPrintRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_KeyObjectDoc:
-                    record = buildKeyObjectDocRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_Registration:
-                    record = buildRegistrationRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_Fiducial:
-                    record = buildFiducialRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_RawData:
-                    record = buildRawDataRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_Spectroscopy:
-                    record = buildSpectroscopyRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_EncapDoc:
-                    record = buildEncapDocRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_ValueMap:
-                    record = buildValueMapRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                case ERT_HangingProtocol:
-                    record = buildHangingProtocolRecord(dataset, referencedFileID, sourceFilename);
-                    break;
-                default:
-                    /* it can only be an image */
-                    record = buildImageRecord(dataset, referencedFileID, sourceFilename);
+                /* abort on any inconsistancy */
+                if (warnAboutInconsistentAttributes(record, dataset, sourceFilename, AbortMode) && AbortMode)
+                    status = EC_CorruptedData;
             }
-            if (record != NULL)
+            
+            /* and insert it below parent record */
+            if (status.good())
+                status = insertSortedUnder(parent, record);
+            if (status.bad())
             {
-                OFCondition status = EC_Normal;
-                /* perform consistency check */
-                if (ConsistencyCheck)
-                {
-                    /* abort on any inconsistancy */
-                    if (warnAboutInconsistentAttributes(record, dataset, sourceFilename, AbortMode) && AbortMode)
-                        status = EC_CorruptedData;
-                }
-                /* and insert it below parent record */
-                if (status.good())
-                    status = insertSortedUnder(parent, record);
-                if (status.bad())
-                {
-                    printRecordErrorMessage(status, recordType, "insert");
-                    /* free memory */
-                    delete record;
-                    record = NULL;
-                }
+                printRecordErrorMessage(status, recordType, "insert");
+                /* free memory */
+                delete record;
+                record = NULL;
             }
         }
+
         if (record != NULL)
         {
             /* check whether instance is already listed */
@@ -3804,7 +3812,7 @@ void DicomDirInterface::inventMissingInstanceLevelAttributes(DcmDirectoryRecord 
 
 // add DICOM file to the current DICOMDIR object
 OFCondition DicomDirInterface::addDicomFile(const char *filename,
-                                            const char *directory, E_TransferSyntax *xfer, void(*notifyCallback)(DcmDataset*))
+                                            const char *directory, void(*notifyCallback)(DcmDataset*))
 {
     OFCondition result = EC_IllegalParameter;
     /* first make sure that a DICOMDIR object exists */
@@ -3825,7 +3833,6 @@ OFCondition DicomDirInterface::addDicomFile(const char *filename,
             DcmMetaInfo *metainfo = fileformat.getMetaInfo();
             DcmDataset *dataset = fileformat.getDataset();
             if(notifyCallback) notifyCallback(dataset);
-            if(xfer) *xfer = dataset->getOriginalXfer();
 
             /* massage filename into DICOM format (DOS conventions for path separators, uppercase) */
             OFString fileID;

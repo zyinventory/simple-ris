@@ -74,7 +74,7 @@ OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 #define SHORTCOL 4
 #define LONGCOL 21
 
-static int copy_file(const char *opt_ifname, const char *opt_ofname, bool opt_verbose)
+static errno_t copy_file(const char *opt_ifname, const char *opt_ofname, bool opt_verbose)
 {
     FILE *fpsrc = NULL, *fpdest = NULL;
     errno_t en = 0;
@@ -113,7 +113,7 @@ clear_file_pointer_src_and_dest:
     return en;
 }
 
-static int move_file(const char *opt_ifname, const char *opt_ofname, bool opt_verbose)
+static errno_t move_file(const char *opt_ifname, const char *opt_ofname, bool opt_verbose)
 {
     int en = 0;
 	char backupName[MAX_PATH];
@@ -757,6 +757,8 @@ int main(int argc, char *argv[])
 	OFBool readpipe = OFFalse;
     HANDLE hPipe = INVALID_HANDLE_VALUE;
     DWORD clientId = GetCurrentProcessId();
+    errno_t en = 0;
+
     if(*opt_ifname == '#')
 	{
 		char pipeName[32];
@@ -872,8 +874,7 @@ int main(int argc, char *argv[])
 			if(readpipe) continue; else return -3;
 		}
 		DcmDataset *dataset = fileformat.getDataset();
-        bool compress_fail = false;
-
+        
 		DcmXfer original_xfer(dataset->getOriginalXfer());
         isEncapsulated = original_xfer.isEncapsulated();
 
@@ -881,8 +882,8 @@ int main(int argc, char *argv[])
         {
 		    if (opt_verbose) CERR << "Convert DICOM file is already compressed or skip compressing, copy or move it." << endl;
 		    opt_oxfer = original_xfer.getXfer();
-            if(opt_deleteSourceFile) move_file(opt_ifname, opt_ofname, opt_verbose);
-            else copy_file(opt_ifname, opt_ofname, opt_verbose);
+            if(opt_deleteSourceFile) en = move_file(opt_ifname, opt_ofname, opt_verbose);
+            else en = copy_file(opt_ifname, opt_ofname, opt_verbose);
         }
         else
         {
@@ -903,10 +904,7 @@ int main(int argc, char *argv[])
 		        if (opt_verbose) CERR << "Representation Parameter is lossless." << endl;
 		        rp = &rp_lossless;
 	        }
-	        else
-	        {
-		        if (opt_verbose) CERR << "Representation Parameter is lossy." << endl;
-	        }
+	        else if (opt_verbose) CERR << "Representation Parameter is lossy." << endl;
 
 	        OFCondition error = dataset->chooseRepresentation(opt_oxfer, rp);
 	        if(error.good())
@@ -954,7 +952,7 @@ int main(int argc, char *argv[])
                 if(opt_deleteSourceFile)
                 {
 				    if (opt_verbose) CERR << "Client " << clientId << ": delete source file: " << opt_ifname << endl;
-				    if( remove(opt_ifname) )
+				    if(en = remove(opt_ifname))
 				    {
                         char msg[1024];
                         strerror_s(msg, errno);
@@ -962,7 +960,7 @@ int main(int argc, char *argv[])
 				    }
                 }
             }
-            else copy_file(opt_ifname, opt_ofname, opt_verbose); // if compress failed, ignore opt_deleteSourceFile.
+            else en = copy_file(opt_ifname, opt_ofname, opt_verbose); // if compress failed, ignore opt_deleteSourceFile.
         }
 
 		if(!readpipe) break;
@@ -974,7 +972,9 @@ int main(int argc, char *argv[])
 	DJDecoderRegistration::cleanup();
 	DJEncoderRegistration::cleanup();
     if(opt_verbose || opt_debugMode) CERR << endl;
-	return 0;
+
+    if(en) return EACCES;
+    else return 0;
 }
 
 /*

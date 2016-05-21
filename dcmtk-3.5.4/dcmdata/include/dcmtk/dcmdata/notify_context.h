@@ -8,6 +8,7 @@
 namespace handle_context
 {
     typedef struct _tag_NOTIFY_FILE_CONTEXT_FILE_SECTION {
+        long long file_size_receive;
         char filename[MAX_PATH], hash[12], unique_filename[65], patientID[65], studyUID[65], seriesUID[65], instanceUID[65], xfer[16], xfer_new[16];
         bool isEncapsulated;
         const char* StorePath(char sp = '\\');

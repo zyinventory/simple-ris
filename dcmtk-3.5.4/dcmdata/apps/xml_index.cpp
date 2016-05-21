@@ -248,7 +248,9 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2Ptr &pXMLDom, const NOTIFY_
                     replace(instance_path, instance_path + path_len, '/', '\\');
                 if(_stat64(instance_path, &fs))
                 {
-                    perror(instance_path);
+                    char msg[256];
+                    strerror_s(msg, errno);
+                    time_header_out(*pflog) << __FUNCSIG__" _stat64(" << instance_path << ") fail: " << msg << endl;
                     fs.st_size = 0;
                 }
                 saved_size = fs.st_size;
@@ -289,14 +291,7 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2Ptr &pXMLDom, const NOTIFY_
                         sprintf_s(ui64buf, "0");
                     receive_from->setAttribute(L"file_size_save", ui64buf);
 
-                    string origin_file_path(nfc.assoc.path);
-                    origin_file_path.append(1, '\\').append(nfc.file.filename);
-                    if(_stat64(origin_file_path.c_str(), &fs))
-                    {
-                        perror(nfc.file.filename);
-                        fs.st_size = 0;
-                    }
-                    if(_ui64toa_s(fs.st_size, ui64buf, sizeof(ui64buf), 10))
+                    if(_ui64toa_s(nfc.file.file_size_receive, ui64buf, sizeof(ui64buf), 10))
                         sprintf_s(ui64buf, "0");
                     receive_from->setAttribute(L"file_size_receive", ui64buf);
                 }

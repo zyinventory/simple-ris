@@ -514,7 +514,7 @@ handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT
         ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), nfc.file.hash, nfc.file.studyUID);
         strcpy_s(cmd + ctn, sizeof(cmd) - ctn, nfc.file.unique_filename);
         PrepareFileDir(cmd + mkdir_pos);
-        return new handle_compress(nfc.assoc.id, nfc.assoc.path, cmd, "dcmcjpeg", nfc, &flog);
+        return new handle_compress(nfc.assoc.id, nfc.assoc.path, cmd, "move", nfc, &flog);
     }
     else // compress
     {
@@ -530,13 +530,13 @@ handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT
         {
             ++p;
             mkdir_pos = p - cmd;
-            mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s %s --uid-never %s ", verbose_flag, codec, nfc.file.filename);
+            mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s %s --uid-never -ds %s ", verbose_flag, codec, nfc.file.filename);
         }
         else
-            mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
+            mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never -ds %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
 #else
         char cmd[1024];
-	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
+	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never -ds %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
 #endif
         int ctn = mkdir_pos;
         ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "..\\..\\archdir\\v0000000\\%s\\%s\\", nfc.file.hash, nfc.file.studyUID);
@@ -822,8 +822,8 @@ DWORD handle_study::write_message_to_pipe()
         switch(it->type)
         {
         case ACTION_TYPE::INDEX_INSTANCE:
-            pipe_context->cbShouldWrite = sprintf_s(pipe_context->chBuffer, "%s|%s\n%s %s %s %s %s %s %s %s %d %s %s %s",
-                it->pnfc->file.studyUID, it->pnfc->file.unique_filename, 
+            pipe_context->cbShouldWrite = sprintf_s(pipe_context->chBuffer, "%s|%s|%lld\n%s %s %s %s %s %s %s %s %d %s %s %s",
+                it->pnfc->file.studyUID, it->pnfc->file.unique_filename, it->pnfc->file.file_size_receive,
                 it->pnfc->assoc.path, it->pnfc->file.filename, it->pnfc->file.xfer, it->pnfc->assoc.id, it->pnfc->assoc.store_assoc_id,
                 it->pnfc->assoc.callingAE, it->pnfc->assoc.callingAddr, it->pnfc->assoc.calledAE, it->pnfc->assoc.port,
                 it->pnfc->assoc.expected_xfer, it->pnfc->assoc.auto_publish, it->pnfc->assoc.calledAddr);

@@ -350,6 +350,18 @@ int watch_notify(string &cmd, ostream &flog)
                             find_job = true;
                             NOTIFY_FILE_CONTEXT nfc = *it;
                             compress_queue.erase(it);
+                            
+                            string received_instance_file_path(nfc.assoc.path);
+                            received_instance_file_path.append(1, '\\').append(nfc.file.filename);
+                            struct _stat64 fs;
+                            if(_stat64(received_instance_file_path.c_str(), &fs))
+                            {
+                                char msg[256];
+                                strerror_s(msg, errno);
+                                time_header_out(flog) << __FUNCSIG__" _stat64(" << received_instance_file_path << ") fail: " << msg << endl;
+                                fs.st_size = 0LL;
+                            }
+                            nfc.file.file_size_receive = fs.st_size;
 
                             handle_compress* compr_ptr = handle_compress::make_handle_compress(nfc, flog);
                             if(compr_ptr)
