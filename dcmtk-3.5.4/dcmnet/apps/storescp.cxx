@@ -1902,36 +1902,32 @@ storeSCPCallback(
 		patientsName = "";
 	  }
 
+	  OFString charset;
 	  ec = (*imageDataSet)->findAndGetElement(DCM_SpecificCharacterSet, element);
 	  if(element == NULL)
 	  {
-		if( ! IsASCII( patientsName.c_str() ) )
-		{
+		if( IsASCII( patientsName.c_str() ) )
+		  charset = CHARSET_ISO_IR_100; // NULL character set is considered as CHARSET_ISO_8859_1
+		else
+		{ // character is not ascii, considered as CHARSET_GB18030
 		  element = new DcmCodeString(DCM_SpecificCharacterSet);
 		  element->putString(CHARSET_GB18030);
 		  (*imageDataSet)->insert(element);
-		  if(opt_verbose) COUT << sopInstanceUid << ':' << ADD_DEFAULT_CHARSET << CHARSET_GB18030 << endl;
+		  charset = CHARSET_GB18030;
+		  if(opt_verbose) COUT << sopInstanceUid << ':' << "Add default character set " << CHARSET_GB18030 << endl;
 		}
-		//else: NULL character set is considered as ISO_IR_100
 	  }
 	  else
 	  {
-		OFString charset;
 		ec = (*imageDataSet)->findAndGetOFString(DCM_SpecificCharacterSet, charset);
-		if(ec.good() && charset != CHARSET_GB18030 && charset != CHARSET_ISO_IR_100)
-		{
-		  if(opt_verbose) COUT << sopInstanceUid << ':' << UNKNOWN_CHARSET << charset << OVERRIDE_BY;
-		  if( IsASCII( patientsName.c_str() ) )
-		  {
-			element->putString(CHARSET_ISO_IR_100);
-			if(opt_verbose) COUT << CHARSET_ISO_IR_100 << endl;
-		  }
-		  else
-		  {
-			element->putString(CHARSET_GB18030);
-			if(opt_verbose) COUT << CHARSET_GB18030 << endl;
-		  }
-		}
+		if(ec.bad()) charset = CHARSET_ISO_IR_100;
+	  }
+
+	  if(charset == CHARSET_UTF8)
+	  {
+		char *gbkbuff = new char[patientsName.length() + 1];
+		if(UTF8ToGBK(patientsName.c_str(), gbkbuff, patientsName.length() + 1))
+			patientsName = gbkbuff;
 	  }
       // in case option --sort-conc-studies is set, we need to perform some particular
       // steps to determine the actual name of the output file

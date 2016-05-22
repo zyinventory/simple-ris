@@ -127,8 +127,7 @@ catch(...)\
 
 #endif
 
-const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
-  ADD_DEFAULT_CHARSET[] = "Add default character set ", UNKNOWN_CHARSET[] = "Unknown character set ", OVERRIDE_BY[] = " is override by ";
+const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030", CHARSET_UTF8[] = "ISO_IR 192";
 
 extern COMMONLIB_API char COMMONLIB_PACS_BASE[MAX_PATH];
 extern COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
@@ -178,7 +177,7 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, char *valid_publis
 #define TryPublishJDF_SrcOpenError  -1
 #define TryPublishJDF_SrcMarkError  -2
 COMMONLIB_API int TryPublishJDF(bool opt_verbose = false, const char *filename = NULL);
-COMMONLIB_API int UTF8ToGBK(unsigned char *lpUTF8Str, char *lpGBKStr, int nGBKStrLen);
+COMMONLIB_API int UTF8ToGBK(const char *lpUTF8Str, char *lpGBKStr, int nGBKStrLen);
 
 // common_public.cpp
 #define GetSignalInterruptValue GetSignalInterruptValue_dll
