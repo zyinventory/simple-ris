@@ -69,7 +69,8 @@ enum WlmReturnedCharacterSetType
 {
   RETURN_NO_CHARACTER_SET,
   RETURN_CHARACTER_SET_ISO_IR_100,
-  RETURN_CHARACTER_SET_DEFAULT_GB18030
+  RETURN_CHARACTER_SET_DEFAULT_GB18030,
+  RETURN_CHARACTER_SET_UTF8
 };
 
   /// name of lockfile for worklist management based on file system

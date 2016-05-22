@@ -36,8 +36,7 @@
 #define SERIES_INSTANCE_PATH_MAX 54  // series_hash(8) + instance_group(9) * 5 + \0(1)
 #define TDB_STATUS "..\\orders\\TDBStatus.txt"
 
-const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030",
-  ADD_DEFAULT_CHARSET[] = "Add default character set ", UNKNOWN_CHARSET[] = "Unknown character set ", OVERRIDE_BY[] = " is override by ";
+const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030", CHARSET_UTF8[] = "ISO_IR 192";
 
 extern COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
@@ -67,6 +66,7 @@ COMMONLIB_API int generateTime(const char *format, char *timeBuffer, size_t buff
 COMMONLIB_API int changeWorkingDirectory(int argc, char **argv, char *pPacsBase = NULL);
 COMMONLIB_API __int64 uidHashW(const wchar_t *s, char *buffer = NULL, size_t buffer_size = 0);
 COMMONLIB_API __int64 uidHash(const char *s, char *buffer = NULL, size_t buffer_size = 0);
+COMMONLIB_API int UTF8ToGBK(const char *lpUTF8Str, char *lpGBKStr, int nGBKStrLen);
 COMMONLIB_API long long diskUsage(const char *pacsBase, const char *studyUID);
 COMMONLIB_API bool deleteSubTree(const char *dirpath, std::ostream *ostrm = NULL);
 COMMONLIB_API bool deleteTree(const char *dirpath, std::ostream *ostrm = NULL);

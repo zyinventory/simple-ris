@@ -41,22 +41,6 @@ COMMONLIB_API int generateTime(const char *format, char *timeBuffer, size_t buff
 	return 0;
 }
 
-COMMONLIB_API bool IsASCII(const char *str)
-{
-  bool isAscii = true;
-  if(str == NULL) return isAscii;
-  size_t length = strlen(str);
-  for(unsigned int i = 0; i < length; i++)
-  {
-    if(str[i] > '~' || str[i] < 0)
-    {
-      isAscii = false;
-      break;
-    }
-  }
-  return isAscii;
-}
-
 /* param:
   s:	  input string
   maxLen: max length of string s

@@ -11,6 +11,47 @@ static unsigned char inv32map[] = {
   22, 23, 24, 25, 26, 27, 28, 29, 30, 31                           // 0x5?
 };
 
+COMMONLIB_API bool IsASCII(const char *str)
+{
+  bool isAscii = true;
+  if(str == NULL) return isAscii;
+  size_t length = strlen(str);
+  for(unsigned int i = 0; i < length; i++)
+  {
+    if(0 == isprint(str[i]))
+    {
+      isAscii = false;
+      break;
+    }
+  }
+  return isAscii;
+}
+
+COMMONLIB_API int UTF8ToGBK(const char *lpUTF8Str, char *lpGBKStr, int nGBKStrLen)
+{
+    wchar_t * lpUnicodeStr = NULL;
+    int nRetLen = 0;
+
+    //如果UTF8字符串为NULL则出错退出
+    //输出缓冲区为空则返回转换后需要的空间大小
+    if(lpUTF8Str == NULL || lpGBKStr == NULL || nGBKStrLen <= 0) return 0; 
+
+    nRetLen = MultiByteToWideChar(CP_UTF8, 0, lpUTF8Str, -1, NULL, NULL);  //获取转换到Unicode编码后所需要的字符空间长度
+    lpUnicodeStr = new wchar_t[nRetLen + 1];  //为Unicode字符串空间
+
+    nRetLen = MultiByteToWideChar(CP_UTF8, 0, lpUTF8Str, -1, lpUnicodeStr, nRetLen);  //转换到Unicode编码
+    if(nRetLen == 0) goto clean_allocated_memory; //转换失败则出错退出
+
+    nRetLen = WideCharToMultiByte(936, 0, lpUnicodeStr, -1, NULL, NULL, NULL, NULL);  //获取转换到GBK编码后所需要的字符空间长度
+    if(nGBKStrLen < nRetLen) goto clean_allocated_memory; //如果输出缓冲区长度不够则退出
+
+    nRetLen = WideCharToMultiByte(936, 0, lpUnicodeStr, -1, lpGBKStr, nRetLen, NULL, NULL);  //转换到GBK编码
+
+clean_allocated_memory:
+    if(lpUnicodeStr) delete []lpUnicodeStr;
+    return nRetLen;
+}
+
 static size_t toWchar(string &src, wchar_t **dest)
 {
   size_t blen = src.length();
