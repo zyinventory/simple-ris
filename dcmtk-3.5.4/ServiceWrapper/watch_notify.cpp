@@ -31,11 +31,17 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
 {
     string ntffn(NOTIFY_BASE);
     ntffn.append(1, '\\').append(notify_file);
+    string meta_notify_file_txt(ntffn);
+    string::size_type pos = meta_notify_file_txt.rfind('.');
+    meta_notify_file_txt.erase(pos).append(".txt");
+    // if .txt exist, meta notify file has been processed.
+    if(0 == _access(meta_notify_file_txt.c_str(), 0)) return 0;
+
     if(opt_verbose) time_header_out(flog) << "process_meta_notify_file() receive association notify " << notify_file << endl;
 #ifdef _DEBUG
     time_header_out(cerr) << "process_meta_notify_file() receive association notify " << notify_file << endl;
 #endif
-    ifstream ntff(ntffn, ios_base::in, _SH_DENYRW);
+    ifstream ntff(ntffn, ios_base::in, _SH_DENYWR);
     if(ntff.fail())
     {
         DWORD gle = GetLastError();
@@ -54,7 +60,7 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
     time_header_out(cerr) << cmd << " " << hex << tag << " " << path << " " << dec << pid << " " << assoc_id << " " << calling << " " << remote << " " << called << " " << port << endl;
 #endif
     if(path[1] != ':') path.insert(0, "\\pacs\\").insert(0, GetPacsBase());
-    size_t pos = path.length();
+    pos = path.length();
     path.append("\\state");
     
     HANDLE hdir = FindFirstChangeNotification(path.c_str(), FALSE, FILE_NOTIFY_CHANGE_SIZE);
@@ -246,7 +252,7 @@ int watch_notify(string &cmd, ostream &flog)
                     
                     if(opt_verbose) time_header_out(flog) << "watch_notify() dcmcjpeg complete, find association " << assoc_id << " to set complete." << endl;
                     handle_dir *phd = NULL;
-                    const HANDLE_MAP::iterator it_assoc = find_if(map_handle_context.begin(), map_handle_context.end(),
+                    const HANDLE_MAP::iterator it_dummy = find_if(map_handle_context.begin(), map_handle_context.end(),
                         [&assoc_id, &phd](const HANDLE_PAIR &p) -> bool {
                             if(p.second == NULL) return false;
                             if(0 == assoc_id.compare(p.second->get_association_id()))
@@ -343,13 +349,14 @@ int watch_notify(string &cmd, ostream &flog)
                 if(dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED)
                 {
                     bool find_job = false, start_compress_process_ok = false;
-                    for(NOTIFY_LIST::iterator it = compress_queue.begin(); it != compress_queue.end(); ++it)
+                    NOTIFY_LIST::iterator it = compress_queue.begin();
+                    while(it != compress_queue.end())
                     {
                         if(exist_uniquename.find(it->file.unique_filename) == exist_uniquename.end())
                         {   // no same study/series/instance
                             find_job = true;
                             NOTIFY_FILE_CONTEXT nfc = *it;
-                            compress_queue.erase(it);
+                            it = compress_queue.erase(it);
                             
                             string received_instance_file_path(nfc.assoc.path);
                             received_instance_file_path.append(1, '\\').append(nfc.file.filename);
@@ -360,6 +367,7 @@ int watch_notify(string &cmd, ostream &flog)
                                 strerror_s(msg, errno);
                                 time_header_out(flog) << __FUNCSIG__" _stat64(" << received_instance_file_path << ") fail: " << msg << endl;
                                 fs.st_size = 0LL;
+                                continue;   // todo: skip compress process, send action
                             }
                             nfc.file.file_size_receive = fs.st_size;
 
@@ -382,6 +390,7 @@ int watch_notify(string &cmd, ostream &flog)
                                 time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << nfc.src_notify_filename << " " << nfc.file.filename << endl;
                             break; // exit for(NOTIFY_LIST::iterator it = compress_queue.begin()
                         }
+                        else ++it;
                     }
                     if(!start_compress_process_ok) ReleaseSemaphore(hSema, 1, NULL);
                     if(!find_job)

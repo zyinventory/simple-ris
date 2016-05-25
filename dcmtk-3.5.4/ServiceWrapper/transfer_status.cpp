@@ -63,11 +63,17 @@ handle_dir::~handle_dir()
             ++p;
             *p = '\0';
             strcat_s(newname, "txt");
-            if(rename(meta_file.c_str(), newname))
+            ofstream ofs_txt(newname);
+            if(ofs_txt.fail())
             {
                 char msg[1024];
                 strerror_s(msg, errno);
-                time_header_out(*pflog) << __FUNCSIG__" rename(" << meta_file << ", " << newname << ") failed: " << msg << endl;
+                time_header_out(*pflog) << __FUNCSIG__" create complete file " << newname << " failed: " << msg << endl;
+            }
+            else
+            {
+                ofs_txt << "complete" << endl;
+                ofs_txt.close();
             }
         }
     }
@@ -621,6 +627,18 @@ bool handle_ris_integration::make_handle_ris_integration(const string &patient, 
     else return false;
 }
 
+handle_study::handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
+    const std::string &dicomdir, const std::string &study, std::ostream *plog)
+    : handle_proc("", cwd, cmd, exec_prog_name, plog), pipe_context(NULL), dicomdir_path(dicomdir), study_uid(study),
+    blocked(false), ris_integration_start(false), last_association_action(ACTION_TYPE::INDEX_INSTANCE, cwd, false, plog)
+{
+    char seq_buff[MAX_PATH];
+    size_t pos = in_process_sequence_dll(seq_buff, sizeof(seq_buff), "");
+    sprintf_s(seq_buff + pos, sizeof(seq_buff) - pos, "_%s", study_uid);
+    lock_file_name = seq_buff;
+    time(&last_idle_time);
+}
+
 handle_study& handle_study::operator=(const handle_study &r)
 {
     handle_proc::operator=(r);
@@ -630,6 +648,7 @@ handle_study& handle_study::operator=(const handle_study &r)
     last_idle_time = r.last_idle_time;
     last_association_action = r.last_association_action;
     study_uid = r.study_uid;
+    lock_file_name = r.lock_file_name;
     dicomdir_path = r.dicomdir_path;
     copy(r.set_association_path.begin(), r.set_association_path.end(), inserter(set_association_path, set_association_path.end()));
     copy(r.list_action.begin(), r.list_action.end(), back_inserter(list_action));
@@ -654,17 +673,19 @@ handle_study::~handle_study()
     }
     //xml_index::singleton_ptr->unload_and_sync_study(study_uid);
     
-    string notify_old_path;
     char path_buff[MAX_PATH];
-    int pos = sprintf_s(path_buff, "%s\\orders_study\\", GetPacsBase());
-    notify_old_path = path_buff;
-    pos += in_process_sequence_dll(path_buff + pos, sizeof(path_buff) - pos, "");
-    notify_old_path.append(study_uid).append(".ini");
-    sprintf_s(path_buff + pos, sizeof(path_buff) - pos, "_%s.txt", study_uid.c_str());
-    if(rename(notify_old_path.c_str(), path_buff))
+    sprintf_s(path_buff, "%s\\orders_study\\%s.txt", GetPacsBase(), lock_file_name.c_str());
+    ofstream ofs_complete(path_buff, ios_base::out | ios_base::app);
+    if(ofs_complete.fail())
     {
+        string notify_complete_path(path_buff);
         strerror_s(path_buff, errno);
-        time_header_out(*pflog) << __FUNCSIG__" rename " << notify_old_path << " failed: " << path_buff << endl;
+        time_header_out(*pflog) << __FUNCSIG__" create complete file " << notify_complete_path << " failed: " << path_buff << endl;
+    }
+    else
+    {
+        ofs_complete << "OK" << endl;
+        ofs_complete.close();
     }
 }
 
@@ -706,7 +727,8 @@ next_line:
 bool handle_study::open_study_lock_file(map<string, string> &map_ini)
 {
     string study_notify_path(GetPacsBase());
-    study_notify_path.append("\\orders_study\\").append(study_uid).append(".ini");
+    study_notify_path.append("\\orders_study\\").append(lock_file_name).append(".ini");
+
     if(_access(study_notify_path.c_str(), 6))
     {
         errno_t en = errno;
@@ -740,7 +762,7 @@ bool handle_study::open_study_lock_file(map<string, string> &map_ini)
 void handle_study::save_and_close_lock_file(std::map<std::string, std::string> &map_ini)
 {
     string study_notify_path(GetPacsBase());
-    study_notify_path.append("\\orders_study\\").append(study_uid).append(".ini");
+    study_notify_path.append("\\orders_study\\").append(lock_file_name).append(".ini");
     ofstream sfs(study_notify_path, ios_base::out | ios_base::trunc, _SH_DENYWR);
     if(sfs.good())
     {

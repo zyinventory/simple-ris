@@ -188,8 +188,7 @@ namespace handle_context
     private:
         LPPIPEINST pipe_context;
         bool blocked, ris_integration_start;
-        std::string study_uid;
-        std::string dicomdir_path;
+        std::string study_uid, lock_file_name, dicomdir_path;
         std::list<action_from_association> list_action;
         std::set<std::string> set_association_path;
         time_t last_idle_time;
@@ -199,11 +198,8 @@ namespace handle_context
 
     public:
         handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
-            const std::string &dicomdir, const std::string &study, std::ostream *plog)
-            : handle_proc("", cwd, cmd, exec_prog_name, plog), pipe_context(NULL), dicomdir_path(dicomdir), study_uid(study),
-            blocked(false), ris_integration_start(false), last_association_action(ACTION_TYPE::INDEX_INSTANCE, cwd, false, plog)
-            { time(&last_idle_time); };
-        handle_study(const handle_study &r) : handle_proc(r), pipe_context(r.pipe_context), study_uid(r.study_uid),
+            const std::string &dicomdir, const std::string &study, std::ostream *plog);
+        handle_study(const handle_study &r) : handle_proc(r), pipe_context(r.pipe_context), study_uid(r.study_uid), lock_file_name(r.lock_file_name),
             dicomdir_path(r.dicomdir_path), set_association_path(r.set_association_path), list_action(r.list_action),
             blocked(r.blocked), ris_integration_start(r.ris_integration_start), last_idle_time(r.last_idle_time),
             last_association_action(r.last_association_action) {};
