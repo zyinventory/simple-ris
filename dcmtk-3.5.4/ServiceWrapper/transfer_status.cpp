@@ -72,7 +72,7 @@ handle_dir::~handle_dir()
             }
             else
             {
-                ofs_txt << "complete" << endl;
+                ofs_txt << "OK" << endl;
                 ofs_txt.close();
             }
         }
@@ -160,12 +160,19 @@ DWORD handle_dir::find_files(std::ostream &flog, std::function<DWORD(const std::
     for(list<string>::iterator it = new_files.begin(); it != new_files.end(); ++it)
     {
         DWORD gle = pred(*it);
-        if(gle && gle == ERROR_SHARING_VIOLATION)
+        if(gle)
         {
-            process_file_error = true;
-            break; // try it later
+            if(gle == ERROR_SHARING_VIOLATION)
+            {
+                process_file_error = true;
+                break; // try it later
+            }
+            else if(gle == ERROR_DATATYPE_MISMATCH)
+                continue; // ACKN file or file has been processed
+            else
+                displayErrorToCerr(__FUNCSIG__" pred(it)", gle, pflog); // other error
         }
-        else list_file.push_back(*it); // success or other error, no more process it
+        else list_file.push_back(*it); // success
     }
     list_file.sort();
     return 0;
@@ -311,14 +318,18 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
             set_complete.insert(filename); // complete ack self
             if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify() recieve compress complete notify " << filename << "(" << src_notify_file << ")." << endl;
         }
-        else if(tag == NOTIFY_ALL_COMPRESS_OK) set_complete.insert(filename);
+        else if(tag == NOTIFY_ALL_COMPRESS_OK)
+        {
+            set_complete.insert(filename);
+            if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify() recieve all compress complete notify " << filename << endl;
+        }
         else time_header_out(flog) << "handle_dir::process_notify() ignore ack file " << filename << endl
             << cmd << " " << hex << uppercase << tag << " ..." << endl;
     }
     else time_header_out(flog) << "handle_dir::process_notify() ignore " << filename << endl;
 
     if(ifs.is_open()) ifs.close();
-    return 0;
+    return gle;
 }
 
 void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phs, ostream &flog)
@@ -634,7 +645,7 @@ handle_study::handle_study(const std::string &cwd, const std::string &cmd, const
 {
     char seq_buff[MAX_PATH];
     size_t pos = in_process_sequence_dll(seq_buff, sizeof(seq_buff), "");
-    sprintf_s(seq_buff + pos, sizeof(seq_buff) - pos, "_%s", study_uid);
+    sprintf_s(seq_buff + pos, sizeof(seq_buff) - pos, "_%s", study_uid.c_str());
     lock_file_name = seq_buff;
     time(&last_idle_time);
 }

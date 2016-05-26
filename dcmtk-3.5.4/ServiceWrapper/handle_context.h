@@ -103,6 +103,7 @@ namespace handle_context
         void clean_handle() { handle = NULL; };
         bool insert_study(const std::string &study_uid) { return set_study.insert(study_uid).second; };
         bool insert_complete(const std::string &filename) { return set_complete.insert(filename).second; };
+        void remove_file_from_list(const std::string &filename) { list_file.remove(filename); };
         std::string& get_find_filter(std::string&) const;
         bool is_last_find_error() const { return last_find_error; };
         bool is_association_disconnect() const { return assoc_disconn; };

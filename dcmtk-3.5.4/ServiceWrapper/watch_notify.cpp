@@ -27,6 +27,63 @@ static bool select_handle_dir_by_association_path(const meta_notify_file* pnf, c
     return false;
 }
 
+static void write_association_complete_text_file(const string &meta_notify_file_txt, const char *msg, DWORD gle, ostream &flog)
+{
+    ofstream ofstxt(meta_notify_file_txt); // ignore this transfer
+    if(ofstxt.fail())
+    {
+        DWORD gle2 = GetLastError();
+        char buff2[1024];
+        sprintf_s(buff2, "write_association_complete_text_file() create complete text %s", meta_notify_file_txt.c_str());
+        displayErrorToCerr(buff2, gle2, &flog);
+    }
+    else
+    {
+        if(gle)
+            displayErrorToCerr(msg, gle, &ofstxt);
+        else
+            ofstxt << msg << endl;
+        ofstxt.close();
+    }
+}
+
+static DWORD disable_remained_meta_notify_file(ostream &flog)
+{
+    struct _finddata_t wfd;
+    string filter(GetPacsBase());
+    filter.append("\\pacs\\store_notify\\*.dfc");
+    intptr_t hSearch = _findfirst(filter.c_str(), &wfd);
+    if(hSearch == -1)
+    {
+        errno_t en = errno;
+        if(en == ENOENT) return 0;
+        else
+        {
+            strerror_s(buff, en);
+            if(opt_verbose) time_header_out(flog) << "disable_remained_meta_notify_file() " << filter << " failed: " << buff << endl;
+            return -1;
+        }
+    }
+
+    string::size_type pos = filter.rfind('*');
+    filter.erase(pos);
+    do {
+        string node(wfd.name);
+        if (node.compare(".") == 0 || node.compare("..") == 0) 
+			continue; // skip . .. DICOMDIR
+        if((wfd.attrib & _A_SUBDIR) == 0)
+        {
+            node.insert(node.begin(), filter.cbegin(), filter.cend());
+            pos = node.rfind('.');
+            node.erase(pos).append(".txt");
+            if(0 != _access(node.c_str(), 0))
+                write_association_complete_text_file(node, "discard", 0, flog);
+        }
+	} while(_findnext(hSearch, &wfd) == 0);
+	_findclose(hSearch);
+    return 0;
+}
+
 static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify_file, ostream &flog)
 {
     string ntffn(NOTIFY_BASE);
@@ -35,7 +92,8 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
     string::size_type pos = meta_notify_file_txt.rfind('.');
     meta_notify_file_txt.erase(pos).append(".txt");
     // if .txt exist, meta notify file has been processed.
-    if(0 == _access(meta_notify_file_txt.c_str(), 0)) return 0;
+    if(0 == _access(meta_notify_file_txt.c_str(), 0))
+        return ERROR_DATATYPE_MISMATCH; // skip it
 
     if(opt_verbose) time_header_out(flog) << "process_meta_notify_file() receive association notify " << notify_file << endl;
 #ifdef _DEBUG
@@ -45,13 +103,11 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
     if(ntff.fail())
     {
         DWORD gle = GetLastError();
-        if(gle != ERROR_SHARING_VIOLATION) base_dir->insert_complete(notify_file);
         string msg("process_meta_notify_file() open file ");
         msg.append(ntffn);
         return displayErrorToCerr(msg.c_str(), gle, &flog);
     }
-    base_dir->insert_complete(notify_file); // if(gle != ERROR_SHARING_VIOLATION) find_files() must insert complete
-
+    
     string cmd, path, assoc_id, calling, called, remote, port, transfer_syntax, auto_publish;
     DWORD tag, pid, gle = 0;
     ntff >> cmd >> hex >> tag >> path >> dec >> pid >> assoc_id >> calling >> remote >> called >> port >> transfer_syntax >> auto_publish;
@@ -68,6 +124,7 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
     {
         gle = GetLastError();
         sprintf_s(buff, "process_meta_notify_file() FindFirstChangeNotification(%s)", path.c_str());
+        write_association_complete_text_file(meta_notify_file_txt, buff, gle, flog);
         return displayErrorToCerr(buff, gle, &flog);
     }
 
@@ -76,7 +133,13 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
     // path is association base dir
     const HANDLE_MAP::iterator it = find_if(map_handle_context.begin(), map_handle_context.end(),
         [&assoc_id, &path, &flog](const HANDLE_PAIR &p) { return select_handle_dir_by_association_path(p.second, assoc_id, path, flog); });
-    if(it != map_handle_context.end()) return 0;
+    if(it != map_handle_context.end())
+    {
+        sprintf_s(buff, "association id %s : %s exist.", assoc_id.c_str(), path.c_str());
+        write_association_complete_text_file(meta_notify_file_txt, buff, ERROR_FILE_EXISTS, flog);
+        time_header_out(flog) << "process_meta_notify_file() " << buff << endl;
+        return ERROR_DATATYPE_MISMATCH;
+    }
 
     handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path, notify_file, &flog);
     gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify(filename, flog); });
@@ -84,22 +147,22 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
     {
         map_handle_context[hdir] = pclz_dir;
         if(opt_verbose) time_header_out(flog) << "process_meta_notify_file() add association " << pclz_dir->get_association_id() << " " << pclz_dir->get_path() << endl;
+        return 0;
     }
     else
     {   // discard the meta notify
         delete pclz_dir;
-        displayErrorToCerr("process_meta_notify_file() handle_dir::find_files()", gle, &flog);
-        string badname(ntffn);
-        badname.append(".bad");
-        rename(ntffn.c_str(), badname.c_str());
+        write_association_complete_text_file(meta_notify_file_txt, "process_meta_notify_file() handle_dir::find_files()", gle, flog);
+        return displayErrorToCerr("process_meta_notify_file() handle_dir::find_files()", gle, &flog);
     }
-    return 0;
 }
 
 static const string debug_mode_header("DebugMode");
 
 int watch_notify(string &cmd, ostream &flog)
 {
+    disable_remained_meta_notify_file(flog);
+
     // start dcmqrscp.exe parent proc
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
     handle_proc *phproc = new handle_proc("", buff, cmd, "dcmqrscp", &flog);
@@ -284,13 +347,16 @@ int watch_notify(string &cmd, ostream &flog)
                             // close monitor handle, all_compress_ok_notify is not processed.
                             phdir->send_all_compress_ok_notify_and_close_handle(flog);
                             phdir->broadcast_action_to_all_study(nps);
+                            
+                            pclz_base_dir->remove_file_from_list(phdir->get_meta_notify_filename());
+
                             if(opt_verbose)
                             {
                                 time_header_out(flog) << "watch_notify() handle_dir exit:" << endl;
                                 if(debug_mode) phdir->print_state();
                             }
                             delete phdir;
-
+                            
                             // todo: if cmove assoc, start batch burning function in another dir.
                         }
                     }
@@ -367,7 +433,6 @@ int watch_notify(string &cmd, ostream &flog)
                                 strerror_s(msg, errno);
                                 time_header_out(flog) << __FUNCSIG__" _stat64(" << received_instance_file_path << ") fail: " << msg << endl;
                                 fs.st_size = 0LL;
-                                continue;   // todo: skip compress process, send action
                             }
                             nfc.file.file_size_receive = fs.st_size;
 

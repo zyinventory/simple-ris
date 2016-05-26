@@ -9,7 +9,7 @@
 using namespace std;
 
 static int argcSV;
-static char buff[FILE_BUF_SIZE], **argvSV, ris_integration_header[] = "RisIntegration=";
+static char buff[FILE_BUF_SIZE], **argvSV;
 static bool startXCS = false, xcsFound = false;
 static ofstream flog;
 
