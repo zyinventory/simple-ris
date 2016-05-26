@@ -15,7 +15,7 @@ static ofstream flog;
 
 const char *dirmakerCommand;
 bool opt_verbose = false, debug_mode = false;
-int store_timeout = 15;  // default 15 sec
+int store_timeout = 30, assoc_timeout = 120;
 
 static size_t checkDiskFreeSpaceInMB(const char * path)
 {
@@ -176,6 +176,11 @@ static int realMain(int argc, char **argv)
         {
             int timeout = atoi(buff);
             if(timeout) store_timeout = timeout;
+        }
+        if(GetSetting("AssocTimeout", buff, sizeof(buff)))
+        {
+            int timeout = atoi(buff);
+            if(timeout) assoc_timeout = timeout;
         }
     }
     if(GetSetting("ACSETimeout", buff, sizeof(buff))) cmd.append(" -ta ").append(buff);

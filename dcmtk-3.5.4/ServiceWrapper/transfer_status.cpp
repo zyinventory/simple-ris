@@ -21,6 +21,19 @@ void meta_notify_file::print_state() const
 {
     *pflog << "meta_notify_file::print_state() association_id: " << association_id << endl
         << "\tmeta_notify_filename: " << meta_notify_filename << endl;
+
+    struct tm tm_last;
+    if(0 == localtime_s(&tm_last, &last_access))
+    {
+        char time_buf[32];
+        if(strftime(time_buf, sizeof(time_buf), "%Y/%m/%d %H:%M:%S", &tm_last))
+        {
+            *pflog << time_buf << endl;
+            goto convert_time_ok;
+        }
+    }
+    *pflog << last_access << endl;
+convert_time_ok:
     base_path::print_state();
 }
 
@@ -29,6 +42,7 @@ meta_notify_file& meta_notify_file::operator=(const meta_notify_file &r)
     base_path::operator=(r);
     association_id = r.association_id;
     meta_notify_filename = r.meta_notify_filename;
+    last_access = r.last_access;
     return *this;
 }
 
@@ -50,6 +64,16 @@ handle_dir& handle_dir::operator=(const handle_dir &r)
 handle_dir::~handle_dir()
 {
     if(handle) FindCloseChangeNotification(handle);
+    
+    named_pipe_server *nps = named_pipe_server::get_named_pipe_server_singleton();
+    if(nps)
+    {
+        string assoc_path(get_path());
+        for_each(set_study.begin(), set_study.end(), [nps, &assoc_path](const string &study_uid) {
+            handle_study *phs = nps->find_handle_study(study_uid);
+            if(phs) phs->remove_association_path(assoc_path);
+        });
+    }
 
     string meta_file(get_meta_notify_filename());
     if(meta_file.length())
@@ -123,6 +147,9 @@ DWORD handle_dir::find_files(std::ostream &flog, std::function<DWORD(const std::
 {
     struct _finddata_t wfd;
     string filter;
+
+    refresh_last_access(); 
+
     intptr_t hSearch = _findfirst(get_find_filter(filter).c_str(), &wfd);
     if(hSearch == -1)
     {
@@ -271,6 +298,8 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
         return displayErrorToCerr(msg.c_str(), gle, &flog);
     }
 
+    refresh_last_access();
+
     ifs >> cmd >> hex >> tag;
     
     if(cmd.compare(NOTIFY_FILE_TAG) == 0) // receive a file
@@ -332,8 +361,19 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     return gle;
 }
 
+bool handle_dir::is_time_out() const
+{
+    time_t now = 0, last_access = get_last_access(), timeout;
+    time(&now);
+    timeout = now - last_access;
+    if(timeout > assoc_timeout) return true;
+    return false;
+}
+
 void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phs, ostream &flog)
 {
+    refresh_last_access();
+
     if(phs) phs->append_action(action_from_association(nfc, get_path(), &flog));
 
     char notify_file_name[MAX_PATH];
@@ -578,34 +618,7 @@ void handle_compress::print_state() const
     handle_proc::print_state();
 }
 
-handle_ris_integration& handle_ris_integration::operator=(const handle_ris_integration &r)
-{
-    handle_proc::operator=(r);
-    last_access = r.last_access;
-    return *this;
-}
-
-void handle_ris_integration::print_state() const
-{
-    *pflog << "handle_ris_integration::print_state() " << get_patient_id() << endl
-        << "\tlast_access: ";
-    
-    struct tm tm_last;
-    if(0 == localtime_s(&tm_last, &last_access))
-    {
-        char time_buf[32];
-        if(strftime(time_buf, sizeof(time_buf), "%Y/%m/%d %H:%M:%S", &tm_last))
-        {
-            *pflog << time_buf << endl;
-            goto convert_time_ok;
-        }
-    }
-    *pflog << last_access << endl;
-convert_time_ok:
-    handle_proc::print_state();
-}
-
-bool handle_ris_integration::make_handle_ris_integration(const string &patient, const string &prog_path, ostream &flog)
+bool handle_proc::make_proc_ris_integration(const string &patient, const string &prog_path, ostream &flog)
 {
     char path[MAX_PATH], hash[9];
     HashStr(patient.c_str(), hash, sizeof(hash));
@@ -619,7 +632,7 @@ bool handle_ris_integration::make_handle_ris_integration(const string &patient, 
 
     string cmd(GetPacsBase());
     cmd.append(1, '\\').append(prog_path).append(1, ' ').append(patient);
-    handle_ris_integration *pris = new handle_ris_integration(patient, path, cmd, "RisIntegration", &flog);
+    handle_proc *pris = new handle_proc(patient, path, cmd, "RisIntegration", &flog);
     if(pris)
     {
         DWORD gle = pris->start_process(false);
@@ -647,7 +660,6 @@ handle_study::handle_study(const std::string &cwd, const std::string &cmd, const
     size_t pos = in_process_sequence_dll(seq_buff, sizeof(seq_buff), "");
     sprintf_s(seq_buff + pos, sizeof(seq_buff) - pos, "_%s", study_uid.c_str());
     lock_file_name = seq_buff;
-    time(&last_idle_time);
 }
 
 handle_study& handle_study::operator=(const handle_study &r)
@@ -656,7 +668,6 @@ handle_study& handle_study::operator=(const handle_study &r)
     pipe_context = r.pipe_context;
     blocked = r.blocked;
     ris_integration_start = r.ris_integration_start;
-    last_idle_time = r.last_idle_time;
     last_association_action = r.last_association_action;
     study_uid = r.study_uid;
     lock_file_name = r.lock_file_name;
@@ -702,6 +713,7 @@ handle_study::~handle_study()
 
 DWORD handle_study::append_action(const action_from_association &action)
 {
+    refresh_last_access();
     list_action.push_back(action);
     if(blocked) return write_message_to_pipe();
     return 0;
@@ -799,6 +811,8 @@ void handle_study::save_and_close_lock_file(std::map<std::string, std::string> &
 
 bool handle_study::insert_association_path(const std::string &assoc_path)
 {
+    refresh_last_access();
+
     bool insert_result = set_association_path.insert(assoc_path).second;
 
     map<string, string> map_ini;
@@ -817,6 +831,8 @@ bool handle_study::insert_association_path(const std::string &assoc_path)
 
 void handle_study::remove_association_path(const string &assoc_path)
 {
+    refresh_last_access();
+
     set_association_path.erase(assoc_path);
 
     map<string, string> map_ini;
@@ -851,7 +867,7 @@ DWORD handle_study::write_message_to_pipe()
             last_association_action.print_state();
         }
 
-        time(&last_idle_time);
+        refresh_last_access();
         switch(it->type)
         {
         case ACTION_TYPE::INDEX_INSTANCE:
@@ -895,6 +911,8 @@ DWORD handle_study::write_message_to_pipe()
 
 void handle_study::action_compress_ok(const string &filename, const string &xfer)
 {
+    refresh_last_access();
+
     list<action_from_association>::iterator it_clc = find_if(list_action.begin(), list_action.end(),
         [&filename](const action_from_association &lc){ return lc.pnfc && filename.compare(lc.pnfc->file.unique_filename) == 0; });
     if(it_clc != list_action.end())
@@ -908,7 +926,7 @@ void handle_study::action_compress_ok(const string &filename, const string &xfer
             char ris_integration_prog[MAX_PATH];
             if(GetSetting("RisIntegration", ris_integration_prog, sizeof(ris_integration_prog)))
             {
-                ris_integration_start = handle_ris_integration::make_handle_ris_integration(it_clc->pnfc->file.patientID, ris_integration_prog, *pflog);
+                ris_integration_start = handle_proc::make_proc_ris_integration(it_clc->pnfc->file.patientID, ris_integration_prog, *pflog);
                 if(!ris_integration_start) time_header_out(*pflog) << __FUNCSIG__" start ris integration failed." << endl;
             }
         }
@@ -946,13 +964,15 @@ void handle_study::print_state() const
 
 bool handle_study::is_time_out() const
 {
-    time_t now = 0;
+    time_t now = 0, last_access = get_last_access(), timeout;
     time(&now);
+    timeout = now - last_access;
+    
     if(last_association_action.is_disconnect() && list_action.size() == 0 && set_association_path.size() == 0)
     {
-        if(now - last_idle_time > store_timeout) return true;
+        if(timeout > store_timeout) return true;
     }
-    else if(now - last_idle_time > 600) return true;
+    else if(timeout > assoc_timeout) return true;
     return false;
 }
 

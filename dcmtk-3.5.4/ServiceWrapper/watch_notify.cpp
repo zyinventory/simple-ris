@@ -283,7 +283,6 @@ int watch_notify(string &cmd, ostream &flog)
         {
             HANDLE waited = pha[wr - WAIT_OBJECT_0];
             handle_compress *phcompr = NULL;
-            handle_ris_integration *pris = NULL;
             handle_proc *phproc = NULL;
             handle_dir *phdir = NULL;
             meta_notify_file *pb = map_handle_context.count(waited) ? map_handle_context[waited] : NULL;
@@ -340,7 +339,7 @@ int watch_notify(string &cmd, ostream &flog)
                     if(phdir->get_association_id().length()) // some file in storedir/association_id
                     {
                         gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, flog); });
-                        if(phdir->is_association_disconnect() && phdir->file_complete_remain() == 0)
+                        if(phdir->is_time_out() || (phdir->is_association_disconnect() && phdir->file_complete_remain() == 0))
                         {
                             map_handle_context.erase(waited);
                             if(opt_verbose) time_header_out(flog) << "watch_notify() association " << phdir->get_association_id() << " complete, erease from map_handle_context." << endl;

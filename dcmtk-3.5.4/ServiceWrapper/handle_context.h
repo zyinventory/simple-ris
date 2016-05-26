@@ -17,19 +17,24 @@ namespace handle_context
     {
     private:
         std::string association_id, meta_notify_filename;
+        time_t last_access;
 
     protected:
         meta_notify_file(const std::string &assoc_id, const std::string &p, std::ostream *plog)
-            : base_path(p, plog), association_id(assoc_id) {};
+            : base_path(p, plog), association_id(assoc_id) { time(&last_access); };
         meta_notify_file(const std::string &assoc_id, const std::string &p, const std::string &filename, std::ostream *plog)
-            : base_path(p, plog), association_id(assoc_id), meta_notify_filename(filename) {};
+            : base_path(p, plog), association_id(assoc_id), meta_notify_filename(filename) { time(&last_access); };
 
     public:
-        meta_notify_file(const meta_notify_file& r) : base_path(r), association_id(r.association_id), meta_notify_filename(r.meta_notify_filename) {};
+        meta_notify_file(const meta_notify_file& r) : base_path(r), association_id(r.association_id),
+            meta_notify_filename(r.meta_notify_filename),  last_access(r.last_access) {};
         meta_notify_file& operator=(const meta_notify_file &r);
         void print_state() const;
         const std::string& get_association_id() const { return association_id; };
         const std::string& get_meta_notify_filename() const { return meta_notify_filename; };
+        time_t get_last_access() const { return last_access; };
+        time_t refresh_last_access() { return time(&last_access); };
+        virtual bool is_time_out() { return false; };
     };
 
     typedef std::map<HANDLE, meta_notify_file*> HANDLE_MAP;
@@ -97,12 +102,11 @@ namespace handle_context
             assoc_disconn(o.assoc_disconn), disconn_release(o.disconn_release), assoc(o.assoc) {};
         virtual ~handle_dir();
 
+        bool is_time_out() const;
         handle_dir& operator=(const handle_dir &r);
         void print_state() const;
         HANDLE get_handle() const { return handle; };
-        void clean_handle() { handle = NULL; };
         bool insert_study(const std::string &study_uid) { return set_study.insert(study_uid).second; };
-        bool insert_complete(const std::string &filename) { return set_complete.insert(filename).second; };
         void remove_file_from_list(const std::string &filename) { list_file.remove(filename); };
         std::string& get_find_filter(std::string&) const;
         bool is_last_find_error() const { return last_find_error; };
@@ -129,6 +133,8 @@ namespace handle_context
             { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
         handle_proc(const handle_proc& o) : meta_notify_file(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
             log_path(o.log_path), procinfo(o.procinfo) {};
+        
+        static bool make_proc_ris_integration(const std::string &patient, const std::string &prog_path, std::ostream &flog);
 
         handle_proc& operator=(const handle_proc &r);
         void print_state() const;
@@ -158,23 +164,6 @@ namespace handle_context
         NOTIFY_FILE_CONTEXT& get_notify_context() { return notify_ctx; };
     };
 
-    class handle_ris_integration : public handle_proc
-    {
-    private:
-        time_t last_access;
-
-        handle_ris_integration(const std::string &pat_id, const std::string &path, const std::string &cmd, const std::string &exec_prog_name, std::ostream *plog)
-            : handle_proc(pat_id, path, cmd, exec_prog_name, plog) { time(&last_access); };
-    public:
-        static bool make_handle_ris_integration(const std::string &patient, const std::string &prog_path, std::ostream &flog);
-        handle_ris_integration(const handle_ris_integration& r) : handle_proc(r), last_access(r.last_access) {};
-        handle_ris_integration& operator=(const handle_ris_integration &r);
-        void print_state() const;
-        const std::string& get_patient_id() const { return get_association_id(); };
-        time_t get_last_access() const { return last_access; };
-        time_t refresh_last_access() { return time(&last_access); };
-    };
-
     typedef struct _tag_PIPEINST
     {
 	    OVERLAPPED oOverlap;
@@ -192,7 +181,6 @@ namespace handle_context
         std::string study_uid, lock_file_name, dicomdir_path;
         std::list<action_from_association> list_action;
         std::set<std::string> set_association_path;
-        time_t last_idle_time;
         action_from_association last_association_action;
         bool open_study_lock_file(std::map<std::string, std::string> &map_ini);
         void save_and_close_lock_file(std::map<std::string, std::string> &map_ini);
@@ -202,8 +190,7 @@ namespace handle_context
             const std::string &dicomdir, const std::string &study, std::ostream *plog);
         handle_study(const handle_study &r) : handle_proc(r), pipe_context(r.pipe_context), study_uid(r.study_uid), lock_file_name(r.lock_file_name),
             dicomdir_path(r.dicomdir_path), set_association_path(r.set_association_path), list_action(r.list_action),
-            blocked(r.blocked), ris_integration_start(r.ris_integration_start), last_idle_time(r.last_idle_time),
-            last_association_action(r.last_association_action) {};
+            blocked(r.blocked), ris_integration_start(r.ris_integration_start), last_association_action(r.last_association_action) {};
         
         virtual ~handle_study();
         handle_study& operator=(const handle_study &r);

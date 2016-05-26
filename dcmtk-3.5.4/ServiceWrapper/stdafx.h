@@ -46,7 +46,7 @@ int x_www_form_codec_encode_to_ostream(const char *str, std::ostream *output);
 
 extern bool opt_verbose;
 extern bool debug_mode;
-extern int store_timeout, lock_number, *ptr_license_count;
+extern int store_timeout, assoc_timeout, lock_number, *ptr_license_count;
 extern char lock_file_name[64];
 extern handle_context::NOTIFY_LIST compress_queue;
 
