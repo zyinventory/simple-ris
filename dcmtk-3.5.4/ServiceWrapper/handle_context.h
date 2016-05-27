@@ -43,7 +43,7 @@ namespace handle_context
     typedef std::map<std::string, handle_study*> STUDY_MAP;
     typedef std::pair<std::string, handle_study*> STUDY_PAIR;
 
-    enum ACTION_TYPE { NO_ACTION = 0, BURN_PER_STUDY, BURN_MULTI, INDEX_INSTANCE };
+    enum ACTION_TYPE { NO_ACTION = 0, BURN_PER_STUDY, BURN_MULTI, INDEX_INSTANCE, NO_INSTANCE };
 
     class action_from_association : public base_path
     {
@@ -115,9 +115,10 @@ namespace handle_context
         int file_complete_remain() const { return list_file.size() - set_complete.size(); };
         DWORD find_files(std::ostream &flog, std::function<DWORD(const std::string&)> p);
         DWORD process_notify(const std::string &filename, std::ostream &flog);
-        void send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phdir, std::ostream &flog);
-        void broadcast_action_to_all_study(named_pipe_server &nps) const;
-        void send_all_compress_ok_notify_and_close_handle(std::ostream &flog);
+        void send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phdir, bool compress_ok, std::ostream &flog);
+        bool is_normal_close() const { return assoc_disconn && file_complete_remain() == 0; };
+        void broadcast_assoc_close_action_to_all_study(named_pipe_server &nps, bool exception_close = false) const;
+        void send_all_compress_ok_notify_and_close_handle();
     };
 
     class handle_proc : public meta_notify_file
@@ -197,7 +198,7 @@ namespace handle_context
         void print_state() const;
         void bind_pipe_context(LPPIPEINST p_context) { pipe_context = p_context; };
         DWORD write_message_to_pipe();
-        void action_compress_ok(const std::string &filename, const std::string &xfer);
+        void remove_compress_ok_action(const std::string &filename, const std::string &xfer);
         const std::string& get_study_uid() const { return study_uid; };
         const std::string& get_dicomdir_path() const { return dicomdir_path; };
         const action_from_association& get_last_association_action() const { return last_association_action; };

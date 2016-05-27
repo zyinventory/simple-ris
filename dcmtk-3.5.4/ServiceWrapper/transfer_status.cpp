@@ -12,7 +12,8 @@ const char* action_from_association::translate_action_type(ACTION_TYPE t)
     case NO_ACTION: return "NO_ACTION";
     case BURN_PER_STUDY: return "BURN_PER_STUDY";
     case BURN_MULTI: return "BURN_MULTI";
-    case INDEX_INSTANCE:  return "INDEX_INSTANCE";
+    case INDEX_INSTANCE: return "INDEX_INSTANCE";
+    case NO_INSTANCE: return "NO_INSTANCE";
     default: return "ERROR_ACTION_TYPE";
     }
 }
@@ -96,7 +97,10 @@ handle_dir::~handle_dir()
             }
             else
             {
-                ofs_txt << "OK" << endl;
+                if(is_normal_close())
+                    ofs_txt << "OK" << endl;
+                else
+                    ofs_txt << "TIMEOUT" << endl;
                 ofs_txt.close();
             }
         }
@@ -339,7 +343,7 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
     }
     else if(cmd.compare(NOTIFY_ACKN_ITEM) == 0)
     {
-        if(tag == NOTIFY_COMPRESS_OK)
+        if(tag == NOTIFY_COMPRESS_OK || tag == NOTIFY_COMPRESS_FAIL)
         {
             string src_notify_file;
             ifs >> src_notify_file;
@@ -370,32 +374,32 @@ bool handle_dir::is_time_out() const
     return false;
 }
 
-void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phs, ostream &flog)
+void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phs, bool compress_ok, ostream &flog)
 {
     refresh_last_access();
 
-    if(phs) phs->append_action(action_from_association(nfc, get_path(), &flog));
+    if(phs && compress_ok) phs->append_action(action_from_association(nfc, get_path(), &flog));
 
     char notify_file_name[MAX_PATH];
     string prefix(get_path());
     prefix.append("\\state\\");
     size_t pos = in_process_sequence_dll(notify_file_name, sizeof(notify_file_name), prefix.c_str());
     sprintf_s(notify_file_name + pos, sizeof(notify_file_name) - pos, "_%s.dfc", NOTIFY_ACKN_TAG);
-    ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out, _SH_DENYRW);
+    ofstream ntf(notify_file_name, ios_base::trunc | ios_base::out, _SH_DENYWR);
     if(ntf.good())
     {
-        save_notify_context_to_ostream(nfc, ntf);
+        save_notify_context_to_ostream(nfc, compress_ok, ntf);
         ntf.close();
         if(opt_verbose) time_header_out(flog) << "handle_dir::send_compress_complete_notify() to " << notify_file_name << " OK." << endl;
     }
     else
     {
         time_header_out(flog) << "handle_dir::send_compress_complete_notify() to " << notify_file_name << " failed:" << endl;
-        save_notify_context_to_ostream(nfc, flog);
+        save_notify_context_to_ostream(nfc, compress_ok, flog);
     }
 }
 
-void handle_dir::send_all_compress_ok_notify_and_close_handle(ostream &flog)
+void handle_dir::send_all_compress_ok_notify_and_close_handle()
 {
     // close motinor handle, avoid all_compress_ok notify loop
     FindCloseChangeNotification(handle);
@@ -411,29 +415,27 @@ void handle_dir::send_all_compress_ok_notify_and_close_handle(ostream &flog)
     {
         ntf << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ALL_COMPRESS_OK << " " << last_association_notify_filename << endl;
         ntf.close();
-        if(opt_verbose) time_header_out(flog) << "watch_notify() send all compress OK notify " << notify_file_name << " OK." << endl;
+        if(opt_verbose) time_header_out(*pflog) << "watch_notify() send all compress OK notify " << notify_file_name << " OK." << endl;
     }
     else
     {
-        time_header_out(flog) << "watch_notify() send all compress OK notify " << notify_file_name << " failed:" << endl;
-        flog << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ALL_COMPRESS_OK << endl;
+        time_header_out(*pflog) << "watch_notify() send all compress OK notify " << notify_file_name << " failed:" << endl;
+        *pflog << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_ALL_COMPRESS_OK << endl;
     }
 }
 
-void handle_dir::broadcast_action_to_all_study(named_pipe_server &nps) const
+void handle_dir::broadcast_assoc_close_action_to_all_study(named_pipe_server &nps, bool exception_close) const
 {
     action_from_association *paaa = NULL;
-    if(assoc_disconn)
+    ACTION_TYPE type = NO_ACTION;
+    if(is_normal_close())
     {
-        ACTION_TYPE type = NO_ACTION;
         if(strcmp(assoc.auto_publish, "STUDY") == 0) type = BURN_PER_STUDY;
-        paaa = new action_from_association(type, get_path(), disconn_release, pflog);
     }
     else
-    {
-        time_header_out(*pflog) << "handle_dir::broadcast_action_to_all_study() failed: association " << get_association_id() << " is not disconnected." << endl;
-        return;
-    }
+        time_header_out(*pflog) << "handle_dir::broadcast_action_to_all_study() failed: association " << get_association_id() << " is not disconnected, force close." << endl;
+
+    paaa = new action_from_association(type, get_path(), disconn_release, pflog);
 
     for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
     {
@@ -587,10 +589,10 @@ handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT
         {
             ++p;
             mkdir_pos = p - cmd;
-            mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s %s --uid-never -ds %s ", verbose_flag, codec, nfc.file.filename);
+            mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s %s --uid-never %s ", verbose_flag, codec, nfc.file.filename);
         }
         else
-            mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never -ds %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
+            mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
 #else
         char cmd[1024];
 	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never -ds %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
@@ -899,6 +901,9 @@ DWORD handle_study::write_message_to_pipe()
             if(opt_verbose) time_header_out(*pflog) << "handle_study::write_message_to_pipe() erease_association " << study_uid << endl
                 << "\tand erease assoc " << it->get_path() << endl;
             break;
+        case ACTION_TYPE::NO_INSTANCE:
+            // instance file is not found, erase it only.
+            break;
         default:
             time_header_out(*pflog) << __FUNCSIG__" encounter " << action_from_association::translate_action_type(it->type) << " action." << endl;
             break;
@@ -909,7 +914,7 @@ DWORD handle_study::write_message_to_pipe()
     return gle;
 }
 
-void handle_study::action_compress_ok(const string &filename, const string &xfer)
+void handle_study::remove_compress_ok_action(const string &filename, const string &xfer)
 {
     refresh_last_access();
 

@@ -201,9 +201,10 @@ int cmd_series(const std::string &type, std::istringstream &cmdstrm, handle_cont
     return 0;
 }
 
-void save_notify_context_to_ostream(const NOTIFY_FILE_CONTEXT &cnc, ostream &output)
+void save_notify_context_to_ostream(const NOTIFY_FILE_CONTEXT &cnc, bool compress_ok, ostream &output)
 {
-    output << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase << NOTIFY_COMPRESS_OK << " " << cnc.src_notify_filename << endl;
+    output << NOTIFY_ACKN_ITEM << " " << hex << setw(8) << setfill('0') << uppercase 
+        << (compress_ok ? NOTIFY_COMPRESS_OK : NOTIFY_COMPRESS_FAIL) << " " << cnc.src_notify_filename << endl;
     output << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << cnc.file_seq
         << " " << cnc.file.filename << " " << cnc.file.unique_filename << endl;
     output << NOTIFY_LEVEL_INSTANCE << " 00100020 ";

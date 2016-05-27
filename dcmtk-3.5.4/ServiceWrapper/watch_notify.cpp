@@ -47,11 +47,10 @@ static void write_association_complete_text_file(const string &meta_notify_file_
     }
 }
 
-static DWORD disable_remained_meta_notify_file(ostream &flog)
+static DWORD disable_remained_meta_notify_file(const char *pattern, ostream &flog)
 {
     struct _finddata_t wfd;
-    string filter(GetPacsBase());
-    filter.append("\\pacs\\store_notify\\*.dfc");
+    string filter(pattern);
     intptr_t hSearch = _findfirst(filter.c_str(), &wfd);
     if(hSearch == -1)
     {
@@ -157,11 +156,75 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
     }
 }
 
+static void compress_complete(const string &assoc_id, const string &study_uid, bool compress_ok,
+    named_pipe_server &nps, NOTIFY_FILE_CONTEXT &nfc, ostream &flog)
+{
+    if(opt_verbose) time_header_out(flog) << "compress_complete() dcmcjpeg " << (compress_ok ? "complete" : "failed")
+        << ", find association " << assoc_id << " to set complete." << endl;
+    handle_dir *phd = NULL;
+    const HANDLE_MAP::iterator it_dummy = find_if(map_handle_context.begin(), map_handle_context.end(),
+        [&assoc_id, &phd](const HANDLE_PAIR &p) -> bool {
+            if(p.second == NULL) return false;
+            if(0 == assoc_id.compare(p.second->get_association_id()))
+            {
+                phd = dynamic_cast<handle_dir*>(p.second);
+                if(phd) return true;
+            }
+            return false;
+        });
+
+    if(phd)
+    {
+        handle_study *phs = nps.find_handle_study(study_uid);
+        if(phs == NULL)
+            time_header_out(flog) << "compress_complete() src file " << nfc.src_notify_filename << " can't send action to dicomdir: missing study " << study_uid << endl;
+        phd->send_compress_complete_notify(nfc, phs, compress_ok, flog); // phs->append_action(action_from_association(nfc));
+    }
+    else time_header_out(flog) << "compress_complete() set src file " << nfc.src_notify_filename << " complete failed: missing association " << assoc_id << endl;
+}
+
+static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named_pipe_server &nps, bool pick_up, ostream &flog)
+{
+    if(phdir && phdir->get_association_id().length())
+    {
+        if(phdir->is_time_out() || phdir->is_normal_close())
+        {
+            if(opt_verbose)
+            {
+                time_header_out(flog) << "close_handle_dir()" << (pick_up ? " pick up" : "") << " association " << phdir->get_association_id() << " complete, erease from map_handle_context." << endl;
+                if(phdir->is_normal_close())
+                    flog << "\tnormal close." << endl;
+                else
+                    flog << "\ttimeout close." << endl;
+            }
+            // close monitor handle, all_compress_ok_notify is not processed.
+            phdir->send_all_compress_ok_notify_and_close_handle();
+            phdir->broadcast_assoc_close_action_to_all_study(nps, !phdir->is_normal_close());
+                            
+            pclz_base_dir->remove_file_from_list(phdir->get_meta_notify_filename());
+
+            if(opt_verbose)
+            {
+                time_header_out(flog) << "close_handle_dir() handle_dir" << (pick_up ? " pick up" : "") << " exit:" << endl;
+                if(debug_mode) phdir->print_state();
+            }
+            delete phdir;
+                            
+            // todo: if cmove assoc, start batch burning function in another dir.
+            return true;
+        }
+    }
+    return false;
+}
+
 static const string debug_mode_header("DebugMode");
 
 int watch_notify(string &cmd, ostream &flog)
 {
-    disable_remained_meta_notify_file(flog);
+    sprintf_s(buff, "%s\\pacs\\store_notify\\*.dfc", GetPacsBase());
+    disable_remained_meta_notify_file(buff, flog);
+    sprintf_s(buff, "%s\\orders_study\\*.ini", GetPacsBase());
+    disable_remained_meta_notify_file(buff, flog);
 
     // start dcmqrscp.exe parent proc
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
@@ -303,61 +366,21 @@ int watch_notify(string &cmd, ostream &flog)
                     ReleaseSemaphore(hSema, 1, NULL);
                     map_handle_context.erase(phcompr->get_handle());
                     NOTIFY_FILE_CONTEXT nfc = phcompr->get_notify_context();
-
-                    string study_uid(nfc.file.studyUID), assoc_path(phcompr->get_path()), assoc_id(phcompr->get_association_id());
                     if(opt_verbose)
                     {
                         time_header_out(flog) << "watch_notify() compress proc exit:" << endl;
                         if(debug_mode) phcompr->print_state();
                     }
+                    compress_complete(phcompr->get_association_id(), nfc.file.studyUID, true, nps, nfc, flog);
                     delete phcompr;
-                    
-                    if(opt_verbose) time_header_out(flog) << "watch_notify() dcmcjpeg complete, find association " << assoc_id << " to set complete." << endl;
-                    handle_dir *phd = NULL;
-                    const HANDLE_MAP::iterator it_dummy = find_if(map_handle_context.begin(), map_handle_context.end(),
-                        [&assoc_id, &phd](const HANDLE_PAIR &p) -> bool {
-                            if(p.second == NULL) return false;
-                            if(0 == assoc_id.compare(p.second->get_association_id()))
-                            {
-                                phd = dynamic_cast<handle_dir*>(p.second);
-                                if(phd) return true;
-                            }
-                            return false;
-                        });
-
-                    if(phd)
-                    {
-                        handle_study *phs = nps.find_handle_study(study_uid);
-                        if(phs == NULL)
-                            time_header_out(flog) << "watch_notify() src file " << nfc.src_notify_filename << " can't send action to dicomdir: missing study " << study_uid << endl;
-                        phd->send_compress_complete_notify(nfc, phs, flog); // phs->append_action(action_from_association(nfc));
-                    }
-                    else time_header_out(flog) << "watch_notify() set src file " << nfc.src_notify_filename << " complete failed: missing association " << assoc_id << endl;
                 }
                 else if(phdir = dynamic_cast<handle_dir*>(pb))
                 {
                     if(phdir->get_association_id().length()) // some file in storedir/association_id
                     {
                         gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, flog); });
-                        if(phdir->is_time_out() || (phdir->is_association_disconnect() && phdir->file_complete_remain() == 0))
-                        {
+                        if(close_handle_dir(phdir, pclz_base_dir, nps, false, flog))
                             map_handle_context.erase(waited);
-                            if(opt_verbose) time_header_out(flog) << "watch_notify() association " << phdir->get_association_id() << " complete, erease from map_handle_context." << endl;
-                            // close monitor handle, all_compress_ok_notify is not processed.
-                            phdir->send_all_compress_ok_notify_and_close_handle(flog);
-                            phdir->broadcast_action_to_all_study(nps);
-                            
-                            pclz_base_dir->remove_file_from_list(phdir->get_meta_notify_filename());
-
-                            if(opt_verbose)
-                            {
-                                time_header_out(flog) << "watch_notify() handle_dir exit:" << endl;
-                                if(debug_mode) phdir->print_state();
-                            }
-                            delete phdir;
-                            
-                            // todo: if cmove assoc, start batch burning function in another dir.
-                        }
                     }
                     else // new file in meta notify dir(store_notify)
                         gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return process_meta_notify_file(phdir, filename, flog); });
@@ -432,6 +455,9 @@ int watch_notify(string &cmd, ostream &flog)
                                 strerror_s(msg, errno);
                                 time_header_out(flog) << __FUNCSIG__" _stat64(" << received_instance_file_path << ") fail: " << msg << endl;
                                 fs.st_size = 0LL;
+
+                                compress_complete(nfc.assoc.id, nfc.file.studyUID, false, nps, nfc, flog);
+                                continue;                           
                             }
                             nfc.file.file_size_receive = fs.st_size;
 
@@ -468,6 +494,23 @@ int watch_notify(string &cmd, ostream &flog)
                     displayErrorToCerr("compress_queue_to_workers() WaitForSingleObject(hSema)", dw, &flog);
                 // else WAIT_TIMEOUT, compress process is too much.
             }
+        }
+
+        // handle_dir pick up
+        HANDLE_MAP::iterator it = map_handle_context.begin();
+        while(it != map_handle_context.end())
+        {
+            handle_dir *phdir = NULL;
+            if(it->second) phdir = dynamic_cast<handle_dir*>(it->second);
+            if(phdir && phdir->get_association_id().length())
+            {
+                if(close_handle_dir(phdir, pclz_base_dir, nps, true, flog))
+                {
+                    it = map_handle_context.erase(it);
+                    continue;
+                }
+            }
+            ++it;
         }
         // write jdf to orders_notify
         nps.check_study_timeout_to_generate_jdf();

@@ -238,7 +238,7 @@ void named_pipe_server::read_pipe_complete(DWORD dwErr, DWORD cbBytesRead, LPOVE
         if(phs) // handle_study is found
         {
             // previous message is compress ok message, make xml index, erease the action from list
-            phs->action_compress_ok(filename, xfer);
+            phs->remove_compress_ok_action(filename, xfer);
             if(phs->write_message_to_pipe()) disconnect_connection_auto_detect(lpPipeInst);
         }
         else
@@ -349,8 +349,11 @@ named_pipe_server::~named_pipe_server()
     }
     if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::~named_pipe_server()" << endl;
     for_each(map_study.begin(), map_study.end(), [](const STUDY_PAIR &p) {
-        if(debug_mode) p.second->print_state();
-        delete p.second;
+        if(p.second)
+        {
+            if(debug_mode) p.second->print_state();
+            delete p.second;
+        }
     });
 }
 
