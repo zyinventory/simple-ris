@@ -246,11 +246,11 @@ int watch_notify(string &cmd, ostream &flog)
         if(p)
         {
             *p = '\0';
-            strcat_s(buff, "\\Debug\\jobloader.exe dcmtk_ServiceWrapper");
-        } else sprintf_s(buff, "%s\\bin\\jobloader.exe dcmtk_ServiceWrapper", GetPacsBase());
-    } else sprintf_s(buff, "%s\\bin\\jobloader.exe dcmtk_ServiceWrapper", GetPacsBase());
+            strcat_s(buff, "\\Debug\\jobloader.exe");
+        } else sprintf_s(buff, "%s\\bin\\jobloader.exe", GetPacsBase());
+    } else sprintf_s(buff, "%s\\bin\\jobloader.exe", GetPacsBase());
 #else
-    sprintf_s(buff, "%s\\bin\\jobloader.exe dcmtk_ServiceWrapper", GetPacsBase());
+    sprintf_s(buff, "%s\\bin\\jobloader.exe", GetPacsBase());
 #endif
     cmd = buff;
     sprintf_s(buff, "%s\\pacs", GetPacsBase());

@@ -13,7 +13,7 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	int ret = 0;
     bool debug_mode = false;
-    HANDLE hMutex = NULL, hServiceMutex = NULL, hmap = NULL, hfile = INVALID_HANDLE_VALUE, hdir = INVALID_HANDLE_VALUE;
+    HANDLE hParentProcess = NULL, hmap = NULL, hfile = INVALID_HANDLE_VALUE, hdir = INVALID_HANDLE_VALUE;
     HANDLE wa[2];
     list<string> pending_jdf;
 
@@ -42,28 +42,25 @@ int _tmain(int argc, _TCHAR* argv[])
     
     if(debug_mode) time_header_out(flog) << "enable debug mode." << endl;
 
-    hMutex = CreateMutex(NULL, TRUE, "Global\\publisher_job_load_balance_mutex");
-    if(hMutex == NULL)
+    size_t required = 0;
+    if(getenv_s(&required, buff, "PARENT_PID"))
     {
-        displayErrorToCerr("JobLoader CreateMutex() self", GetLastError(), &flog);
-		ret = -1;
+        displayErrorToCerr("JobLoader get parent pid", GetLastError(), &flog);
+        ret = -2;
         goto exit_job_loader;
     }
-    if(debug_mode) time_header_out(flog) << "create mutex OK: Global\\publisher_job_load_balance_mutex." << endl;
-
-    if(argc > 1)
+    else
     {
-        sprintf_s(buff, "Global\\%s", argv[1]);
-        hServiceMutex = OpenMutex(SYNCHRONIZE, FALSE, buff);
-        if(hServiceMutex == NULL)
+        size_t pid = atoi(buff);
+        if(pid) hParentProcess = OpenProcess(SYNCHRONIZE, FALSE, pid);
+        if(hParentProcess == NULL)
         {
-            strcat_s(buff, " JobLoader CreateMutex() parent");
-            displayErrorToCerr(buff, GetLastError(), &flog);
+            displayErrorToCerr("JobLoader get parent process handle", GetLastError(), &flog);
             ret = -2;
             goto exit_job_loader;
         }
-        if(debug_mode) time_header_out(flog) << "open mutex OK: Global\\" << argv[1] << endl;
     }
+    if(debug_mode) time_header_out(flog) << "open parent pid OK: " << buff << endl;
 
     sprintf_s(buff, "%s\\orders_balance", GetPacsBase());
     hdir = FindFirstChangeNotification(buff, FALSE, FILE_NOTIFY_CHANGE_SIZE);
@@ -116,7 +113,7 @@ int _tmain(int argc, _TCHAR* argv[])
     if(ptr_license_count) *ptr_license_count = license_count;
 
     wa[0] = hdir;
-    wa[1] = hServiceMutex;
+    wa[1] = hParentProcess;
     bool first_boot = true;
     while(true)
     {
@@ -126,7 +123,7 @@ int _tmain(int argc, _TCHAR* argv[])
             wr = WAIT_OBJECT_0;
             first_boot = false;
         }
-        else wr = WaitForMultipleObjects(hServiceMutex ? 2 : 1, wa, FALSE, 1000);
+        else wr = WaitForMultipleObjects(2, wa, FALSE, 1000);
 
         if(wr == WAIT_OBJECT_0 || wr == WAIT_ABANDONED_0)
         {   // orders_balance dir change
@@ -189,18 +186,14 @@ int _tmain(int argc, _TCHAR* argv[])
 #endif
                 if(try_publish_ret >= 0) // busy or publish OK, wait 5 sec
                 {
-                    if(hServiceMutex)
+                    wr = WaitForSingleObject(hParentProcess, 5000);
+                    if(wr != WAIT_TIMEOUT)
                     {
-                        wr = WaitForSingleObject(hServiceMutex, 5000);
-                        if(wr != WAIT_TIMEOUT)
-                        {
-                            if(wr == WAIT_FAILED)
-                                ret = displayErrorToCerr("WaitForSingleObject(ParentProcHandle)", GetLastError(), &flog);
-                            else
-                                time_header_out(flog) << "parent process exit, mutex is released(WaitForSingleObject)." << endl;
-                        }
+                        if(wr == WAIT_FAILED)
+                            ret = displayErrorToCerr("WaitForSingleObject(ParentProcHandle)", GetLastError(), &flog);
+                        else
+                            time_header_out(flog) << "parent process exit, mutex is released(WaitForSingleObject)." << endl;
                     }
-                    else Sleep(5000); // no parent proc mutex
                 }
             } // while(pending_jdf.size()), TryPublishJDF() loop
 
@@ -227,8 +220,7 @@ int _tmain(int argc, _TCHAR* argv[])
 exit_job_loader:
     close_shared_mapping(ptr_license_count, hmap, hfile);
     if(hdir != INVALID_HANDLE_VALUE) { CloseHandle(hdir); }
-    if(hMutex) { ReleaseMutex(hMutex); CloseHandle(hMutex); }
-    if(hServiceMutex) { ReleaseMutex(hServiceMutex); CloseHandle(hServiceMutex); }
+    if(hParentProcess) { ReleaseMutex(hParentProcess); CloseHandle(hParentProcess); }
     if(flog.is_open()) flog.close();
     return 0;
 }

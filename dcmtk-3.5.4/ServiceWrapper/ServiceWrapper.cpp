@@ -245,14 +245,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
     */
 	int ret = 0;
-    HANDLE hMutex = CreateMutex(NULL, TRUE, "Global\\dcmtk_ServiceWrapper");
-
-    if(hMutex == NULL)
-    {
-        displayErrorToCerr("ServiceWrapper CreateMutex()", GetLastError(), &flog);
-		ret = -1;
-        goto exit_service_wrapper;
-    }
+    setEnvParentPID();
 
 	if( StartServiceCtrlDispatcher( serviceTableEntry ) )
 	{
@@ -273,7 +266,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		ret = -1;
 	}
 
-    if(hMutex) { ReleaseMutex(hMutex); CloseHandle(hMutex); }
 exit_service_wrapper:
 	//releaseStdout(flog);
     if(flog.is_open()) flog.close();

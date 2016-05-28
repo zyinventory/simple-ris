@@ -127,11 +127,11 @@ static DcmQueryRetrieveOptions *optionsPtr = NULL;
 static DcmQueryRetrieveIndexDatabaseHandleFactory *factoryPtr = NULL;
 #endif
 
-static HANDLE hServiceMutex = NULL;
+static HANDLE hParentProcess = NULL;
 
 static void exitHook()
 {
-    if(hServiceMutex) { ReleaseMutex(hServiceMutex); CloseHandle(hServiceMutex); }
+    if(hParentProcess) { ReleaseMutex(hParentProcess); CloseHandle(hParentProcess); }
 	if(configPtr) delete configPtr;
 #ifdef _DEBUG
 	dcmDataDict.clear();
@@ -647,13 +647,23 @@ main(int argc, char *argv[])
 
     if(!options.singleProcess_ && !options.forkedChild_)
     {
-        hServiceMutex = OpenMutex(SYNCHRONIZE, FALSE, "Global\\dcmtk_ServiceWrapper");
-        if(hServiceMutex == NULL)
+        size_t required = 0;
+        char buff[32];
+        if(getenv_s(&required, buff, "PARENT_PID"))
         {
-            time_header_out(CERR) << "OpenMutex(Global\\dcmtk_ServiceWrapper) failed: " << GetLastError() << endl;
+            displayErrorToCerr("dcmqrscp get parent pid", GetLastError(), &cerr);
             return 11;
         }
-        else time_header_out(CERR) << "OpenMutex(Global\\dcmtk_ServiceWrapper) OK" << endl;
+        else
+        {
+            size_t pid = atoi(buff);
+            if(pid) hParentProcess = OpenProcess(SYNCHRONIZE, FALSE, pid);
+            if(hParentProcess == NULL)
+            {
+                displayErrorToCerr("dcmqrscp get parent process handle", GetLastError(), &cerr);
+                return 11;
+            }
+        }
     }
 
     ChangeToPacsWebSub(pacs_base, sizeof(pacs_base));
@@ -764,13 +774,13 @@ main(int argc, char *argv[])
         {
             if(scp.getStoreResult() != STORE_NONE) scp.cleanAssocContextExceptCallback();
         }
-        else if(hServiceMutex)
+        else if(hParentProcess)
         {
-            DWORD wr = WaitForSingleObject(hServiceMutex, 0);
+            DWORD wr = WaitForSingleObject(hParentProcess, 0);
             if(wr == WAIT_OBJECT_0 || wr == WAIT_ABANDONED)
             {
                 SignalInterruptHandler(1);
-                time_header_out(CERR) << "hMutex is released, ServiceWrapper is not alive, dcmqrscp send Ctrl-C to self" << endl;
+                time_header_out(CERR) << "hParentProcess is released, ServiceWrapper is not alive, dcmqrscp send Ctrl-C to self" << endl;
             }
         }
 		if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */
