@@ -177,8 +177,12 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
     const char *patientID = NULL, *patientsName = NULL, *patientsBirthDate = NULL, 
         *patientsSex = NULL, *patientsSize = NULL, *patientsWeight = NULL,
         *studyUID = NULL, *studyDate = NULL, *studyTime = NULL, *accessionNumber = NULL, 
-        *seriesUID = NULL, *modality = NULL, *instanceUID = NULL;
+        *seriesUID = NULL, *modality = NULL, *instanceUID = NULL, *charset = NULL;
     // file level
+    dataset->findAndGetString(DCM_SpecificCharacterSet, charset);
+    if(charset) strcpy_s(nfc.file.charset, charset);
+    else strcpy_s(nfc.file.charset, "ISO_IR 100");
+
 	dataset->findAndGetString(DCM_PatientID, patientID);
     if(patientID)
     {
@@ -206,7 +210,18 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
     
     //patient level
     dataset->findAndGetString(DCM_PatientsName, patientsName);
-    if(patientsName) strcpy_s(nfc.patient.patientsName, patientsName);
+    if(patientsName)
+    {
+        if(strcmp(nfc.file.charset, "ISO_IR 192") == 0)
+        {
+            if(0 == UTF8ToGBK(patientsName, nfc.patient.patientsName, sizeof(nfc.patient.patientsName)))
+                strcpy_s(nfc.patient.patientsName, patientsName);
+        }
+        else
+            strcpy_s(nfc.patient.patientsName, patientsName);
+    }
+    else
+        strcpy_s(nfc.patient.patientsName, "(NULL)");
 
     dataset->findAndGetString(DCM_PatientsBirthDate, patientsBirthDate);
     if(patientsBirthDate) strcpy_s(nfc.patient.birthday, patientsBirthDate);

@@ -597,22 +597,26 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
 	const char *patientID = NULL, *patientsName = NULL, *patientsBirthDate, 
         *patientsSex, *patientsSize, *patientsWeight,
         *studyUID, *studyDate, *studyTime, *accessionNumber, 
-        *seriesUID, *modality, *instanceUID;
+        *seriesUID, *modality, *instanceUID, *charset;
     bool isFull = (strcmp(level, NOTIFY_LEVEL_FULL) == 0);
 
     if(isFull || strcmp(level, NOTIFY_LEVEL_INSTANCE) == 0) // F is FULL
     {
+        findAndGetString(DCM_SpecificCharacterSet, charset);
 	    findAndGetString(DCM_PatientID, patientID);
         findAndGetString(DCM_StudyInstanceUID, studyUID);
         findAndGetString(DCM_SeriesInstanceUID, seriesUID);
         findAndGetString(DCM_SOPInstanceUID, instanceUID);
         DcmXfer xfer(Xfer);
 
-        string patientIDSrc(patientID);
-        STRING_TRIM(patientIDSrc);
+        strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_SpecificCharacterSet.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_SpecificCharacterSet.getElement();
+        if(charset) strmbuf << " " << charset << endl;
+        else strmbuf << " ISO_IR 100" << endl;
+
         strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_PatientID.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_PatientID.getElement() << " ";
-        x_www_form_codec<ostream>::encode(patientIDSrc.c_str(), &strmbuf);
+        x_www_form_codec<ostream>::encode(patientID, &strmbuf);
         strmbuf << endl;
         strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getElement() 
@@ -637,7 +641,6 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
         findAndGetString(DCM_PatientsWeight, patientsWeight);
 
         string patientsNameSrc((patientsName == NULL || *patientsName == '\0') ? "(NULL)" : patientsName);
-        STRING_TRIM(patientsNameSrc);
         strmbuf << NOTIFY_LEVEL_PATIENT << " " << hex << setw(4) << setfill('0') << DCM_PatientsName.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_PatientsName.getElement() << " ";
         x_www_form_codec<ostream>::encode(patientsNameSrc.c_str(), &strmbuf);

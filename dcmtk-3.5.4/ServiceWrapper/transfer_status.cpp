@@ -251,6 +251,14 @@ handle_context::NOTIFY_FILE_CONTEXT* handle_dir::process_notify_file(std::istrea
                 time_header_out(flog) << "handle_dir::process_notify_file() can't recognize line: " << linestrm.str() << endl;
         }
     } while(ifs.good());
+    if(strcmp(pclc->file.charset, "ISO_IR 192") == 0)
+    {
+        char pn[128];
+        if(UTF8ToGBK(pclc->patient.patientsName, pn, sizeof(pn)))
+            strcpy_s(pclc->patient.patientsName, pn);
+        else
+            time_header_out(flog) << __FUNCSIG__" convert from utf-8 fail: " << pclc->patient.patientsName << endl;
+    }
     if(cmd) delete[] cmd;
     return pclc;
 }

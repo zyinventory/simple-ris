@@ -266,7 +266,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		ret = -1;
 	}
 
-exit_service_wrapper:
 	//releaseStdout(flog);
     if(flog.is_open()) flog.close();
 	return ret;

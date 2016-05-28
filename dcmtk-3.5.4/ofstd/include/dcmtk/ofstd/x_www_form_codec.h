@@ -81,8 +81,8 @@ int x_www_form_codec<T>::encode(const char *in, T *toAppend, int out_limit, int 
             if(cnt + 3 <= out_limit)
             {
                 x_www_form_codec_namespace::impl_output_char(&toAppend, e);
-                x_www_form_codec_namespace::impl_output_char(&toAppend, ToHex(in[i] >> 4));
-                x_www_form_codec_namespace::impl_output_char(&toAppend, ToHex(in[i] % 16));
+                x_www_form_codec_namespace::impl_output_char(&toAppend, ToHex((in[i] >> 4) & 0x0F));
+                x_www_form_codec_namespace::impl_output_char(&toAppend, ToHex(in[i] & 0x0F));
                 cnt += 3;
             }
             else notTerm = false;

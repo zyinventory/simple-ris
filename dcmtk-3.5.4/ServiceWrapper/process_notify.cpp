@@ -21,6 +21,20 @@ int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_co
     cmdstrm >> hex >> tag;
     switch(tag)
     {
+    case 0x00080005:
+        if(cmdstrm.getline(lc.file.charset, sizeof(lc.file.charset)).fail())
+            strcpy_s(lc.file.charset, "ISO_IR 100");
+        else
+        {
+            temp = lc.file.charset;
+            STRING_TRIM(temp);
+            strcpy_s(lc.file.charset, temp.c_str());
+        }
+        if(strlen(lc.file.charset) == 0)
+            time_header_out(flog) << "Unexpected empty charset " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
+        else if(debug_mode)
+            time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.charset << endl;
+        break;
     case 0x00100020:
         cmdstrm >> temp;
         if(temp.empty())
@@ -207,6 +221,7 @@ void save_notify_context_to_ostream(const NOTIFY_FILE_CONTEXT &cnc, bool compres
         << (compress_ok ? NOTIFY_COMPRESS_OK : NOTIFY_COMPRESS_FAIL) << " " << cnc.src_notify_filename << endl;
     output << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << cnc.file_seq
         << " " << cnc.file.filename << " " << cnc.file.unique_filename << endl;
+    output << NOTIFY_LEVEL_INSTANCE << " 00080005 " << cnc.file.charset << endl;
     output << NOTIFY_LEVEL_INSTANCE << " 00100020 ";
     x_www_form_codec<ostream>::encode(cnc.file.patientID, &output);
     output << endl;
@@ -215,7 +230,18 @@ void save_notify_context_to_ostream(const NOTIFY_FILE_CONTEXT &cnc, bool compres
     output << NOTIFY_LEVEL_INSTANCE << " 00080018 " << cnc.file.instanceUID << endl;
     output << NOTIFY_LEVEL_INSTANCE << " 00020010 " << cnc.file.xfer << " " << cnc.file.isEncapsulated << " " << cnc.file.xfer_new << endl;
     output << NOTIFY_LEVEL_PATIENT << " 00100010 ";
-    x_www_form_codec<ostream>::encode(cnc.patient.patientsName, &output);
+    if(strcmp("ISO_IR 192", cnc.file.charset) == 0)
+    {
+        size_t utf8buf_len = (strlen(cnc.patient.patientsName) + 1) * 2;
+        char *utf8buf = new char[utf8buf_len];
+        if(GBKToUTF8(cnc.patient.patientsName, utf8buf, utf8buf_len))
+            x_www_form_codec<ostream>::encode(utf8buf, &output);
+        else
+            x_www_form_codec<ostream>::encode(cnc.patient.patientsName, &output);
+        if(utf8buf) delete[] utf8buf;
+    }
+    else
+        x_www_form_codec<ostream>::encode(cnc.patient.patientsName, &output);
     output << endl;
     output << NOTIFY_LEVEL_PATIENT << " 00100030 " << cnc.patient.birthday << endl;
     output << NOTIFY_LEVEL_PATIENT << " 00100040 " << cnc.patient.sex << endl;

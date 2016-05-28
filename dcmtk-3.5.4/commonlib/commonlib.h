@@ -37,6 +37,11 @@
 #define TDB_STATUS "..\\orders\\TDBStatus.txt"
 #define PIPE_READY_MESSAGE "PIPE_READY"
 
+#define STRING_TRIM(str) { _locale_t loc = _create_locale(LC_ALL, "");\
+    str.erase(find_if(str.rbegin(), str.rend(), std::not1(std::bind2nd(std::ptr_fun<int, _locale_t, int>(::_isspace_l), loc))).base(), str.end());\
+    str.erase(str.begin(), find_if(str.begin(), str.end(), std::not1(std::bind2nd(std::ptr_fun<int, _locale_t, int>(::_isspace_l), loc))));\
+    _free_locale(loc); }
+
 #ifdef RETURN_HRESULT
 
 #define CATCH_COM_ERROR(func_name) \
@@ -178,6 +183,7 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, char *valid_publis
 #define TryPublishJDF_SrcMarkError  -2
 COMMONLIB_API int TryPublishJDF(bool opt_verbose = false, const char *filename = NULL);
 COMMONLIB_API int UTF8ToGBK(const char *lpUTF8Str, char *lpGBKStr, int nGBKStrLen);
+COMMONLIB_API int GBKToUTF8(const char *lpGBKStr, char *lpUTF8Str, int nUTF8StrLen);
 
 // common_public.cpp
 #define GetSignalInterruptValue GetSignalInterruptValue_dll

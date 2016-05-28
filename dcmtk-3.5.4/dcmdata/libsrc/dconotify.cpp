@@ -28,12 +28,16 @@ namespace
 
 void datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet, bool isFull)
 {
+    const char *charset = NULL;
+    (*imageDataSet)->findAndGetString(DCM_SpecificCharacterSet, charset);
+
     OFString patientID, studyUID, seriesUID;
     std::ostringstream strmbuf;
     std::locale loc_nnp(std::locale::locale(""), ::new numpunct_no_gouping("")); // force ::new, otherwise will encounter DEBUG_NEW bug
     strmbuf.imbue(loc_nnp);
 
     strmbuf << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << instances << " " << instanceFileName << endl;
+
     if(isFull)
         (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_FULL);
     else

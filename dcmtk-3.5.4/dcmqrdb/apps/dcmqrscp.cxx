@@ -157,7 +157,7 @@ static OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
         strcpy_s(fn_only, sizeof(notifyFileName) - (fn_only - notifyFileName), "_" NOTIFY_FILE_TAG ".dfc");
         DcmDataset * pds = pc->getDataset();
         datasetToNotify(instanceName.c_str(), notifyFileName, &pds, true);
-	    return EC_Normal;
+        return EC_Normal;
     }
     return EC_IllegalParameter;
 }
