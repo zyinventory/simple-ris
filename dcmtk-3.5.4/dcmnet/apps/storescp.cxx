@@ -995,8 +995,8 @@ int main(int argc, char *argv[])
 
   if(opt_verbose || opt_debug)
   {
-	COUT << "-xcr --exec-on-reception:" << opt_execOnReception << endl;
-	COUT << "-xcs --exec-on-eostudy:" << opt_execOnEndOfStudy << endl;
+	if(opt_execOnReception) COUT << "-xcr --exec-on-reception:" << opt_execOnReception << endl;
+	if(opt_execOnEndOfStudy) COUT << "-xcs --exec-on-eostudy:" << opt_execOnEndOfStudy << endl;
   }
 
   /* make sure data dictionary is loaded */
@@ -2005,7 +2005,7 @@ storeSCPCallback(
           sprintf(buf, "%s_%04u%02u%02u_%02u%02u%02u%03u_%s", opt_sortConcerningStudies,
 			dateTime.getDate().getYear(), dateTime.getDate().getMonth(), dateTime.getDate().getDay(),
 			dateTime.getTime().getHour(), dateTime.getTime().getMinute(), dateTime.getTime().getIntSecond(), dateTime.getTime().getMilliSecond(),
-			currentStudyInstanceUID);
+            currentStudyInstanceUID.c_str());
           OFString subdirectoryName(buf);
 
 		  sprintf_s(buf, sizeof(buf), "%c%c\\%c%c\\%c%c\\%c%c\\%s",

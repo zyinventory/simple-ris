@@ -708,8 +708,17 @@ OFCondition DcmQueryRetrieveSCP::negotiateAssociation(T_ASC_Association * assoc)
     DIC_AE calledAETitle;
     ASC_getAPTitles(assoc->params, NULL, calledAETitle, NULL);
 
-    const char* transferSyntaxes[] = { NULL, NULL, NULL, NULL };
-    int numTransferSyntaxes = 0;
+    const char* transferSyntaxes[] = { UID_LittleEndianExplicitTransferSyntax, UID_BigEndianExplicitTransferSyntax, UID_LittleEndianImplicitTransferSyntax,
+        UID_JPEGProcess14SV1TransferSyntax, UID_JPEG2000LosslessOnlyTransferSyntax, UID_JPEG2000TransferSyntax,
+        UID_JPEGLSLosslessTransferSyntax, UID_JPEGLSLossyTransferSyntax,
+        UID_JPEGProcess1TransferSyntax, UID_JPEGProcess2_4TransferSyntax, UID_JPEGProcess3_5TransferSyntax,
+        UID_JPEGProcess6_8TransferSyntax, UID_JPEGProcess7_9TransferSyntax, UID_JPEGProcess10_12TransferSyntax, UID_JPEGProcess11_13TransferSyntax,
+        UID_JPEGProcess14TransferSyntax, UID_JPEGProcess15TransferSyntax, UID_JPEGProcess16_18TransferSyntax, UID_JPEGProcess17_19TransferSyntax,
+        UID_JPEGProcess20_22TransferSyntax, UID_JPEGProcess21_23TransferSyntax, UID_JPEGProcess24_26TransferSyntax, UID_JPEGProcess25_27TransferSyntax,
+        UID_JPEGProcess28TransferSyntax, UID_JPEGProcess29TransferSyntax, UID_RLELosslessTransferSyntax, UID_DeflatedExplicitVRLittleEndianTransferSyntax,
+        UID_MPEG2MainProfileAtMainLevelTransferSyntax, UID_RFC2557MIMEEncapsulationTransferSyntax,
+        UID_JPEG2000Part2MulticomponentImageCompressionLosslessOnlyTransferSyntax, UID_JPEG2000Part2MulticomponentImageCompressionTransferSyntax };
+    int numTransferSyntaxes = sizeof(transferSyntaxes) / sizeof(const char*);
 
     switch (options_.networkTransferSyntax_)
     {
@@ -806,7 +815,6 @@ OFCondition DcmQueryRetrieveSCP::negotiateAssociation(T_ASC_Association * assoc)
           transferSyntaxes[1] = UID_LittleEndianExplicitTransferSyntax;
         }
         transferSyntaxes[2] = UID_LittleEndianImplicitTransferSyntax;
-        numTransferSyntaxes = 3;
         break;
     }
 
