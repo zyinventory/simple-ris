@@ -323,12 +323,12 @@ void* create_shared_memory_mapping_internal(const char *mapping_name, size_t map
         EXPLICIT_ACCESS ea;
         dw = GetSecurityInfo(h_map, SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pDacl, NULL, &pSD);
         ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
-        ea.grfAccessPermissions = GENERIC_WRITE;
+        ea.grfAccessPermissions = GENERIC_READ;
         ea.grfAccessMode = GRANT_ACCESS;
         ea.grfInheritance= NO_INHERITANCE;
         ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
         ea.Trustee.TrusteeType = TRUSTEE_IS_GROUP;
-        ea.Trustee.ptstrName = "Users";
+        ea.Trustee.ptstrName = "Authenticated Users";
         if(pDacl)
         {
             dw = SetEntriesInAcl(1,&ea,pDacl,&pNewDacl);
