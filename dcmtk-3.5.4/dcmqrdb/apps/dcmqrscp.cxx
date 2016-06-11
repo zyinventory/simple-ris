@@ -323,9 +323,9 @@ main(int argc, char *argv[])
       cmd.addOption("--write-dataset",          "-F",        "write data set without file meta information");
     cmd.addSubGroup("output transfer syntax (not with --bit-preserving or compressed transmission):");
       cmd.addOption("--write-xfer-same",        "+t=",       "write with same TS as input (default)");
-      cmd.addOption("--write-xfer-little",      "+te",       "write with explicit VR little endian TS");
-      cmd.addOption("--write-xfer-big",         "+tb",       "write with explicit VR big endian TS");
-      cmd.addOption("--write-xfer-implicit",    "+ti",       "write with implicit VR little endian TS");
+      cmd.addOption("--write-xfer-little",      "+te",       "write with explicit VR little endian TS. if original TS is encapsulated, write with save TS");
+      cmd.addOption("--write-xfer-big",         "+tb",       "write with explicit VR big endian TS, ignore this option");
+      cmd.addOption("--write-xfer-implicit",    "+ti",       "write with implicit VR little endian TS, ignore this option");
     cmd.addSubGroup("group length encoding (not with --bit-preserving):");
       cmd.addOption("--group-length-recalc",    "+g=",       "recalculate group lengths if present (default)");
       cmd.addOption("--group-length-create",    "+g",        "always write with group length elements");

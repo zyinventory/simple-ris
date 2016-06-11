@@ -60,14 +60,13 @@
 
 DcmDataset::DcmDataset()
   : DcmItem(ItemTag, DCM_UndefinedLength),
-    Xfer(EXS_Unknown)
+    Xfer(EXS_Unknown), saveXfer(EXS_Unknown)
 {
 }
 
 
 DcmDataset::DcmDataset(const DcmDataset &old)
-  : DcmItem(old),
-    Xfer(old.Xfer)
+  : DcmItem(old), Xfer(old.Xfer), saveXfer(old.saveXfer)
 {
 }
 
@@ -607,7 +606,7 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
         findAndGetString(DCM_StudyInstanceUID, studyUID);
         findAndGetString(DCM_SeriesInstanceUID, seriesUID);
         findAndGetString(DCM_SOPInstanceUID, instanceUID);
-        DcmXfer xfer(Xfer);
+        DcmXfer xfer(saveXfer == EXS_Unknown ? Xfer : saveXfer);
 
         strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_SpecificCharacterSet.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_SpecificCharacterSet.getElement();

@@ -33,6 +33,7 @@ UIDBase36::UIDBase36(void)
 		AddStaticDictDirect("1.2.156.112548.", --code);			//北京亿仁赛博医疗设备公司 
 		AddStaticDictDirect("1.2.392.200036.", --code);			//JIRA
 		AddStaticDictDirect("1.3.12.2.", --code);				//ECMA Member Company
+        AddStaticDictDirect("1.2.840.887072.", --code);         //北京同仁医院XA，厂商未知
 		//AddStaticDictDirect("1.2.156.60004855.", --code);		//
 		//AddStaticDictDirect("1.2.840.17998.", --code);			//
 

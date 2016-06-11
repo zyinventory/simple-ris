@@ -862,16 +862,10 @@ int main(int argc, char *argv[])
 
                     /* add files to the DICOMDIR */
                     result = ddir.addDicomFile(pfn, dir && *dir != '\0' ? dir : opt_directory, fill_notify_from_dcmdataset);
-                    
-                    if(ddir.verboseMode()) time_header_out(CERR) << "file size receive: " << nfc.file.file_size_receive << endl;
-                    xi.make_index(nfc);
-
-                    DcmXfer dcmxfer(nfc.file.xfer_new);
-                    // save filename for response message that is written to sender
-                    sprintf_s(last_file_name, "%s|%s", pfn, dcmxfer.getXferShortName());
-
 					if (result.bad())
 					{
+                        // save filename for response message that is written to sender
+                        sprintf_s(last_file_name, "%s|Unknown", pfn);
 						badFiles.push_back(pfn);
 						if (!ddir.abortMode())
 						{
@@ -879,12 +873,18 @@ int main(int argc, char *argv[])
 							result = EC_Normal;
 						}
                         time_header_out(CERR) << "dicomdir maker: add bad file " << pfn << endl;
-					} else
+					}
+                    else
                     {
+                        if(ddir.verboseMode()) time_header_out(CERR) << "file size receive: " << nfc.file.file_size_receive << endl;
+                        xi.make_index(nfc);
+                        DcmXfer dcmxfer(nfc.file.xfer_new);
+                        // save filename for response message that is written to sender
+                        sprintf_s(last_file_name, "%s|%s", pfn, dcmxfer.getXferShortName());
 						++goodFiles;
                         if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: add good file " << pfn << endl;
                     }
-                }
+                } // while(true)
                 CloseHandle(hPipe);
                 
                 list<string> uids;

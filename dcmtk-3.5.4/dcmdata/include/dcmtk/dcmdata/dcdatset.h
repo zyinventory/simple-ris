@@ -84,6 +84,9 @@ class DcmDataset
     virtual DcmEVR ident() const;
 
     E_TransferSyntax getOriginalXfer() const;
+    
+    E_TransferSyntax getSaveXfer() const { return saveXfer; };
+    void setSaveXfer(E_TransferSyntax save_xfer) { saveXfer = save_xfer; };
 
     /** print all elements of the dataset to a stream
      *  @param out output stream
@@ -263,7 +266,7 @@ class DcmDataset
     DcmDataset& operator=(const DcmDataset&);
 
     /// current transfer syntax of the dataset
-    E_TransferSyntax Xfer;
+    E_TransferSyntax Xfer, saveXfer;
 };
 
 #endif // DCDATSET_H

@@ -112,10 +112,15 @@ void DcmQueryRetrieveStoreContext::writeToFile(
     const char* fname,
     T_DIMSE_C_StoreRSP *rsp)
 {
-    E_TransferSyntax xfer = /* options_.writeTransferSyntax_;
-    if (xfer == EXS_Unknown) xfer =*/ ff->getDataset()->getOriginalXfer();
+    ff->getDataset()->setSaveXfer(ff->getDataset()->getOriginalXfer());
+    if(options_.writeTransferSyntax_ == EXS_LittleEndianExplicit)
+    {
+        DcmXfer dcmxfer(ff->getDataset()->getSaveXfer());
+        if(!dcmxfer.isEncapsulated() && ff->getDataset()->canWriteXfer(options_.writeTransferSyntax_))
+            ff->getDataset()->setSaveXfer(options_.writeTransferSyntax_);
+    }
 
-    OFCondition cond = ff->saveFile(fname, xfer, options_.sequenceType_, 
+    OFCondition cond = ff->saveFile(fname, ff->getDataset()->getSaveXfer(), options_.sequenceType_, 
         options_.groupLength_, options_.paddingType_, (Uint32)options_.filepad_, 
         (Uint32)options_.itempad_, (!options_.useMetaheader_));
 

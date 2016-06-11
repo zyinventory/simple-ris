@@ -467,7 +467,7 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                 sprintf_s(filename, "%s\\pacs\\store_notify\\%s_" NOTIFY_ACKN_TAG ".dfc",
                     pPacsBase, assoc_context.associationId);
                 const char *xfer = config_->getXferName(assoc_context.calledAPTitle);
-                if(xfer == NULL) xfer = "DEFAULT";
+                if(xfer == NULL) xfer = "KEEP";
                 int content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s\\%s %d %s %s %s %s %d %s %s %s\n",
                     NOTIFY_PROC_STOR_START, assoc_context.storageArea, assoc_context.associationId, 
                     _getpid(), assoc_context.associationId,

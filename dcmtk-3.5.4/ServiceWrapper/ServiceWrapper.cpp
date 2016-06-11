@@ -158,12 +158,12 @@ static int realMain(int argc, char **argv)
     {
         ++p;
         cmdStream.write(argv[0], p - argv[0]);
-        cmdStream << "dcmqrscp.exe ";
+        cmdStream << "dcmqrscp.exe +te ";
     }
     else
-        cmdStream << "..\\bin\\dcmqrscp.exe ";
+        cmdStream << "..\\bin\\dcmqrscp.exe +te ";
 #else
-    cmdStream << "..\\bin\\dcmqrscp.exe ";
+    cmdStream << "..\\bin\\dcmqrscp.exe +te ";
 #endif
 	for_each(argv + 2, argv + argc, bind1st(ptr_fun(mkcmd), &cmdStream)); // skip program and ServiceName
 	string cmd(cmdStream.str());
