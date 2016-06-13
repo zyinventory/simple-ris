@@ -401,7 +401,6 @@ void xml_index::generate_replace_fields(const string &replace_fields_path, MSXML
     ostringstream outbuff;
     _bstr_t patientId;
     char ris_path[MAX_PATH];
-    string patientNameChs;
     
     try
     {
@@ -411,30 +410,14 @@ void xml_index::generate_replace_fields(const string &replace_fields_path, MSXML
 
         _bstr_t studyUid(root->getAttribute(L"id").bstrVal);
         if(studyUid.length() == 0) studyUid = L"";
-        outbuff << "StudyUID=" << (LPCSTR)studyUid << endl;
-
-        _bstr_t accessionNumber(root->getAttribute(L"accession_number").bstrVal);
-        if(accessionNumber.length() == 0) accessionNumber = L"";
-        outbuff << "AccessionNumber=" << (LPCSTR)accessionNumber << endl;
-
-        _bstr_t studyDate(root->getAttribute(L"date").bstrVal);
-        if(studyDate.length() == 0) studyDate = L"";
-        outbuff << "StudyDate=" << (LPCSTR)studyDate << endl;
-
-        _bstr_t studyTime(root->getAttribute(L"time").bstrVal);
-        if(studyTime.length() == 0) studyTime = L"";
-        outbuff << "StudyTime=" << (LPCSTR)studyTime << endl;
-
-        _bstr_t modality(root->getAttribute(L"modality").bstrVal);
-        if(modality.length() == 0) modality = L"";
-        outbuff << "Modality=" << (LPCSTR)modality << endl;
+        outbuff << "study_uid=" << (LPCSTR)studyUid << endl;
 
         MSXML2::IXMLDOMElementPtr pat = root->selectSingleNode(L"patient");
         if(pat == NULL) throw runtime_error("XMLDOM can't find patient element.");
 
         patientId = pat->getAttribute(L"id").bstrVal;
         if(patientId.length() == 0) patientId = L"";
-        outbuff << "PatientID=" << (LPCSTR)patientId << endl;
+        outbuff << "patient_id=" << (LPCSTR)patientId << endl;
 
         ris_path[0] = '\0';
         size_t ris_prog = GetSetting("RisIntegration", ris_path, sizeof(ris_path));
@@ -445,63 +428,114 @@ void xml_index::generate_replace_fields(const string &replace_fields_path, MSXML
             HashStr((LPCSTR)patientId, hash, sizeof(hash));
             sprintf_s(ris_path, "%s\\pacs\\indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s_ris.txt", GetPacsBase(),
                 hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], (LPCSTR)patientId);
-            ifstream ris(ris_path);
-            if(ris.good())
+            ifstream ris_patient(ris_path);
+            if(ris_patient.good())
             {
-                char line[1024];
-                ris.getline(line, sizeof(line));
-                while(ris.good())
+                char line[1024] = "";
+                ris_patient.getline(line, sizeof(line));
+                while(ris_patient.good())
                 {
-                    if(strlen(line) <= 0) goto ris_next_line;
-                    outbuff << line << endl; // save PatientNameChs to field replace file
-                    if(strstr(line, "PatientNameChs="))
+                    if(strlen(line) <= 0) goto ris_patient_next_line;
+                    char *p = strchr(line, '=');
+                    if(p)
                     {
-                        char *p = strchr(line, '=');
-                        if(p) ++p;
-                        patientNameChs = p;
-                        pat->setAttribute(L"PatientNameChs", patientNameChs.c_str());
-                        if(opt_verbose) time_header_out(*pflog) << "xml_index::generate_replace_fields() set PatientNameChs = " << patientNameChs << endl;
+                        *p++ = '\0';
+                        if(strlen(p))
+                        {
+                            pat->setAttribute(line, p);
+                            if(opt_verbose) time_header_out(*pflog) << "xml_index::generate_replace_fields() set " << line << " = " << p << endl;
+                        }
                     }
-ris_next_line:
-                    ris.getline(line, sizeof(line));
+                    else time_header_out(*pflog) << "xml_index::generate_replace_fields(): " << ris_path << ", bad line: " << line << endl;
+ris_patient_next_line:
+                    line[0] = '\0';
+                    ris_patient.getline(line, sizeof(line));
                 }
-                ris.close();
+                ris_patient.close();
+            }
+            else time_header_out(*pflog) << "xml_index::generate_replace_fields() open ris info failed: " << ris_path << endl;
+
+            HashStr((LPCSTR)studyUid, hash, sizeof(hash));
+            sprintf_s(ris_path, "%s\\pacs\\indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s_ris.txt", GetPacsBase(),
+                hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], (LPCSTR)studyUid);
+            ifstream ris_study(ris_path);
+            if(ris_study.good())
+            {
+                char line[1024] = "";
+                ris_study.getline(line, sizeof(line));
+                while(ris_study.good())
+                {
+                    if(strlen(line) <= 0) goto ris_study_next_line;
+                    char *p = strchr(line, '=');
+                    if(p)
+                    {
+                        *p++ = '\0';
+                        if(strlen(p))
+                        {
+                            root->setAttribute(line, p);
+                            if(opt_verbose) time_header_out(*pflog) << "xml_index::generate_replace_fields() set " << line << " = " << p << endl;
+                        }
+                    }
+                    else time_header_out(*pflog) << "xml_index::generate_replace_fields(): " << ris_path << ", bad line: " << line << endl;
+ris_study_next_line:
+                    line[0] = '\0';
+                    ris_study.getline(line, sizeof(line));
+                }
+                ris_study.close();
             }
             else time_header_out(*pflog) << "xml_index::generate_replace_fields() open ris info failed: " << ris_path << endl;
         }
 
-        _bstr_t patientName(pat->getAttribute(L"name").bstrVal);
-        if(patientName.length() == 0) patientName = L"";
-        outbuff << "PatientName=" << (LPCSTR)patientName << endl;
-
-        _bstr_t sex(pat->getAttribute(L"sex").bstrVal);
-        if(sex.length() == 0) sex = L"";
-        if(sex == _bstr_t(L"M")) sex = L"男";
-        else if(sex == _bstr_t(L"F")) sex = L"女";
-        else if(sex == _bstr_t(L"O")) sex = L"其他";
-        else sex = L"";
-        outbuff << "Gender=" << (LPCSTR)sex << endl;
-
-        _bstr_t birthday(pat->getAttribute(L"birthday").bstrVal);
-        if(birthday.length() == 0) birthday = L"";
-        string bd((LPCSTR)birthday);
-        if(bd.length() >= 8)
+        MSXML2::IXMLDOMNamedNodeMapPtr attrs = pat->Getattributes();
+        MSXML2::IXMLDOMNodePtr attr;
+        while(attr = attrs->nextNode())
         {
-            bd.insert(6, 1, '/');
-            bd.insert(4, 1, '/');
-        }
-        outbuff << "Birthday=" << bd << endl;
+            if(wcscmp(attr->nodeName, L"id") && wcscmp(attr->nodeName, L"hash_prefix") && wcscmp(attr->nodeName, L"encoded"))
+            {
+                if(wcscmp(attr->nodeName, L"sex") == 0)
+                {
+                    _bstr_t sex(attr->nodeValue.bstrVal);
+                    if(sex.length() == 0) sex = L"";
+                    if(sex == _bstr_t(L"M")) sex = L"男";
+                    else if(sex == _bstr_t(L"F")) sex = L"女";
+                    else if(sex == _bstr_t(L"O")) sex = L"其他";
+                    else sex = L"";
+                    outbuff << "sex=" << (LPCSTR)sex << endl;
+                }
+                else if(wcscmp(attr->nodeName, L"birthday") == 0)
+                {
+                    _bstr_t birthday(attr->nodeValue.bstrVal);
+                    if(birthday.length() == 0) birthday = L"";
+                    string bd((LPCSTR)birthday);
+                    if(bd.length() >= 8)
+                    {
+                        bd.insert(6, 1, '/');
+                        bd.insert(4, 1, '/');
+                    }
+                    outbuff << "birthday=" << bd << endl;
 
-        time_t now = 0;
-        struct tm tm_now;
-        time(&now);
-        int age = 0;
-        if(0 == localtime_s(&tm_now, &now))
-        {
-            age = atoi(bd.c_str());
-            if(age) age = 1900 + tm_now.tm_year - age;
+                    time_t now = 0;
+                    struct tm tm_now;
+                    time(&now);
+                    int age = 0;
+                    if(0 == localtime_s(&tm_now, &now))
+                    {
+                        age = atoi(bd.c_str());
+                        if(age) age = 1900 + tm_now.tm_year - age;
+                    }
+                    outbuff << "age=" << age << endl;
+                }
+                else
+                    outbuff << (LPCSTR)(attr->nodeName) << "=" << (LPCSTR)_bstr_t(attr->nodeValue.bstrVal) << endl;
+            }
         }
-        outbuff << "Age=" << age << endl;
+
+        attrs = root->Getattributes();
+        while(attr = attrs->nextNode())
+        {
+            if(wcscmp(attr->nodeName, L"id") && wcscmp(attr->nodeName, L"hash_prefix") && wcscmp(attr->nodeName, L"encoded"))
+                outbuff << (LPCSTR)(attr->nodeName) << "=" << (LPCSTR)_bstr_t(attr->nodeValue.bstrVal) << endl;
+        }
     }
     CATCH_COM_ERROR("xml_index::generate_replace_fields()", *pflog);
 

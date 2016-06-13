@@ -135,7 +135,7 @@ namespace handle_context
         handle_proc(const handle_proc& o) : meta_notify_file(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
             log_path(o.log_path), procinfo(o.procinfo) {};
         
-        static bool make_proc_ris_integration(const std::string &patient, const std::string &prog_path, std::ostream &flog);
+        static bool make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, const std::string &prog_path, std::ostream &flog);
 
         handle_proc& operator=(const handle_proc &r);
         void print_state() const;

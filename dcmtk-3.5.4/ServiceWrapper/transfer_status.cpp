@@ -628,10 +628,11 @@ void handle_compress::print_state() const
     handle_proc::print_state();
 }
 
-bool handle_proc::make_proc_ris_integration(const string &patient, const string &prog_path, ostream &flog)
+bool handle_proc::make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, const string &prog_path, ostream &flog)
 {
     char path[MAX_PATH], hash[9];
-    HashStr(patient.c_str(), hash, sizeof(hash));
+
+    HashStr(pnfc->file.patientID, hash, sizeof(hash));
     sprintf_s(path, "%s\\pacs\\indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c", GetPacsBase(),
         hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7]);
     if(!MkdirRecursive(path))
@@ -640,9 +641,19 @@ bool handle_proc::make_proc_ris_integration(const string &patient, const string 
         return NULL;
     }
 
+    HashStr(pnfc->file.studyUID, hash, sizeof(hash));
+    sprintf_s(path, "%s\\pacs\\indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c", GetPacsBase(),
+        hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7]);
+    if(!MkdirRecursive(path))
+    {
+        time_header_out(flog) << "handle_ris_integration::make_handle_ris_integration() can't create dir " << path << endl;
+        return NULL;
+    }
+
     string cmd(GetPacsBase());
-    cmd.append(1, '\\').append(prog_path).append(1, ' ').append(patient);
-    handle_proc *pris = new handle_proc(patient, path, cmd, "RisIntegration", &flog);
+    cmd.append(1, '\\').append(prog_path).append(1, ' ').append(pnfc->file.patientID)
+        .append(1, ' ').append(pnfc->file.studyUID).append(1, ' ').append(pnfc->study.accessionNumber);
+    handle_proc *pris = new handle_proc(pnfc->file.studyUID, path, cmd, "RisIntegration", &flog);
     if(pris)
     {
         DWORD gle = pris->start_process(false);
@@ -939,7 +950,7 @@ void handle_study::remove_compress_ok_action(const string &filename, const strin
             char ris_integration_prog[MAX_PATH];
             if(GetSetting("RisIntegration", ris_integration_prog, sizeof(ris_integration_prog)))
             {
-                ris_integration_start = handle_proc::make_proc_ris_integration(it_clc->pnfc->file.patientID, ris_integration_prog, *pflog);
+                ris_integration_start = handle_proc::make_proc_ris_integration(it_clc->pnfc, ris_integration_prog, *pflog);
                 if(!ris_integration_start) time_header_out(*pflog) << __FUNCSIG__" start ris integration failed." << endl;
             }
         }
