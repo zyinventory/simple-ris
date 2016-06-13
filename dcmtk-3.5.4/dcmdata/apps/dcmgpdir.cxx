@@ -464,11 +464,9 @@ int main(int argc, char *argv[])
 		if (cmd.findOption("--no-recurse"))
 			opt_recurse = OFFalse;
 		if (cmd.findOption("--recurse"))
-		{
 			opt_recurse = OFTrue;
-			if (opt_directory == NULL)
-				opt_directory = ".";
-		}
+		if (opt_directory == NULL)
+			opt_directory = ".";
 		cmd.endOptionBlock();
 
 #ifdef PATTERN_MATCHING_AVAILABLE
