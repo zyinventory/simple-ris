@@ -341,7 +341,7 @@ void* OPJSupport::decompressJPEG2KWithBuffer	( void* inputBuffer, void* jp2Data,
 	ac = 255;/* 255: FULLY_OPAQUE; 0: FULLY_TRANSPARENT */
 
 
-	int* ptrIBody = (int*)inputBuffer;
+	unsigned char* ptrIBody = (unsigned char*)inputBuffer;
 	for(i = 0; i < width*height; i++)
 	{
 	    rc = (unsigned char) *red++;
@@ -349,12 +349,18 @@ void* OPJSupport::decompressJPEG2KWithBuffer	( void* inputBuffer, void* jp2Data,
 	    bc = (unsigned char)*blue++;
 	    if(hasAlpha)
 	    {
-		ac = (unsigned char)*alpha++;;
+		    ac = (unsigned char)*alpha++;
+	        //                          A          R          G        B
+	        unsigned int pixel = (int)((ac<<24) | (rc<<16) | (gc<<8) | bc);
+            *reinterpret_cast<unsigned int*>(ptrIBody) = pixel;
+            ptrIBody += sizeof(unsigned int);
 	    }
-	    /*                         A        R          G       B
-	     */
-	    *ptrIBody++ = (int)((ac<<24) | (rc<<16) | (gc<<8) | bc);
-
+        else
+        {
+            *ptrIBody++ = bc;
+            *ptrIBody++ = gc;
+            *ptrIBody++ = rc;
+        }
 	}	/* for(i) */
     }/* if (decodeInfo.image->numcomps >= 3  */
     else

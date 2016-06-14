@@ -141,7 +141,7 @@ OFCondition DJCodecDecoder::decode(
             if (jpeg == NULL) result = EC_MemoryExhausted;
             else
             {
-              Uint32 frameSize = ((precision > 8) ? sizeof(Uint16) : sizeof(Uint8)) * imageRows * imageColumns * (imageSamplesPerPixel > 2 ? 4 : imageSamplesPerPixel);
+              Uint32 frameSize = ((precision > 8) ? sizeof(Uint16) : sizeof(Uint8)) * imageRows * imageColumns * imageSamplesPerPixel;
               Uint32 totalSize = frameSize * imageFrames;
               if (totalSize & 1) totalSize++; // align on 16-bit word boundary
               Uint16 *imageData16 = NULL;
