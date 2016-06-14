@@ -261,6 +261,7 @@ void* create_shared_memory_mapping_internal(const char *mapping_name, size_t map
     seq_mapping_name_g.append(mapping_name);
     seq_mapping_name_l.append(mapping_name);
 
+    HANDLE h_file = INVALID_HANDLE_VALUE;
     //try to open global mapping
     HANDLE h_map = OpenFileMapping(FILE_MAP_WRITE, FALSE, seq_mapping_name_g.c_str());
     DWORD dw = GetLastError();
@@ -294,8 +295,7 @@ void* create_shared_memory_mapping_internal(const char *mapping_name, size_t map
         }
     }
     
-    HANDLE h_file = INVALID_HANDLE_VALUE;
-    if(phfile) h_file = *phfile;
+    if(phfile && *phfile) h_file = *phfile;
     if(h_file == INVALID_HANDLE_VALUE)
     {
         h_file = CreateFile(sequence_path, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -323,7 +323,7 @@ void* create_shared_memory_mapping_internal(const char *mapping_name, size_t map
         EXPLICIT_ACCESS ea;
         dw = GetSecurityInfo(h_map, SE_KERNEL_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pDacl, NULL, &pSD);
         ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
-        ea.grfAccessPermissions = GENERIC_READ;
+        ea.grfAccessPermissions = GENERIC_READ | GENERIC_WRITE;
         ea.grfAccessMode = GRANT_ACCESS;
         ea.grfInheritance= NO_INHERITANCE;
         ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
@@ -369,8 +369,8 @@ void close_shared_mapping_internal(void *shared_mem_ptr, HANDLE h_map, HANDLE h_
 #endif
 {
     if(shared_mem_ptr) UnmapViewOfFile(shared_mem_ptr);
-    if(h_map) CloseHandle(h_map);
-    if(h_file != INVALID_HANDLE_VALUE) CloseHandle(h_file);
+    if(h_map && h_map != INVALID_HANDLE_VALUE) CloseHandle(h_map);
+    if(h_file && h_file != INVALID_HANDLE_VALUE) CloseHandle(h_file);
 }
 
 typedef struct

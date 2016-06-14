@@ -178,7 +178,14 @@ int statusCharge(const char *flag)
 						if(licenseCount >= 0)
 						{
 							if(WriteLock(sectionNumber, section, passwd, 0, 0))
+                            {
 								chargeLog << "OK:" << increase << endl;
+                                HANDLE hmap = NULL, hfile = NULL;
+                                int *ptr_license_count = reinterpret_cast<int*>(create_shared_memory_mapping(
+                                    "job_loader_lock_counter", sizeof(int), &hmap, &hfile, &cerr));
+                                if(ptr_license_count) *ptr_license_count = licenseCount;
+                                close_shared_mapping(ptr_license_count, hmap, hfile);
+                            }
 							else  // rollback
 							{
 								licenseCount = increaseCount(passwd, -increase);
@@ -241,6 +248,14 @@ int statusCharge(const char *flag)
 					outputContent(true);
 					return -1;
 				}
+                else
+                {
+                    HANDLE hmap = NULL, hfile = NULL;
+                    int *ptr_license_count = reinterpret_cast<int*>(create_shared_memory_mapping(
+                        "job_loader_lock_counter", sizeof(int), &hmap, &hfile, &cerr));
+                    if(ptr_license_count) *ptr_license_count = licenseCount;
+                    close_shared_mapping(ptr_license_count, hmap, hfile);
+                }
 			}
 			else
 			{
