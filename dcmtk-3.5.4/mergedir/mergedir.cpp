@@ -103,6 +103,10 @@ int main(int argc, char *argv[])
     //for_each(fileNames.begin(), fileNames.end(), [&storedir, verbose](const string &seid) { call_process_log(storedir, seid, verbose); });
     //clear_resource();
     //return 0;
-	return MergeDicomDir(fileNames, opt_output, opt_fileset, CERR, opt_verbose);
+    ostringstream oss;
+    for_each(fileNames.begin(), fileNames.end(), [&oss](const string &s) { oss << s << endl; });
+    string file_name_str(oss.str());
+    oss.str("");
+    return MergeDicomDir(file_name_str.c_str(), opt_output, opt_fileset, CERR, opt_verbose);
 	//return DicomDir2Xml(fileNames.front().c_str(), opt_output) ? 0 : -1;
 }

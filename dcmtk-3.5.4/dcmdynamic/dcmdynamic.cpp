@@ -216,7 +216,7 @@ static OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src
 	return EC_IllegalParameter;
 }
 
-DCMDYNAMIC_API int MergeDicomDir(const list<string> &fileNames, const char *opt_output, const char *opt_fileset, ostream &errlog, bool verbose)
+DCMDYNAMIC_API int MergeDicomDir(const char *fileNames, const char *opt_output, const char *opt_fileset, ostream &errlog, bool verbose)
 {
 	opt_verbose = verbose;
 	int errCount = 0;
@@ -239,10 +239,14 @@ DCMDYNAMIC_API int MergeDicomDir(const list<string> &fileNames, const char *opt_
 	}
     try {
 	    DcmDirectoryRecord *destRoot = &(dest->getRootRecord());
+        
+        istringstream iss(fileNames);
+        char curr[MAX_PATH];
+        while(iss.getline(curr, sizeof(curr)).good())
+        {
+            if(strlen(curr) == 0) continue;
 
-	    for(list<string>::const_iterator curr = fileNames.begin(); curr != fileNames.end(); ++curr)
-	    {
-		    DcmDicomDir *src = new DcmDicomDir(curr->c_str());
+		    DcmDicomDir *src = new DcmDicomDir(curr);
 		    if (src != NULL)
 		    {
 			    cond = src->error();
@@ -300,4 +304,9 @@ DCMDYNAMIC_API int MergeDicomDir(const list<string> &fileNames, const char *opt_
 		++errCount;
     }
 	return errCount;
+}
+
+DCMDYNAMIC_API int MergeDicomDirCerr(const char *fileNames, const char *opt_output, const char *opt_fileset, bool verbose)
+{
+    return MergeDicomDir(fileNames, opt_output, opt_fileset, cerr, verbose);
 }

@@ -387,19 +387,21 @@ static void prepareDicomDirAndBurn(list<Volume> &vols, char *volbuf, const size_
 
 	for(list<Volume>::iterator itv = vols.begin(); itv != vols.end(); ++itv)
 	{
-		list<string> dirlist;
+		ostringstream file_name_strm;
 		for(list<Study>::iterator its = itv->studiesOnVolume.begin(); its != itv->studiesOnVolume.end(); ++its)
 		{
 			size_t pathlen = strlen(its->path);
 			strcat_s(its->path, "\\DICOMDIR");
-			dirlist.push_back(its->path);
+			file_name_strm << its->path << endl;
 			its->path[pathlen] = '\0';
 		}
         // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\STUDY_UID | [hash]\\PATIENT_ID>
         // prefixLen = strlen(volbuf);
         sprintf_s(volbuf + prefixLen, MAX_PATH - prefixLen, ".%03d.dir", itv->sequence);
         // volbuf[] = indexdir\\ <receive | 00080020 | 00100020> \\ <YYYY\\MM\\DD | [hash]\\STUDY_UID | [hash]\\PATIENT_ID>.seq.dir
-		if(MergeDicomDir(dirlist, volbuf, "SMART_PUB_SET", index_errlog, false) != 0) 
+        string file_names(file_name_strm.str());
+        file_name_strm.str("");
+        if(MergeDicomDir(file_names.c_str(), volbuf, "SMART_PUB_SET", index_errlog, false) != 0) 
 		{
 			index_errlog << "Volume " << itv->sequence << " prepare failed." << endl;
 			continue;
