@@ -140,7 +140,7 @@ static void checkValueGE(DcmMetaInfo *metainfo,
 		char buf[65];
 		GEMediaStorageSOPInstanceUID(buf, sizeof(buf));
 		OFstatic_cast(DcmUniqueIdentifier *, elem)->putString(buf);
-        DCM_dcmdataDebug(2, ("DcmFileFormat::checkValue() use new generated SOPInstanceUID [%s]", uid));
+        DCM_dcmdataDebug(2, ("DcmFileFormat::checkValue() use new generated SOPInstanceUID [%s]", buf));
     }
 	else if (xtag == DCM_ImplementationClassUID)        // (0002,0012)
     {
