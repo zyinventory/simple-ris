@@ -175,7 +175,7 @@ static HRESULT RootRecord(const char *dirfile, const char *xmlfile)
 	return hr;
 }
 
-DCMDYNAMIC_API bool DicomDir2Xml(const char *dirfile, const char *xmlfile)
+DCMDYNAMIC_API bool __stdcall DicomDir2Xml(const char *dirfile, const char *xmlfile)
 {
 	if(dirfile == NULL || xmlfile == NULL) return CO_E_NOT_SUPPORTED;
 	CoInitialize(NULL);

@@ -216,7 +216,7 @@ static OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src
 	return EC_IllegalParameter;
 }
 
-DCMDYNAMIC_API int MergeDicomDir(const char *fileNames, const char *opt_output, const char *opt_fileset, ostream &errlog, bool verbose)
+DCMDYNAMIC_API int __stdcall MergeDicomDir(const char *fileNames, const char *opt_output, const char *opt_fileset, ostream &errlog, bool verbose)
 {
 	opt_verbose = verbose;
 	int errCount = 0;
@@ -244,8 +244,11 @@ DCMDYNAMIC_API int MergeDicomDir(const char *fileNames, const char *opt_output, 
         char curr[MAX_PATH];
         while(iss.getline(curr, sizeof(curr)).good())
         {
-            if(strlen(curr) == 0) continue;
-
+            if(strlen(curr) == 0)
+            {
+                if(opt_verbose) errlog << "open input file <empty>" << endl;
+                continue;
+            }
 		    DcmDicomDir *src = new DcmDicomDir(curr);
 		    if (src != NULL)
 		    {
@@ -258,11 +261,11 @@ DCMDYNAMIC_API int MergeDicomDir(const char *fileNames, const char *opt_output, 
 		    }
 		    else
 		    {
-			    errlog << "open input file " << *curr << " error" << endl;
+			    errlog << "open input file " << curr << " error" << endl;
 			    ++errCount;
 			    continue;
 		    }
-		    if(opt_verbose) errlog << "open input file " << *curr << endl;
+		    if(opt_verbose) errlog << "open input file " << curr << endl;
 
 		    DcmDirectoryRecord *srcRoot = &(src->getRootRecord());
 
@@ -306,7 +309,7 @@ DCMDYNAMIC_API int MergeDicomDir(const char *fileNames, const char *opt_output, 
 	return errCount;
 }
 
-DCMDYNAMIC_API int MergeDicomDirCerr(const char *fileNames, const char *opt_output, const char *opt_fileset, bool verbose)
+DCMDYNAMIC_API int __stdcall MergeDicomDirCerr(const char *fileNames, const char *opt_output, const char *opt_fileset, bool verbose)
 {
     return MergeDicomDir(fileNames, opt_output, opt_fileset, cerr, verbose);
 }
