@@ -490,7 +490,8 @@ ris_study_next_line:
         MSXML2::IXMLDOMNodePtr attr;
         while(attr = attrs->nextNode())
         {
-            if(wcscmp(attr->nodeName, L"id") && wcscmp(attr->nodeName, L"hash_prefix") && wcscmp(attr->nodeName, L"encoded"))
+            if(wcscmp(attr->nodeName, L"id") && wcscmp(attr->nodeName, L"hash_prefix")
+                && wcscmp(attr->nodeName, L"encoded") && wcscmp(attr->nodeName, L"xmlns"))
             {
                 if(wcscmp(attr->nodeName, L"sex") == 0)
                 {
@@ -533,7 +534,8 @@ ris_study_next_line:
         attrs = root->Getattributes();
         while(attr = attrs->nextNode())
         {
-            if(wcscmp(attr->nodeName, L"id") && wcscmp(attr->nodeName, L"hash_prefix") && wcscmp(attr->nodeName, L"encoded"))
+            if(wcscmp(attr->nodeName, L"id") && wcscmp(attr->nodeName, L"hash_prefix")
+                && wcscmp(attr->nodeName, L"encoded") && wcscmp(attr->nodeName, L"xmlns"))
                 outbuff << (LPCSTR)(attr->nodeName) << "=" << (LPCSTR)_bstr_t(attr->nodeValue.bstrVal) << endl;
         }
     }

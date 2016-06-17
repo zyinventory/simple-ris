@@ -647,6 +647,17 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 				ofs << "VOLUME_LABEL=SMARTPUB" << endl;
 				ofs << "LABEL=" << pacsBase << "\\tdd\\patientInfo.tdd" << endl;
 				ofs << "REPLACE_FIELD=" << fieldsPath << endl;
+                ifstream ifsfld(fieldsPath);
+                if(ifsfld.good())
+                {
+                    char cmd[1024];
+                    do{
+                        ifsfld.getline(cmd, 1024);
+                        if(ifsfld.gcount() && strlen(cmd))
+                            ofs << "#" << cmd << endl;
+                    } while(ifsfld.good());
+                    ifsfld.close();
+                }
 				ofs.close();
                 return 0;
 			}
