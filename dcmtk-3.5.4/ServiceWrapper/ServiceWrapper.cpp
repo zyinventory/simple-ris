@@ -193,7 +193,7 @@ static void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
 	SvcInit(100);
 	// Report running status when initialization is complete.
 	ReportSvcStatus( SERVICE_RUNNING, NO_ERROR, 0 );
-	CoInitialize(NULL);
+	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	realMain(argcSV, argvSV);
 	CoUninitialize();
 	ReportSvcStatus( SERVICE_STOPPED, NO_ERROR, 0 );
