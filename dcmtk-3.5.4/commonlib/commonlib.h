@@ -177,6 +177,7 @@ COMMONLIB_API size_t GetSetting(const std::string &key, char *buff, size_t buff_
 COMMONLIB_API const char *GetGenerateIndexLog();
 COMMONLIB_API void ClearGenerateIndexLog();
 COMMONLIB_API bool SelectValidPublisher(const char *ini_path, char *valid_publisher, size_t buff_size, bool opt_verbose);
+#define TryPublishJDF_NoValidPrinter    2
 #define TryPublishJDF_PublishOK     1
 #define TryPublishJDF_PublisherBusy 0
 #define TryPublishJDF_SrcOpenError  -1

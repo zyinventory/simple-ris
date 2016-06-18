@@ -1417,7 +1417,7 @@ COMMONLIB_API int TryPublishJDF(bool opt_verbose, const char *filename)
             return TryPublishJDF_SrcOpenError;
         }
     }
-    else return TryPublishJDF_PublisherBusy;
+    else return TryPublishJDF_NoValidPrinter;
 }
 
 COMMONLIB_API int StatusXml(const char *statusFlag, const char *ini_path, int licenseCnt, std::ostream &outputbuf)

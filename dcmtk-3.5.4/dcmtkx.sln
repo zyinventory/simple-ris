@@ -215,6 +215,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmtojp2k", "dcmjpeg\apps\d
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jobloader", "jobloader\jobloader.vcxproj", "{EA969475-5C81-4BB6-971B-2262857A6606}"
+	ProjectSection(ProjectDependencies) = postProject
+		{2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205} = {2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

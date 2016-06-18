@@ -33,7 +33,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
     if(LoadSettings("..\\etc\\settings.ini", flog, true))
     {
-        if(GetSetting("DebugMode", buff, sizeof(buff)))
+        if(GetSetting("JobloaderDebugMode", buff, sizeof(buff)))
         {
             if(strcmp("1", buff) == 0) debug_mode = true;
         }
@@ -143,21 +143,27 @@ int _tmain(int argc, _TCHAR* argv[])
                 pending_jdf.sort();
             }
 
+            bool no_license = false, no_valid_publish = false;
             while(pending_jdf.size())
             {
                 int try_publish_ret = 0;
 #ifdef NDEBUG
-				if(currentCount(rw_passwd) > 0)
+				if((license_count = currentCount(rw_passwd)) > 0)
 				{
+                    if(no_license)
+                    {
+                        time_header_out(flog) << "new license is comming: " << license_count << endl;
+                        no_license = false;
+                    }
 #endif
                     list<string>::iterator it = pending_jdf.begin();
                     string jdf_file(*it);
                     
-                    if(debug_mode) time_header_out(flog) << "TryPublishJDF(" << *it << ")." << endl;
+                    if(debug_mode && !no_valid_publish) time_header_out(flog) << "TryPublishJDF(" << *it << ")." << endl;
 
                     ClearGenerateIndexLog();
                     try_publish_ret = TryPublishJDF(debug_mode, it->c_str());
-                    if(try_publish_ret == TryPublishJDF_PublishOK) // debug_mode is controlled by DebugMode in settings.ini
+                    if(try_publish_ret == TryPublishJDF_PublishOK) // debug_mode is controlled by JobloaderDebugMode in settings.ini
                     {
 #ifdef NDEBUG
                         license_count = decreaseCount(rw_passwd);
@@ -171,20 +177,31 @@ int _tmain(int argc, _TCHAR* argv[])
                         time_header_out(flog) << "publish " << jdf_file << " failed, remove it." << endl;
                         pending_jdf.erase(it);
                     }
-                    //else TryPublishJDF_PublisherBusy, wait for 5 sec
-
+                    //else TryPublishJDF_PublisherBusy || TryPublishJDF_NoValidPrinter, wait for 5 sec
+                    
                     if(debug_mode)
                     {
-                        const char *msg = GetGenerateIndexLog();
-                        if(msg) time_header_out(flog) << "TryPublishJDF(" << jdf_file << ") return " 
-                            << try_publish_ret << ", log message:" << endl << msg << endl;
+                        if(try_publish_ret != TryPublishJDF_NoValidPrinter || !no_valid_publish)
+                        {
+                            const char *msg = GetGenerateIndexLog();
+                            if(msg) time_header_out(flog) << "TryPublishJDF(" << jdf_file << ") return " 
+                                << try_publish_ret << ", log message:" << endl << msg << endl;
+                        }
                     }
+                    no_valid_publish = (try_publish_ret == TryPublishJDF_NoValidPrinter);
                     ClearGenerateIndexLog();
 #ifdef NDEBUG
                 }
-                else time_header_out(flog) << "lock counter is 0." << endl;
+                else
+                {
+                    if(!no_license)
+                    {
+                        time_header_out(flog) << "lock counter is 0, waiting new license..." << endl;
+                        no_license = true;
+                    }
+                }
 #endif
-                if(try_publish_ret >= 0) // busy or publish OK, wait 5 sec
+                if(try_publish_ret >= 0) // busy, no license or publish OK, wait 5 sec
                 {
                     wr = WaitForSingleObject(hParentProcess, 5000);
                     if(wr != WAIT_TIMEOUT)
@@ -192,7 +209,8 @@ int _tmain(int argc, _TCHAR* argv[])
                         if(wr == WAIT_FAILED)
                             ret = displayErrorToCerr("WaitForSingleObject(ParentProcHandle)", GetLastError(), &flog);
                         else
-                            time_header_out(flog) << "parent process exit, mutex is released(WaitForSingleObject)." << endl;
+                            time_header_out(flog) << "parent process exit, proc handle is released(WaitForSingleObject)." << endl;
+                        goto exit_job_loader;
                     }
                 }
             } // while(pending_jdf.size()), TryPublishJDF() loop
@@ -206,7 +224,7 @@ int _tmain(int argc, _TCHAR* argv[])
         } // file change in orders_balance
         else if(wr == WAIT_OBJECT_0 + 1 || wr == WAIT_ABANDONED_0 + 1)
         {
-            time_header_out(flog) << "parent process exit, mutex is released." << endl;
+            time_header_out(flog) << "parent process exit, proc handle is released." << endl;
             break;
         }
         else if(wr == WAIT_FAILED)
@@ -220,7 +238,7 @@ int _tmain(int argc, _TCHAR* argv[])
 exit_job_loader:
     close_shared_mapping(ptr_license_count, hmap, hfile);
     if(hdir != INVALID_HANDLE_VALUE) { CloseHandle(hdir); }
-    if(hParentProcess) { ReleaseMutex(hParentProcess); CloseHandle(hParentProcess); }
+    if(hParentProcess) CloseHandle(hParentProcess);
     if(flog.is_open()) flog.close();
     return 0;
 }
