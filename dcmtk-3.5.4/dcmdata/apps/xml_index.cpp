@@ -17,10 +17,10 @@ extern bool opt_verbose;
 /*
 instance state : [backup state]_[include state]
 backup state:
-    on  : online, remote exist, local exist
-    off : offline, remote exist, local does not exist
     new : new instance, remote does not exist, local exist
     old : old instance, remote does not exist, local does not exist
+    on  : online, remote exist, local exist
+    off : offline, remote exist, local does not exist
 include state:
     in : include
     ex : exclude
@@ -72,6 +72,7 @@ bool xml_index::create_study_dom(const NOTIFY_FILE_CONTEXT &clc, MSXML2::IXMLDOM
                 replace(buff, buff + sizeof(clc.file.hash), '\\', '/');
                 hr = pRoot->setAttribute(L"hash_prefix", buff);
             }
+            hr = pRoot->setAttribute(L"state", L"new_in");
             if(strcmp(clc.file.studyUID, clc.study.studyUID) == 0)
             {
                 hr = pRoot->setAttribute(L"accession_number", clc.study.accessionNumber);
@@ -359,9 +360,13 @@ void xml_index::make_index(const NOTIFY_FILE_CONTEXT &nfc)
             if(pStudyDom->load(xml_path.c_str()) == VARIANT_FALSE) create_study_dom(nfc, pStudyDom);
             else
             {
-                if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" study dom load OK: " << xml_path << endl;
+                if(pStudyDom && pStudyDom->documentElement)
+                {
+                    hr = pStudyDom->documentElement->setAttribute(L"state", L"new_in");
+                    if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" study dom load OK: " << xml_path << endl;
+                }
+                else time_header_out(*pflog) << __FUNCSIG__" study dom load failed, documentElement is NULL: " << xml_path << endl;
             }
-
             if(pStudyDom)
             {
                 pStudyDom.AddRef();
