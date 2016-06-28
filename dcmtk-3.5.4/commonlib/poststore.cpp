@@ -1109,19 +1109,37 @@ COMMONLIB_API long long diskUsage(const char *pacsBase, const char *studyUID)
 
 // one job time is 250 secs
 #define ONE_JOB_TIME 250
+#define INSTREAM_BUFFER_SIZE 8 * 1024
 
 COMMONLIB_API bool SelectValidPublisher(const char *ini_path, char *valid_publisher, size_t buff_size, bool opt_verbose)
 {
     map<string, int> pubs;
-
-    CSimpleIni ini(false, false, false);
-    //std::ifstream instream;
-    //instream.open("..\\orders\\TDBStatus.txt", std::ifstream::in | std::ifstream::binary, _SH_DENYNO);
-	SI_Error rc = ini.LoadFile(ini_path);
-	//instream.close();
-    if (rc < 0) {
+    char *filebuf = new char[INSTREAM_BUFFER_SIZE];
+    stringstream ssbuf;
+    std::ifstream instream(ini_path, std::ifstream::in, _SH_DENYNO);
+    while(instream.good())
+    {
+        instream.read(filebuf, INSTREAM_BUFFER_SIZE - 1);
+        if(instream.gcount())
+        {
+            filebuf[instream.gcount()] = '\0';
+            ssbuf << filebuf;
+        }
+    }
+    instream.close();
+    delete[] filebuf;
+    string ini_content(ssbuf.str());
+    if(ini_content.length() == 0)
+    {
         time_header_out(errstrm) << "SelectValidPublisher() 无法打开status文件 " << ini_path << endl;
 		strcpy_s(valid_publisher, buff_size, "error:无法打开status文件");
+		return false;
+    }
+    CSimpleIni ini(false, false, false);
+    SI_Error rc = ini.LoadData(ini_content.c_str(), ini_content.length());
+    if (rc < 0) {
+        time_header_out(errstrm) << "SelectValidPublisher() 无法解析status文件 " << ini_path << endl;
+		strcpy_s(valid_publisher, buff_size, "error:无法解析status文件");
 		return false;
 	}
 	CSimpleIni::TNamesDepend sections;
