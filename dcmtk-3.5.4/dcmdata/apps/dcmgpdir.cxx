@@ -784,6 +784,7 @@ int main(int argc, char *argv[])
             {
                 fnbuf[0] = '\0';
                 char *dir = NULL, *pfn = NULL;
+                bool publish_jdf = false;
                 // at first pull loop, last_file_name is empty, report dcmmkdir's pid
                 sprintf_s(last_file_name, "dcmmkdir pid %d", clientId);
                 while(true)
@@ -815,7 +816,7 @@ int main(int argc, char *argv[])
                     {
                         if(gle == ERROR_PIPE_NOT_CONNECTED)
                         {
-                            if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": named pipe closed" << endl;
+                            if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": named pipe has been closed" << endl;
                         }
                         else
                         {
@@ -823,11 +824,19 @@ int main(int argc, char *argv[])
                             sprintf_s(msg, "dcmmkdir %d ReadFile()", clientId);
                             displayErrorToCerr(msg, gle);
                         }
-                        break;
+                        break;  // while(true)
                     }
                     fnbuf[cbRead] = '\0';
                     if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir ReadFile(): " << fnbuf << endl;
                     
+                    if(strncmp("close", fnbuf, 5) == 0)  // server close pipe
+                    {
+                        if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": server close named pipe" << endl;
+                        publish_jdf = (strcmp("close study", fnbuf) == 0);
+                        DisconnectNamedPipe(hPipe);
+                        break;  // while(true)
+                    }
+
                     memset(&nfc, 0, sizeof(nfc));
 
                     // fnbuf: <study uid>|<unique filename>|<file size receive><LF><assoc_text>
@@ -891,6 +900,10 @@ int main(int argc, char *argv[])
                 {
                     time_header_out(CERR) << "unload study " << *it << endl;
                     xi.unload_and_sync_study(*it);
+                    if(publish_jdf && 0 == generateStudyJDF("0020000d", it->c_str(), CERR))
+                    {
+                        if(opt_verbose) time_header_out(CERR) << "jdf OK: " << *it << endl;
+                    }
                 }
             }
             else if(readStdin)

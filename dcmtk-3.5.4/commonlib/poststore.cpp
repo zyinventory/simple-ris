@@ -625,7 +625,7 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], tagValue);
 		if (_access_s( buffer, 4 ))
 		{
-			errstrm << "data don't exist: " << buffer << endl;
+			errstrm << "generateStudyJDF() data don't exist: " << buffer << endl;
 			return -4;
 		}
 
@@ -658,6 +658,12 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
                     } while(ifsfld.good());
                     ifsfld.close();
                 }
+                else
+                {
+                    DWORD dw = GetLastError();
+                    errstrm << "generateStudyJDF() open replace field file fail: " << fieldsPath << endl;
+                    displayErrorToCerr("generateStudyJDF() open replace field file fail", dw, &errstrm);
+                }
 				ofs.close();
                 return 0;
 			}
@@ -668,12 +674,12 @@ COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostrea
 		}
 		catch(const string &outPath)
 		{
-			errstrm << "create file failed: " << outPath << endl;
+			errstrm << "generateStudyJDF() create file failed: " << outPath << endl;
 			return -2;
 		}
 		catch(...)
 		{
-			errstrm << "write jdf error" << endl;
+			errstrm << "generateStudyJDF() write jdf error" << endl;
 			return -3;
 		}
 	}

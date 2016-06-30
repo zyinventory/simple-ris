@@ -707,6 +707,13 @@ handle_study::~handle_study()
         {
             if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" delete pipe context " << pipe_context->hPipeInst
                 << ", " << pipe_context->study_uid << endl;
+
+            DWORD cbWritten = 0;
+            const char *close_auto_publish = "close manual";
+            if(last_association_action.is_auto_publish())
+                close_auto_publish = "close study";
+            WriteFile(pipe_context->hPipeInst, close_auto_publish, strlen(close_auto_publish), &cbWritten, NULL);
+
             if (! DisconnectNamedPipe(pipe_context->hPipeInst))
                 displayErrorToCerr(__FUNCSIG__ " DisconnectNamedPipe()", GetLastError(), pflog);
             CloseHandle(pipe_context->hPipeInst);
