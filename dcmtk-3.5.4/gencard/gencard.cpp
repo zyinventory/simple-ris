@@ -36,8 +36,8 @@ int getLeakLockNumber(const char *filter, const char *regxPattern)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	locale locChina(locale("chinese"), new numpunct_no_gouping("chinese"));
-	locale::global(locChina);
+	//locale locChina(locale("chinese"), new numpunct_no_gouping("chinese"));
+	//locale::global(locChina);
 	if(argc < 2 || argc > 4)
 	{
 		cerr << "用法: " << argv[0] << " <加密狗号> [购买盒数=2] [特定序号]" << endl;

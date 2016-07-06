@@ -267,8 +267,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	DWORD lockNumber = 0, flag = 0;
 
-	locale locChina(locale("chinese"), new numpunct_no_gouping("chinese"));
-	locale::global(locChina);
+	//locale locChina(locale("chinese"), new numpunct_no_gouping("chinese"));
+	//locale::global(locChina);
 
 	// If the directory is not specified as a command-line argument, print usage.
 	if(argc < 3) return echoUsage(argv[0]);
