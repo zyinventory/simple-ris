@@ -306,14 +306,14 @@ handle_study* named_pipe_server::make_handle_study(const std::string &study_uid)
         if(p)
         {
             ++p;
-            strcpy_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmmkdir.exe --general-purpose-dvd +A +X -Xs 64 ");
+            strcpy_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmmkdir.exe --general-purpose-dvd +I +A +X -Xs 64 ");
             mkdir_pos = strlen(cmd);
         }
         else
-            mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd +A +X -Xs 64 ", GetPacsBase());
+            mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd +I +A +X -Xs 64 ", GetPacsBase());
 #else
         char cmd[1024];
-	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd +A +X -Xs 64 ", GetPacsBase());
+	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd +I +A +X -Xs 64 ", GetPacsBase());
 #endif
         sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +id %s +D %s.dir --viewer GE -pn %s #", 
             opt_verbose ? "-v" : "", study_uid.c_str(), study_uid.c_str(), get_path().c_str());
