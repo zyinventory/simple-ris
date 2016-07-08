@@ -126,8 +126,8 @@ T_DIMSE_BlockingMode opt_blockMode = DIMSE_BLOCKING;
 int               opt_dimse_timeout = 0;
 int               opt_acse_timeout = 30;
 OFBool            opt_ignorePendingDatasets = OFTrue;
-OFString          opt_sessionId;
 
+static OFString opt_sessionId, movedir;
 static T_ASC_Network *net = NULL; /* the global DICOM network */
 static DcmDataset *overrideKeys = NULL;
 static QuerySyntax querySyntax[3] = {
@@ -656,14 +656,28 @@ main(int argc, char *argv[])
             errmsg("cannot change working dir to %s", opt_sessionId.c_str());
             return 1;
         }
-
-        mkdir_ret =_mkdir(STATE_DIR_NO_SP);
-        if(mkdir_ret && errno != EEXIST)
+        else
         {
-            errmsg("cannot mkdir %s", STATE_DIR);
-            return 2;
+            char move_dir_buff[MAX_PATH];
+            if(_getcwd(move_dir_buff, sizeof(move_dir_buff)))
+            {
+                movedir = move_dir_buff;
+                movedir.append(1, '\\');
+                size_t buff_need = 0;
+                if(getenv_s(&buff_need, move_dir_buff, "PACS_BASE")) strcpy_s(move_dir_buff, "C:\\usr\\local\\dicom");
+                strcat_s(move_dir_buff, "\\pacs\\storedir");
+                if(_chdir(move_dir_buff))
+                {
+                    errmsg("cannot change working dir to %s", move_dir_buff);
+                    return 1;
+                }
+            }
+            else
+            {
+                errmsg("cannot get working dir");
+                return 1;
+            }
         }
-
         atexit(exitHook);
     }
 
@@ -1119,7 +1133,7 @@ storeSCPCallback(
             StoreCallbackData *cbdata = (StoreCallbackData*) callbackData;
             const char* fileName = cbdata->imageFileName;
             char notifyFileName[MAX_PATH];
-            size_t used = in_process_sequence(notifyFileName, sizeof(notifyFileName), STATE_DIR);
+            size_t used = in_process_sequence(notifyFileName, sizeof(notifyFileName), "");
             if(used > 0 && -1 != sprintf_s(notifyFileName + used, sizeof(notifyFileName) - used, "_%s.dfc", NOTIFY_FILE_TAG))
                 datasetToNotify(fileName, notifyFileName, imageDataSet, true);
             else
@@ -1179,7 +1193,7 @@ static OFCondition storeSCP(
 
         FILE *fplog = NULL;
         char filename[MAX_PATH], content[1024];
-        int fn_used = sprintf_s(filename, "%s%s_%s.dfc", STATE_DIR, cb->associationId, NOTIFY_STORE_TAG);
+        int fn_used = sprintf_s(filename, "%s_%s.dfc", cb->associationId, NOTIFY_STORE_TAG);
         int content_used = sprintf_s(content, "%s %08X %s %s %s %s %d %s\n", NOTIFY_STORE_TAG, NOTIFY_ASSOC_ESTA, cb->associationId,
             assoc->params->DULparams.callingAPTitle, 
             assoc->params->DULparams.callingPresentationAddress,
@@ -1314,7 +1328,7 @@ subOpSCP(T_ASC_Association **subAssoc, void *pCallbackData)
         else
             sprintf_s(term, NOTIFY_STORE_TAG " %08X %s", NOTIFY_ASSOC_ABORT, pcb->associationId);
 
-        size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
+        size_t used = in_process_sequence(filename, sizeof(filename), "");
 
         memset(pcb, 0, sizeof(MySubOpCallbackInfo));
 
@@ -1450,7 +1464,7 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
 
     char filename[MAX_PATH];
     string sw = strmbuf.str();
-    size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
+    size_t used = in_process_sequence(filename, sizeof(filename), "");
     if(used > 0 && -1 != sprintf_s(filename + used, sizeof(filename) - used, "_%s.dfc", NOTIFY_ACKN_TAG))
     {
         FILE *fplog = fopen(filename, "w");
@@ -1543,20 +1557,21 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
         strcpy(req.MoveDestination, opt_moveDestination);
     }
 
-    FILE *fplog = NULL;
     char filename[MAX_PATH], seq[64], content[1024];
     in_process_sequence(seq, sizeof(seq), "");
-    int fn_used = sprintf_s(filename, "%s%s_%s.dfc", STATE_DIR, seq, NOTIFY_MOVE_TAG);
-    int content_used = sprintf_s(content, "%s %08X %s %s %s %s %s\n", NOTIFY_MOVE_TAG, NOTIFY_ASSOC_ESTA, seq,
-        assoc->params->DULparams.callingAPTitle, 
-        assoc->params->DULparams.callingPresentationAddress,
-        assoc->params->DULparams.calledAPTitle,
-        assoc->params->DULparams.calledPresentationAddress);
-    if(fn_used > 0 && (fplog = fopen(filename, "w")))
+    int fn_used = sprintf_s(filename, "%s%s_%s.dfc", movedir.c_str(), seq, NOTIFY_MOVE_TAG);
+    int content_used = sprintf_s(content, NOTIFY_MOVE_TAG " %08X %s %s %s %s 0 DEFAULT MOVE %s",
+        NOTIFY_ASSOC_ESTA, seq, assoc->params->DULparams.callingAPTitle, assoc->params->DULparams.callingPresentationAddress,
+        assoc->params->DULparams.calledAPTitle, assoc->params->DULparams.calledPresentationAddress);
+    if(fn_used > 0)
     {
-        fwrite(content, content_used, 1, fplog);
-        fclose(fplog);
-        fplog = NULL;
+        ofstream ofs(filename);
+        if(ofs.good())
+        {
+            ofs << content << endl;
+            dcmff.getDataset()->print(ofs);
+            ofs.close();
+        }
     }
     else
     {
@@ -1598,7 +1613,8 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
         DimseCondition::dump(cond);
     }
 
-    size_t used = in_process_sequence(filename, sizeof(filename), STATE_DIR);
+    FILE *fplog = NULL;
+    size_t used = in_process_sequence(filename, sizeof(filename), movedir.c_str());
     if(used > 0 && -1 != sprintf_s(filename + used, sizeof(filename) - used, "_%s.dfc", NOTIFY_MOVE_TAG))
     {
         fplog = fopen(filename, "w");
