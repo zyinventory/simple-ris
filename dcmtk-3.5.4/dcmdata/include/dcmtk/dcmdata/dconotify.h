@@ -22,6 +22,7 @@
 #define NOTIFY_STORE_TAG        "STOR"
 #define NOTIFY_MOVE_TAG         "MOVE"
 #define NOTIFY_FILE_TAG         "FILE"
+#define NOTIFY_MOVE_SESSION_ID  0x00010001
 #define NOTIFY_FILE_SEQ_START   0x00011000
 #define NOTIFY_ACKN_TAG         "ACKN"
 #define NOTIFY_ACKN_ITEM        "ACKI"

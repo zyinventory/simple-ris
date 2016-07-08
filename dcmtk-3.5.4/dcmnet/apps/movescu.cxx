@@ -663,14 +663,6 @@ main(int argc, char *argv[])
             {
                 movedir = move_dir_buff;
                 movedir.append(1, '\\');
-                size_t buff_need = 0;
-                if(getenv_s(&buff_need, move_dir_buff, "PACS_BASE")) strcpy_s(move_dir_buff, "C:\\usr\\local\\dicom");
-                strcat_s(move_dir_buff, "\\pacs\\storedir");
-                if(_chdir(move_dir_buff))
-                {
-                    errmsg("cannot change working dir to %s", move_dir_buff);
-                    return 1;
-                }
             }
             else
             {
@@ -1133,7 +1125,7 @@ storeSCPCallback(
             StoreCallbackData *cbdata = (StoreCallbackData*) callbackData;
             const char* fileName = cbdata->imageFileName;
             char notifyFileName[MAX_PATH];
-            size_t used = in_process_sequence(notifyFileName, sizeof(notifyFileName), "");
+            size_t used = in_process_sequence(notifyFileName, sizeof(notifyFileName), STATE_DIR);
             if(used > 0 && -1 != sprintf_s(notifyFileName + used, sizeof(notifyFileName) - used, "_%s.dfc", NOTIFY_FILE_TAG))
                 datasetToNotify(fileName, notifyFileName, imageDataSet, true);
             else
@@ -1186,19 +1178,38 @@ static OFCondition storeSCP(
     char imageFileName[2048];
 
     MySubOpCallbackInfo *cb = reinterpret_cast<MySubOpCallbackInfo*>(pCallbackData);
-    if(!cb->hasAssociationId)
+    if(cb && !cb->hasAssociationId) // cb must not be null
     {
         in_process_sequence(cb->associationId, sizeof(cb->associationId), "");
         cb->hasAssociationId = true;
 
+        char path_buff[MAX_PATH];
+        size_t buff_need = 0;
+        if(getenv_s(&buff_need, path_buff, "PACS_BASE")) strcpy_s(path_buff, "C:\\usr\\local\\dicom");
+        OFString pacs_base(path_buff);
+        sprintf_s(path_buff + pacs_base.length(), sizeof(path_buff) - pacs_base.length(), "\\pacs\\storedir\\%s", cb->associationId);
+        if(_mkdir(path_buff) == 0) _chdir(path_buff);
+        else
+        {
+            char msg[1024];
+            strerror_s(msg, errno);
+            cerr << "storeSCP() can't mkdir " << path_buff << ": " << msg << endl;
+        }
+
+        if(_mkdir(STATE_DIR_NO_SP))
+        {
+            char msg[1024];
+            strerror_s(msg, errno);
+            cerr << "storeSCP() can't mkdir " STATE_DIR_NO_SP ": " << msg << endl;
+        }
+
         FILE *fplog = NULL;
         char filename[MAX_PATH], content[1024];
-        int fn_used = sprintf_s(filename, "%s_%s.dfc", cb->associationId, NOTIFY_STORE_TAG);
-        int content_used = sprintf_s(content, "%s %08X %s %s %s %s %d %s\n", NOTIFY_STORE_TAG, NOTIFY_ASSOC_ESTA, cb->associationId,
-            assoc->params->DULparams.callingAPTitle, 
-            assoc->params->DULparams.callingPresentationAddress,
-            assoc->params->DULparams.calledAPTitle, cb->port, 
-            assoc->params->DULparams.calledPresentationAddress);
+        int fn_used = sprintf_s(filename, STATE_DIR"%s_%s.dfc", cb->associationId, NOTIFY_STORE_TAG);
+        int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d DEFAULT MOVE %s\n",
+            NOTIFY_ASSOC_ESTA, cb->associationId, assoc->params->DULparams.callingAPTitle, 
+            assoc->params->DULparams.callingPresentationAddress, assoc->params->DULparams.calledAPTitle,
+            cb->port, assoc->params->DULparams.calledPresentationAddress);
         if(fn_used > 0 && (fplog = fopen(filename, "w")))
         {
             fwrite(content, content_used, 1, fplog);
@@ -1209,19 +1220,24 @@ static OFCondition storeSCP(
             cerr << "storeSCP() can't create notify file " << filename << ", missing command:" << endl << content << endl;
         }
 
-        char path_buff[MAX_PATH];
-        size_t buff_need = 0;
-        if(getenv_s(&buff_need, path_buff, "PACS_BASE")) strcpy_s(path_buff, "C:\\usr\\local\\dicom");
-        fn_used = sprintf_s(filename, "%s\\pacs\\store_notify\\%s_%s.dfc", path_buff, cb->associationId, NOTIFY_ACKN_TAG);
-
         if(NULL == _getcwd(path_buff, sizeof(path_buff))) strcpy_s(path_buff, ".");
-        content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s %d %s %s %s %s %d %s\n", 
+        content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s %d %s %s %s %s %d DEFAULT MOVE %s\nMOVE %08X %s\n",
             NOTIFY_PROC_STOR_START, path_buff, _getpid(), cb->associationId,
-            assoc->params->DULparams.callingAPTitle, 
-            assoc->params->DULparams.callingPresentationAddress,
-            assoc->params->DULparams.calledAPTitle, cb->port, 
-            assoc->params->DULparams.calledPresentationAddress);
-
+            assoc->params->DULparams.callingAPTitle, assoc->params->DULparams.callingPresentationAddress,
+            assoc->params->DULparams.calledAPTitle, cb->port, assoc->params->DULparams.calledPresentationAddress,
+            NOTIFY_MOVE_SESSION_ID, opt_sessionId.c_str());
+        fn_used = sprintf_s(filename, "%s\\pacs\\store_notify\\%s_"NOTIFY_ACKN_TAG".dfc", pacs_base.c_str(), cb->associationId);
+        if(fn_used > 0 && (fplog = fopen(filename, "w")))
+        {
+            fwrite(content, content_used, 1, fplog);
+            fclose(fplog);
+        }
+        else
+        {
+            cerr << "storeSCP() can't create notify file " << filename << ", missing command:" << endl << content << endl;
+        }
+        // write content dfc again, write to movedir
+        fn_used = sprintf_s(filename, "%s%s_"NOTIFY_STORE_TAG".dfc", movedir.c_str(), cb->associationId);
         if(fn_used > 0 && (fplog = fopen(filename, "w")))
         {
             fwrite(content, content_used, 1, fplog);
@@ -1324,20 +1340,33 @@ subOpSCP(T_ASC_Association **subAssoc, void *pCallbackData)
     {
         char filename[MAX_PATH], term[128];
         if(cond == DUL_PEERREQUESTEDRELEASE)
-            sprintf_s(term, NOTIFY_STORE_TAG " %08X %s", NOTIFY_ASSOC_RELEASE, pcb->associationId);
+            sprintf_s(term, NOTIFY_STORE_TAG " %08X %s\n", NOTIFY_ASSOC_RELEASE, pcb->associationId);
         else
-            sprintf_s(term, NOTIFY_STORE_TAG " %08X %s", NOTIFY_ASSOC_ABORT, pcb->associationId);
-
-        size_t used = in_process_sequence(filename, sizeof(filename), "");
+            sprintf_s(term, NOTIFY_STORE_TAG " %08X %s\n", NOTIFY_ASSOC_ABORT, pcb->associationId);
 
         memset(pcb, 0, sizeof(MySubOpCallbackInfo));
 
-        if(used > 0 && -1 != sprintf_s(filename + used, sizeof(filename) - used, "_%s.dfc", NOTIFY_STORE_TAG))
+        size_t used = in_process_sequence(filename, sizeof(filename), "");
+        OFString seq(filename);
+        if(used > 0 && -1 != sprintf_s(filename, STATE_DIR"%s_%s.dfc", seq.c_str(), NOTIFY_STORE_TAG))
         {
             FILE *fplog = fopen(filename, "w");
             if(fplog != NULL)
             {
-                strcat_s(term, "\n");
+                fwrite(term, strlen(term), 1, fplog);
+                fclose(fplog);
+            }
+        }
+        else
+        {
+            cerr << "subOpSCP() can't create sequence file name " << filename << ", missing command: " << term << endl;
+        }
+        // write term again
+        if(used > 0 && -1 != sprintf_s(filename, "%s%s_%s.dfc", movedir.c_str(), seq.c_str(), NOTIFY_STORE_TAG))
+        {
+            FILE *fplog = fopen(filename, "w");
+            if(fplog != NULL)
+            {
                 fwrite(term, strlen(term), 1, fplog);
                 fclose(fplog);
             }
