@@ -266,6 +266,9 @@ DIMSE_moveUser(
             break;
         default:
 			printf("trigger move status: %04x\n", response->DimseStatus);
+            if (callback) {
+                callback(callbackData, request, responseCount, response);
+            }
             if (response->DataSetType != DIMSE_DATASET_NULL) {
                 cond = DIMSE_receiveDataSetInMemory(assoc, blockMode, timeout,
                     &presID, rspIds, NULL, NULL);

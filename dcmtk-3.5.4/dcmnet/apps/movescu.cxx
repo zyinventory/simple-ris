@@ -917,8 +917,17 @@ acceptSubAssoc(T_ASC_Network * aNet, T_ASC_Association ** assoc)
     const char* knownAbstractSyntaxes[] = {
         UID_VerificationSOPClass
     };
-    const char* transferSyntaxes[] = { NULL, NULL, NULL, NULL };
-    int numTransferSyntaxes;
+    const char* transferSyntaxes[] = { UID_LittleEndianExplicitTransferSyntax, UID_BigEndianExplicitTransferSyntax, UID_LittleEndianImplicitTransferSyntax,
+        UID_JPEGProcess14SV1TransferSyntax, UID_JPEG2000LosslessOnlyTransferSyntax, UID_JPEG2000TransferSyntax,
+        UID_JPEGLSLosslessTransferSyntax, UID_JPEGLSLossyTransferSyntax,
+        UID_JPEGProcess1TransferSyntax, UID_JPEGProcess2_4TransferSyntax, UID_JPEGProcess3_5TransferSyntax,
+        UID_JPEGProcess6_8TransferSyntax, UID_JPEGProcess7_9TransferSyntax, UID_JPEGProcess10_12TransferSyntax, UID_JPEGProcess11_13TransferSyntax,
+        UID_JPEGProcess14TransferSyntax, UID_JPEGProcess15TransferSyntax, UID_JPEGProcess16_18TransferSyntax, UID_JPEGProcess17_19TransferSyntax,
+        UID_JPEGProcess20_22TransferSyntax, UID_JPEGProcess21_23TransferSyntax, UID_JPEGProcess24_26TransferSyntax, UID_JPEGProcess25_27TransferSyntax,
+        UID_JPEGProcess28TransferSyntax, UID_JPEGProcess29TransferSyntax, UID_RLELosslessTransferSyntax, UID_DeflatedExplicitVRLittleEndianTransferSyntax,
+        UID_MPEG2MainProfileAtMainLevelTransferSyntax, UID_RFC2557MIMEEncapsulationTransferSyntax,
+        UID_JPEG2000Part2MulticomponentImageCompressionLosslessOnlyTransferSyntax, UID_JPEG2000Part2MulticomponentImageCompressionTransferSyntax };
+    int numTransferSyntaxes = sizeof(transferSyntaxes) / sizeof(const char*);
 
     OFCondition cond = ASC_receiveAssociation(aNet, assoc, opt_maxPDU);
     if (cond.good())
@@ -1005,8 +1014,6 @@ acceptSubAssoc(T_ASC_Network * aNet, T_ASC_Association ** assoc)
             transferSyntaxes[0] = UID_BigEndianExplicitTransferSyntax;
             transferSyntaxes[1] = UID_LittleEndianExplicitTransferSyntax;
           }
-          transferSyntaxes[2] = UID_LittleEndianImplicitTransferSyntax;
-          numTransferSyntaxes = 3;
           break;
 
         }
@@ -1440,7 +1447,10 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
     // ACKI FFFFFFFB responseCount
     strmbuf << NOTIFY_ACKN_ITEM << " " << hex << setfill('0') << setw(8) << uppercase << NOTIFY_ACKI_MV_STAT 
         << " " << dec << responseCount << endl;
-
+    // ACKI 00000900 response_status
+    strmbuf << NOTIFY_ACKN_ITEM << " " << hex << setfill('0') << setw(8) << uppercase << NOTIFY_MOVE_STATUS 
+        << " " << hex << setfill('0') << setw(4) << response->DimseStatus << endl;
+    
     // report progress
 	printf("trigger move progress:");
 	if (response->opts & O_MOVE_NUMBEROFREMAININGSUBOPERATIONS)
@@ -1493,7 +1503,7 @@ moveCallback(void *callbackData, T_DIMSE_C_MoveRQ *request,
 
     char filename[MAX_PATH];
     string sw = strmbuf.str();
-    size_t used = in_process_sequence(filename, sizeof(filename), "");
+    size_t used = in_process_sequence(filename, sizeof(filename), movedir.c_str());
     if(used > 0 && -1 != sprintf_s(filename + used, sizeof(filename) - used, "_%s.dfc", NOTIFY_ACKN_TAG))
     {
         FILE *fplog = fopen(filename, "w");
