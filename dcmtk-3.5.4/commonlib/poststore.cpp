@@ -607,6 +607,43 @@ COMMONLIB_API size_t GetSetting(const string &key, char *buff, size_t buff_size)
         return it->second.length();
 }
 
+COMMONLIB_API int generateStudyTxt(const char *study_uid, ostream &errstrm)
+{
+    if(study_uid)
+    {
+        string pacsBase(GetPacsBase());
+        char jobIdBuf[41] = "";
+        in_process_sequence_dll(jobIdBuf, sizeof(jobIdBuf), "job_");
+	    sprintf_s(buffer, BUFF_SIZE, "%s\\orders_notify\\%s.txt", pacsBase.c_str(), jobIdBuf);
+        string jdfPath(buffer);
+		try
+		{
+            ofstream ofs(jdfPath.c_str(), ios_base::out | ios_base::trunc);
+			if(ofs.good())
+			{
+                ofs << study_uid << endl;
+				ofs.close();
+                return 0;
+			}
+			else
+			{
+				throw jdfPath;
+			}
+		}
+		catch(const string &outPath)
+		{
+			errstrm << "generateStudyTxt() create file failed: " << outPath << endl;
+			return -2;
+		}
+		catch(...)
+		{
+			errstrm << "generateStudyTxt() write jdf error" << endl;
+			return -3;
+		}
+    }
+    return -1;
+}
+
 COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, ostream &errstrm, const char *media)
 {
 	if(!strcmp(tag, "0020000d"))

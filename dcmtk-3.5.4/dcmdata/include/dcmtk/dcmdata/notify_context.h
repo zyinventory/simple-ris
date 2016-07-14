@@ -11,6 +11,7 @@ namespace handle_context
         long long file_size_receive;
         char filename[MAX_PATH], hash[12], unique_filename[65], patientID[65], studyUID[65], seriesUID[65], instanceUID[65],
             xfer[16], xfer_new[16], charset[17];
+        long number;
         bool isEncapsulated;
         const char* StorePath(char sp = '\\');
         char PathSeparator() const { return unique_filename[8]; }
@@ -21,11 +22,12 @@ namespace handle_context
     } NOTIFY_FILE_CONTEXT_PATIENT_SECTION;
 
     typedef struct _tag_NOTIFY_FILE_CONTEXT_STUDY_SECTION {
-        char studyUID[65], studyDate[9], studyTime[15], accessionNumber[65];
+        char studyUID[65], studyDate[9], studyTime[15], accessionNumber[65], studyID[17];
     } NOTIFY_FILE_CONTEXT_STUDY_SECTION;
 
     typedef struct _tag_NOTIFY_FILE_CONTEXT_SERIES_SECTION {
         char seriesUID[65], modality[17];
+        long number;
     } NOTIFY_FILE_CONTEXT_SERIES_SECTION;
 
     typedef struct _tag_NOTIFY_ASSOC_SECTION {

@@ -176,7 +176,7 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
     
     const char *patientID = NULL, *patientsName = NULL, *patientsBirthDate = NULL, 
         *patientsSex = NULL, *patientsSize = NULL, *patientsWeight = NULL,
-        *studyUID = NULL, *studyDate = NULL, *studyTime = NULL, *accessionNumber = NULL, 
+        *studyUID = NULL, *studyDate = NULL, *studyTime = NULL, *accessionNumber = NULL, *studyID = NULL,
         *seriesUID = NULL, *modality = NULL, *instanceUID = NULL, *charset = NULL;
     // file level
     dataset->findAndGetString(DCM_SpecificCharacterSet, charset);
@@ -203,6 +203,8 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
     }
     dataset->findAndGetString(DCM_SOPInstanceUID, instanceUID);
     if(instanceUID) strcpy_s(nfc.file.instanceUID, instanceUID);
+
+    dataset->findAndGetSint32(DCM_InstanceNumber, nfc.file.number);
 
     DcmXfer xfer(dataset->getOriginalXfer());
     strcpy_s(nfc.file.xfer_new, xfer.getXferShortName());
@@ -242,13 +244,17 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
     dataset->findAndGetString(DCM_StudyTime, studyTime);
     if(studyTime) strcpy_s(nfc.study.studyTime, studyTime);
 
+    dataset->findAndGetString(DCM_StudyID, studyID);
+    if(studyID) strcpy_s(nfc.study.studyID, studyID);
+
     dataset->findAndGetString(DCM_AccessionNumber, accessionNumber);
     if(accessionNumber) strcpy_s(nfc.study.accessionNumber, accessionNumber);
 
     //series level
     dataset->findAndGetString(DCM_Modality, modality);
     if(modality) strcpy_s(nfc.series.modality, modality);
-    
+    dataset->findAndGetSint32(DCM_SeriesNumber, nfc.series.number);
+
     nfc.file.StorePath();
 }
 
@@ -900,9 +906,9 @@ int main(int argc, char *argv[])
                 {
                     time_header_out(CERR) << "unload study " << *it << endl;
                     xi.unload_and_sync_study(*it);
-                    if(publish_jdf && 0 == generateStudyJDF("0020000d", it->c_str(), CERR))
+                    if(publish_jdf && 0 == generateStudyTxt(it->c_str(), CERR))
                     {
-                        if(opt_verbose) time_header_out(CERR) << "jdf OK: " << *it << endl;
+                        if(opt_verbose) time_header_out(CERR) << "study txt OK: " << *it << endl;
                     }
                 }
             }

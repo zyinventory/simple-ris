@@ -596,7 +596,8 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
 	const char *patientID = NULL, *patientsName = NULL, *patientsBirthDate, 
         *patientsSex, *patientsSize, *patientsWeight,
         *studyUID, *studyDate, *studyTime, *accessionNumber, 
-        *seriesUID, *modality, *instanceUID, *charset;
+        *seriesUID, *modality, *instanceUID, *charset, *studyID;
+    Sint32 seriesNumber = 0, instanceNumber = 0;
     bool isFull = (strcmp(level, NOTIFY_LEVEL_FULL) == 0);
 
     if(isFull || strcmp(level, NOTIFY_LEVEL_INSTANCE) == 0) // F is FULL
@@ -606,6 +607,8 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
         findAndGetString(DCM_StudyInstanceUID, studyUID);
         findAndGetString(DCM_SeriesInstanceUID, seriesUID);
         findAndGetString(DCM_SOPInstanceUID, instanceUID);
+        findAndGetSint32(DCM_InstanceNumber, instanceNumber);
+
         DcmXfer xfer(saveXfer == EXS_Unknown ? Xfer : saveXfer);
 
         strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_SpecificCharacterSet.getGroup() 
@@ -613,19 +616,25 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
         if(charset) strmbuf << " " << charset << endl;
         else strmbuf << " ISO_IR 100" << endl;
 
-        strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_PatientID.getGroup() 
-            << hex << setw(4) << setfill('0') << DCM_PatientID.getElement() << " ";
-        x_www_form_codec<ostream>::encode(patientID, &strmbuf);
-        strmbuf << endl;
-        strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getGroup() 
+        if(patientID)
+        {
+            strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_PatientID.getGroup() 
+                << hex << setw(4) << setfill('0') << DCM_PatientID.getElement() << " ";
+            x_www_form_codec<ostream>::encode(patientID, &strmbuf);
+            strmbuf << endl;
+        }
+        if(studyUID) strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_StudyInstanceUID.getElement() 
             << " " << studyUID << endl;
-        strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() 
+        if(seriesUID) strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_SeriesInstanceUID.getElement() 
             << " " << seriesUID << endl;
-        strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() 
+        if(instanceUID) strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_SOPInstanceUID.getElement() 
             << " " << instanceUID << endl;
+        strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_InstanceNumber.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_InstanceNumber.getElement() 
+            << " " << dec << instanceNumber << endl;
         strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() 
             << " " << xfer.getXferShortName() << " " << xfer.isEncapsulated() << endl;
@@ -663,7 +672,11 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
         findAndGetString(DCM_StudyDate, studyDate);
         findAndGetString(DCM_StudyTime, studyTime);
         findAndGetString(DCM_AccessionNumber, accessionNumber);
+        findAndGetString(DCM_StudyID, studyID);
 
+        strmbuf << NOTIFY_LEVEL_STUDY << " " << hex << setw(4) << setfill('0') << DCM_StudyID.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_StudyID.getElement() 
+            << " " << ((studyID == NULL || *studyID == '\0') ? "" : studyID) << endl;
         strmbuf << NOTIFY_LEVEL_STUDY << " " << hex << setw(4) << setfill('0') << DCM_StudyDate.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_StudyDate.getElement() 
             << " " << studyDate << endl;
@@ -680,9 +693,13 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
     if(isFull || strcmp(level, NOTIFY_LEVEL_SERIES) == 0)
     {
         findAndGetString(DCM_Modality, modality);
-        strmbuf << NOTIFY_LEVEL_SERIES << " " << hex << setw(4) << setfill('0') << DCM_Modality.getGroup() 
+        findAndGetSint32(DCM_SeriesNumber, seriesNumber);
+        if(modality) strmbuf << NOTIFY_LEVEL_SERIES << " " << hex << setw(4) << setfill('0') << DCM_Modality.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_Modality.getElement() 
             << " " << modality << endl;
+        strmbuf << NOTIFY_LEVEL_SERIES << " " << hex << setw(4) << setfill('0') << DCM_SeriesNumber.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_SeriesNumber.getElement() 
+            << " " << dec << seriesNumber << endl;
     }
     return OFTrue;
 }

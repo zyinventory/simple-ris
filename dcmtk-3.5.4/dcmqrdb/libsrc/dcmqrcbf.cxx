@@ -57,37 +57,35 @@ void DcmQueryRetrieveFindContext::callbackHandler(
     
     if (responseCount == 1) {
         /* start the database search */
-	if (options_.verbose_) {
-	    printf("Find SCP Request Identifiers:\n");
-	    requestIdentifiers->print(COUT);
+        if (options_.verbose_) {
+            printf("Find SCP Request Identifiers:\n");
+            requestIdentifiers->print(COUT);
         }
-        dbcond = dbHandle.startFindRequest(
-	    request->AffectedSOPClassUID, requestIdentifiers, &dbStatus);
+        dbcond = dbHandle.startFindRequest(request->AffectedSOPClassUID, requestIdentifiers, &dbStatus);
         if (dbcond.bad()) {
-	    DcmQueryRetrieveOptions::errmsg("findSCP: Database: startFindRequest Failed (%s):",
-		DU_cfindStatusString(dbStatus.status()));
+            DcmQueryRetrieveOptions::errmsg("findSCP: Database: startFindRequest Failed (%s):",
+            DU_cfindStatusString(dbStatus.status()));
         }
     }
     
     /* only cancel if we have pending responses */
     if (cancelled && DICOM_PENDING_STATUS(dbStatus.status())) {
-	dbHandle.cancelFindRequest(&dbStatus);
+        dbHandle.cancelFindRequest(&dbStatus);
     }
 
     if (DICOM_PENDING_STATUS(dbStatus.status())) {
-	dbcond = dbHandle.nextFindResponse(responseIdentifiers, &dbStatus);
-	if (dbcond.bad()) {
-	     DcmQueryRetrieveOptions::errmsg("findSCP: Database: nextFindResponse Failed (%s):",
-		 DU_cfindStatusString(dbStatus.status()));
-	}
+        dbcond = dbHandle.nextFindResponse(responseIdentifiers, &dbStatus);
+        if (dbcond.bad()) {
+            DcmQueryRetrieveOptions::errmsg("findSCP: Database: nextFindResponse Failed (%s):",
+            DU_cfindStatusString(dbStatus.status()));
+        }
     }
 
     if (*responseIdentifiers != NULL)
     {
-
-      if (! DU_putStringDOElement(*responseIdentifiers, DCM_RetrieveAETitle, ourAETitle.c_str())) {
-	DcmQueryRetrieveOptions::errmsg("DO Error: adding Retrieve AE Title");
-      }
+        if (! DU_putStringDOElement(*responseIdentifiers, DCM_RetrieveAETitle, ourAETitle.c_str())) {
+            DcmQueryRetrieveOptions::errmsg("DO Error: adding Retrieve AE Title");
+        }
     }
 
     /* set response status */

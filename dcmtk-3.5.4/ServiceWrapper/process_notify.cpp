@@ -59,6 +59,10 @@ int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_co
         else if(debug_mode)
             time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.seriesUID << endl;
         break;
+    case 0x00200013:
+        cmdstrm >> dec >> lc.file.number;
+        if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.number << endl;
+        break;
     case 0x00080018:
         cmdstrm >> lc.file.instanceUID;
         if(strlen(lc.file.instanceUID) == 0)
@@ -169,6 +173,11 @@ int cmd_study(const std::string &type, std::istringstream &cmdstrm, handle_conte
         x_www_form_codec<char>::decode(temp.c_str(), lc.study.accessionNumber, sizeof(lc.study.accessionNumber));
         if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp << endl;
         break;
+    case 0x00200010:
+        cmdstrm >> lc.study.studyID;
+        dirty = true;
+        if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.study.studyID << endl;
+        break;
     default:
         {
             char otherbuf[1024] = "";
@@ -202,6 +211,11 @@ int cmd_series(const std::string &type, std::istringstream &cmdstrm, handle_cont
             if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.series.modality << endl;
         }
         break;
+    case 0x00200011:
+        cmdstrm >> dec >> lc.series.number;
+        dirty = true;
+        if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.series.number << endl;
+        break;
     default:
         {
             char otherbuf[1024] = "";
@@ -229,6 +243,7 @@ void save_notify_context_to_ostream(const NOTIFY_FILE_CONTEXT &cnc, bool compres
     output << NOTIFY_LEVEL_INSTANCE << " 0020000E " << cnc.file.seriesUID << endl;
     output << NOTIFY_LEVEL_INSTANCE << " 00080018 " << cnc.file.instanceUID << endl;
     output << NOTIFY_LEVEL_INSTANCE << " 00020010 " << cnc.file.xfer << " " << cnc.file.isEncapsulated << " " << cnc.file.xfer_new << endl;
+    output << NOTIFY_LEVEL_INSTANCE << " 00200013 " << dec << cnc.file.number << endl;
     output << NOTIFY_LEVEL_PATIENT << " 00100010 ";
     if(strcmp("ISO_IR 192", cnc.file.charset) == 0)
     {
@@ -247,10 +262,12 @@ void save_notify_context_to_ostream(const NOTIFY_FILE_CONTEXT &cnc, bool compres
     output << NOTIFY_LEVEL_PATIENT << " 00100040 " << cnc.patient.sex << endl;
     output << NOTIFY_LEVEL_PATIENT << " 00101020 " << cnc.patient.height << endl;
     output << NOTIFY_LEVEL_PATIENT << " 00101030 " << cnc.patient.weight << endl;
+    output << NOTIFY_LEVEL_STUDY << " 00200010 " << cnc.study.studyID << endl;
     output << NOTIFY_LEVEL_STUDY << " 00080020 " << cnc.study.studyDate << endl;
     output << NOTIFY_LEVEL_STUDY << " 00080030 " << cnc.study.studyTime << endl;
     output << NOTIFY_LEVEL_STUDY << " 00080050 ";
     x_www_form_codec<ostream>::encode(cnc.study.accessionNumber, &output);
     output << endl;
     output << NOTIFY_LEVEL_SERIES << " 00080060 " << cnc.series.modality << endl;
+    output << NOTIFY_LEVEL_SERIES << " 00200011 " << dec << cnc.series.number << endl;
 }

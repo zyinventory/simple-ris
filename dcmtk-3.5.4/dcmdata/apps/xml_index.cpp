@@ -78,6 +78,7 @@ bool xml_index::create_study_dom(const NOTIFY_FILE_CONTEXT &clc, MSXML2::IXMLDOM
                 hr = pRoot->setAttribute(L"accession_number", clc.study.accessionNumber);
                 hr = pRoot->setAttribute(L"date", clc.study.studyDate);
                 hr = pRoot->setAttribute(L"time", clc.study.studyTime);
+                if(strlen(clc.study.studyID)) hr = pRoot->setAttribute(L"study_id", clc.study.studyID);
             }
                 
             MSXML2::IXMLDOMNodePtr pAssociations = pXMLDom->createNode(MSXML2::NODE_ELEMENT, L"associations", L"http://www.kurumi.com.cn/xsd/study");
@@ -127,6 +128,7 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2Ptr &pXMLDom, const NOTIFY_
             root->setAttribute(L"accession_number", nfc.study.accessionNumber);
             root->setAttribute(L"date", nfc.study.studyDate);
             root->setAttribute(L"time", nfc.study.studyTime);
+            if(strlen(nfc.study.studyID)) root->setAttribute(L"study_id", nfc.study.studyID);
         }
 
         if(strlen(nfc.assoc.id) > 0)
@@ -208,6 +210,7 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2Ptr &pXMLDom, const NOTIFY_
                     strncpy_s(modality, nfc.file.filename, cnt);
             }
             series->setAttribute(L"modality", modality);
+            series->setAttribute(L"number", nfc.series.number);
 
             // update study's modality list
             MSXML2::IXMLDOMNodePtr attr = root->attributes->getNamedItem(L"modality");
@@ -244,6 +247,7 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2Ptr &pXMLDom, const NOTIFY_
             {
                 instance->setAttribute(L"xfer", nfc.file.xfer_new);
                 instance->setAttribute(L"charset", nfc.file.charset);
+                instance->setAttribute(L"number", nfc.file.number);
                 char instance_path[MAX_PATH];
                 int path_len = sprintf_s(instance_path, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\%s", GetPacsBase(), nfc.file.hash, nfc.file.studyUID, nfc.file.unique_filename);
                 if(nfc.file.PathSeparator() == '/')

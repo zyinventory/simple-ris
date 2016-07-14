@@ -147,6 +147,7 @@ COMMONLIB_API bool PrepareFileDir(const char *path);
 COMMONLIB_API int GenerateLogPath(char *buf, size_t bufLen, const char *appName, const char pathSeparator);
 COMMONLIB_API BOOL DeleteEmptyFile(const char *filePath);
 COMMONLIB_API const char* detectMediaType(size_t *pSize);
+COMMONLIB_API int generateStudyTxt(const char *study_uid, std::ostream &errstrm);
 COMMONLIB_API int generateStudyJDF(const char *tag, const char *tagValue, std::ostream &errstrm, const char *media = MEDIA_AUTO);
 COMMONLIB_API long generateIndex(char *inputFile, const char *paramBaseUrl, const char *archPath, const char *indPath, bool deleteSourceCSV = false);
 COMMONLIB_API time_t dcmdate2tm(int dcmdate);
