@@ -124,15 +124,6 @@ public:
    */
    ~DcmQueryRetrieveIndexDatabaseHandle();
 
-  // set my additional properties
-  const char *getCallingAE() const;
-  errno_t setCallingAE(const char* calling);
-  const char *getCalledAE() const;
-  errno_t setCalledAE(const char* called);
-  const char* getAutoPublish() const;
-  void setAutoPublish(const char *autopub);
-  // end of additional properties
- 
   /** set the debug level.
    *  @param debug level, zero or nonzero
    */

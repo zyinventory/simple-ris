@@ -3246,36 +3246,6 @@ int DcmQueryRetrieveIndexDatabaseHandle::getDebugLevel() const
     return debugLevel;
 }
 
-const char *DcmQueryRetrieveIndexDatabaseHandle::getCallingAE() const
-{
-  return handle->callingAE;
-}
-
-errno_t DcmQueryRetrieveIndexDatabaseHandle::setCallingAE(const char* calling)
-{
-	return strcpy_s(handle->callingAE, calling);
-}
-
-const char *DcmQueryRetrieveIndexDatabaseHandle::getCalledAE() const
-{
-  return handle->calledAE;
-}
-
-errno_t DcmQueryRetrieveIndexDatabaseHandle::setCalledAE(const char* called)
-{
-	return strcpy_s(handle->calledAE, called);
-}
-
-const char* DcmQueryRetrieveIndexDatabaseHandle::getAutoPublish() const
-{
-	return handle->autoPublish;
-}
-
-void DcmQueryRetrieveIndexDatabaseHandle::setAutoPublish(const char *autopub)
-{
-	strcpy_s(handle->autoPublish, autopub);
-}
-
 void DcmQueryRetrieveIndexDatabaseHandle::dbdebug(int level, const char* format, ...) const
 {
     va_list ap;
@@ -3521,15 +3491,10 @@ DcmQueryRetrieveDatabaseHandle *DcmQueryRetrieveIndexDatabaseHandleFactory::crea
     const char *calledAETitle,
     OFCondition& result) const
 {
-  DcmQueryRetrieveIndexDatabaseHandle *ph = new DcmQueryRetrieveIndexDatabaseHandle(
+  return new DcmQueryRetrieveIndexDatabaseHandle(
     config_->getStorageArea(calledAETitle),
     config_->getMaxStudies(calledAETitle),
     config_->getMaxBytesPerStudy(calledAETitle), result);
-  ph->setCalledAE(calledAETitle);
-  ph->setCallingAE(callingAETitle);
-  const char *pub = config_->getAutoPublish(calledAETitle);
-  ph->setAutoPublish(pub ? pub : "");
-  return ph;
 }
 
 
