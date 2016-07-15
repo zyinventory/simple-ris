@@ -136,23 +136,6 @@ public:
    */
   void setIdentifierChecking(OFBool checkFind, OFBool checkMove);
   
-  /** create a filename under which a DICOM object that is currently
-   *  being received through a C-STORE operation can be stored.
-   *  @param SOPClassUID SOP class UID of DICOM instance
-   *  @param SOPInstanceUID SOP instance UID of DICOM instance
-   *  @param newImageFileName file name is returned in this parameter.
-   *    Memory must be provided by the caller and should be at least MAXPATHLEN+1 
-   *    characters. The file name generated should be an absolute file name.
-   *  @return EC_Normal upon normal completion, or some other OFCondition code upon failure.
-   */
-  OFCondition makeNewStoreFileName(
-      const char *SOPClassUID,
-      const char *SOPInstanceUID,
-      char *newImageFileName,
-      const char *associationId = NULL);
-  
-  OFCondition makeStoreAssociationDir(const char *associationId, char *storageArea = NULL, size_t storageAreaBuffSize = 0);
-
   /** register the given DICOM object, which has been received through a C-STORE 
    *  operation and stored in a file, in the database.
    *  @param SOPClassUID SOP class UID of DICOM instance

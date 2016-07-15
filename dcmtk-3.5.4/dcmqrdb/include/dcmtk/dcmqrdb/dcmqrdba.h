@@ -79,9 +79,9 @@ public:
       const char *SOPClassUID,
       const char *SOPInstanceUID,
       char *newImageFileName,
-      const char *associationId = NULL) = 0;
+      const char *associationId = NULL);
   
-  virtual OFCondition makeStoreAssociationDir(const char *associationId, char *storageArea = NULL, size_t storageAreaBuffSize = 0) = 0;
+  OFCondition makeStoreAssociationDir(const char *associationId, char *storageArea = NULL, size_t storageAreaBuffSize = 0);
 
   /** register the given DICOM object, which has been received through a C-STORE
    *  operation and stored in a file, in the database.
@@ -211,6 +211,7 @@ public:
    */
   virtual void setIdentifierChecking(OFBool checkFind, OFBool checkMove) = 0;
 
+  virtual const char *getStorageArea() const = 0;
 };
 
 
