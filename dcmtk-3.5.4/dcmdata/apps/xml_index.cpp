@@ -248,6 +248,7 @@ void xml_index::add_instance(MSXML2::IXMLDOMDocument2Ptr &pXMLDom, const NOTIFY_
                 instance->setAttribute(L"xfer", nfc.file.xfer_new);
                 instance->setAttribute(L"charset", nfc.file.charset);
                 instance->setAttribute(L"number", nfc.file.number);
+                if(strlen(nfc.file.sopClassUID)) instance->setAttribute(L"sop_class_uid", nfc.file.sopClassUID);
                 char instance_path[MAX_PATH];
                 int path_len = sprintf_s(instance_path, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\%s", GetPacsBase(), nfc.file.hash, nfc.file.studyUID, nfc.file.unique_filename);
                 if(nfc.file.PathSeparator() == '/')

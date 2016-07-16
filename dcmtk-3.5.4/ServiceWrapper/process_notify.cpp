@@ -77,6 +77,13 @@ int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_co
         else if(debug_mode)
             time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.xfer << " " << lc.file.isEncapsulated << endl;
         break;
+    case 0x00080016:
+        cmdstrm >> lc.file.sopClassUID;
+        if(strlen(lc.file.sopClassUID) == 0)
+            time_header_out(flog) << "Unexpected empty SOP Class UID " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
+        else if(debug_mode)
+            time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.sopClassUID << endl;
+        break;
     default:
         {
             char otherbuf[1024] = "";
@@ -244,6 +251,7 @@ void save_notify_context_to_ostream(const NOTIFY_FILE_CONTEXT &cnc, bool compres
     output << NOTIFY_LEVEL_INSTANCE << " 00080018 " << cnc.file.instanceUID << endl;
     output << NOTIFY_LEVEL_INSTANCE << " 00020010 " << cnc.file.xfer << " " << cnc.file.isEncapsulated << " " << cnc.file.xfer_new << endl;
     output << NOTIFY_LEVEL_INSTANCE << " 00200013 " << dec << cnc.file.number << endl;
+    output << NOTIFY_LEVEL_INSTANCE << " 00080016 " << cnc.file.sopClassUID << endl;
     output << NOTIFY_LEVEL_PATIENT << " 00100010 ";
     if(strcmp("ISO_IR 192", cnc.file.charset) == 0)
     {

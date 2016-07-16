@@ -594,7 +594,7 @@ void DcmDataset::removeAllButOriginalRepresentations()
 OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
 {
 	const char *patientID = NULL, *patientsName = NULL, *patientsBirthDate, 
-        *patientsSex, *patientsSize, *patientsWeight,
+        *patientsSex, *patientsSize, *patientsWeight, *sopClassUID = NULL,
         *studyUID, *studyDate, *studyTime, *accessionNumber, 
         *seriesUID, *modality, *instanceUID, *charset, *studyID;
     Sint32 seriesNumber = 0, instanceNumber = 0;
@@ -608,6 +608,7 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
         findAndGetString(DCM_SeriesInstanceUID, seriesUID);
         findAndGetString(DCM_SOPInstanceUID, instanceUID);
         findAndGetSint32(DCM_InstanceNumber, instanceNumber);
+        findAndGetString(DCM_SOPClassUID, sopClassUID);
 
         DcmXfer xfer(saveXfer == EXS_Unknown ? Xfer : saveXfer);
 
@@ -638,6 +639,9 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
         strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getGroup() 
             << hex << setw(4) << setfill('0') << DCM_TransferSyntaxUID.getElement() 
             << " " << xfer.getXferShortName() << " " << xfer.isEncapsulated() << endl;
+        strmbuf << NOTIFY_LEVEL_INSTANCE << " " << hex << setw(4) << setfill('0') << DCM_SOPClassUID.getGroup() 
+            << hex << setw(4) << setfill('0') << DCM_SOPClassUID.getElement() 
+            << " " << ((sopClassUID == NULL || *sopClassUID == '\0') ? "" : sopClassUID) << endl;
     }
 
     if(isFull || strcmp(level, NOTIFY_LEVEL_PATIENT) == 0)
