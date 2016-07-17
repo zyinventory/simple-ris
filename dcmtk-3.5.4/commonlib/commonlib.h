@@ -42,6 +42,15 @@
     str.erase(str.begin(), find_if(str.begin(), str.end(), std::not1(std::bind2nd(std::ptr_fun<int, _locale_t, int>(::_isspace_l), loc))));\
     _free_locale(loc); }
 
+#define THROW_HR_TO_COM_ERROR(hr, polemsg) {\
+    CComQIPtr<ICreateErrorInfo> pce;\
+    CComQIPtr<IErrorInfo> pei;\
+    CreateErrorInfo(&pce);\
+    pce->SetDescription(polemsg);\
+    pce->QueryInterface(IID_IErrorInfo, (LPVOID*)&pei);\
+    throw _com_error(hr, pei, true);\
+}\
+
 #ifdef RETURN_HRESULT
 
 #define CATCH_COM_ERROR(func_name) \
@@ -188,27 +197,59 @@ COMMONLIB_API int UTF8ToGBK(const char *lpUTF8Str, char *lpGBKStr, int nGBKStrLe
 COMMONLIB_API int GBKToUTF8(const char *lpGBKStr, char *lpUTF8Str, int nUTF8StrLen);
 
 // common_public.cpp
+#ifndef GetSignalInterruptValue
 #define GetSignalInterruptValue GetSignalInterruptValue_dll
+#endif
 COMMONLIB_API int GetSignalInterruptValue_dll();
+
+#ifndef SignalInterruptHandler
 #define SignalInterruptHandler SignalInterruptHandler_dll
+#endif
 COMMONLIB_API void SignalInterruptHandler_dll(int signal);
+
+#ifndef Capture_Ctrl_C
 #define Capture_Ctrl_C Capture_Ctrl_C_dll
+#endif
 COMMONLIB_API void Capture_Ctrl_C_dll();
+
+#ifndef GetPacsBase
 #define GetPacsBase GetPacsBase_dll
+#endif
 COMMONLIB_API const char* GetPacsBase_dll();
+
+#ifndef ChangeToPacsWebSub
 #define ChangeToPacsWebSub ChangeToPacsWebSub_dll
+#endif
 COMMONLIB_API int ChangeToPacsWebSub_dll(char *pPacsBase, size_t buff_size);
+
+#ifndef time_header_out
 #define time_header_out time_header_out_dll
+#endif
 COMMONLIB_API std::ostream& time_header_out_dll(std::ostream &os);
+
+#ifndef GenerateTime
 #define GenerateTime GenerateTime_dll
+#endif
 COMMONLIB_API size_t GenerateTime_dll(const char *format, char *timeBuffer, size_t bufferSize, time_t *time_now = NULL);
+
+#ifndef displayErrorToCerr
 #define displayErrorToCerr displayErrorToCerr_dll
+#endif
 COMMONLIB_API DWORD displayErrorToCerr_dll(const TCHAR *lpszFunction, DWORD dw, std::ostream *perrstrm = NULL);
+
+#ifndef DisplayErrorToFileHandle
 #define DisplayErrorToFileHandle DisplayErrorToFileHandle_dll
+#endif
 COMMONLIB_API DWORD DisplayErrorToFileHandle_dll(TCHAR *lpszFunction, DWORD dw, HANDLE fh);
+
+#ifndef create_shared_memory_mapping
 #define create_shared_memory_mapping create_shared_memory_mapping_dll
+#endif
 COMMONLIB_API void* create_shared_memory_mapping_dll(const char *mapping_name, size_t mapping_size, HANDLE *phmap, HANDLE *phfile, std::ostream *plog);
+
+#ifndef close_shared_mapping
 #define close_shared_mapping close_shared_mapping_dll
+#endif
 COMMONLIB_API void close_shared_mapping_dll(void *shared_mem_ptr, HANDLE h_map, HANDLE h_file);
 // common_public.cpp
 

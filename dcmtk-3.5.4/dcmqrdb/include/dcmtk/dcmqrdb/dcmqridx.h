@@ -196,6 +196,8 @@ struct DB_CounterList
     struct DB_CounterList *next ;
 };
 
+const DcmTagKey UnknownTagC(0xFFFF, 0xFFFF);
+
 struct DB_FindAttr
 {
     DcmTagKey tag ;
@@ -206,6 +208,24 @@ struct DB_FindAttr
     /* to passify some C++ compilers */
     DB_FindAttr(const DcmTagKey& t, DB_LEVEL l, DB_KEY_TYPE kt, DB_KEY_CLASS kc) 
         : tag(t), level(l), keyAttr(kt), keyClass(kc) { }
+
+    DB_FindAttr() : tag(UnknownTagC), level(PATIENT_LEVEL), keyAttr(OPTIONAL_KEY), keyClass(OTHER_CLASS){};
+    DB_FindAttr(const DB_FindAttr &r) : tag(r.tag), level(r.level), keyAttr(r.keyAttr), keyClass(r.keyClass){};
+    DB_FindAttr& operator=(const DB_FindAttr &r)
+    {
+        tag = r.tag;
+        level = r.level;
+        keyAttr = r.keyAttr;
+        keyClass = r.keyClass;
+    };
+    bool operator<(const struct DB_FindAttr &r) const { return (tag < r.tag); };
+    bool operator==(const struct DB_FindAttr &r) const { return (!(*this < r) && !(r < *this)); };
+};
+
+template<> class std::hash<DB_FindAttr>
+{
+public:
+    size_t operator()(const DB_FindAttr &c) const { return c.tag.hash(); }
 };
 
 struct DB_Private_Handle

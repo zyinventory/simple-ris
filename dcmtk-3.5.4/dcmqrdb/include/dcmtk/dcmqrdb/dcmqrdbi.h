@@ -152,7 +152,7 @@ public:
       const char *SOPInstanceUID,
       const char *imageFileName,
       DcmQueryRetrieveDatabaseStatus  *status,
-      OFBool     isNew = OFTrue );
+      OFBool     isNew = OFTrue, DcmQueryRetrieveStoreContext *psc = NULL);
   
   /** initiate FIND operation using the given SOP class UID (which identifies
    *  the query model) and DICOM dataset containing find request identifiers. 

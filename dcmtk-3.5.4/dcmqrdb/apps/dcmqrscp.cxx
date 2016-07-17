@@ -98,7 +98,7 @@ END_EXTERN_C
 #ifdef WITH_SQL_DATABASE
 #include "dcmtk/dcmqrdbx/dcmqrdbq.h"
 #else
-#include "dcmtk/dcmqrdb/dcmqrdbi.h"
+#include "dcmqrdbx.h"
 #endif
 
 #ifdef WITH_ZLIB
@@ -124,7 +124,7 @@ static DcmQueryRetrieveConfig *configPtr = NULL;
 #ifdef _DEBUG
 static OFCommandLine *pCmd = NULL;
 static DcmQueryRetrieveOptions *optionsPtr = NULL;
-static DcmQueryRetrieveIndexDatabaseHandleFactory *factoryPtr = NULL;
+static DcmQueryRetrieveXmlDatabaseHandleFactory *factoryPtr = NULL;
 #endif
 
 static HANDLE hParentProcess = NULL;
@@ -142,12 +142,12 @@ static void exitHook()
 #endif
 }
 
-static OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
+static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
 {
     //if(!association_established) association_establishment(pc);
 
     char notifyFileName[MAX_PATH];
-    strcpy_s(notifyFileName, pc->getFileName());
+    strcpy_s(notifyFileName, fn);
     char *fn_only = strrchr(notifyFileName, '\\');
     if(fn_only)
     {
@@ -155,7 +155,6 @@ static OFCondition triggerReceiveEvent(DcmQueryRetrieveStoreContext *pc)
         OFString instanceName(fn_only);
         fn_only += in_process_sequence(fn_only, sizeof(notifyFileName) - (fn_only - notifyFileName), STATE_DIR);
         strcpy_s(fn_only, sizeof(notifyFileName) - (fn_only - notifyFileName), "_" NOTIFY_FILE_TAG ".dfc");
-        DcmDataset * pds = pc->getDataset();
         datasetToNotify(instanceName.c_str(), notifyFileName, &pds, true);
         return EC_Normal;
     }
@@ -754,13 +753,14 @@ main(int argc, char *argv[])
 #else
     // use linear index database (index.dat)
 #ifdef _DEBUG
-	factoryPtr = new DcmQueryRetrieveIndexDatabaseHandleFactory(&config);
-    DcmQueryRetrieveIndexDatabaseHandleFactory &factory = *factoryPtr;
+	factoryPtr = new DcmQueryRetrieveXmlDatabaseHandleFactory(&config);
+    DcmQueryRetrieveXmlDatabaseHandleFactory &factory = *factoryPtr;
 #else
-    DcmQueryRetrieveIndexDatabaseHandleFactory factory(&config);
+    DcmQueryRetrieveXmlDatabaseHandleFactory factory(&config);
 #endif
 #endif
 
+    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     DcmQueryRetrieveSCP scp(config, options, factory, triggerReceiveEvent, pacs_base);
     scp.setDatabaseFlags(opt_checkFindIdentifier, opt_checkMoveIdentifier, options.debug_);
 
@@ -799,7 +799,7 @@ main(int argc, char *argv[])
 #ifdef HAVE_WINSOCK_H
     WSACleanup();
 #endif
-    
+    CoUninitialize();
     time_header_out(CERR) << "dcmqrscp exit " << ret_code << endl;
     return ret_code;
 }

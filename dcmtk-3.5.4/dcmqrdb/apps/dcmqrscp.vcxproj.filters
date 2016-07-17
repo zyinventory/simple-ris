@@ -4,10 +4,21 @@
     <Filter Include="Source Files">
       <UniqueIdentifier>{af3b03f4-225b-453d-80d7-4898c8057a46}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{5edcca03-74ce-4fef-b15b-d1f976382dca}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dcmqrscp.cxx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="dcmqrdbx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="dcmqrdbx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

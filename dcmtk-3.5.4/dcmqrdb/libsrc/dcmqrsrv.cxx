@@ -142,7 +142,7 @@ OFCondition DcmQueryRetrieveSCP::dispatch(T_ASC_Association *assoc, OFBool corre
         DcmQueryRetrieveDatabaseHandle *dbHandle = factory_.createDBHandle(
               assoc->params->DULparams.callingAPTitle,
           assoc->params->DULparams.calledAPTitle, cond);
-
+        
         if (cond.bad())
         {
           DcmQueryRetrieveOptions::errmsg("dispatch: cannot create DB Handle");
@@ -156,7 +156,8 @@ OFCondition DcmQueryRetrieveSCP::dispatch(T_ASC_Association *assoc, OFBool corre
           return EC_IllegalCall;
         }
 
-        dbHandle->setDebugLevel(dbDebug_ ? 1 : 0);
+        dbHandle->setDebugLevel(options_.debug_ ? 3 : options_.verbose_);
+        dbHandle->setPacsBase(pPacsBase);
         dbHandle->setIdentifierChecking(dbCheckFindIdentifier_, dbCheckMoveIdentifier_);
         firstLoop = OFTrue;
 

@@ -84,16 +84,9 @@ void DcmQueryRetrieveStoreContext::saveImageToDB(
     
     if (status == STATUS_Success)
     {
-        if(pac->cbToDcmQueryRetrieveStoreContext)
-		{
-			dbcond = pac->cbToDcmQueryRetrieveStoreContext(this);
-		}
-		else
-		{
-			dbcond = dbHandle.storeRequest(
-				req->AffectedSOPClassUID, req->AffectedSOPInstanceUID,
-				imageFileName, &dbStatus);
-		}
+        dbcond = dbHandle.storeRequest(
+			req->AffectedSOPClassUID, req->AffectedSOPInstanceUID,
+			imageFileName, &dbStatus, OFTrue, this);
         if (dbcond.bad())
         {
             DcmQueryRetrieveOptions::errmsg("storeSCP: Database: storeRequest Failed (%s)",

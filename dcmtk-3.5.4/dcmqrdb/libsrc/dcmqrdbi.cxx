@@ -2914,7 +2914,7 @@ OFCondition DcmQueryRetrieveIndexDatabaseHandle::storeRequest (
     const char  * /*SOPInstanceUID*/,
     const char  *imageFileName,
     DcmQueryRetrieveDatabaseStatus   *status,
-    OFBool      isNew)
+    OFBool      isNew, DcmQueryRetrieveStoreContext *psc)
 {
     IdxRecord           idxRec ;
     StudyDescRecord     *pStudyDesc ;

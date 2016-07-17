@@ -44,6 +44,7 @@
 
 class DcmDataset;
 class DcmQueryRetrieveDatabaseStatus;
+class DcmQueryRetrieveStoreContext;
 
 #ifndef MAXPATHLEN
 #define MAXPATHLEN 1024
@@ -99,7 +100,7 @@ public:
       const char *SOPInstanceUID,
       const char *imageFileName,
       DcmQueryRetrieveDatabaseStatus  *status,
-      OFBool     isNew = OFTrue ) = 0;
+      OFBool     isNew = OFTrue, DcmQueryRetrieveStoreContext *psc = NULL ) = 0;
 
   /** initiate FIND operation using the given SOP class UID (which identifies
    *  the query model) and DICOM dataset containing find request identifiers.
@@ -212,6 +213,12 @@ public:
   virtual void setIdentifierChecking(OFBool checkFind, OFBool checkMove) = 0;
 
   virtual const char *getStorageArea() const = 0;
+
+  const char *getPacsBase() const { return pacs_base; };
+  void setPacsBase(const char *p) { pacs_base = p; };
+
+private:
+  const char *pacs_base;
 };
 
 
