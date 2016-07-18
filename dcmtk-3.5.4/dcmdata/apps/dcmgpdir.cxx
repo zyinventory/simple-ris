@@ -175,7 +175,7 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
         >> dec >> nfc.assoc.port >> nfc.assoc.expected_xfer >> nfc.assoc.auto_publish >> nfc.assoc.calledAddr;
     
     const char *patientID = NULL, *patientsName = NULL, *patientsBirthDate = NULL, 
-        *patientsSex = NULL, *patientsSize = NULL, *patientsWeight = NULL,
+        *patientsSex = NULL, *patientsSize = NULL, *patientsWeight = NULL, *sopClassUID = NULL,
         *studyUID = NULL, *studyDate = NULL, *studyTime = NULL, *accessionNumber = NULL, *studyID = NULL,
         *seriesUID = NULL, *modality = NULL, *instanceUID = NULL, *charset = NULL;
     // file level
@@ -203,6 +203,9 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
     }
     dataset->findAndGetString(DCM_SOPInstanceUID, instanceUID);
     if(instanceUID) strcpy_s(nfc.file.instanceUID, instanceUID);
+
+    dataset->findAndGetString(DCM_SOPClassUID, sopClassUID);
+    if(sopClassUID) strcpy_s(nfc.file.sopClassUID, sopClassUID);
 
     dataset->findAndGetSint32(DCM_InstanceNumber, nfc.file.number);
 
