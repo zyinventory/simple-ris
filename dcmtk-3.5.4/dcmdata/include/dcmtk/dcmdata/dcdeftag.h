@@ -1445,6 +1445,7 @@
 #define DCM_ProtocolContextSequence              DcmTagKey(0x0040, 0x0440)
 #define DCM_ContentItemModifierSequence          DcmTagKey(0x0040, 0x0441)
 #define DCM_SpecimenAccessionNumber              DcmTagKey(0x0040, 0x050a)
+#define DCM_ContainerIdentifier                  DcmTagKey(0x0040, 0x0512)
 #define DCM_SpecimenSequence                     DcmTagKey(0x0040, 0x0550)
 #define DCM_SpecimenIdentifier                   DcmTagKey(0x0040, 0x0551)
 #define DCM_RETIRED_SpecimenDescriptionSequenceTrial DcmTagKey(0x0040, 0x0552)

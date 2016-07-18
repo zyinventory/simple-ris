@@ -66,6 +66,11 @@ private:
     DB_LEVEL queryLevel;             // queryLevel belongs to [rootLevel, lowestLevel]
     
     MSXML2::IXMLDOMDocument2Ptr pXmlDom;
+    MSXML2::IXMLDOMNodeListPtr ptl, stl, sel, inl;
+    MSXML2::IXMLDOMElementPtr pt, st, se;
+    DcmDataset ds, *req;
+
+    bool fillNextElementToDcmdataset();
 
     size_t findRequestFilter(DcmDataset *findRequestIdentifiers);
     bool add_study(MSXML2::IXMLDOMElementPtr &pStudy, const set<string> &pids, const StudyDataFilter &date_filter);

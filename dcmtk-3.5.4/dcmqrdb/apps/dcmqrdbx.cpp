@@ -32,34 +32,69 @@
  **** all Unique and Required keys.
  ***/
 
-static const std::pair<DcmTagKey, DB_FindAttr> arrayFindAttr[] = {
-    std::make_pair(DCM_PatientsBirthDate,               DB_FindAttr( DCM_PatientsBirthDate,                     PATIENT_LEVEL,  OPTIONAL_KEY,   DATE_CLASS      )),
-    std::make_pair(DCM_PatientsSex,                     DB_FindAttr( DCM_PatientsSex,                           PATIENT_LEVEL,  OPTIONAL_KEY,   STRING_CLASS    )),
-    std::make_pair(DCM_PatientsName,                    DB_FindAttr( DCM_PatientsName,                          PATIENT_LEVEL,  REQUIRED_KEY,   STRING_CLASS    )),
-    std::make_pair(DCM_PatientID,                       DB_FindAttr( DCM_PatientID,                             PATIENT_LEVEL,  UNIQUE_KEY,     STRING_CLASS    )),
-    std::make_pair(DCM_NumberOfPatientRelatedStudies,   DB_FindAttr( DCM_NumberOfPatientRelatedStudies,         PATIENT_LEVEL,  OPTIONAL_KEY,   STRING_CLASS    )),
-    std::make_pair(DCM_NumberOfPatientRelatedSeries,    DB_FindAttr( DCM_NumberOfPatientRelatedSeries,          PATIENT_LEVEL,  OPTIONAL_KEY,   STRING_CLASS    )),
-    std::make_pair(DCM_NumberOfPatientRelatedInstances, DB_FindAttr( DCM_NumberOfPatientRelatedInstances,       PATIENT_LEVEL,  OPTIONAL_KEY,   STRING_CLASS    )),
-    std::make_pair(DCM_StudyDate,                       DB_FindAttr( DCM_StudyDate,                             STUDY_LEVEL,    REQUIRED_KEY,   DATE_CLASS      )),
-    std::make_pair(DCM_StudyTime,                       DB_FindAttr( DCM_StudyTime,                             STUDY_LEVEL,    REQUIRED_KEY,   TIME_CLASS      )),
-    std::make_pair(DCM_StudyID,                         DB_FindAttr( DCM_StudyID,                               STUDY_LEVEL,    REQUIRED_KEY,   STRING_CLASS    )),
-    std::make_pair(DCM_AccessionNumber,                 DB_FindAttr( DCM_AccessionNumber,                       STUDY_LEVEL,    REQUIRED_KEY,   STRING_CLASS    )),
-    std::make_pair(DCM_StudyInstanceUID,                DB_FindAttr( DCM_StudyInstanceUID,                      STUDY_LEVEL,    UNIQUE_KEY,     UID_CLASS       )),
-    std::make_pair(DCM_ModalitiesInStudy,               DB_FindAttr( DCM_ModalitiesInStudy,                     STUDY_LEVEL,    OPTIONAL_KEY,   STRING_CLASS    )),
-    std::make_pair(DCM_PatientsSize,                    DB_FindAttr( DCM_PatientsSize,                          STUDY_LEVEL,    OPTIONAL_KEY,   OTHER_CLASS     )),
-    std::make_pair(DCM_PatientsWeight,                  DB_FindAttr( DCM_PatientsWeight,                        STUDY_LEVEL,    OPTIONAL_KEY,   OTHER_CLASS     )),
-    std::make_pair(DCM_NumberOfStudyRelatedSeries,      DB_FindAttr( DCM_NumberOfStudyRelatedSeries,            STUDY_LEVEL,    OPTIONAL_KEY,   STRING_CLASS    )),
-    std::make_pair(DCM_NumberOfStudyRelatedInstances,   DB_FindAttr( DCM_NumberOfStudyRelatedInstances,         STUDY_LEVEL,    OPTIONAL_KEY,   STRING_CLASS    )),
-    std::make_pair(DCM_SeriesNumber,                    DB_FindAttr( DCM_SeriesNumber,                          SERIE_LEVEL,    REQUIRED_KEY,   OTHER_CLASS     )),
-    std::make_pair(DCM_SeriesInstanceUID,               DB_FindAttr( DCM_SeriesInstanceUID,                     SERIE_LEVEL,    UNIQUE_KEY,     UID_CLASS       )),
-    std::make_pair(DCM_Modality,                        DB_FindAttr( DCM_Modality,                              SERIE_LEVEL,    OPTIONAL_KEY,   STRING_CLASS    )),
-    std::make_pair(DCM_NumberOfSeriesRelatedInstances,  DB_FindAttr( DCM_NumberOfSeriesRelatedInstances,        IMAGE_LEVEL,    UNIQUE_KEY,     STRING_CLASS    )),
-    std::make_pair(DCM_InstanceNumber,                  DB_FindAttr( DCM_InstanceNumber,                        IMAGE_LEVEL,    REQUIRED_KEY,   OTHER_CLASS     )),
-    std::make_pair(DCM_SOPInstanceUID,                  DB_FindAttr( DCM_SOPInstanceUID,                        IMAGE_LEVEL,    UNIQUE_KEY,     UID_CLASS       ))
+static const std::pair<wstring, DB_FindAttr> patientRootFindAttr[] = {
+    std::make_pair(L"id",               DB_FindAttr( DCM_PatientID,                             PATIENT_LEVEL,  UNIQUE_KEY,     UID_CLASS       )),
+    std::make_pair(L"study_count",      DB_FindAttr( DCM_NumberOfPatientRelatedStudies,         PATIENT_LEVEL,  OPTIONAL_KEY,   OTHER_CLASS     )),
+    std::make_pair(L"series_count",     DB_FindAttr( DCM_NumberOfPatientRelatedSeries,          PATIENT_LEVEL,  OPTIONAL_KEY,   OTHER_CLASS     )),
+    std::make_pair(L"instance_count",   DB_FindAttr( DCM_NumberOfPatientRelatedInstances,       PATIENT_LEVEL,  OPTIONAL_KEY,   OTHER_CLASS     ))
 };
-static const std::map<DcmTagKey, DB_FindAttr> TbFindAttr(arrayFindAttr, arrayFindAttr + sizeof(arrayFindAttr));
+static const int patientRootFindAttrNum = sizeof(patientRootFindAttr) / sizeof(std::pair<OFString, DB_FindAttr>);
+static const std::pair<wstring, DB_FindAttr> patientFindAttr[] = {
+    std::make_pair(L"name",             DB_FindAttr( DCM_PatientsName,                          PATIENT_LEVEL,  REQUIRED_KEY,   STRING_CLASS    )),
+    std::make_pair(L"birthday",         DB_FindAttr( DCM_PatientsBirthDate,                     PATIENT_LEVEL,  OPTIONAL_KEY,   DATE_CLASS      )),
+    std::make_pair(L"sex",              DB_FindAttr( DCM_PatientsSex,                           PATIENT_LEVEL,  OPTIONAL_KEY,   STRING_CLASS    )),
+    std::make_pair(L"height",           DB_FindAttr( DCM_PatientsSize,                          PATIENT_LEVEL,  OPTIONAL_KEY,   OTHER_CLASS     )),
+    std::make_pair(L"weight",           DB_FindAttr( DCM_PatientsWeight,                        PATIENT_LEVEL,  OPTIONAL_KEY,   OTHER_CLASS     )),
+};
+static const int patientFindAttrNum = sizeof(patientFindAttr) / sizeof(std::pair<OFString, DB_FindAttr>);
+static const std::pair<wstring, DB_FindAttr> studyFindAttr[] = {
+    std::make_pair(L"id",               DB_FindAttr( DCM_StudyInstanceUID,                      STUDY_LEVEL,    UNIQUE_KEY,     UID_CLASS       )),
+    std::make_pair(L"date",             DB_FindAttr( DCM_StudyDate,                             STUDY_LEVEL,    REQUIRED_KEY,   DATE_CLASS      )),
+    std::make_pair(L"time",             DB_FindAttr( DCM_StudyTime,                             STUDY_LEVEL,    REQUIRED_KEY,   TIME_CLASS      )),
+    std::make_pair(L"study_id",         DB_FindAttr( DCM_StudyID,                               STUDY_LEVEL,    REQUIRED_KEY,   STRING_CLASS    )),
+    std::make_pair(L"accession_number", DB_FindAttr( DCM_AccessionNumber,                       STUDY_LEVEL,    REQUIRED_KEY,   STRING_CLASS    )),
+    std::make_pair(L"modality",         DB_FindAttr( DCM_ModalitiesInStudy,                     STUDY_LEVEL,    OPTIONAL_KEY,   STRING_CLASS    )),
+    std::make_pair(L"series_count",     DB_FindAttr( DCM_NumberOfStudyRelatedSeries,            STUDY_LEVEL,    OPTIONAL_KEY,   OTHER_CLASS     )),
+    std::make_pair(L"instance_count",   DB_FindAttr( DCM_NumberOfStudyRelatedInstances,         STUDY_LEVEL,    OPTIONAL_KEY,   OTHER_CLASS     ))
+};
+static const int studyFindAttrNum = sizeof(studyFindAttr) / sizeof(std::pair<OFString, DB_FindAttr>);
+static const std::pair<wstring, DB_FindAttr> seriesFindAttr[] = {
+    std::make_pair(L"id",               DB_FindAttr( DCM_SeriesInstanceUID,                     SERIE_LEVEL,    UNIQUE_KEY,     UID_CLASS       )),
+    std::make_pair(L"number",           DB_FindAttr( DCM_SeriesNumber,                          SERIE_LEVEL,    REQUIRED_KEY,   OTHER_CLASS     )),
+    std::make_pair(L"modality",         DB_FindAttr( DCM_Modality,                              SERIE_LEVEL,    OPTIONAL_KEY,   STRING_CLASS    )),
+    std::make_pair(L"instance_count",   DB_FindAttr( DCM_NumberOfSeriesRelatedInstances,        SERIE_LEVEL,    OPTIONAL_KEY,   OTHER_CLASS     ))
+};
+static const int seriesFindAttrNum = sizeof(seriesFindAttr) / sizeof(std::pair<OFString, DB_FindAttr>);
+static const std::pair<wstring, DB_FindAttr> instanceFindAttr[] = {
+    std::make_pair(L"id",               DB_FindAttr( DCM_SOPInstanceUID,                        IMAGE_LEVEL,    UNIQUE_KEY,     UID_CLASS       )),
+    std::make_pair(L"number",           DB_FindAttr( DCM_InstanceNumber,                        IMAGE_LEVEL,    REQUIRED_KEY,   OTHER_CLASS     )),
+    std::make_pair(L"sop_class_uid",    DB_FindAttr( DCM_SOPClassUID,                           IMAGE_LEVEL,    OPTIONAL_KEY,   UID_CLASS       ))
+};
+static const int instanceFindAttrNum = sizeof(instanceFindAttr) / sizeof(std::pair<OFString, DB_FindAttr>);
 
 /* ========================= static functions ========================= */
+static void fill_dcmdataset(_variant_t &vt, DcmDataset &ds, const DB_FindAttr &dbf)
+{
+    if(vt.vt == VT_NULL)
+    {
+        if(dbf.keyAttr == REQUIRED_KEY || dbf.keyAttr == UNIQUE_KEY)
+        {
+            if(dbf.keyClass == UID_CLASS)
+                ds.putAndInsertString(dbf.tag, "1.2.3.4.5.6.7.8.9.0");
+            else if(dbf.keyClass == STRING_CLASS)
+                ds.putAndInsertString(dbf.tag, "FIND_MOCK_VALUE");
+            else // OTHER_CLASS
+                ds.putAndInsertString(dbf.tag, "0");
+        }
+    }
+    else
+    {
+        if(vt.vt != VT_BSTR) vt.ChangeType(VT_BSTR);
+        ds.putAndInsertString(dbf.tag, (_bstr_t)vt);
+    }
+}
+
+/* ========================= method functions ========================= */
 OFCondition DcmQueryRetrieveXmlDatabaseHandle::testFindRequestList(DcmDataset *findRequestIdentifiers,
     DB_LEVEL queryLevel, DB_LEVEL infLevel, DB_LEVEL lowestLevel)
 {
@@ -96,7 +131,12 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::extractMultiValues(char *ids, set<stri
     {
         if(strlen(token) && strcmp("*", token))
         {
-            id_set.insert(token);
+            string str(token);
+            // trim '*'
+            str.erase(find_if(str.rbegin(), str.rend(), [](const char c){ return c != '*'; }).base(), str.end());
+            str.erase(str.begin(), find_if(str.begin(), str.end(), [](const char c){ return c != '*'; }));
+
+            id_set.insert(str);
             ++num;
         }
         token = strtok_s(NULL, seps, &next_token);
@@ -139,9 +179,8 @@ StudyDataFilter::StudyDataFilter(const char *date)
     }
 }
 
-/* ========================= method functions ========================= */
 DcmQueryRetrieveXmlDatabaseHandle::DcmQueryRetrieveXmlDatabaseHandle(const char *storage, long maxStudiesPerStorageArea,
-        long maxBytesPerStudy, OFCondition& result) : DcmQueryRetrieveDatabaseHandle(),
+        long maxBytesPerStudy, OFCondition& result) : DcmQueryRetrieveDatabaseHandle(), req(NULL),
         doCheckFindIdentifier(OFFalse), doCheckMoveIdentifier(OFFalse), debugLevel(0),
         rootLevel(PATIENT_LEVEL), lowestLevel(IMAGE_LEVEL), queryLevel(STUDY_LEVEL)
 {
@@ -434,7 +473,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findRequestFilter(DcmDataset *findRequ
 remove_patient_from_root:
         pXmlDom->documentElement->removeChild(ps);
     }
-    CERR << (LPCSTR)pXmlDom->xml << endl;
+    if(debugLevel == 3) CERR << (LPCSTR)pXmlDom->xml << endl;
     return num;
 }
 
@@ -503,23 +542,137 @@ OFCondition DcmQueryRetrieveXmlDatabaseHandle::startFindRequest(const char *SOPC
         status->setStatus(STATUS_FIND_Refused_OutOfResources);
         return cond;
     }
-    /*
-    if(findRequestFilter(findRequestIdentifiers))
-        status->setStatus(STATUS_Pending);
-    else*/
+    
+    if(0 == findRequestFilter(findRequestIdentifiers))
+    {
         status->setStatus(STATUS_Success);
+        return cond;
+    }
+    req = findRequestIdentifiers;
+    status->setStatus(STATUS_Pending);
     return cond;
+}
+
+bool DcmQueryRetrieveXmlDatabaseHandle::fillNextElementToDcmdataset()
+{
+    MSXML2::IXMLDOMElementPtr inst;
+    if(inl) inst = inl->nextNode();
+    if(inst == NULL)
+    {
+        if(sel) se = sel->nextNode();
+        if(se == NULL)
+        {
+            if(stl) st = stl->nextNode();
+            if(st == NULL)
+            {
+                ds.clear();
+                ds.putAndInsertString(DCM_SpecificCharacterSet, "ISO_IR 100");
+                switch(queryLevel)
+                {
+                case PATIENT_LEVEL:
+                    ds.putAndInsertString(DCM_QueryRetrieveLevel, PATIENT_LEVEL_STRING);
+                    break;
+                case STUDY_LEVEL:
+                    ds.putAndInsertString(DCM_QueryRetrieveLevel, STUDY_LEVEL_STRING);
+                    break;
+                case SERIE_LEVEL:
+                    ds.putAndInsertString(DCM_QueryRetrieveLevel, SERIE_LEVEL_STRING);
+                    break;
+                case IMAGE_LEVEL:
+                    ds.putAndInsertString(DCM_QueryRetrieveLevel, IMAGE_LEVEL_STRING);
+                    break;
+                default:
+                    ds.insertEmptyElement(DCM_QueryRetrieveLevel);
+                }
+
+                if(ptl == NULL) ptl = pXmlDom->documentElement->selectNodes(L"patient_root[@id]");
+                pt = ptl->nextNode();
+                if(pt)
+                {
+                    for(int i = 0; i < patientRootFindAttrNum; ++i)
+                    {
+                        _variant_t vt(pt->getAttribute(patientRootFindAttr[i].first.c_str()));
+                        fill_dcmdataset(vt, ds, patientRootFindAttr[i].second);
+                    }
+                    stl = pt->selectNodes(L"study[@id]");
+                    st = stl->nextNode();
+                }
+            }
+            if(st)
+            {
+                for(int i = 0; i < studyFindAttrNum; ++i)
+                {
+                    _variant_t vt(st->getAttribute(studyFindAttr[i].first.c_str()));
+                    fill_dcmdataset(vt, ds, studyFindAttr[i].second);
+                }
+                MSXML2::IXMLDOMElementPtr patient = st->selectSingleNode(L"patient");
+                for(int i = 0; i < patientFindAttrNum; ++i)
+                {
+                    _variant_t vt(NULL);
+                    if(patient) vt = patient->getAttribute(patientFindAttr[i].first.c_str());
+                    fill_dcmdataset(vt, ds, patientFindAttr[i].second);
+                }
+
+                if(queryLevel == STUDY_LEVEL || queryLevel == PATIENT_LEVEL)
+                {
+                    return true;
+                }
+
+                sel = st->selectNodes(L"series[@id]");
+                se = sel->nextNode();
+            }
+        }
+        if(se)
+        {
+            for(int i = 0; i < seriesFindAttrNum; ++i)
+            {
+                _variant_t vt(se->getAttribute(seriesFindAttr[i].first.c_str()));
+                fill_dcmdataset(vt, ds, seriesFindAttr[i].second);
+            }
+            inl = se->selectNodes(L"instance[@id]");
+            inst = inl->nextNode();
+        }
+    }
+    if(inst)
+    {
+        for(int i = 0; i < instanceFindAttrNum; ++i)
+        {
+            _variant_t vt(inst->getAttribute(instanceFindAttr[i].first.c_str()));
+            fill_dcmdataset(vt, ds, instanceFindAttr[i].second);
+        }
+        if(req)
+        {
+            DcmObject *dO = NULL;
+            while(dO = req->nextInContainer(dO))
+            {
+                DcmElement *de = OFdynamic_cast(DcmElement*, dO);
+                if(de && de->isLeaf()) ds.insertEmptyElement(de->getTag(), false);
+            }
+        }
+    }
+    return (inst != NULL);
 }
 
 OFCondition DcmQueryRetrieveXmlDatabaseHandle::nextFindResponse(
     DcmDataset **findResponseIdentifiers, DcmQueryRetrieveDatabaseStatus *status)
 {
+    if(fillNextElementToDcmdataset())
+    {
+        *findResponseIdentifiers = new DcmDataset(ds);
+        status->setStatus(STATUS_Pending);
+    }
+    else
+    {
+        *findResponseIdentifiers = NULL;
+        status->setStatus(STATUS_Success);
+    }
     return EC_Normal;
 }
 
 OFCondition DcmQueryRetrieveXmlDatabaseHandle::cancelFindRequest(
     DcmQueryRetrieveDatabaseStatus *status)
 {
+    status->setStatus(STATUS_FIND_Cancel_MatchingTerminatedDueToCancelRequest);
     return EC_Normal;
 }
 

@@ -129,14 +129,22 @@ DcmTag& DcmTag::operator= ( const DcmTag& tag )
 
 void DcmTag::lookupVRinDictionary()
 {
-    const DcmDataDictionary& globalDataDict = dcmDataDict.rdlock();
-    const DcmDictEntry *dictRef = globalDataDict.findEntry(*this, privateCreator);
-    if (dictRef)
+    if(getXTag().hash() == 0x00400512) //DCM_ContainerIdentifier
     {
-        vr = dictRef->getVR();
-        errorFlag = EC_Normal;
+        vr = EVR_LO;
+        updateTagName("Container Identifier");
     }
-    dcmDataDict.unlock();
+    else
+    {
+        const DcmDataDictionary& globalDataDict = dcmDataDict.rdlock();
+        const DcmDictEntry *dictRef = globalDataDict.findEntry(*this, privateCreator);
+        if (dictRef)
+        {
+            vr = dictRef->getVR();
+            errorFlag = EC_Normal;
+        }
+        dcmDataDict.unlock();
+    }
 }
 
 // ********************************
