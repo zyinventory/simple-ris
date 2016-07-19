@@ -608,7 +608,7 @@ static int wadoRequest(const char *flag)
 			goto study_process_error;
 		if(cgiFormNotFound == cgiFormString("objectUID", objectUID, 65) || strlen(objectUID) == 0)
 			goto study_process_error;
-		int pathlen = sprintf_s(instancePath, MAX_PATH, "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\%s\\",
+		int pathlen = sprintf_s(instancePath, MAX_PATH, "archdir\\v0000000\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\%s\\",
 			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID, hashBuf);
 		SeriesInstancePath(seriesUID, objectUID, instancePath + pathlen, MAX_PATH - pathlen);
 
@@ -629,9 +629,9 @@ static int wadoRequest(const char *flag)
 	else //generate study list
 	{
 		char dirpath[MAX_PATH], xmlpath[MAX_PATH];
-		sprintf_s(dirpath, MAX_PATH, "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\DICOMDIR",
+		sprintf_s(dirpath, MAX_PATH, "archdir\\v0000000\\%c%c\\%c%c\\%c%c\\%c%c\\%s.dir",
 			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
-		sprintf_s(xmlpath, MAX_PATH, "archdir\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\dicomdir.xml",
+		sprintf_s(xmlpath, MAX_PATH, "archdir\\v0000000\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml",
 			hashBuf[0], hashBuf[1], hashBuf[2], hashBuf[3], hashBuf[4], hashBuf[5], hashBuf[6], hashBuf[7], studyUID);
 		if(!DicomDir2Xml(dirpath, xmlpath)) goto study_process_error;
 
