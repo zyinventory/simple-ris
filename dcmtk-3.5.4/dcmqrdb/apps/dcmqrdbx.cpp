@@ -203,7 +203,7 @@ DcmQueryRetrieveXmlDatabaseHandle::DcmQueryRetrieveXmlDatabaseHandle(const char 
 }
 
 bool DcmQueryRetrieveXmlDatabaseHandle::add_study(MSXML2::IXMLDOMElementPtr &pStudy,
-    const set<string> &pids, const StudyDataFilter &date_filter)
+    const set<string> &pids, const StudyDataFilter &date_filter, bool study_only)
 {
     char buff[MAX_PATH];
     if(pStudy == NULL) return false;
@@ -230,25 +230,51 @@ bool DcmQueryRetrieveXmlDatabaseHandle::add_study(MSXML2::IXMLDOMElementPtr &pSt
     MSXML2::IXMLDOMElementPtr exist_study_node = patient_node->selectSingleNode(buff);
     if(exist_study_node == NULL)
     {
-        exist_study_node = pStudy->cloneNode(VARIANT_TRUE);
-        MSXML2::IXMLDOMNodeListPtr series_list = exist_study_node->selectNodes(L"series");
         long instance_count = 0, series_count = 0;
-        for(long i = series_list->length - 1; i >= 0; --i)
+        if(study_only)
         {
-            MSXML2::IXMLDOMElementPtr series = series_list->Getitem(i);
-            MSXML2::IXMLDOMNodeListPtr inst_list = series->selectNodes(L"instance[@id]");
-            if(inst_list->length)
+            exist_study_node = pStudy->cloneNode(VARIANT_FALSE);
+            MSXML2::IXMLDOMNodePtr patient = pStudy->selectSingleNode(L"patient");
+            if(patient) exist_study_node->appendChild(patient->cloneNode(VARIANT_FALSE));
+
+            _variant_t sc = exist_study_node->getAttribute(L"series_count");
+            if(sc.vt == VT_NULL) series_count = 0;
+            else
             {
-                series->setAttribute(L"instance_count", inst_list->length);
-                instance_count += inst_list->length;
-                ++series_count;
+                sc.ChangeType(VT_I4);
+                series_count = sc.lVal;
             }
-            else exist_study_node->removeChild(series);
+            _variant_t ic = exist_study_node->getAttribute(L"instance_count");
+            if(ic.vt == VT_NULL) instance_count = 0;
+            else
+            {
+                ic.ChangeType(VT_I4);
+                instance_count = ic.lVal;
+            }
         }
-        if(instance_count > 0 && series_count > 0)
+        else
         {
+            exist_study_node = pStudy->cloneNode(VARIANT_TRUE);
+
+            MSXML2::IXMLDOMNodeListPtr series_list = exist_study_node->selectNodes(L"series");
+            for(long i = series_list->length - 1; i >= 0; --i)
+            {
+                MSXML2::IXMLDOMElementPtr series = series_list->Getitem(i);
+                MSXML2::IXMLDOMNodeListPtr inst_list = series->selectNodes(L"instance[@id]");
+                if(inst_list->length)
+                {
+                    series->setAttribute(L"instance_count", inst_list->length);
+                    instance_count += inst_list->length;
+                    ++series_count;
+                }
+                else exist_study_node->removeChild(series);
+            }
             exist_study_node->setAttribute(L"instance_count", instance_count);
             exist_study_node->setAttribute(L"series_count", series_count);
+        }
+
+        if(instance_count > 0 && series_count > 0)
+        {
             patient_node->appendChild(exist_study_node);
 
             _variant_t stc = patient_node->getAttribute(L"study_count");
@@ -314,21 +340,36 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyDate(const StudyDataFilter 
             if(pDomDate->load(_variant_t(buff)) == VARIANT_FALSE)
                 THROW_HR_TO_COM_ERROR(STG_E_ACCESSDENIED, OLESTR("pDomDate->load()"));
 
-            MSXML2::IXMLDOMNodeListPtr study_uids = pDomDate->documentElement->selectNodes(L"study/@id");
-            while(MSXML2::IXMLDOMNodePtr pStudyUID = study_uids->nextNode())
+            bool study_only = (queryLevel == PATIENT_LEVEL || queryLevel == STUDY_LEVEL);
+            if(study_only)
             {
-                HashStrW((LPCWSTR)pStudyUID->text, hash, sizeof(hash));
-                sprintf_s(buff, "%s\\pacs\\indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml", getPacsBase(),
-                    hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], (LPCSTR)pStudyUID->text);
-                try {
-                    MSXML2::IXMLDOMDocument2Ptr pDomStudy;
-                    hr = pDomStudy.CreateInstance(__uuidof(MSXML2::DOMDocument30), NULL, CLSCTX_INPROC_SERVER);
-                    if(FAILED(hr)) THROW_HR_TO_COM_ERROR(hr, OLESTR("pDomStudy.CreateInstance()"));
-                    if(pDomStudy->load(_variant_t(buff)) == VARIANT_FALSE || pDomStudy->documentElement == NULL)
-                        THROW_HR_TO_COM_ERROR(STG_E_ACCESSDENIED, OLESTR("pDomStudy->load()"));
-                    if(add_study(pDomStudy->documentElement, empty_pid_set, date_filter)) ++num;
+                MSXML2::IXMLDOMNodeListPtr studies = pDomDate->documentElement->selectNodes(L"study");
+                while(MSXML2::IXMLDOMElementPtr pStudy = studies->nextNode())
+                {
+                    try {
+                        if(add_study(pStudy, empty_pid_set, date_filter, study_only)) ++num;
+                    }
+                    CATCH_COM_ERROR(__FUNCSIG__, CERR);
                 }
-                CATCH_COM_ERROR(__FUNCSIG__, CERR);
+            }
+            else
+            {
+                MSXML2::IXMLDOMNodeListPtr study_uids = pDomDate->documentElement->selectNodes(L"study/@id");
+                while(MSXML2::IXMLDOMNodePtr pStudyUID = study_uids->nextNode())
+                {
+                    HashStrW((LPCWSTR)pStudyUID->text, hash, sizeof(hash));
+                    sprintf_s(buff, "%s\\pacs\\indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml", getPacsBase(),
+                        hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], (LPCSTR)pStudyUID->text);
+                    try {
+                        MSXML2::IXMLDOMDocument2Ptr pDomStudy;
+                        hr = pDomStudy.CreateInstance(__uuidof(MSXML2::DOMDocument30), NULL, CLSCTX_INPROC_SERVER);
+                        if(FAILED(hr)) THROW_HR_TO_COM_ERROR(hr, OLESTR("pDomStudy.CreateInstance()"));
+                        if(pDomStudy->load(_variant_t(buff)) == VARIANT_FALSE || pDomStudy->documentElement == NULL)
+                            THROW_HR_TO_COM_ERROR(STG_E_ACCESSDENIED, OLESTR("pDomStudy->load()"));
+                        if(add_study(pDomStudy->documentElement, empty_pid_set, date_filter, study_only)) ++num;
+                    }
+                    CATCH_COM_ERROR(__FUNCSIG__, CERR);
+                }
             }
         }
         CATCH_COM_ERROR(__FUNCSIG__, CERR);
@@ -388,21 +429,36 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByPatientIDs(const set<string> &pi
             if(pDomPatient->load(_variant_t(buff)) == VARIANT_FALSE)
                 THROW_HR_TO_COM_ERROR(STG_E_ACCESSDENIED, OLESTR("pDomPatient->load()"));
 
-            MSXML2::IXMLDOMNodeListPtr study_uids = pDomPatient->documentElement->selectNodes(L"study/@id");
-            while(MSXML2::IXMLDOMNodePtr pStudyUID = study_uids->nextNode())
+            bool study_only = (queryLevel == PATIENT_LEVEL || queryLevel == STUDY_LEVEL);
+            if(study_only)
             {
-                HashStrW((LPCWSTR)pStudyUID->text, hash, sizeof(hash));
-                sprintf_s(buff, "%s\\pacs\\indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml", getPacsBase(),
-                    hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], (LPCSTR)pStudyUID->text);
-                try {
-                    MSXML2::IXMLDOMDocument2Ptr pDomStudy;
-                    hr = pDomStudy.CreateInstance(__uuidof(MSXML2::DOMDocument30), NULL, CLSCTX_INPROC_SERVER);
-                    if(FAILED(hr)) THROW_HR_TO_COM_ERROR(hr, OLESTR("pDomStudy.CreateInstance()"));
-                    if(pDomStudy->load(_variant_t(buff)) == VARIANT_FALSE || pDomStudy->documentElement == NULL)
-                        THROW_HR_TO_COM_ERROR(STG_E_ACCESSDENIED, OLESTR("pDomStudy->load()"));
-                    if(add_study(pDomStudy->documentElement, pids, date_filter)) ++num;
+                MSXML2::IXMLDOMNodeListPtr studies = pDomPatient->documentElement->selectNodes(L"study");
+                while(MSXML2::IXMLDOMElementPtr pStudy = studies->nextNode())
+                {
+                    try {
+                        if(add_study(pStudy, pids, date_filter, study_only)) ++num;
+                    }
+                    CATCH_COM_ERROR(__FUNCSIG__, CERR);
                 }
-                CATCH_COM_ERROR(__FUNCSIG__, CERR);
+            }
+            else
+            {
+                MSXML2::IXMLDOMNodeListPtr study_uids = pDomPatient->documentElement->selectNodes(L"study/@id");
+                while(MSXML2::IXMLDOMNodePtr pStudyUID = study_uids->nextNode())
+                {
+                    HashStrW((LPCWSTR)pStudyUID->text, hash, sizeof(hash));
+                    sprintf_s(buff, "%s\\pacs\\indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml", getPacsBase(),
+                        hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], (LPCSTR)pStudyUID->text);
+                    try {
+                        MSXML2::IXMLDOMDocument2Ptr pDomStudy;
+                        hr = pDomStudy.CreateInstance(__uuidof(MSXML2::DOMDocument30), NULL, CLSCTX_INPROC_SERVER);
+                        if(FAILED(hr)) THROW_HR_TO_COM_ERROR(hr, OLESTR("pDomStudy.CreateInstance()"));
+                        if(pDomStudy->load(_variant_t(buff)) == VARIANT_FALSE || pDomStudy->documentElement == NULL)
+                            THROW_HR_TO_COM_ERROR(STG_E_ACCESSDENIED, OLESTR("pDomStudy->load()"));
+                        if(add_study(pDomStudy->documentElement, pids, date_filter, study_only)) ++num;
+                    }
+                    CATCH_COM_ERROR(__FUNCSIG__, CERR);
+                }
             }
         }
         CATCH_COM_ERROR(__FUNCSIG__, CERR);
