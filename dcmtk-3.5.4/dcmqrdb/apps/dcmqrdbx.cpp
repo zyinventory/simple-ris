@@ -669,10 +669,7 @@ bool DcmQueryRetrieveXmlDatabaseHandle::fillNextElementToDcmdataset()
                     fill_dcmdataset(vt, ds, patientFindAttr[i].second);
                 }
 
-                if(queryLevel == STUDY_LEVEL || queryLevel == PATIENT_LEVEL)
-                {
-                    return true;
-                }
+                if(queryLevel == STUDY_LEVEL || queryLevel == PATIENT_LEVEL) return true;
 
                 sel = st->selectNodes(L"series[@id]");
                 se = sel->nextNode();
@@ -685,6 +682,8 @@ bool DcmQueryRetrieveXmlDatabaseHandle::fillNextElementToDcmdataset()
                 _variant_t vt(se->getAttribute(seriesFindAttr[i].first.c_str()));
                 fill_dcmdataset(vt, ds, seriesFindAttr[i].second);
             }
+            if(queryLevel == SERIE_LEVEL) return true;
+
             inl = se->selectNodes(L"instance[@id]");
             inst = inl->nextNode();
         }
