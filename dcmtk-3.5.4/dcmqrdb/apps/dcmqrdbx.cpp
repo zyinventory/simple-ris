@@ -135,8 +135,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::extractMultiValues(char *ids, set<stri
             // trim '*'
             str.erase(find_if(str.rbegin(), str.rend(), [](const char c){ return c != '*'; }).base(), str.end());
             str.erase(str.begin(), find_if(str.begin(), str.end(), [](const char c){ return c != '*'; }));
-
-            id_set.insert(str);
+            if(str.length()) id_set.insert(str);
             ++num;
         }
         token = strtok_s(NULL, seps, &next_token);
@@ -203,7 +202,8 @@ DcmQueryRetrieveXmlDatabaseHandle::DcmQueryRetrieveXmlDatabaseHandle(const char 
 }
 
 bool DcmQueryRetrieveXmlDatabaseHandle::add_study(MSXML2::IXMLDOMElementPtr &pStudy,
-    const set<string> &pids, const StudyDataFilter &date_filter, bool study_only)
+    const set<string> &pids, const set<string> &ser_uids, const set<string> &inst_uids,
+    const StudyDataFilter &date_filter, bool study_only)
 {
     char buff[MAX_PATH];
     if(pStudy == NULL) return false;
@@ -256,16 +256,40 @@ bool DcmQueryRetrieveXmlDatabaseHandle::add_study(MSXML2::IXMLDOMElementPtr &pSt
         {
             exist_study_node = pStudy->cloneNode(VARIANT_TRUE);
 
-            MSXML2::IXMLDOMNodeListPtr series_list = exist_study_node->selectNodes(L"series");
+            MSXML2::IXMLDOMNodeListPtr series_list = exist_study_node->selectNodes(L"series[@id]");
             for(long i = series_list->length - 1; i >= 0; --i)
             {
                 MSXML2::IXMLDOMElementPtr series = series_list->Getitem(i);
-                MSXML2::IXMLDOMNodeListPtr inst_list = series->selectNodes(L"instance[@id]");
-                if(inst_list->length)
+                _bstr_t se_id(series ? series->getAttribute(L"id") : L"");
+
+                bool ser_uid_match = (se_id.length() > 0);
+                if(ser_uid_match && ser_uids.size())
+                    ser_uid_match = (ser_uids.end() != ser_uids.find((LPCSTR)se_id));
+
+                if(ser_uid_match)
                 {
-                    series->setAttribute(L"instance_count", inst_list->length);
-                    instance_count += inst_list->length;
-                    ++series_count;
+                    long inst_per_series_count = 0;
+                    MSXML2::IXMLDOMNodeListPtr inst_list = series->selectNodes(L"instance[@id]");
+                    for(long j = inst_list->length - 1; j >= 0; --j)
+                    {
+                        MSXML2::IXMLDOMElementPtr inst = inst_list->Getitem(j);
+                        _bstr_t inst_id(inst ? inst->getAttribute(L"id") : L"");
+
+                        bool inst_uid_match = (inst_id.length() > 0);
+                        if(inst_uid_match && inst_uids.size())
+                            inst_uid_match = (inst_uids.end() != inst_uids.find((LPCSTR)inst_id));
+
+                        if(inst_uid_match) ++inst_per_series_count;
+                        else series->removeChild(inst);
+                    }
+
+                    if(inst_list->length)
+                    {
+                        series->setAttribute(L"instance_count", inst_per_series_count);
+                        instance_count += inst_per_series_count;
+                        ++series_count;
+                    }
+                    else exist_study_node->removeChild(series);
                 }
                 else exist_study_node->removeChild(series);
             }
@@ -312,7 +336,8 @@ bool DcmQueryRetrieveXmlDatabaseHandle::add_study(MSXML2::IXMLDOMElementPtr &pSt
     return false;
 }
 
-size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyDate(const StudyDataFilter &date_filter)
+size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyDate(const set<string> &ser_uids,
+    const set<string> &inst_uids, const StudyDataFilter &date_filter)
 {
     if(debugLevel)
     {
@@ -326,7 +351,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyDate(const StudyDataFilter 
     else return 0;
 
     size_t num = 0;
-    set<string> empty_pid_set;
+    set<string> empty_set;
     if(strlen(date) == 8 && strcmp(date, "99999999"))
     {
         char buff[260], hash[9];
@@ -347,7 +372,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyDate(const StudyDataFilter 
                 while(MSXML2::IXMLDOMElementPtr pStudy = studies->nextNode())
                 {
                     try {
-                        if(add_study(pStudy, empty_pid_set, date_filter, study_only)) ++num;
+                        if(add_study(pStudy, empty_set, ser_uids, inst_uids, date_filter, study_only)) ++num;
                     }
                     CATCH_COM_ERROR(__FUNCSIG__, CERR);
                 }
@@ -366,7 +391,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyDate(const StudyDataFilter 
                         if(FAILED(hr)) THROW_HR_TO_COM_ERROR(hr, OLESTR("pDomStudy.CreateInstance()"));
                         if(pDomStudy->load(_variant_t(buff)) == VARIANT_FALSE || pDomStudy->documentElement == NULL)
                             THROW_HR_TO_COM_ERROR(STG_E_ACCESSDENIED, OLESTR("pDomStudy->load()"));
-                        if(add_study(pDomStudy->documentElement, empty_pid_set, date_filter, study_only)) ++num;
+                        if(add_study(pDomStudy->documentElement, empty_set, ser_uids, inst_uids, date_filter, study_only)) ++num;
                     }
                     CATCH_COM_ERROR(__FUNCSIG__, CERR);
                 }
@@ -378,7 +403,8 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyDate(const StudyDataFilter 
 }
 
 size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyUIDs(const set<string> &study_uids,
-    const set<string> &pids, const StudyDataFilter &date_filter)
+    const set<string> &pids, const set<string> &ser_uids, const set<string> &inst_uids,
+    const StudyDataFilter &date_filter)
 {
     if(debugLevel)
     {
@@ -399,14 +425,15 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyUIDs(const set<string> &stu
             if(FAILED(hr)) THROW_HR_TO_COM_ERROR(hr, OLESTR("pDomStudy.CreateInstance()"));
             if(pDomStudy->load(_variant_t(buff)) == VARIANT_FALSE || pDomStudy->documentElement == NULL)
                 THROW_HR_TO_COM_ERROR(STG_E_ACCESSDENIED, OLESTR("pDomStudy->load()"));
-            if(add_study(pDomStudy->documentElement, pids, date_filter)) ++num;
+            if(add_study(pDomStudy->documentElement, pids, ser_uids, inst_uids, date_filter)) ++num;
         }
         CATCH_COM_ERROR(__FUNCSIG__, CERR);
     }
     return num;
 }
 
-size_t DcmQueryRetrieveXmlDatabaseHandle::findByPatientIDs(const set<string> &pids, const StudyDataFilter &date_filter)
+size_t DcmQueryRetrieveXmlDatabaseHandle::findByPatientIDs(const set<string> &pids,
+    const set<string> &ser_uids, const set<string> &inst_uids, const StudyDataFilter &date_filter)
 {
     if(debugLevel)
     {
@@ -436,7 +463,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByPatientIDs(const set<string> &pi
                 while(MSXML2::IXMLDOMElementPtr pStudy = studies->nextNode())
                 {
                     try {
-                        if(add_study(pStudy, pids, date_filter, study_only)) ++num;
+                        if(add_study(pStudy, pids, ser_uids, inst_uids, date_filter, study_only)) ++num;
                     }
                     CATCH_COM_ERROR(__FUNCSIG__, CERR);
                 }
@@ -455,7 +482,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByPatientIDs(const set<string> &pi
                         if(FAILED(hr)) THROW_HR_TO_COM_ERROR(hr, OLESTR("pDomStudy.CreateInstance()"));
                         if(pDomStudy->load(_variant_t(buff)) == VARIANT_FALSE || pDomStudy->documentElement == NULL)
                             THROW_HR_TO_COM_ERROR(STG_E_ACCESSDENIED, OLESTR("pDomStudy->load()"));
-                        if(add_study(pDomStudy->documentElement, pids, date_filter, study_only)) ++num;
+                        if(add_study(pDomStudy->documentElement, pids, ser_uids, inst_uids, date_filter, study_only)) ++num;
                     }
                     CATCH_COM_ERROR(__FUNCSIG__, CERR);
                 }
@@ -468,7 +495,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByPatientIDs(const set<string> &pi
 
 size_t DcmQueryRetrieveXmlDatabaseHandle::findRequestFilter(DcmDataset *findRequestIdentifiers)
 {
-    set<string> patient_ids, study_uids;
+    set<string> patient_ids, study_uids, series_uids, instance_uids;
     StudyDataFilter study_dates;
 
     DcmElement *pDateIDElem = NULL;
@@ -498,9 +525,27 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findRequestFilter(DcmDataset *findRequ
         if(pStudyUIDs) extractMultiValues(pStudyUIDs, study_uids);
     }
 
-    if(study_uids.size()) findByStudyUIDs(study_uids, patient_ids, study_dates);
-    else if(patient_ids.size()) findByPatientIDs(patient_ids, study_dates);
-    else findByStudyDate(study_dates);
+    DcmElement *pSeriesUIDElem = NULL;
+    findRequestIdentifiers->findAndGetElement(DCM_SeriesInstanceUID, pSeriesUIDElem);
+    if(pSeriesUIDElem)
+    {
+        char *pSeriesUIDs = NULL;
+        pSeriesUIDElem->getString(pSeriesUIDs);
+        if(pSeriesUIDs) extractMultiValues(pSeriesUIDs, series_uids);
+    }
+
+    DcmElement *pInstanceUIDElem = NULL;
+    findRequestIdentifiers->findAndGetElement(DCM_SOPInstanceUID, pInstanceUIDElem);
+    if(pInstanceUIDElem)
+    {
+        char *pInstUIDs = NULL;
+        pInstanceUIDElem->getString(pInstUIDs);
+        if(pInstUIDs) extractMultiValues(pInstUIDs, instance_uids);
+    }
+
+    if(study_uids.size()) findByStudyUIDs(study_uids, patient_ids, series_uids, instance_uids, study_dates);
+    else if(patient_ids.size()) findByPatientIDs(patient_ids, series_uids, instance_uids, study_dates);
+    else findByStudyDate(series_uids, instance_uids, study_dates);
 
     size_t num = 0;
     MSXML2::IXMLDOMNodeListPtr psl = pXmlDom->documentElement->selectNodes(L"patient_root");
@@ -734,7 +779,20 @@ OFCondition DcmQueryRetrieveXmlDatabaseHandle::cancelFindRequest(
 OFCondition DcmQueryRetrieveXmlDatabaseHandle::startMoveRequest(const char *SOPClassUID,
     DcmDataset *moveRequestIdentifiers, DcmQueryRetrieveDatabaseStatus *status)
 {
-    return EC_Normal;
+    OFCondition cond = EC_Normal;
+    rootLevel = PATIENT_LEVEL;
+    lowestLevel = IMAGE_LEVEL;
+    queryLevel = IMAGE_LEVEL;
+
+    if(0 == findRequestFilter(moveRequestIdentifiers))
+    {
+        status->setStatus(STATUS_Success);
+        return cond;
+    }
+    req = moveRequestIdentifiers;
+    status->setStatus(STATUS_Pending);
+
+    return cond;
 }
 
 OFCondition DcmQueryRetrieveXmlDatabaseHandle::nextMoveResponse(char *SOPClassUID,

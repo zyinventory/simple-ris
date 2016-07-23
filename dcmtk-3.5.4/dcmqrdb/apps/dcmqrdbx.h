@@ -73,10 +73,10 @@ private:
     bool fillNextElementToDcmdataset();
 
     size_t findRequestFilter(DcmDataset *findRequestIdentifiers);
-    bool add_study(MSXML2::IXMLDOMElementPtr &pStudy, const set<string> &pids, const StudyDataFilter &date_filter, bool study_only = false);
-    size_t findByStudyUIDs(const set<string> &uids, const set<string> &pids, const StudyDataFilter &date_filter);
-    size_t findByPatientIDs(const set<string> &pids, const StudyDataFilter &date_filter);
-    size_t findByStudyDate(const StudyDataFilter &date_filter);
+    bool add_study(MSXML2::IXMLDOMElementPtr &pStudy, const set<string> &pids, const set<string> &ser_uids, const set<string> &inst_uids, const StudyDataFilter &date_filter, bool study_only = false);
+    size_t findByStudyUIDs(const set<string> &uids, const set<string> &pids, const set<string> &ser_uids, const set<string> &inst_uids, const StudyDataFilter &date_filter);
+    size_t findByPatientIDs(const set<string> &pids, const set<string> &ser_uids, const set<string> &inst_uids, const StudyDataFilter &date_filter);
+    size_t findByStudyDate(const set<string> &ser_uids, const set<string> &inst_uids, const StudyDataFilter &date_filter);
 
     static size_t extractMultiValues(char *ids, set<string> &id_set, char *seps = "\\");
     static OFCondition testFindRequestList(DcmDataset *findRequestIdentifiers,
