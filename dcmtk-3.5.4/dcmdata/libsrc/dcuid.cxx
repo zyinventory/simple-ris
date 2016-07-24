@@ -863,6 +863,16 @@ const char *dcmSOPClassUIDToModality(const char *sopClassUID)
     return NULL;
 }
 
+const char *dcmModalityToSOPClassUID(const char *modality)
+{
+    if (modality == NULL) return NULL;
+    for (int i = 0; i < numberOfDcmModalityTableEntries; i++)
+    {
+      if (strcmp(modalities[i].modality, modality) == 0) return modalities[i].sopClass;
+    }
+    return NULL;
+}
+
 unsigned long dcmGuessModalityBytes(const char *sopClassUID)
 {
     unsigned long nbytes = 1048576; /* default: 1 MByte */

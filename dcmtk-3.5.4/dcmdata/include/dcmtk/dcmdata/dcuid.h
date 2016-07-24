@@ -138,13 +138,14 @@ extern const int numberOfDcmImageSOPClassUIDs;
 char* dcmGenerateUniqueIdentifier(char* uid, const char* prefix=NULL);
 
 /*
- * dcmSOPClassUIDToModality
+ * dcmSOPClassUIDToModality dcmModalityToSOPClassUID
  * performs a table lookup and returns a short modality identifier
  * that can be used for building file names etc.
  * Identifiers are defined for all storage SOP classes.
  * Returns NULL if no modality identifier found or sopClassUID==NULL.
  */
 const char *dcmSOPClassUIDToModality(const char *sopClassUID);
+const char *dcmModalityToSOPClassUID(const char *modality);
 
 /*
  * dcmGuessModalityBytes
