@@ -45,6 +45,7 @@
 class DcmDataset;
 class DcmQueryRetrieveDatabaseStatus;
 class DcmQueryRetrieveStoreContext;
+struct T_ASC_Parameters;
 
 #ifndef MAXPATHLEN
 #define MAXPATHLEN 1024
@@ -213,6 +214,8 @@ public:
   virtual void setIdentifierChecking(OFBool checkFind, OFBool checkMove) = 0;
 
   virtual const char *getStorageArea() const = 0;
+
+  virtual bool addRequiredStoragePresentationContexts(T_ASC_Parameters *params) const { return false; };
 
   const char *getPacsBase() const { return pacs_base; };
   void setPacsBase(const char *p) { pacs_base = p; };

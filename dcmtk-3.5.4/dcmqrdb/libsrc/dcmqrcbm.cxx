@@ -349,7 +349,9 @@ OFCondition DcmQueryRetrieveMoveContext::buildSubAssociation(T_DIMSE_C_MoveRQ *r
 		dstHostNamePlusPort);
 	ASC_setAPTitles(params, ourAETitle.c_str(), dstAETitle,NULL);
 
-	cond = addAllStoragePresentationContexts(params);
+    if(!dbHandle.addRequiredStoragePresentationContexts(params))
+        cond = addAllStoragePresentationContexts(params);
+
 	if (cond.bad()) {
 	    DimseCondition::dump(cond);
 	}
@@ -382,6 +384,10 @@ OFCondition DcmQueryRetrieveMoveContext::buildSubAssociation(T_DIMSE_C_MoveRQ *r
 
     if (cond.good()) {
 	assocStarted = OFTrue;
+	if (options_.debug_) {
+	    printf("Esta Assoc Parameters:\n");
+	    ASC_dumpParameters(params, COUT);
+	}
     }    
     return cond;
 }

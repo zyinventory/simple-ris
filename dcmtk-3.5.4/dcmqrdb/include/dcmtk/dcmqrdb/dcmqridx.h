@@ -218,7 +218,7 @@ struct DB_FindAttr
         keyAttr = r.keyAttr;
         keyClass = r.keyClass;
     };
-    bool operator<(const struct DB_FindAttr &r) const { return (tag < r.tag); };
+    bool operator<(const struct DB_FindAttr &r) const { return ((tag < r.tag) != 0); };
     bool operator==(const struct DB_FindAttr &r) const { return (!(*this < r) && !(r < *this)); };
 };
 

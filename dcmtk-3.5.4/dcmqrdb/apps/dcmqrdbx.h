@@ -67,10 +67,11 @@ private:
     
     MSXML2::IXMLDOMDocument2Ptr pXmlDom;
     MSXML2::IXMLDOMNodeListPtr ptl, stl, sel, inl;
-    MSXML2::IXMLDOMElementPtr pt, st, se;
+    MSXML2::IXMLDOMElementPtr pt, st, se, inst;
     DcmDataset ds, *req;
+    size_t remains;
 
-    bool fillNextElementToDcmdataset();
+    bool fillNextElementToDcmdataset(bool fill_dataset);
 
     size_t findRequestFilter(DcmDataset *findRequestIdentifiers);
     bool add_study(MSXML2::IXMLDOMElementPtr &pStudy, const set<string> &pids, const set<string> &ser_uids, const set<string> &inst_uids, const StudyDataFilter &date_filter, bool study_only = false);
@@ -86,7 +87,7 @@ public:
         long maxBytesPerStudy, OFCondition& result);
     
     const char *getStorageArea() const { return storageArea; };
-
+    bool addRequiredStoragePresentationContexts(T_ASC_Parameters *params) const;
     OFCondition storeRequest(const char *SOPClassUID, const char *SOPInstanceUID, const char *imageFileName,
         DcmQueryRetrieveDatabaseStatus  *status, OFBool isNew = OFTrue, DcmQueryRetrieveStoreContext *psc = NULL);
     OFCondition startFindRequest(const char *SOPClassUID, DcmDataset *findRequestIdentifiers,

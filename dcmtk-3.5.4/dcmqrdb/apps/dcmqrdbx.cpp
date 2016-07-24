@@ -180,7 +180,7 @@ StudyDataFilter::StudyDataFilter(const char *date)
 
 DcmQueryRetrieveXmlDatabaseHandle::DcmQueryRetrieveXmlDatabaseHandle(const char *storage, long maxStudiesPerStorageArea,
         long maxBytesPerStudy, OFCondition& result) : DcmQueryRetrieveDatabaseHandle(), req(NULL),
-        doCheckFindIdentifier(OFFalse), doCheckMoveIdentifier(OFFalse), debugLevel(0),
+        doCheckFindIdentifier(OFFalse), doCheckMoveIdentifier(OFFalse), debugLevel(0), remains(0),
         rootLevel(PATIENT_LEVEL), lowestLevel(IMAGE_LEVEL), queryLevel(STUDY_LEVEL)
 {
     strcpy_s(storageArea, storage);
@@ -341,7 +341,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyDate(const set<string> &ser
 {
     if(debugLevel)
     {
-        CERR << __FUNCSIG__" get study date:" << (date_filter.src ? date_filter.src : "") << endl;
+        CERR << "DcmQueryRetrieveXmlDatabaseHandle::findByStudyDate() get study date:" << (date_filter.src ? date_filter.src : "") << endl;
     }
     if(date_filter.src == NULL) return 0;
 
@@ -408,7 +408,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyUIDs(const set<string> &stu
 {
     if(debugLevel)
     {
-        CERR << __FUNCSIG__" get study uids:" << endl;
+        CERR << "DcmQueryRetrieveXmlDatabaseHandle::findByStudyUIDs() get study uids:" << endl;
         for_each(study_uids.begin(), study_uids.end(), [](const string &uid) { CERR << uid << endl; });
     }
     size_t num = 0;
@@ -437,7 +437,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByPatientIDs(const set<string> &pi
 {
     if(debugLevel)
     {
-        CERR << __FUNCSIG__" get patient ids:" << endl;
+        CERR << "DcmQueryRetrieveXmlDatabaseHandle::findByPatientIDs() get patient ids:" << endl;
         for_each(pids.begin(), pids.end(), [](const string &uid) { CERR << uid << endl; });
     }
     size_t num = 0;
@@ -654,9 +654,8 @@ OFCondition DcmQueryRetrieveXmlDatabaseHandle::startFindRequest(const char *SOPC
     return cond;
 }
 
-bool DcmQueryRetrieveXmlDatabaseHandle::fillNextElementToDcmdataset()
+bool DcmQueryRetrieveXmlDatabaseHandle::fillNextElementToDcmdataset(bool fill_dataset)
 {
-    MSXML2::IXMLDOMElementPtr inst;
     if(inl) inst = inl->nextNode();
     if(inst == NULL)
     {
@@ -667,33 +666,38 @@ bool DcmQueryRetrieveXmlDatabaseHandle::fillNextElementToDcmdataset()
             if(st == NULL)
             {
                 ds.clear();
-                ds.putAndInsertString(DCM_SpecificCharacterSet, "ISO_IR 100");
-                switch(queryLevel)
+                if(fill_dataset)
                 {
-                case PATIENT_LEVEL:
-                    ds.putAndInsertString(DCM_QueryRetrieveLevel, PATIENT_LEVEL_STRING);
-                    break;
-                case STUDY_LEVEL:
-                    ds.putAndInsertString(DCM_QueryRetrieveLevel, STUDY_LEVEL_STRING);
-                    break;
-                case SERIE_LEVEL:
-                    ds.putAndInsertString(DCM_QueryRetrieveLevel, SERIE_LEVEL_STRING);
-                    break;
-                case IMAGE_LEVEL:
-                    ds.putAndInsertString(DCM_QueryRetrieveLevel, IMAGE_LEVEL_STRING);
-                    break;
-                default:
-                    ds.insertEmptyElement(DCM_QueryRetrieveLevel);
+                    ds.putAndInsertString(DCM_SpecificCharacterSet, "ISO_IR 100");
+                    switch(queryLevel)
+                    {
+                    case PATIENT_LEVEL:
+                        ds.putAndInsertString(DCM_QueryRetrieveLevel, PATIENT_LEVEL_STRING);
+                        break;
+                    case STUDY_LEVEL:
+                        ds.putAndInsertString(DCM_QueryRetrieveLevel, STUDY_LEVEL_STRING);
+                        break;
+                    case SERIE_LEVEL:
+                        ds.putAndInsertString(DCM_QueryRetrieveLevel, SERIE_LEVEL_STRING);
+                        break;
+                    case IMAGE_LEVEL:
+                        ds.putAndInsertString(DCM_QueryRetrieveLevel, IMAGE_LEVEL_STRING);
+                        break;
+                    default:
+                        ds.insertEmptyElement(DCM_QueryRetrieveLevel);
+                    }
                 }
-
                 if(ptl == NULL) ptl = pXmlDom->documentElement->selectNodes(L"patient_root[@id]");
                 pt = ptl->nextNode();
                 if(pt)
                 {
-                    for(int i = 0; i < patientRootFindAttrNum; ++i)
+                    if(fill_dataset)
                     {
-                        _variant_t vt(pt->getAttribute(patientRootFindAttr[i].first.c_str()));
-                        fill_dcmdataset(vt, ds, patientRootFindAttr[i].second);
+                        for(int i = 0; i < patientRootFindAttrNum; ++i)
+                        {
+                            _variant_t vt(pt->getAttribute(patientRootFindAttr[i].first.c_str()));
+                            fill_dcmdataset(vt, ds, patientRootFindAttr[i].second);
+                        }
                     }
                     stl = pt->selectNodes(L"study[@id]");
                     st = stl->nextNode();
@@ -701,17 +705,20 @@ bool DcmQueryRetrieveXmlDatabaseHandle::fillNextElementToDcmdataset()
             }
             if(st)
             {
-                for(int i = 0; i < studyFindAttrNum; ++i)
+                if(fill_dataset)
                 {
-                    _variant_t vt(st->getAttribute(studyFindAttr[i].first.c_str()));
-                    fill_dcmdataset(vt, ds, studyFindAttr[i].second);
-                }
-                MSXML2::IXMLDOMElementPtr patient = st->selectSingleNode(L"patient");
-                for(int i = 0; i < patientFindAttrNum; ++i)
-                {
-                    _variant_t vt(NULL);
-                    if(patient) vt = patient->getAttribute(patientFindAttr[i].first.c_str());
-                    fill_dcmdataset(vt, ds, patientFindAttr[i].second);
+                    for(int i = 0; i < studyFindAttrNum; ++i)
+                    {
+                        _variant_t vt(st->getAttribute(studyFindAttr[i].first.c_str()));
+                        fill_dcmdataset(vt, ds, studyFindAttr[i].second);
+                    }
+                    MSXML2::IXMLDOMElementPtr patient = st->selectSingleNode(L"patient");
+                    for(int i = 0; i < patientFindAttrNum; ++i)
+                    {
+                        _variant_t vt(NULL);
+                        if(patient) vt = patient->getAttribute(patientFindAttr[i].first.c_str());
+                        fill_dcmdataset(vt, ds, patientFindAttr[i].second);
+                    }
                 }
 
                 if(queryLevel == STUDY_LEVEL || queryLevel == PATIENT_LEVEL) return true;
@@ -722,18 +729,22 @@ bool DcmQueryRetrieveXmlDatabaseHandle::fillNextElementToDcmdataset()
         }
         if(se)
         {
-            for(int i = 0; i < seriesFindAttrNum; ++i)
+            if(fill_dataset)
             {
-                _variant_t vt(se->getAttribute(seriesFindAttr[i].first.c_str()));
-                fill_dcmdataset(vt, ds, seriesFindAttr[i].second);
+                for(int i = 0; i < seriesFindAttrNum; ++i)
+                {
+                    _variant_t vt(se->getAttribute(seriesFindAttr[i].first.c_str()));
+                    fill_dcmdataset(vt, ds, seriesFindAttr[i].second);
+                }
             }
+
             if(queryLevel == SERIE_LEVEL) return true;
 
             inl = se->selectNodes(L"instance[@id]");
             inst = inl->nextNode();
         }
     }
-    if(inst)
+    if(fill_dataset && inst)
     {
         for(int i = 0; i < instanceFindAttrNum; ++i)
         {
@@ -756,17 +767,22 @@ bool DcmQueryRetrieveXmlDatabaseHandle::fillNextElementToDcmdataset()
 OFCondition DcmQueryRetrieveXmlDatabaseHandle::nextFindResponse(
     DcmDataset **findResponseIdentifiers, DcmQueryRetrieveDatabaseStatus *status)
 {
-    if(fillNextElementToDcmdataset())
-    {
-        *findResponseIdentifiers = new DcmDataset(ds);
-        status->setStatus(STATUS_Pending);
+    try {
+        if(fillNextElementToDcmdataset(OFTrue))
+        {
+            *findResponseIdentifiers = new DcmDataset(ds);
+            status->setStatus(STATUS_Pending);
+        }
+        else
+        {
+            *findResponseIdentifiers = NULL;
+            status->setStatus(STATUS_Success);
+        }
+        return EC_Normal;
     }
-    else
-    {
-        *findResponseIdentifiers = NULL;
-        status->setStatus(STATUS_Success);
-    }
-    return EC_Normal;
+    CATCH_COM_ERROR(__FUNCSIG__, CERR);
+    status->setStatus(STATUS_FIND_Failed_UnableToProcess);
+    return DcmQRXmlDatabaseErrorC;
 }
 
 OFCondition DcmQueryRetrieveXmlDatabaseHandle::cancelFindRequest(
@@ -784,7 +800,8 @@ OFCondition DcmQueryRetrieveXmlDatabaseHandle::startMoveRequest(const char *SOPC
     lowestLevel = IMAGE_LEVEL;
     queryLevel = IMAGE_LEVEL;
 
-    if(0 == findRequestFilter(moveRequestIdentifiers))
+    remains = findRequestFilter(moveRequestIdentifiers);
+    if(0 == remains)
     {
         status->setStatus(STATUS_Success);
         return cond;
@@ -799,7 +816,47 @@ OFCondition DcmQueryRetrieveXmlDatabaseHandle::nextMoveResponse(char *SOPClassUI
     char *SOPInstanceUID, char *imageFileName, unsigned short *numberOfRemainingSubOperations,
     DcmQueryRetrieveDatabaseStatus *status)
 {
-    return EC_Normal;
+    try {
+        if(fillNextElementToDcmdataset(OFFalse))
+        {
+            _bstr_t inst_uid(inst->getAttribute(L"id")), sop_class_uid(inst->getAttribute(L"sop_class_uid")),
+                se_uid(se->getAttribute(L"id")), st_uid(st->getAttribute(L"id"));
+
+            if(inst_uid.length()) strcpy_s(SOPInstanceUID, sizeof(DIC_UI), (LPCSTR)inst_uid);
+
+            if(sop_class_uid.length())
+            {
+                strcpy_s(SOPClassUID, sizeof(DIC_UI), (LPCSTR)sop_class_uid);
+            }
+            else
+            {
+                _bstr_t modality(se->getAttribute(L"modality"));
+                const char *mdstr = dcmModalityToSOPClassUID((LPCSTR)modality);
+                if(mdstr) strcpy_s(SOPClassUID, sizeof(DIC_UI), mdstr);
+            }
+
+            char hash[9];
+            HashStr(st_uid.length() ? (LPCSTR)st_uid : "", hash, sizeof(hash));
+            int buff_used = sprintf_s(imageFileName, MAX_PATH, "%s\\pacs\\archdir\\v0000000\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\%s\\",
+                getPacsBase(), hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7],
+                st_uid.length() ? (LPCSTR)st_uid : "", hash);
+            SeriesInstancePath(se_uid.length() ? (LPCSTR)se_uid : "", inst_uid.length() ? (LPCSTR)inst_uid : "",
+                imageFileName + buff_used, MAX_PATH - buff_used);
+
+            *numberOfRemainingSubOperations = --remains;
+            status->setStatus(STATUS_Pending);
+        }
+        else
+        {
+            remains = 0;
+            *numberOfRemainingSubOperations = 0;
+            status->setStatus(STATUS_Success);
+        }
+        return EC_Normal;
+    }
+    CATCH_COM_ERROR(__FUNCSIG__, CERR);
+    status->setStatus(STATUS_MOVE_Failed_UnableToProcess);
+    return DcmQRXmlDatabaseErrorC;
 }
 
 OFCondition DcmQueryRetrieveXmlDatabaseHandle::cancelMoveRequest(DcmQueryRetrieveDatabaseStatus *status)
@@ -812,3 +869,84 @@ OFCondition DcmQueryRetrieveXmlDatabaseHandle::pruneInvalidRecords()
     return EC_Normal;
 }
 
+typedef struct _tag_RequiredPresentationContext
+{
+    size_t count;
+    char sop_class_uid[65], xfer[65];
+    _tag_RequiredPresentationContext() : count(0)
+    {
+        memset(sop_class_uid, 0, sizeof(sop_class_uid));
+        memset(xfer, 0, sizeof(xfer));
+    };
+} RequiredPresentationContext;
+
+bool DcmQueryRetrieveXmlDatabaseHandle::addRequiredStoragePresentationContexts(T_ASC_Parameters *params) const
+{
+    int pid = 1;
+    OFCondition cond(EC_Normal);
+    OFList<RequiredPresentationContext> presentationContexts;
+    try {
+        MSXML2::IXMLDOMNodeListPtr seriesList = pXmlDom->documentElement->selectNodes(L"//series");
+        while(MSXML2::IXMLDOMElementPtr series = seriesList->nextNode())
+        {
+            if(series == NULL) continue;
+            _bstr_t modality(series->getAttribute(L"modality"));
+            const char *mdstr = dcmModalityToSOPClassUID((LPCSTR)modality);
+            if(mdstr == NULL) mdstr = "";
+            MSXML2::IXMLDOMNodeListPtr instList = series->selectNodes(L"instance");
+            while(MSXML2::IXMLDOMElementPtr inst = instList->nextNode())
+            {
+                if(inst == NULL) continue;
+                _bstr_t xferShort(inst->getAttribute(L"xfer")), sop_class_uid(inst->getAttribute(L"sop_class_uid"));
+                DcmXfer xfer(xferShort.length() ? (LPCSTR)xferShort : "");
+                RequiredPresentationContext pc;
+                memset(&pc, 0, sizeof(RequiredPresentationContext));
+                strcpy_s(pc.sop_class_uid, sop_class_uid.length() ? (LPCSTR)sop_class_uid : mdstr);
+                strcpy_s(pc.xfer, xfer.getXferID());
+
+                OFList<RequiredPresentationContext>::iterator it = find_if(
+                    presentationContexts.begin(), presentationContexts.end(), [&pc](const RequiredPresentationContext &exist_pc) {
+                        return (strcmp(pc.sop_class_uid, exist_pc.sop_class_uid) == 0 && strcmp(pc.xfer, exist_pc.xfer) == 0);
+                    });
+                if(it == presentationContexts.end())
+                {
+                    ++pc.count;
+                    presentationContexts.push_back(pc);
+                }
+                else ++it->count;
+            }
+        }
+    }
+    CATCH_COM_ERROR(__FUNCSIG__, CERR);
+    
+    map<OFString, RequiredPresentationContext> required_pc;
+    if(debugLevel) CERR << "MOVE SCU Required Presentation Context:" << endl;
+    for(OFList<RequiredPresentationContext>::iterator it = presentationContexts.begin(); it != presentationContexts.end(); ++it)
+    {
+        if(debugLevel)
+        {
+            DcmXfer xfer(it->xfer);
+            CERR << dcmSOPClassUIDToModality(it->sop_class_uid) << " : " << xfer.getXferShortName() << " : " << it->count << endl;
+        }
+        RequiredPresentationContext pc = required_pc[it->sop_class_uid];
+        if(pc.count < it->count && strlen(it->xfer))
+        {
+            if(pc.count)
+            {
+                DcmXfer xfer(pc.xfer);
+                CERR << "Discard Presentation Context: " << dcmSOPClassUIDToModality(pc.sop_class_uid) << " : " << xfer.getXferShortName() << " : " << pc.count << endl;
+            }
+            required_pc[it->sop_class_uid] = *it;
+        }
+    }
+    if(required_pc.size() == 0) return false;
+
+    for(map<OFString, RequiredPresentationContext>::iterator it = required_pc.begin();
+        it != required_pc.end() && cond.good(); ++it)
+    {
+        const char *xfer = it->second.xfer;
+        cond = ASC_addPresentationContext(params, pid, it->first.c_str(), &xfer, 1);
+	    pid += 2;
+    }
+    return true;
+}
