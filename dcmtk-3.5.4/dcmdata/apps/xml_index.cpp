@@ -603,16 +603,21 @@ static void calculate_size_cluster_aligned(MSXML2::IXMLDOMDocument2 *pXMLDom)
     pXMLDom->documentElement->setAttribute(L"instance_count", instance_count);
 }
 
-bool xml_index::save_receive(MSXML2::IXMLDOMDocument2 *pAssocDom)
+bool xml_index::save_receive(const string &study_uid, MSXML2::IXMLDOMDocument2 *pAssocDom)
 {
     if(pAssocDom == NULL) return true;
     try
     {
+        char pidbuff[16];
+        _itoa_s(_getpid(), pidbuff, 16);
         string xmlpath((LPCSTR)pAssocDom->documentElement->attributes->getNamedItem(L"id")->text);
         xmlpath.insert(8, 1, '\\').insert(6, 1, '\\').insert(4, 1, '\\')
-            .insert(0, "\\pacs\\indexdir\\receive\\").insert(0, GetPacsBase()).append(".xml");
+            .insert(0, "\\pacs\\indexdir\\receive\\").insert(0, GetPacsBase())
+            .append(1, '.').append(pidbuff).append(1, '_').append(study_uid).append(".xml");
         if(PrepareFileDir(xmlpath.c_str()))
         {
+            if(ENOENT != _access_s(xmlpath.c_str(), 0))
+                time_header_out(*pflog) << __FUNCSIG__" warning: file " << xmlpath.c_str() << " exist." << endl;
             ofstream fxml(xmlpath.c_str(), ios_base::trunc | ios_base::out, _SH_DENYNO);
             if(fxml.good())
             {
@@ -620,7 +625,7 @@ bool xml_index::save_receive(MSXML2::IXMLDOMDocument2 *pAssocDom)
                 fxml.close();
             }
         }
-        else if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" PrepareFileDir(" << xmlpath << ") failed." << endl;
+        else if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" PrepareFileDir(" << xmlpath.c_str() << ") failed." << endl;
         return true;
     }
     CATCH_COM_ERROR("xml_index::save_receive()", *pflog);
@@ -833,7 +838,7 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
             MSXML2::IXMLDOMNodeListPtr nodes = ita->second->documentElement->selectNodes(filter_not_complete);
             if(nodes->length == 0) // association is complete
             {
-                if(save_receive(ita->second))
+                if(save_receive(study_uid, ita->second))
                 {
                     if(ita->second) ita->second->Release();
                     if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" map_xml_assoc.erase(" << ita->first << ")." << endl;
@@ -851,8 +856,8 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
         pStudyDom.Attach(pdom, false); // don't add ref
 
         if(opt_verbose) time_header_out(*pflog) << "xml_index::unload_and_sync_study() ready to save study date and patient." << endl;
-        save_index_study_date(pStudyDom);
-        save_index_patient(pStudyDom);
+        //save_index_study_date(pStudyDom);
+        //save_index_patient(pStudyDom);
         return true;
     }
     CATCH_COM_ERROR("xml_index::unload_and_sync_study()", *pflog);
@@ -874,7 +879,7 @@ xml_index::~xml_index()
     while(it != map_xml_assoc.end())
     {
         time_header_out(*pflog) << "xml_index::~xml_index() remain association " << it->first << endl;
-        save_receive(it->second);
+        save_receive(it->first, it->second);
         if(it->second) it->second->Release();
         it = map_xml_assoc.erase(it);
     }
