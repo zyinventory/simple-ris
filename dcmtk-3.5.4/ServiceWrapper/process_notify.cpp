@@ -270,7 +270,7 @@ void save_notify_context_to_ostream(const NOTIFY_FILE_CONTEXT &cnc, bool compres
     output << NOTIFY_LEVEL_PATIENT << " 00100040 " << cnc.patient.sex << endl;
     output << NOTIFY_LEVEL_PATIENT << " 00101020 " << cnc.patient.height << endl;
     output << NOTIFY_LEVEL_PATIENT << " 00101030 " << cnc.patient.weight << endl;
-    output << NOTIFY_LEVEL_STUDY << " 00200010 " << cnc.study.studyID << endl;
+    output << NOTIFY_LEVEL_STUDY << " 00200010 " << dec << cnc.study.studyID << endl;
     output << NOTIFY_LEVEL_STUDY << " 00080020 " << cnc.study.studyDate << endl;
     output << NOTIFY_LEVEL_STUDY << " 00080030 " << cnc.study.studyTime << endl;
     output << NOTIFY_LEVEL_STUDY << " 00080050 ";
