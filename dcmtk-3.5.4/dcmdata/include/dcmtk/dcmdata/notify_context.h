@@ -19,7 +19,7 @@ namespace handle_context
     } NOTIFY_FILE_CONTEXT_FILE_SECTION;
 
     typedef struct _tag_NOTIFY_FILE_CONTEXT_PATIENT_SECTION {
-        char patientID[65], patientsName[65], birthday[9], height[10], weight[10], sex[3];
+        char patientID[65], patientsName[65], birthday[9], height[17], weight[17], sex[3];
     } NOTIFY_FILE_CONTEXT_PATIENT_SECTION;
 
     typedef struct _tag_NOTIFY_FILE_CONTEXT_STUDY_SECTION {

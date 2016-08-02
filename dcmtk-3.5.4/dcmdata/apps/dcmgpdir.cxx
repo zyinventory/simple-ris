@@ -948,7 +948,7 @@ int main(int argc, char *argv[])
 				while ((iter != last) && result.good())
 				{
 					/* add files to the DICOMDIR */
-					result = ddir.addDicomFile((*iter).c_str(), opt_directory);
+					result = ddir.addDicomFile(iter->c_str(), opt_directory);
 					if (result.bad())
 					{
 						badFiles.push_back(*iter);
@@ -957,8 +957,7 @@ int main(int argc, char *argv[])
 							/* ignore inconsistent file, just warn (already done inside "ddir") */
 							result = EC_Normal;
 						}
-					} else
-						++goodFiles;
+					} else ++goodFiles;
 					++iter;
 				}
 			}

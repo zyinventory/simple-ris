@@ -611,6 +611,21 @@ bool xml_index::save_receive(const string &study_uid, MSXML2::IXMLDOMDocument2 *
         char pidbuff[16];
         _itoa_s(_getpid(), pidbuff, 16);
         string xmlpath((LPCSTR)pAssocDom->documentElement->attributes->getNamedItem(L"id")->text);
+        if(xmlpath.length() < 8)
+        {
+            char seqbuff[64];
+            in_process_sequence_dll(seqbuff, sizeof(seqbuff), "");
+            xmlpath = seqbuff;
+            string::size_type pos = xmlpath.rfind('-');
+            if(pos != string::npos)
+            {
+                xmlpath.erase(xmlpath.begin() + pos, xmlpath.end());
+                xmlpath.append("-ffffffff");
+            }
+            time_header_out(*pflog) << __FUNCSIG__" assoc id is not found, generate assoc id: " << xmlpath << endl
+                << pAssocDom->xml << endl;
+            pAssocDom->documentElement->setAttribute(L"id", xmlpath.c_str());
+        }
         xmlpath.insert(8, 1, '\\').insert(6, 1, '\\').insert(4, 1, '\\')
             .insert(0, "\\pacs\\indexdir\\receive\\").insert(0, GetPacsBase())
             .append(1, '.').append(pidbuff).append(1, '_').append(study_uid).append(".xml");
@@ -625,7 +640,11 @@ bool xml_index::save_receive(const string &study_uid, MSXML2::IXMLDOMDocument2 *
                 fxml.close();
             }
         }
-        else if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" PrepareFileDir(" << xmlpath.c_str() << ") failed." << endl;
+        else
+        {
+            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" PrepareFileDir(" << xmlpath.c_str() << ") failed." << endl;
+            return false;
+        }
         return true;
     }
     CATCH_COM_ERROR("xml_index::save_receive()", *pflog);
@@ -842,9 +861,13 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
                 {
                     if(ita->second) ita->second->Release();
                     if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" map_xml_assoc.erase(" << ita->first << ")." << endl;
-                    ita = map_xml_assoc.erase(ita);
                 }
-                else if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" map_xml_assoc.erase(" << ita->first << ") failed." << endl;
+                else if(opt_verbose)
+                {
+                    time_header_out(*pflog) << __FUNCSIG__" map_xml_assoc.erase(" << ita->first << ") failed:" << endl;
+                    if(ita->second) *pflog << ita->second->xml << endl;
+                }
+                ita = map_xml_assoc.erase(ita);
             }
             else ++ita;
         }
