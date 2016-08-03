@@ -249,7 +249,6 @@
     <ClCompile Include="dulpres.cxx" />
     <ClCompile Include="extneg.cxx" />
     <ClCompile Include="lst.cxx" />
-    <ClCompile Include="pacs.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcmtk\dcmnet\assoc.h" />

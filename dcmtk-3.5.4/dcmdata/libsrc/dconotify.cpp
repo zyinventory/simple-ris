@@ -3,6 +3,7 @@
 #define INCLUDE_CSTDLIB
 #define INCLUDE_CSTDIO
 #define INCLUDE_CSTRING
+#include <direct.h>        /* for _mkdir() */
 #include "dcmtk/ofstd/ofstdinc.h"
 
 #include "dcmtk/ofstd/ofstream.h"
@@ -80,4 +81,42 @@ void datasetToNotify(const char* instanceFileName, const char *notifyFileName, D
 
     sw.clear();
     strmbuf.str(sw);
+}
+
+bool mkdir_recursive_dcm(const char *subdir)
+{
+    // check if the subdirectory is already existent
+    if( _mkdir(subdir) )
+    {
+        if(errno == EEXIST)
+            return true;
+    }
+    else
+    {
+        return true;
+    }
+
+    string subdirectoryPath = subdir;
+    size_t position = subdirectoryPath.rfind(PATH_SEPARATOR);
+    if(position != string::npos)
+    {
+        string upperLevel = subdirectoryPath.substr(0, position);
+        bool mkResult = mkdir_recursive_dcm(upperLevel.c_str());
+        if(mkResult != true)
+        {
+            return mkResult;
+        }
+        // else: upper level exist, create current level
+    }
+
+    // if it is not existent create it
+    if( _mkdir( subdirectoryPath.c_str() ) == -1 && errno != EEXIST )
+    {
+        cerr << "Could not create subdirectory " << subdirectoryPath.c_str() << endl;
+        return false;
+    }
+    else
+    {
+        return true;
+    }
 }

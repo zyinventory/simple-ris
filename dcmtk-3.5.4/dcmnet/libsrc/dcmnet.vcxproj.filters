@@ -102,9 +102,6 @@
     <ClCompile Include="lst.cxx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="pacs.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcmtk\dcmnet\assoc.h">

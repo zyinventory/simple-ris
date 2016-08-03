@@ -139,15 +139,13 @@ END_EXTERN_C
 #include "dcmtk/dcmnet/dcmtrans.h"
 #include "dcmtk/dcmnet/dcmlayer.h"
 #include "dcmtk/ofstd/ofstd.h"
+#include "dcmtk/dcmdata/dconotify.h"
 
 OFGlobal<OFBool> dcmDisableGethostbyaddr(OFFalse);
 OFGlobal<Sint32> dcmConnectionTimeout(-1);
 OFGlobal<int>    dcmExternalSocketHandle(-1);
 OFGlobal<const char *> dcmTCPWrapperDaemonName((const char *)NULL);
 OFGlobal<unsigned long> dcmEnableBackwardCompatibility(0);
-
-bool MkdirRecursive_dcmnet(const char*);
-int GenerateLogPath_dcmnet(char *buf, size_t bufLen, const char *appName, const char pathSeparator);
 
 static int networkInitialized = 0;
 
@@ -1702,13 +1700,15 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 			  appName.append(1, '_');
 			  appName.append(itoa(sock, buf, 10));
 		  }
-		  GenerateLogPath_dcmnet(buf, 1024, appName.c_str(), '\\');
+          in_process_sequence(buf, sizeof(buf), "");
 		  logFilePath = buf;
-		  temp = buf;
+          logFilePath.insert(8, 1, '\\').insert(6, 1, '\\').insert(4, 1, '\\').insert(0, "pacs_log\\")
+              .append(1, '_').append(appName).append(".txt");
+		  temp = logFilePath;
 		}
 
 		temp.resize(temp.rfind(PATH_SEPARATOR));
-		if( MkdirRecursive_dcmnet(temp.c_str()))
+		if(mkdir_recursive_dcm(temp.c_str()))
 		{
 		  logFile = CreateFile(logFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, &logSA, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 		  if(logFile == INVALID_HANDLE_VALUE)

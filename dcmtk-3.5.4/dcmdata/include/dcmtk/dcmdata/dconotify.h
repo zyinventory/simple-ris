@@ -46,5 +46,6 @@ class DcmDataset;
 
 unsigned int in_process_sequence(char *buff, size_t buff_size, const char *prefix);
 void datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet, bool isFull);
+bool mkdir_recursive_dcm(const char *subdir);
 
 #endif // DCONOTIFY_H
