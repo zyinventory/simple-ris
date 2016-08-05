@@ -877,8 +877,36 @@ int main(int argc, char *argv[])
         
 		DcmXfer original_xfer(dataset->getOriginalXfer());
         isEncapsulated = original_xfer.isEncapsulated();
+        
+        OFBool isGEBug = OFFalse;
+        if(!opt_skipCompressed && !isEncapsulated)
+        {   // find GEIIS private tag
+            DcmStack resultStack;
+            resultStack.push(dataset);
+            if(dataset->search(DcmTagKey(0x0029, 0x0010), resultStack, ESM_afterStackTop, OFTrue).good()
+                && resultStack.card() == 4)
+            {
+                DcmItem *dip = OFdynamic_cast(DcmItem*, resultStack.elem(1));
+                if(dip)
+                {   // find pixel from seq items
+                    DcmStack pixelStack;
+                    pixelStack.push(dip);
+                    if(dip->search(DCM_PixelData, pixelStack, ESM_afterStackTop, OFFalse).good())
+                    {   // it's ge bug
+                        DcmLongString *creator = OFdynamic_cast(DcmLongString*, resultStack.top());
+                        if(creator)
+                        {
+                            char *GEIcon = NULL;
+                            creator->getString(GEIcon);
+                            if(GEIcon && strcmp(GEIcon, "GEIIS") == 0) // 0x0009, 0x1110 The problematic private group, containing a *always* JPEG compressed PixelData
+	                            isGEBug = OFTrue; // GE Icon pixel data are already and always compressed in JPEG -> dont touch lesion !
+                        }
+                    }
+                }
+            }
+        }
 
-        if(opt_skipCompressed || isEncapsulated)
+        if(opt_skipCompressed || isEncapsulated || isGEBug)
         {
 		    if (opt_verbose) CERR << "Convert DICOM file is already compressed or skip compressing, copy or move it." << endl;
 		    opt_oxfer = original_xfer.getXfer();
