@@ -278,7 +278,7 @@ int main(int argc, char *argv[])
 
 	cmd.addSubGroup("lossy JPEG representation options:");
 	cmd.addOption("--quality",                 "+q",     1, "[q]: integer (0..100, default: 90)",
-		"JPEG: use quality factor q\nJPEG2000:\n\t0: DCMLosslessQuality\n\t1: DCMHighQuality\n\t2: DCMMediumQuality\n\t3: DCMLowQuality\n\ttreating other values as 0");
+		"JPEG: use quality factor q\nJPEG2000:\n\t0: DCMLosslessQuality\n\t1: DCMHighQuality\n\t2: DCMMediumQuality\n\t3: DCMLowQuality\n\ttreating other values as 2");
 	cmd.addOption("--smooth",                  "+sm",    1, "[s]: integer (0..100, default: 0)",
 		"use smoothing factor s");
 	cmd.addSubGroup("other JPEG options:");
