@@ -367,8 +367,11 @@ OFCondition DJCompressJP2K::encode(
         break;
             
     default:
-        //printf( "****** warning unknown compression rate -> lossless : %d", quality);
-        parameters.tcp_rates[0] = 0;
+        //printf( "****** warning unknown compression rate -> MediumQuality : %d", quality);
+        if( columns <= 600 || rows <= 600)
+            parameters.tcp_rates[0] = 6;
+        else
+            parameters.tcp_rates[0] = 8;
         break;
     }
 

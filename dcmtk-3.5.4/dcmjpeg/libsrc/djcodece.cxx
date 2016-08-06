@@ -1146,60 +1146,37 @@ OFCondition DJCodecEncoder::encodeMonochromeImage(
       if ((dataset->findAndGetUint16(DCM_SamplesPerPixel, samplesPerPixel)).bad()) samplesPerPixel = 1;
 	  //Uint16 pixelRepresentation = 0;
 	  dataset->findAndGetUint16(DCM_PixelRepresentation, pixelRepresentation);
-	  
-	  const char *GEIcon = NULL;
-	  OFBool isGEIcon = OFFalse;
-	  if( dataset->findAndGetString( DcmTagKey( 0x0029, 0x0010), GEIcon).good() && GEIcon)
+
+	  uncompressedSize = columns * rows * pixelDepth * frameCount * samplesPerPixel / 8.0;
+	  for (unsigned int i=0; (i<frameCount) && (result.good()); i++)
 	  {
-		if( strcmp( GEIcon, "GEIIS") == 0) // 0x0009, 0x1110 The problematic private group, containing a *always* JPEG compressed PixelData
-			isGEIcon = OFTrue; // GE Icon pixel data are already and always compressed in JPEG -> dont touch lesion !
-	  }
-	  
-		if( isGEIcon)
-		{
-			DcmElement *dummyElem = NULL;
-			const Uint16* pixelData = NULL;
-			
-			dataset->findAndGetUint16Array(DCM_PixelData, pixelData, NULL, OFFalse);
-			dataset->findAndGetElement(DCM_PixelData, dummyElem);
-			Uint32 length = dummyElem->getLength();
-			
-			pixelSequence->storeCompressedFrame(offsetList, (Uint8 *) pixelData, length, cp->getFragmentSize());
-			compressedSize += length;
-		}
+		frame = dimage.getOutputData(bitsPerSample, i, 0);
+		if (frame == NULL) result = EC_MemoryExhausted;
 		else
 		{
-		  uncompressedSize = columns * rows * pixelDepth * frameCount * samplesPerPixel / 8.0;
-		  for (unsigned int i=0; (i<frameCount) && (result.good()); i++)
-		  {
-				frame = dimage.getOutputData(bitsPerSample, i, 0);
-				if (frame == NULL) result = EC_MemoryExhausted;
-				else
-				{
-				  // compress frame
-				  jpegData = NULL;
-				  if (bytesPerSample == 1)
-				  {
-					result = jpeg->encode(columns, rows, EPI_Monochrome2, 1, (Uint8 *)frame, jpegData, jpegLen, (Uint8)pixelRepresentation, (minUsed-rescaleIntercept)/rescaleSlope, (maxUsed-rescaleIntercept)/rescaleSlope);
-				  } 
-				  else
-				  {
-					result = jpeg->encode(columns, rows, EPI_Monochrome2, 1, (Uint16 *)frame, jpegData, jpegLen, (Uint8)pixelRepresentation, (minUsed-rescaleIntercept)/rescaleSlope, (maxUsed-rescaleIntercept)/rescaleSlope);
-				  }
+			// compress frame
+			jpegData = NULL;
+			if (bytesPerSample == 1)
+			{
+			result = jpeg->encode(columns, rows, EPI_Monochrome2, 1, (Uint8 *)frame, jpegData, jpegLen, (Uint8)pixelRepresentation, (minUsed-rescaleIntercept)/rescaleSlope, (maxUsed-rescaleIntercept)/rescaleSlope);
+			} 
+			else
+			{
+			result = jpeg->encode(columns, rows, EPI_Monochrome2, 1, (Uint16 *)frame, jpegData, jpegLen, (Uint8)pixelRepresentation, (minUsed-rescaleIntercept)/rescaleSlope, (maxUsed-rescaleIntercept)/rescaleSlope);
+			}
 				  
-				  // store frame
-				  if (result.good())
-				  {
-					result = pixelSequence->storeCompressedFrame(offsetList, jpegData, jpegLen, cp->getFragmentSize());
-				  }
+			// store frame
+			if (result.good())
+			{
+			result = pixelSequence->storeCompressedFrame(offsetList, jpegData, jpegLen, cp->getFragmentSize());
+			}
 
-				  // delete block of JPEG data
-				  delete[] jpegData;
-				  compressedSize += jpegLen;
-				}
-		  }
-		  delete jpeg;
-		} 
+			// delete block of JPEG data
+			delete[] jpegData;
+			compressedSize += jpegLen;
+		}
+	  }
+	  delete jpeg;
 	}
 	else result = EC_MemoryExhausted;
   }
