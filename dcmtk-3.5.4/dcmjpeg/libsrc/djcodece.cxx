@@ -51,6 +51,7 @@
 #include "dcmtk/dcmdata/dcvrst.h"    /* for class DcmShortText */
 #include "dcmtk/dcmdata/dcvrus.h"    /* for class DcmUnsignedShort */
 #include "dcmtk/dcmdata/dcswap.h"    /* for swapIfNecessary */
+#include "dcmtk/dcmdata/dcvrlo.h"
 
 // dcmjpeg includes
 #include "dcmtk/dcmjpeg/djcparam.h"  /* for class DJCodecParameter */
@@ -124,14 +125,67 @@ OFCondition DJCodecEncoder::encode(
   // assume we can cast the codec parameter to what we need
   const DJCodecParameter *djcp = (const DJCodecParameter *)cp;
 
+  DcmStack localStack(objStack);
+  (void)localStack.pop();             // pop pixel data element from stack
+  DcmObject *dataset = localStack.pop(); // this is the item in which the pixel data is located
+
+    // GEIIS bug compatible
+    // 0x0009, 0x1110 The problematic private group, containing a *always* JPEG lossy compressed PixelData
+    // GE Icon pixel data are already and always compressed in JPEG lossy -> dont touch lesion !
+    OFBool isGEIcon = OFFalse;
+    DcmStack privateStack;
+    privateStack.push(dataset);
+    if(dataset->search(DcmTagKey(0x0029, 0x0010), privateStack, ESM_afterStackTop, OFFalse).good())
+    {   // it's ge bug
+        DcmLongString *creator = OFdynamic_cast(DcmLongString*, privateStack.top());
+        if(creator)
+        {
+            char *GEIcon = NULL;
+            creator->getString(GEIcon);
+            if(GEIcon && strcmp(GEIcon, "GEIIS") == 0) isGEIcon = OFTrue;
+        }
+    }
+	  
+	if( isGEIcon)
+	{
+		DcmElement *dummyElem = NULL;
+		const Uint16* pixelData = NULL;
+	    DcmItem *dip = OFdynamic_cast(DcmItem*, dataset);
+        if(dip == NULL) result = EC_IllegalParameter;
+
+        if (result.good())
+        {
+            dip->findAndGetUint16Array(DCM_PixelData, pixelData, NULL, OFFalse);
+            dip->findAndGetElement(DCM_PixelData, dummyElem);
+            Uint32 length = dummyElem->getLength();
+            DcmOffsetList offsetList;
+			DcmPixelSequence *pixelSequence = NULL;
+            pixelSequence = new DcmPixelSequence(DcmTag(DCM_PixelData,EVR_OB));
+            if (pixelSequence == NULL) result = EC_MemoryExhausted;
+            DcmPixelItem *offsetTable = NULL;
+            if (result.good())
+            {
+                pixelSequence = new DcmPixelSequence(DcmTag(DCM_PixelData,EVR_OB));
+                if (pixelSequence == NULL) result = EC_MemoryExhausted;
+                else
+                {
+                    // create empty offset table
+                    offsetTable = new DcmPixelItem(DcmTag(DCM_Item,EVR_OB));
+                    if (offsetTable == NULL) result = EC_MemoryExhausted;
+                    else pixelSequence->insert(offsetTable);
+                }
+            }
+            if (result.good())
+                result = pixelSequence->storeCompressedFrame(offsetList, (Uint8 *) pixelData, length, djcp->getFragmentSize());
+            if (result.good()) pixSeq = pixelSequence;
+        }
+        return result;
+	}
+
   // if true lossless mode is enabled, and we're supposed to do lossless compression,
   // call the "true lossless encoding"-engine
   if (isLosslessProcess() && (djcp->getTrueLosslessMode()))
     return encodeTrueLossless(toRepParam, pixSeq, cp, objStack);
-
-  DcmStack localStack(objStack);
-  (void)localStack.pop();             // pop pixel data element from stack
-  DcmObject *dataset = localStack.pop(); // this is the item in which the pixel data is located
 
   if ((!dataset)||((dataset->ident()!= EVR_dataset) && (dataset->ident()!= EVR_item))) result = EC_InvalidTag;
   else
@@ -659,6 +713,7 @@ OFCondition DJCodecEncoder::encodeTrueLossless(
         // free memory
         delete[] jpegData;
       }
+      delete jpeg; // encoder no longer in use
     }
     else
     {
@@ -672,7 +727,7 @@ OFCondition DJCodecEncoder::encodeTrueLossless(
     }
     else
       delete pixelSequence;
-    delete jpeg; // encoder no longer in use
+    
     // the following operations do not affect the Image Pixel Module
     // but other modules such as SOP Common.  We only perform these
     // changes if we're on the main level of the datsetItem,

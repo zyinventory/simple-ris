@@ -222,6 +222,8 @@ int main(int argc, char *argv[])
 	OFBool           opt_usePixelValues = OFTrue;
 	OFBool           opt_useModalityRescale = OFFalse;
 	OFBool           opt_trueLossless = OFTrue;
+    OFBool           opt_compressGEIIS = OFFalse;
+    OFBool           opt_GEIIS_forceTransferSyntax = OFFalse;
 
 	OFConsoleApplication app(OFFIS_CONSOLE_APPLICATION , "Encode DICOM file to JPEG transfer syntax", rcsid);
 	OFCommandLine cmd;
@@ -238,6 +240,8 @@ int main(int argc, char *argv[])
 	cmd.addOption("--debug",                     "-d",        "debug mode, print debug information");
 	cmd.addOption("--delete-source-file",        "-ds",       "if conversion is successful, delete source file.");
 	cmd.addOption("--skip-compressed",           "-sc",       "if source file is compressed, skip compressing, save directly");
+	cmd.addOption("--compresse-geiis",           "-cg",       "compresse GEIIS image");
+	cmd.addOption("--geiis-disable-auto-ts",     "-gd",      "if compresse GEIIS image, disable transfer syntax auto selection");
 	cmd.addOption("--process-number",            "-pn",    1, "[pn]: integer (default: 0)", "parent process id");
 
 	cmd.addGroup("input options:");
@@ -400,6 +404,8 @@ int main(int argc, char *argv[])
 		if (cmd.findOption("--debug")) opt_debugMode = 5;
 		if (cmd.findOption("--delete-source-file")) opt_deleteSourceFile = OFTrue;
 		if (cmd.findOption("--skip-compressed")) opt_skipCompressed = OFTrue;
+        if (cmd.findOption("--compresse-geiis")) opt_compressGEIIS = OFTrue;
+        if (cmd.findOption("--geiis-disable-auto-ts")) opt_GEIIS_forceTransferSyntax = OFTrue;
 		if (cmd.findOption("--process-number")) app.checkValue(cmd.getValueAndCheckMin(opt_processNumber, 0));
 
 		cmd.beginOptionBlock();
@@ -751,8 +757,6 @@ int main(int argc, char *argv[])
 		return -2;
 	}
 
-	E_TransferSyntax opt_oxferBak = opt_oxfer;
-
     char vMessage[MAX_PATH * 2] = PIPE_READY_MESSAGE;
 	OFBool readpipe = OFFalse;
     HANDLE hPipe = INVALID_HANDLE_VALUE;
@@ -856,7 +860,6 @@ int main(int argc, char *argv[])
 			break;
 		}
 
-		opt_oxfer = opt_oxferBak;
 		isEncapsulated = OFFalse;
 
 		if (opt_verbose) CERR << "Client " << clientId << ": reading input file " << opt_ifname << endl;
@@ -877,8 +880,10 @@ int main(int argc, char *argv[])
         
 		DcmXfer original_xfer(dataset->getOriginalXfer());
         isEncapsulated = original_xfer.isEncapsulated();
-        
-        OFBool isGEBug = OFFalse;
+
+        // 0x0009, 0x1110 The problematic private group, containing a *always* JPEG compressed PixelData
+        // GE Icon pixel data are already and always compressed in JPEG -> dont touch lesion !
+        OFBool keepGEBug = OFTrue;
         if(!opt_skipCompressed && !isEncapsulated)
         {   // find GEIIS private tag
             DcmStack resultStack;
@@ -898,15 +903,44 @@ int main(int argc, char *argv[])
                         {
                             char *GEIcon = NULL;
                             creator->getString(GEIcon);
-                            if(GEIcon && strcmp(GEIcon, "GEIIS") == 0) // 0x0009, 0x1110 The problematic private group, containing a *always* JPEG compressed PixelData
-	                            isGEBug = OFTrue; // GE Icon pixel data are already and always compressed in JPEG -> dont touch lesion !
+                            if(GEIcon && strcmp(GEIcon, "GEIIS") == 0)
+                            {
+                                if(opt_compressGEIIS) keepGEBug = OFFalse;
+                                if(opt_compressGEIIS && !opt_GEIIS_forceTransferSyntax)
+                                {
+                                    while(resultStack.card() > 1) resultStack.pop();
+                                    if(dataset->search(DCM_BitsStored, resultStack, ESM_afterStackTop, OFFalse).good())
+                                    {
+                                        DcmUnsignedShort *pstored = OFdynamic_cast(DcmUnsignedShort*, resultStack.top());
+                                        Uint16 stored = 0;
+                                        if(pstored && pstored->getUint16(stored).good())
+                                        {
+                                            if(stored <= 8)
+                                            {
+                                                opt_oxfer = EXS_JPEGProcess1TransferSyntax;
+                                                opt_trueLossless = OFFalse;
+                                            }
+                                            else if(stored <= 12)
+                                            {
+                                                opt_oxfer = EXS_JPEGProcess2_4TransferSyntax;
+                                                opt_trueLossless = OFFalse;
+                                            }
+                                            else
+                                            {
+                                                opt_oxfer = EXS_JPEGProcess14SV1TransferSyntax;
+                                                opt_trueLossless = OFTrue;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
 
-        if(opt_skipCompressed || isEncapsulated || isGEBug)
+        if(opt_skipCompressed || isEncapsulated || keepGEBug)
         {
 		    if (opt_verbose) CERR << "Convert DICOM file is already compressed or skip compressing, copy or move it." << endl;
 		    opt_oxfer = original_xfer.getXfer();
