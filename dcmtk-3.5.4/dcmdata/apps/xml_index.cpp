@@ -878,7 +878,7 @@ bool xml_index::unload_and_sync_study(const std::string &study_uid)
 
         pStudyDom.Attach(pdom, false); // don't add ref
 
-        if(opt_verbose) time_header_out(*pflog) << "xml_index::unload_and_sync_study() ready to save study date and patient." << endl;
+        //if(opt_verbose) time_header_out(*pflog) << "xml_index::unload_and_sync_study() ready to save study date and patient." << endl;
         //save_index_study_date(pStudyDom);
         //save_index_patient(pStudyDom);
         return true;

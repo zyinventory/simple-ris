@@ -789,11 +789,12 @@ int main(int argc, char *argv[])
 			/* collect 'bad' files */
 			OFList<OFString> badFiles;
 			unsigned int goodFiles = 0;
+            bool publish_jdf = false;
+            OFString study_end_time;
             if(readPipe)
             {
                 fnbuf[0] = '\0';
                 char *dir = NULL, *pfn = NULL;
-                bool publish_jdf = false;
                 // at first pull loop, last_file_name is empty, report dcmmkdir's pid
                 sprintf_s(last_file_name, "dcmmkdir pid %d", clientId);
                 while(true)
@@ -838,10 +839,17 @@ int main(int argc, char *argv[])
                     fnbuf[cbRead] = '\0';
                     if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir ReadFile(): " << fnbuf << endl;
                     
-                    if(strncmp("close", fnbuf, 5) == 0)  // server close pipe
+                    if(strncmp("close ", fnbuf, 6) == 0)  // server close pipe
                     {
-                        if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": server close named pipe" << endl;
-                        publish_jdf = (strcmp("close study", fnbuf) == 0);
+                        const char *study_end = strchr(fnbuf + 6, ' ');
+                        if(study_end)
+                        {
+                            ++study_end;
+                            study_end_time = study_end;
+                        }
+                        if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": server close named pipe, study end at " << study_end_time << endl;
+
+                        publish_jdf = (strncmp("close study ", fnbuf, 12) == 0);
                         DisconnectNamedPipe(hPipe);
                         break;  // while(true)
                     }
@@ -902,18 +910,6 @@ int main(int argc, char *argv[])
                     }
                 } // while(true)
                 CloseHandle(hPipe);
-                
-                list<string> uids;
-                xi.find_all_study_uid(uids);
-                for(list<string>::iterator it = uids.begin(); it != uids.end(); ++it)
-                {
-                    time_header_out(CERR) << "unload study " << *it << endl;
-                    xi.unload_and_sync_study(*it);
-                    if(publish_jdf && 0 == generateStudyTxt(it->c_str(), CERR))
-                    {
-                        if(opt_verbose) time_header_out(CERR) << "study txt OK: " << *it << endl;
-                    }
-                }
             }
             else if(readStdin)
 			{
@@ -997,8 +993,43 @@ int main(int argc, char *argv[])
 			}
 			/* write DICOMDIR file */
 			if (result.good() && opt_write)
+            {
 				result = ddir.writeDicomDir(opt_enctype, opt_glenc);
-			
+                if(opt_verbose || result.bad())
+                    time_header_out(CERR) << "write dicomdir " << result.text() << endl;
+            }
+            else if(result.bad())
+                time_header_out(CERR) << "skip writing dicomdir, reason: " << result.text() << endl;
+
+            if(readPipe)
+            {
+                bool unloadOK = true;
+                list<string> uids_from_pipe;
+                xi.find_all_study_uid(uids_from_pipe);
+                for(list<string>::iterator it = uids_from_pipe.begin(); it != uids_from_pipe.end(); ++it) //only one study shall exist
+                {
+                    time_header_out(CERR) << "unload study " << *it << endl;
+                    unloadOK &= xi.unload_and_sync_study(*it);
+                    if(publish_jdf && result.good() && 0 == generateStudyTxt(it->c_str(), CERR))
+                    {
+                        if(opt_verbose) time_header_out(CERR) << "study txt OK: " << *it << endl;
+                    }
+                }
+			    string unlock_file_name(GetPacsBase());
+                unlock_file_name.append("\\orders_study\\").append(study_end_time).append(".txt");
+                ofstream ofs_complete(unlock_file_name, ios_base::out | ios_base::app);
+                if(ofs_complete.fail())
+                {
+                    char file_error[1024];
+                    strerror_s(file_error, errno);
+                    time_header_out(CERR) << "create complete file " << unlock_file_name << " failed: " << file_error << endl;
+                }
+                else
+                {
+                    ofs_complete << (unloadOK ? "OK" : "FAIL") << endl;
+                    ofs_complete.close();
+                }
+            }
 			if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: DICOMDIR is written" << endl;
 		}
 	}

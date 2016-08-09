@@ -709,10 +709,13 @@ handle_study::~handle_study()
                 << ", " << pipe_context->study_uid << endl;
 
             DWORD cbWritten = 0;
-            const char *close_auto_publish = "close manual";
+            string close_command;
             if(last_association_action.is_auto_publish())
-                close_auto_publish = "close study";
-            WriteFile(pipe_context->hPipeInst, close_auto_publish, strlen(close_auto_publish), &cbWritten, NULL);
+                close_command = "close study ";
+            else
+                close_command = "close manual ";
+            close_command.append(lock_file_name);
+            WriteFile(pipe_context->hPipeInst, close_command.c_str(), close_command.length(), &cbWritten, NULL);
 
             if (! DisconnectNamedPipe(pipe_context->hPipeInst))
                 displayErrorToCerr(__FUNCSIG__ " DisconnectNamedPipe()", GetLastError(), pflog);
@@ -722,21 +725,6 @@ handle_study::~handle_study()
         pipe_context = NULL;
     }
     //xml_index::singleton_ptr->unload_and_sync_study(study_uid);
-    
-    char path_buff[MAX_PATH];
-    sprintf_s(path_buff, "%s\\orders_study\\%s.txt", GetPacsBase(), lock_file_name.c_str());
-    ofstream ofs_complete(path_buff, ios_base::out | ios_base::app);
-    if(ofs_complete.fail())
-    {
-        string notify_complete_path(path_buff);
-        strerror_s(path_buff, errno);
-        time_header_out(*pflog) << __FUNCSIG__" create complete file " << notify_complete_path << " failed: " << path_buff << endl;
-    }
-    else
-    {
-        ofs_complete << "OK" << endl;
-        ofs_complete.close();
-    }
 }
 
 DWORD handle_study::append_action(const action_from_association &action)
