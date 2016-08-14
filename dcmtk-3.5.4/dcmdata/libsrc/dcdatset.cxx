@@ -53,6 +53,8 @@
 #include "dcmtk/dcmdata/dcostrmf.h"    /* for class DcmOutputFileStream */
 #include "dcmtk/dcmdata/dcistrma.h"    /* for class DcmInputStream */
 #include "dcmtk/dcmdata/dcistrmf.h"    /* for class DcmInputFileStream */
+#include "dcmtk/dcmdata/dcpxitem.h"
+#include "dcmtk/dcmdata/dcpixseq.h"
 
 
 // ********************************
@@ -717,6 +719,52 @@ OFBool DcmDataset::briefToStream(FILE *fp, const char *level)
     size_t wt = fwrite(sw.c_str(), 1, sw.length(), fp);
     fflush(fp);
     return wt == sw.length();
+}
+
+OFBool DcmDataset::doNotChangeGEBug(E_TransferSyntax opt_oxfer, const DcmRepresentationParameter *rp)
+{
+    OFBool result = OFFalse;
+    DcmStack stack;
+    stack.push(this);
+    while(search(DCM_PixelData, stack, ESM_afterStackTop, OFTrue).good())
+    {
+        DcmPixelData *oldpd = OFdynamic_cast(DcmPixelData*, stack.top());
+        DcmPixelSequence *ps = NULL;
+        if(stack.card() == 4 && oldpd->getEncapsulatedRepresentation(opt_oxfer, rp, ps).good()
+            && ps && ps->card() == 2)
+        {
+            DcmPixelItem *pitem = NULL;
+            DcmPolymorphOBOW *newpd = NULL;
+            if(ps->getItem(pitem, 1).good())
+            {
+                Uint8 *data = NULL;
+                if(pitem->getUint8Array(data).good())
+                {
+                    newpd = new DcmPolymorphOBOW(DcmTag(DCM_PixelData, EVR_OB));
+                    if(newpd == NULL || newpd->putUint8Array(data, pitem->getLength()).bad())
+                    {
+                        delete newpd;
+                        newpd = NULL;
+                    }
+                }
+            }
+            if(newpd)
+            {
+                DcmObject *dO = stack.elem(1);
+                if(dO->ident() == EVR_item)
+                {
+                    CERR << "container is dcmitem" << endl;
+                    DcmItem *pdi = OFdynamic_cast(DcmItem*, dO);
+                    pdi->remove(oldpd);
+                    pdi->insert(newpd, true, true);
+                    stack.pop();
+                    stack.push(newpd);
+                    result = OFTrue;
+                }
+            }
+        }
+    }
+    return result;
 }
 
 /*

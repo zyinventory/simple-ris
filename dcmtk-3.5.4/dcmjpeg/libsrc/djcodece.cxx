@@ -160,8 +160,6 @@ OFCondition DJCodecEncoder::encode(
             Uint32 length = dummyElem->getLength();
             DcmOffsetList offsetList;
 			DcmPixelSequence *pixelSequence = NULL;
-            pixelSequence = new DcmPixelSequence(DcmTag(DCM_PixelData,EVR_OB));
-            if (pixelSequence == NULL) result = EC_MemoryExhausted;
             DcmPixelItem *offsetTable = NULL;
             if (result.good())
             {
@@ -177,6 +175,7 @@ OFCondition DJCodecEncoder::encode(
             }
             if (result.good())
                 result = pixelSequence->storeCompressedFrame(offsetList, (Uint8 *) pixelData, length, djcp->getFragmentSize());
+            if(offsetTable) result = offsetTable->createOffsetTable(offsetList);
             if (result.good()) pixSeq = pixelSequence;
         }
         return result;
@@ -439,7 +438,7 @@ OFCondition DJCodecEncoder::encodeColorImage(
   if ((result.good()) && (cp->getCreateOffsetTable()))
   {
     // create offset table
-    result = offsetTable->createOffsetTable(offsetList);
+    if(offsetTable) result = offsetTable->createOffsetTable(offsetList);
   }
 
   if (result.good())
@@ -722,6 +721,7 @@ OFCondition DJCodecEncoder::encodeTrueLossless(
     }
     if (result.good())
     {
+      if(offsetTable) result = offsetTable->createOffsetTable(offsetList);
       compressionRatio = ((double)bytesAllocated * samplesPerPixel * columns * rows * OFstatic_cast(unsigned long,numberOfFrames)) / compressedSize;
       pixSeq = pixelSequence;
     }
@@ -1247,7 +1247,7 @@ OFCondition DJCodecEncoder::encodeMonochromeImage(
   if ((result.good()) && (cp->getCreateOffsetTable()))
   {
     // create offset table
-    result = offsetTable->createOffsetTable(offsetList);
+    if(offsetTable) result = offsetTable->createOffsetTable(offsetList);
   }
 
   if (result.good())

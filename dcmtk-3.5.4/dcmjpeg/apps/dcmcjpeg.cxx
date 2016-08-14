@@ -883,7 +883,7 @@ int main(int argc, char *argv[])
 
         // 0x0009, 0x1110 The problematic private group, containing a *always* JPEG compressed PixelData
         // GE Icon pixel data are already and always compressed in JPEG -> dont touch lesion !
-        OFBool keepGEBug = OFTrue;
+        OFBool hasGEBug = OFFalse;
         if(!opt_skipCompressed && !isEncapsulated)
         {   // find GEIIS private tag
             DcmStack resultStack;
@@ -905,7 +905,7 @@ int main(int argc, char *argv[])
                             creator->getString(GEIcon);
                             if(GEIcon && strcmp(GEIcon, "GEIIS") == 0)
                             {
-                                if(opt_compressGEIIS) keepGEBug = OFFalse;
+                                hasGEBug = OFTrue;
                                 if(opt_compressGEIIS && !opt_GEIIS_forceTransferSyntax)
                                 {
                                     while(resultStack.card() > 1) resultStack.pop();
@@ -940,7 +940,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        if(opt_skipCompressed || isEncapsulated || keepGEBug)
+        if(opt_skipCompressed || isEncapsulated || (hasGEBug && !opt_compressGEIIS))
         {
 		    if (opt_verbose) CERR << "Convert DICOM file is already compressed or skip compressing, copy or move it." << endl;
 		    opt_oxfer = original_xfer.getXfer();
@@ -989,6 +989,9 @@ int main(int argc, char *argv[])
 			        //if( ! SetPriorityClass(GetCurrentProcess(), PROCESS_MODE_BACKGROUND_BEGIN) ) displayErrorToCerr("SetPriorityClass");
 			        //CERR << "before load into mem " << GetTickCount() - timerbase << endl;
 			        fileformat.loadAllDataIntoMemory();
+
+                    if(hasGEBug) dataset->doNotChangeGEBug(opt_oxfer, rp);
+
 			        //CERR << "after load into mem " << GetTickCount() - timerbase << endl;
 			        error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc, opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
 			        //CERR << "after save " << GetTickCount() - timerbase << endl;
