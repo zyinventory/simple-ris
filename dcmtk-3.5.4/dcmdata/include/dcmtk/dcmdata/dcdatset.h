@@ -259,6 +259,7 @@ class DcmDataset
      */
     OFBool briefToStream(ostream &strm, const char *level = NOTIFY_LEVEL_FULL);
     OFBool briefToStream(FILE *fp, const char *level = NOTIFY_LEVEL_FULL);
+    OFBool doNotChangeGEBug(E_TransferSyntax opt_oxfer, const DcmRepresentationParameter *rp);
 
   private:
 
