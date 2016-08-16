@@ -142,6 +142,7 @@ static void exitHook()
 #endif
 }
 
+static int opt_verbose = 0;
 static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
 {
     //if(!association_established) association_establishment(pc);
@@ -156,6 +157,7 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
         fn_only += in_process_sequence(fn_only, sizeof(notifyFileName) - (fn_only - notifyFileName), STATE_DIR);
         strcpy_s(fn_only, sizeof(notifyFileName) - (fn_only - notifyFileName), "_" NOTIFY_FILE_TAG ".dfc");
         datasetToNotify(instanceName.c_str(), notifyFileName, &pds, true);
+        if(opt_verbose) time_header_out(cerr) << notifyFileName << " write OK" << endl;
         return EC_Normal;
     }
     return EC_IllegalParameter;
@@ -361,12 +363,14 @@ main(int argc, char *argv[])
 
       if (cmd.findOption("--verbose")) options.verbose_=1;
       if (cmd.findOption("--very-verbose")) options.verbose_=2;
+      opt_verbose = options.verbose_;
       if (cmd.findOption("--debug"))
       {
         options.debug_ = OFTrue;
         DUL_Debug(OFTrue);
         DIMSE_debug(OFTrue);
         SetDebugLevel(3);
+        opt_verbose = 3;
       }
       if (cmd.findOption("--config")) app.checkValue(cmd.getValue(opt_configFileName));
 #ifdef HAVE_FORK

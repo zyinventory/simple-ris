@@ -257,8 +257,9 @@ void named_pipe_server::read_pipe_complete(DWORD dwErr, DWORD cbBytesRead, LPOVE
 DWORD named_pipe_server::pipe_client_connect_incoming()
 {
     DWORD gle = 0, cbRet = 0;
-    if(GetOverlappedResult(hPipe, &olPipeConnectOnly, &cbRet, FALSE))
+    if(GetOverlappedResult(hPipe, &olPipeConnectOnly, &cbRet, TRUE))
     {
+        if(opt_verbose) time_header_out(cerr) << __FUNCSIG__" async operation complete" << endl;
         LPPIPEINST lpPipeInst = new PIPEINST;
         memset(lpPipeInst, 0, sizeof(PIPEINST));
         lpPipeInst->hPipeInst = hPipe; // bind hPipe to named pipe instance

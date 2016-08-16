@@ -127,7 +127,8 @@ int               opt_dimse_timeout = 0;
 int               opt_acse_timeout = 30;
 OFBool            opt_ignorePendingDatasets = OFTrue;
 
-static OFString opt_sessionId, movedir;
+static OFString opt_sessionId, movedir, opt_recordPolicy("MOVE");
+static OFBool opt_moveOnly = OFFalse;
 static T_ASC_Network *net = NULL; /* the global DICOM network */
 static DcmDataset *overrideKeys = NULL;
 static QuerySyntax querySyntax[3] = {
@@ -306,7 +307,9 @@ main(int argc, char *argv[])
       opt5 += APPLICATIONTITLE;
       opt5 += ")";
       cmd.addOption("--move",                   "-aem",  1,  "aetitle: string", opt5.c_str());
-      cmd.addOption("--session",                "-se",   1,  "session id: string", "move session id");
+      cmd.addOption("--session",                "-se",   1,  "move session id: string", "no default value");
+      cmd.addOption("--record-policy",          "-rp",   1,  "record policy: string", "MOVE is default, record manually");
+      cmd.addOption("--move-only",              "-mo",       "move instance only, don't compress and index");
     cmd.addSubGroup("preferred network transfer syntaxes (incoming associations):");
       cmd.addOption("--prefer-uncompr",         "+x=",       "prefer explicit VR local byte order (default)");
       cmd.addOption("--prefer-little",          "+xe",       "prefer explicit VR little endian TS");
@@ -439,6 +442,8 @@ main(int argc, char *argv[])
       if (cmd.findOption("--call")) app.checkValue(cmd.getValue(opt_peerTitle));
       if (cmd.findOption("--move")) app.checkValue(cmd.getValue(opt_moveDestination));
       if (cmd.findOption("--session")) app.checkValue(cmd.getValue(opt_sessionId));
+      if (cmd.findOption("--record-policy")) app.checkValue(cmd.getValue(opt_recordPolicy));
+      if (cmd.findOption("--move-only")) opt_moveOnly = OFTrue;
       cmd.beginOptionBlock();
       if (cmd.findOption("--prefer-uncompr"))  opt_in_networkTransferSyntax = EXS_Unknown;
       if (cmd.findOption("--prefer-little"))   opt_in_networkTransferSyntax = EXS_LittleEndianExplicit;
@@ -1213,10 +1218,10 @@ static OFCondition storeSCP(
         FILE *fplog = NULL;
         char filename[MAX_PATH], content[1024];
         int fn_used = sprintf_s(filename, STATE_DIR"%s_%s.dfc", cb->associationId, NOTIFY_STORE_TAG);
-        int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d DEFAULT MOVE %s\n",
+        int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d DEFAULT %s %s\n",
             NOTIFY_ASSOC_ESTA, cb->associationId, assoc->params->DULparams.callingAPTitle, 
             assoc->params->DULparams.callingPresentationAddress, assoc->params->DULparams.calledAPTitle,
-            cb->port, assoc->params->DULparams.calledPresentationAddress);
+            cb->port, opt_recordPolicy.c_str(), assoc->params->DULparams.calledPresentationAddress);
         if(fn_used > 0 && (fplog = fopen(filename, "w")))
         {
             fwrite(content, content_used, 1, fplog);
@@ -1228,22 +1233,12 @@ static OFCondition storeSCP(
         }
 
         if(NULL == _getcwd(path_buff, sizeof(path_buff))) strcpy_s(path_buff, ".");
-        content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s %d %s %s %s %s %d DEFAULT MOVE %s\nMOVE %08X %s\n",
+        content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s %d %s %s %s %s %d DEFAULT %s %s\nMOVE %08X %s\n",
             NOTIFY_PROC_STOR_START, path_buff, _getpid(), cb->associationId,
             assoc->params->DULparams.callingAPTitle, assoc->params->DULparams.callingPresentationAddress,
-            assoc->params->DULparams.calledAPTitle, cb->port, assoc->params->DULparams.calledPresentationAddress,
+            assoc->params->DULparams.calledAPTitle, cb->port, opt_recordPolicy.c_str(), 
+            assoc->params->DULparams.calledPresentationAddress,
             NOTIFY_MOVE_SESSION_ID, opt_sessionId.c_str());
-        fn_used = sprintf_s(filename, "%s\\pacs\\store_notify\\%s_"NOTIFY_ACKN_TAG".dfc", pacs_base.c_str(), cb->associationId);
-        if(fn_used > 0 && (fplog = fopen(filename, "w")))
-        {
-            fwrite(content, content_used, 1, fplog);
-            fclose(fplog);
-        }
-        else
-        {
-            cerr << "storeSCP() can't create notify file " << filename << ", missing command:" << endl << content << endl;
-        }
-        // write content dfc again, write to movedir
         fn_used = sprintf_s(filename, "%s%s_"NOTIFY_STORE_TAG".dfc", movedir.c_str(), cb->associationId);
         if(fn_used > 0 && (fplog = fopen(filename, "w")))
         {
@@ -1252,7 +1247,21 @@ static OFCondition storeSCP(
         }
         else
         {
-            cerr << "storeSCP() can't create notify file " << filename << ", missing command:" << endl << content << endl;
+            cerr << "storeSCP() can't create move notify file " << filename << ", missing command:" << endl << content << endl;
+        }
+        if(!opt_moveOnly)
+        {
+            // write content dfc again, write to movedir
+            fn_used = sprintf_s(filename, "%s\\pacs\\store_notify\\%s_"NOTIFY_ACKN_TAG".dfc", pacs_base.c_str(), cb->associationId);
+            if(fn_used > 0 && (fplog = fopen(filename, "w")))
+            {
+                fwrite(content, content_used, 1, fplog);
+                fclose(fplog);
+            }
+            else
+            {
+                cerr << "storeSCP() can't create store notify file " << filename << ", missing command:" << endl << content << endl;
+            }
         }
     }
 
@@ -1599,9 +1608,9 @@ moveSCU(T_ASC_Association * assoc, const char *fname)
     char filename[MAX_PATH], seq[64], content[1024];
     in_process_sequence(seq, sizeof(seq), "");
     int fn_used = sprintf_s(filename, "%s%s_%s.dfc", movedir.c_str(), seq, NOTIFY_MOVE_TAG);
-    int content_used = sprintf_s(content, NOTIFY_MOVE_TAG " %08X %s %s %s %s 0 DEFAULT MOVE %s",
+    int content_used = sprintf_s(content, NOTIFY_MOVE_TAG " %08X %s %s %s %s 0 DEFAULT %s %s",
         NOTIFY_ASSOC_ESTA, seq, assoc->params->DULparams.callingAPTitle, assoc->params->DULparams.callingPresentationAddress,
-        assoc->params->DULparams.calledAPTitle, assoc->params->DULparams.calledPresentationAddress);
+        assoc->params->DULparams.calledAPTitle, opt_recordPolicy.c_str(), assoc->params->DULparams.calledPresentationAddress);
     if(fn_used > 0)
     {
         ofstream ofs(filename);
