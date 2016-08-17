@@ -329,10 +329,9 @@ int watch_notify(string &cmd, ostream &flog)
         size_t hsize = map_handle_context.size() + 1;
         if(pha) delete[] pha;
         pha = new HANDLE[hsize];
-        transform(map_handle_context.begin(), map_handle_context.end(), pha, 
+        pha[0] = nps.get_handle(); // map_handle_context[named pipe listening handle] == NULL
+        transform(map_handle_context.begin(), map_handle_context.end(), &pha[1], 
             [](const HANDLE_PAIR &p) { return p.first; });
-
-        pha[hsize - 1] = nps.get_handle(); // map_handle_context[named pipe listening handle] == NULL
 
         DWORD wr = WaitForMultipleObjectsEx(hsize, pha, FALSE, 1000, TRUE);
 
