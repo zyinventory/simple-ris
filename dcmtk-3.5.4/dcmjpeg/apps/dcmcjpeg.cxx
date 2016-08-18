@@ -224,6 +224,7 @@ int main(int argc, char *argv[])
 	OFBool           opt_trueLossless = OFTrue;
     OFBool           opt_compressGEIIS = OFFalse;
     OFBool           opt_GEIIS_forceTransferSyntax = OFFalse;
+    OFBool           opt_saveGEIISasPixel = OFFalse;
 
 	OFConsoleApplication app(OFFIS_CONSOLE_APPLICATION , "Encode DICOM file to JPEG transfer syntax", rcsid);
 	OFCommandLine cmd;
@@ -241,7 +242,8 @@ int main(int argc, char *argv[])
 	cmd.addOption("--delete-source-file",        "-ds",       "if conversion is successful, delete source file.");
 	cmd.addOption("--skip-compressed",           "-sc",       "if source file is compressed, skip compressing, save directly");
 	cmd.addOption("--compresse-geiis",           "-cg",       "compresse GEIIS image");
-	cmd.addOption("--geiis-disable-auto-ts",     "-gd",      "if compresse GEIIS image, disable transfer syntax auto selection");
+	cmd.addOption("--geiis-disable-auto-ts",     "-gd",       "if compresse GEIIS image, disable transfer syntax auto selection");
+    cmd.addOption("--geiis-icon-save-as-pixel",  "-sp",       "save GEIIS icon image as pixel data");
 	cmd.addOption("--process-number",            "-pn",    1, "[pn]: integer (default: 0)", "parent process id");
 
 	cmd.addGroup("input options:");
@@ -406,6 +408,7 @@ int main(int argc, char *argv[])
 		if (cmd.findOption("--skip-compressed")) opt_skipCompressed = OFTrue;
         if (cmd.findOption("--compresse-geiis")) opt_compressGEIIS = OFTrue;
         if (cmd.findOption("--geiis-disable-auto-ts")) opt_GEIIS_forceTransferSyntax = OFTrue;
+        if (cmd.findOption("--geiis-icon-save-as-pixel")) opt_saveGEIISasPixel = OFTrue;
 		if (cmd.findOption("--process-number")) app.checkValue(cmd.getValueAndCheckMin(opt_processNumber, 0));
 
 		cmd.beginOptionBlock();
@@ -990,7 +993,7 @@ int main(int argc, char *argv[])
 			        //CERR << "before load into mem " << GetTickCount() - timerbase << endl;
 			        fileformat.loadAllDataIntoMemory();
 
-                    if(hasGEBug) dataset->doNotChangeGEBug(opt_oxfer, rp);
+                    if(hasGEBug && !opt_saveGEIISasPixel) dataset->doNotChangeGEBug(opt_oxfer, rp);
 
 			        //CERR << "after load into mem " << GetTickCount() - timerbase << endl;
 			        error = fileformat.saveFile(opt_ofname, opt_oxfer, opt_oenctype, opt_oglenc, opt_opadenc, (Uint32) opt_filepad, (Uint32) opt_itempad);
