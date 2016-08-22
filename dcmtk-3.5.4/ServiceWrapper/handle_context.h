@@ -127,17 +127,18 @@ namespace handle_context
         HANDLE hlog;
         std::string exec_cmd, exec_name, log_path;
         PROCESS_INFORMATION procinfo;
-
+		DWORD priority;
     public:
         handle_proc(const std::string &assoc_id, const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name, std::ostream *plog) 
-            : meta_notify_file(assoc_id, cwd, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name)
+            : meta_notify_file(assoc_id, cwd, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name), priority(NORMAL_PRIORITY_CLASS)
             { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
         handle_proc(const handle_proc& o) : meta_notify_file(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
-            log_path(o.log_path), procinfo(o.procinfo) {};
+			log_path(o.log_path), procinfo(o.procinfo), priority(o.priority) {};
         
         static bool make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, const std::string &prog_path, std::ostream &flog);
 
         handle_proc& operator=(const handle_proc &r);
+		DWORD set_priority(DWORD p);
         void print_state() const;
         virtual ~handle_proc();
         HANDLE get_handle() const { return procinfo.hProcess; };
@@ -242,7 +243,7 @@ namespace handle_context
         void disconnect_connection_auto_detect(LPPIPEINST lpPipeInst);
         handle_study* make_handle_study(const std::string &study);
         handle_study* find_handle_study(const std::string &study) { return map_study[study]; };
-        void check_study_timeout_to_generate_jdf();
+        void check_study_timeout_to_generate_jdf(const std::set<std::string> &queued_study_uids);
     };
 }
 

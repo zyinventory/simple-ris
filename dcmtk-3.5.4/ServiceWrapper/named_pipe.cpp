@@ -119,6 +119,7 @@ void named_pipe_server::disconnect_connection_auto_detect(LPPIPEINST lpPipeInst)
         map_study.erase(study_uid);
         if(phs) delete phs;
     }
+	delete lpPipeInst;
 }
 
 void named_pipe_server::client_connect_callback(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap)
@@ -144,7 +145,7 @@ void named_pipe_server::client_connect_callback(DWORD dwErr, DWORD cbBytesRead, 
         }
         strcpy_s(lpPipeInst->study_uid, study_uid.c_str());
 
-        handle_study *phs = make_handle_study(study_uid);
+        handle_study *phs = find_handle_study(study_uid);
         if(phs)
         {   // bind named pipe handle and handle_study
             phs->bind_pipe_context(lpPipeInst);
@@ -160,23 +161,15 @@ void named_pipe_server::client_connect_callback(DWORD dwErr, DWORD cbBytesRead, 
         else
         {
             time_header_out(*pflog) << __FUNCSIG__ " can't find handle_study(" << study_uid << "), otherMessage " << otherMessage << endl;
-            delete lpPipeInst;
+			disconnect_connection_auto_detect(lpPipeInst);
         }
     }
     else
     {
         if(dwErr) displayErrorToCerr(__FUNCSIG__, dwErr, pflog);
         else time_header_out(*pflog) << __FUNCSIG__" failed: read " << lpPipeInst->chBuffer << endl;
-        if(lpPipeInst)
-        {
-            if(lpPipeInst->hPipeInst && lpPipeInst->hPipeInst != INVALID_HANDLE_VALUE)
-            {
-                DisconnectNamedPipe(lpPipeInst->hPipeInst);
-                CloseHandle(lpPipeInst->hPipeInst);
-            }
-            delete lpPipeInst;
-        }
-    }
+		disconnect_connection_auto_detect(lpPipeInst);
+	}
 }
 
 void named_pipe_server::write_pipe_complete(DWORD dwErr, DWORD cbBytesWrite, LPOVERLAPPED lpOverLap)
@@ -293,7 +286,7 @@ handle_study* named_pipe_server::make_handle_study(const std::string &study_uid)
     handle_study *phs = map_study[study_uid];
     if(phs == NULL)
     {
-        time_header_out(*pflog) << "watch_notify() handle_compress complete, can't find map_study[" << study_uid << "], create new handle_study" << endl;
+        time_header_out(*pflog) << "create new handle_study " << study_uid << endl;
         char dicomdir[1024], hash[9];
         HashStr(study_uid.c_str(), hash, sizeof(hash));
         int pos = sprintf_s(dicomdir, "%s\\pacs\\archdir\\v0000000\\%c%c\\%c%c\\%c%c\\%c%c",
@@ -358,20 +351,19 @@ named_pipe_server::~named_pipe_server()
     });
 }
 
-void named_pipe_server::check_study_timeout_to_generate_jdf()
+void named_pipe_server::check_study_timeout_to_generate_jdf(const std::set<std::string> &queued_study_uids)
 {
     STUDY_MAP::iterator it = map_study.begin();
     while(it != map_study.end())
     {
         handle_study *phs = it->second;
-        if(phs && phs->is_time_out())
+		if(phs && queued_study_uids.find(phs->get_study_uid()) == queued_study_uids.cend() && phs->is_time_out())
         {
             if(opt_verbose)
             {
                 time_header_out(*pflog) << "named_pipe_server::check_study_timeout_to_generate_jdf() study timeout: " << phs->get_study_uid() << endl;
                 if(debug_mode) phs->print_state();
             }
-            string study_uid(it->first);
             bool auto_publish = phs->get_last_association_action().is_auto_publish();
             if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::check_study_timeout_to_generate_jdf() delete study " << phs->get_study_uid() << endl;
             it = map_study.erase(it);

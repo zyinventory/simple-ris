@@ -162,25 +162,30 @@ static void compress_complete(const string &assoc_id, const string &study_uid, b
     if(opt_verbose) time_header_out(flog) << "compress_complete() dcmcjpeg " << (compress_ok ? "complete" : "failed")
         << ", find association " << assoc_id << " to set complete." << endl;
     handle_dir *phd = NULL;
-    const HANDLE_MAP::iterator it_dummy = find_if(map_handle_context.begin(), map_handle_context.end(),
-        [&assoc_id, &phd](const HANDLE_PAIR &p) -> bool {
-            if(p.second == NULL) return false;
-            if(0 == assoc_id.compare(p.second->get_association_id()))
-            {
-                phd = dynamic_cast<handle_dir*>(p.second);
-                if(phd) return true;
-            }
-            return false;
-        });
+	for(HANDLE_MAP::const_iterator it = map_handle_context.cbegin(); it != map_handle_context.cend(); ++it)
+	{
+        if(it->second == NULL) continue;
+        if(0 == assoc_id.compare(it->second->get_association_id()))
+        {
+            phd = dynamic_cast<handle_dir*>(it->second);
+            if(phd) break;
+        }
+	}
+	if(phd == NULL) time_header_out(flog) << "compress_complete() can't find association " << assoc_id << ", src file " << nfc.src_notify_filename << endl;
 
-    if(phd)
-    {
-        handle_study *phs = nps.find_handle_study(study_uid);
-        if(phs == NULL)
-            time_header_out(flog) << "compress_complete() src file " << nfc.src_notify_filename << " can't send action to dicomdir: missing study " << study_uid << endl;
-        phd->send_compress_complete_notify(nfc, phs, compress_ok, flog); // phs->append_action(action_from_association(nfc));
-    }
-    else time_header_out(flog) << "compress_complete() set src file " << nfc.src_notify_filename << " complete failed: missing association " << assoc_id << endl;
+    handle_study* phs = nps.find_handle_study(study_uid);
+	if(phs == NULL)
+	{
+		phs = nps.make_handle_study(study_uid);
+		if(phs == NULL)
+			time_header_out(flog) << "compress_complete() can't create study " << study_uid << ", src file " << nfc.src_notify_filename << endl;
+	}
+	if(phd && phs)
+	{	// establish bidirection relationship
+		phd->insert_study(study_uid); // association[1] -> study[n]
+		phs->insert_association_path(phd->get_path());  // add association lock to study, study[1] -> association[n]
+	}
+    if(phd) phd->send_compress_complete_notify(nfc, phs, compress_ok, flog); // phs->append_action(action_from_association(nfc));
 }
 
 static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named_pipe_server &nps, bool pick_up, ostream &flog)
@@ -209,12 +214,31 @@ static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named
                 if(debug_mode) phdir->print_state();
             }
             delete phdir;
-                            
-            // todo: if cmove assoc, start batch burning function in another dir.
+
             return true;
         }
     }
     return false;
+}
+
+static bool handle_less(const HANDLE_PAIR &p1, const HANDLE_PAIR &p2)
+{
+	if(p1.second == NULL && p2.second == NULL) return p1.first < p2.first;
+	else if(p2.second == NULL) return true;
+	else if(p1.second == NULL) return false;
+
+	int c1 = 3, c2 = 3;
+
+	if(dynamic_cast<handle_compress*>(p1.second)) c1 = 1;
+	else if(dynamic_cast<handle_dir*>(p1.second)) c1 = 2;
+	else c1 = 3; // qr or job
+
+	if(dynamic_cast<handle_compress*>(p2.second)) c2 = 1;
+	else if(dynamic_cast<handle_dir*>(p2.second)) c2 = 2;
+	else c2 = 3; // qr or job
+
+	if(c1 == c2) return p1.second->get_last_access() < p2.second->get_last_access();
+	return c1 < c2;
 }
 
 static const string debug_mode_header("DebugMode");
@@ -326,12 +350,19 @@ int watch_notify(string &cmd, ostream &flog)
     HANDLE *pha = NULL;
     while(GetSignalInterruptValue() == 0)
     {
-        size_t hsize = map_handle_context.size() + 1;
+		// handle's waiting order: named pipe, dir monitor, compress proc, qr & job proc
+		vector<HANDLE_PAIR> hs;
+		hs.reserve(map_handle_context.size());
+        transform(map_handle_context.begin(), map_handle_context.end(), back_inserter(hs), [](const HANDLE_PAIR &p) { return p; });
+		sort(hs.begin(), hs.end(), handle_less);
+		vector<HANDLE_PAIR>::const_iterator it_null = find_if(hs.cbegin(), hs.cend(), [](const HANDLE_PAIR &p) { return p.second == NULL; });
+		if(it_null != hs.cend()) hs.erase(it_null, hs.cend());
+
+        size_t hsize = hs.size() + 1;
         if(pha) delete[] pha;
         pha = new HANDLE[hsize];
         pha[0] = nps.get_handle(); // map_handle_context[named pipe listening handle] == NULL
-        transform(map_handle_context.begin(), map_handle_context.end(), &pha[1], 
-            [](const HANDLE_PAIR &p) { return p.first; });
+        transform(hs.cbegin(), hs.cend(), &pha[1], [](const HANDLE_PAIR &p) { return p.first; });
 
         DWORD wr = WaitForMultipleObjectsEx(hsize, pha, FALSE, 1000, TRUE);
 
@@ -389,17 +420,7 @@ int watch_notify(string &cmd, ostream &flog)
                     time_header_out(flog) << "watch_notify() " << phproc->get_exec_name() << " encounter error, exit." << endl;
                     map_handle_context.erase(waited);
                     goto clean_child_proc;
-                    /*
-                    gle = phproc->start_process(phproc->get_exec_name().compare("jobloader"));
-                    if(gle)
-                    {
-                        string msg("watch_notify() handle_proc::create_process(");
-                        msg.append(phproc->get_exec_name()).append(") restart");
-                        displayErrorToCerr(msg.c_str(), gle, &flog);
-                        goto clean_child_proc;
-                    }
-                    map_handle_context[phproc->get_handle()] = phproc;
-                    */
+                    // restart proc?
                 }
                 else
                 {
@@ -463,6 +484,7 @@ int watch_notify(string &cmd, ostream &flog)
                             handle_compress* compr_ptr = handle_compress::make_handle_compress(nfc, flog);
                             if(compr_ptr)
                             {
+								compr_ptr->set_priority(IDLE_PRIORITY_CLASS);
                                 if(compr_ptr->start_process(false))
                                 {   // failed
                                     time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << nfc.src_notify_filename << " " << nfc.file.filename << endl;
@@ -512,7 +534,10 @@ int watch_notify(string &cmd, ostream &flog)
             ++it;
         }
         // write jdf to orders_notify
-        nps.check_study_timeout_to_generate_jdf();
+		set<string> exist_study_in_queue;
+		transform(compress_queue.cbegin(), compress_queue.cend(), inserter(exist_study_in_queue, exist_study_in_queue.begin()),
+			[](const NOTIFY_FILE_CONTEXT &nfc) { return string(nfc.study.studyUID); });
+        nps.check_study_timeout_to_generate_jdf(exist_study_in_queue);
     } // end while(GetSignalInterruptValue() == 0)
 
     if(GetSignalInterruptValue())

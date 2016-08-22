@@ -328,13 +328,6 @@ DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog
 #endif
             // don't insert file to set_complete now, insert it after compress complete
             compress_queue.push_back(*pnfc);
-
-            string study_uid(pnfc->file.studyUID);
-            this->insert_study(study_uid); // association[1] -> study[n]
-            
-            handle_study* phs = named_pipe_server::get_named_pipe_server_singleton()->make_handle_study(study_uid);
-            if(phs) phs->insert_association_path(get_path());  // add association lock to study, study[1] -> association[n]
-
             delete pnfc;
         }
         else
@@ -465,7 +458,36 @@ handle_proc& handle_proc::operator=(const handle_proc &r)
     exec_name = r.exec_name;
     log_path = r.log_path;
     procinfo = r.procinfo;
+	priority = r.priority;
     return *this;
+}
+
+DWORD handle_proc::set_priority(DWORD p)
+{
+	switch(p)
+	{
+	case ABOVE_NORMAL_PRIORITY_CLASS:
+		priority = ABOVE_NORMAL_PRIORITY_CLASS;
+		break;
+	case BELOW_NORMAL_PRIORITY_CLASS:
+		priority = BELOW_NORMAL_PRIORITY_CLASS;
+		break;
+	case HIGH_PRIORITY_CLASS:
+		priority = HIGH_PRIORITY_CLASS;
+		break;
+	case IDLE_PRIORITY_CLASS:
+		priority = IDLE_PRIORITY_CLASS;
+		break;
+	case REALTIME_PRIORITY_CLASS:
+		priority = REALTIME_PRIORITY_CLASS;
+		break;
+	case NORMAL_PRIORITY_CLASS:
+		priority = NORMAL_PRIORITY_CLASS;
+		break;
+	default:
+		break;
+	}
+	return priority;
 }
 
 void handle_proc::print_state() const
@@ -473,7 +495,33 @@ void handle_proc::print_state() const
     *pflog << "handle_proc::print_state()" << endl
         << "\texec_name: " << exec_name << endl
         << "\tlog_path: " << log_path << endl
-        << "\texec_cmd: " << exec_cmd << endl;
+        << "\texec_cmd: " << exec_cmd << endl
+		<< "\tpriority: ";
+	switch(priority)
+	{
+	case ABOVE_NORMAL_PRIORITY_CLASS:
+		*pflog << "ABOVE_NORMAL_PRIORITY_CLASS";
+		break;
+	case BELOW_NORMAL_PRIORITY_CLASS:
+		*pflog << "BELOW_NORMAL_PRIORITY_CLASS";
+		break;
+	case HIGH_PRIORITY_CLASS:
+		*pflog << "HIGH_PRIORITY_CLASS";
+		break;
+	case IDLE_PRIORITY_CLASS:
+		*pflog << "IDLE_PRIORITY_CLASS";
+		break;
+	case REALTIME_PRIORITY_CLASS:
+		*pflog << "REALTIME_PRIORITY_CLASS";
+		break;
+	case NORMAL_PRIORITY_CLASS:
+		*pflog << "NORMAL_PRIORITY_CLASS";
+		break;
+	default:
+		*pflog << priority;
+		break;
+	}
+	*pflog << endl;
     meta_notify_file::print_state();
 }
 
@@ -552,7 +600,7 @@ int handle_proc::start_process(bool out_redirect)
 
     strcpy_s(buff, START_PROCESS_BUFF_SIZE, exec_cmd.c_str());
     BOOL inheritance = out_redirect ? TRUE : FALSE;
-    if( CreateProcess(NULL, buff, NULL, NULL, inheritance, CREATE_NEW_PROCESS_GROUP, NULL, get_path().c_str(), &sinfo, &procinfo) )
+    if( CreateProcess(NULL, buff, NULL, NULL, inheritance, CREATE_NEW_PROCESS_GROUP | priority, NULL, get_path().c_str(), &sinfo, &procinfo) )
 	{
         if(logFile != INVALID_HANDLE_VALUE)
         {
@@ -830,18 +878,19 @@ bool handle_study::insert_association_path(const std::string &assoc_path)
     refresh_last_access();
 
     bool insert_result = set_association_path.insert(assoc_path).second;
-
-    map<string, string> map_ini;
-    bool loadOK = open_study_lock_file(map_ini);
-
-    for(set<string>::const_iterator it = set_association_path.cbegin(); it != set_association_path.cend(); ++it)
-    {
-        map<string, string>::iterator itm = map_ini.find(*it);
-        if(itm == map_ini.end()) map_ini[*it] = "ALIVE";
-    }
-
-    if(loadOK) save_and_close_lock_file(map_ini);
-
+	if(insert_result)
+	{
+		map<string, string> map_ini;
+		if(open_study_lock_file(map_ini))
+		{
+			for(set<string>::const_iterator it = set_association_path.cbegin(); it != set_association_path.cend(); ++it)
+			{
+				map<string, string>::iterator itm = map_ini.find(*it);
+				if(itm == map_ini.end()) map_ini[*it] = "ALIVE";
+			}
+			save_and_close_lock_file(map_ini);
+		}
+	}
     return insert_result;
 }
 
