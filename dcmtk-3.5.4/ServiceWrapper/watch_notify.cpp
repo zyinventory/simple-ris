@@ -7,7 +7,7 @@ using namespace handle_context;
 static char buff[FILE_BUF_SIZE];
 
 static HANDLE_MAP map_handle_context;
-NOTIFY_LIST compress_queue;
+static NOTIFY_LIST compress_queue;
 
 static bool select_handle_dir_by_association_path(const meta_notify_file* pnf, const string &association_id, const string &path, ostream &flog)
 {
@@ -141,7 +141,7 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
     }
 
     handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path, notify_file, &flog);
-    gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify(filename, flog); });
+    gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify(filename, compress_queue, flog); });
     if(gle == 0)
     {
         map_handle_context[hdir] = pclz_dir;
@@ -229,12 +229,12 @@ static bool handle_less(const HANDLE_PAIR &p1, const HANDLE_PAIR &p2)
 
 	int c1 = 3, c2 = 3;
 
-	if(dynamic_cast<handle_compress*>(p1.second)) c1 = 1;
-	else if(dynamic_cast<handle_dir*>(p1.second)) c1 = 2;
+	if(dynamic_cast<handle_compress*>(p1.second)) c1 = 2;
+	else if(dynamic_cast<handle_dir*>(p1.second)) c1 = 1;
 	else c1 = 3; // qr or job
 
-	if(dynamic_cast<handle_compress*>(p2.second)) c2 = 1;
-	else if(dynamic_cast<handle_dir*>(p2.second)) c2 = 2;
+	if(dynamic_cast<handle_compress*>(p2.second)) c2 = 2;
+	else if(dynamic_cast<handle_dir*>(p2.second)) c2 = 1;
 	else c2 = 3; // qr or job
 
 	if(c1 == c2) return p1.second->get_last_access() < p2.second->get_last_access();
@@ -364,12 +364,15 @@ int watch_notify(string &cmd, ostream &flog)
         pha[0] = nps.get_handle(); // map_handle_context[named pipe listening handle] == NULL
         transform(hs.cbegin(), hs.cend(), &pha[1], [](const HANDLE_PAIR &p) { return p.first; });
 
-        DWORD wr = WaitForMultipleObjectsEx(hsize, pha, FALSE, 1000, TRUE);
+        DWORD wr = WAIT_IO_COMPLETION;
+		do {
+			wr = WaitForMultipleObjectsEx(hsize, pha, FALSE, 1000, TRUE);
+#ifdef _DEBUG
+			if(wr == WAIT_IO_COMPLETION) time_header_out(cerr) << "WAIT_IO_COMPLETION : WaitForMultipleObjectsEx() again" << endl;
+#endif
+		} while(wr == WAIT_IO_COMPLETION);
 
-        if(wr == WAIT_TIMEOUT)
-        {
-        }
-        else if(wr == WAIT_IO_COMPLETION)
+        if(wr == WAIT_TIMEOUT || wr == WAIT_IO_COMPLETION)
         {
         }
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + hsize)
@@ -408,7 +411,7 @@ int watch_notify(string &cmd, ostream &flog)
                 {
                     if(phdir->get_association_id().length()) // some file in storedir/association_id
                     {
-                        gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, flog); });
+                        gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, compress_queue, flog); });
                         if(close_handle_dir(phdir, pclz_base_dir, nps, false, flog))
                             map_handle_context.erase(waited);
                     }
@@ -440,104 +443,97 @@ int watch_notify(string &cmd, ostream &flog)
         }
 
         // try compress queue
-        if(compress_queue.size() > 0)
+		DWORD dw = WAIT_OBJECT_0;
+		NOTIFY_LIST::iterator it = compress_queue.begin();
+        while(it != compress_queue.end() && dw == WAIT_OBJECT_0)
         {
-            set<string> exist_uniquename; // don't start same study/series/instance, avoid file lock
-            for(HANDLE_MAP::const_iterator it = map_handle_context.begin(); it != map_handle_context.end(); ++it)
-            {
-                handle_compress *phc = NULL;
-                if(phc = dynamic_cast<handle_compress*>(it->second))
-                    exist_uniquename.insert(phc->get_notify_context().file.unique_filename);
-            }
+			bool start_compress_process_ok = false;
+			dw = WaitForSingleObject(hSema, 0);
+			if(dw == WAIT_OBJECT_0)
+			{
+				set<string> exist_uniquename; // don't start same study/series/instance, avoid file lock
+				for(HANDLE_MAP::const_iterator ite = map_handle_context.begin(); ite != map_handle_context.end(); ++ite)
+				{
+					handle_compress *phc = NULL;
+					if(phc = dynamic_cast<handle_compress*>(ite->second))
+						exist_uniquename.insert(phc->get_notify_context().file.unique_filename);
+				}
 
-            DWORD dw = WAIT_OBJECT_0;
-            while((dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED) && compress_queue.size() > 0)
-            {
-                dw = WaitForSingleObject(hSema, 0);
-                if(dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED)
-                {
-                    bool find_job = false, start_compress_process_ok = false;
-                    NOTIFY_LIST::iterator it = compress_queue.begin();
-                    while(it != compress_queue.end())
-                    {
-                        if(exist_uniquename.find(it->file.unique_filename) == exist_uniquename.end())
-                        {   // no same study/series/instance
-                            find_job = true;
-                            NOTIFY_FILE_CONTEXT nfc = *it;
-                            it = compress_queue.erase(it);
+                if(exist_uniquename.find(it->file.unique_filename) == exist_uniquename.end())
+                {   // no same study/series/instance
+                    NOTIFY_FILE_CONTEXT nfc = *it;
+                    it = compress_queue.erase(it);
                             
-                            string received_instance_file_path(nfc.assoc.path);
-                            received_instance_file_path.append(1, '\\').append(nfc.file.filename);
-                            struct _stat64 fs;
-                            if(_stat64(received_instance_file_path.c_str(), &fs))
-                            {
-                                char msg[256];
-                                strerror_s(msg, errno);
-                                time_header_out(flog) << __FUNCSIG__" _stat64(" << received_instance_file_path << ") fail: " << msg << endl;
-                                fs.st_size = 0LL;
-
-                                compress_complete(nfc.assoc.id, nfc.file.studyUID, false, nps, nfc, flog);
-                                continue;                           
-                            }
-                            nfc.file.file_size_receive = fs.st_size;
-
-                            handle_compress* compr_ptr = handle_compress::make_handle_compress(nfc, flog);
-                            if(compr_ptr)
-                            {
-								compr_ptr->set_priority(IDLE_PRIORITY_CLASS);
-                                if(compr_ptr->start_process(false))
-                                {   // failed
-                                    time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << nfc.src_notify_filename << " " << nfc.file.filename << endl;
-                                    delete compr_ptr;
-                                }
-                                else// succeed
-                                {
-                                    map_handle_context[compr_ptr->get_handle()] = compr_ptr;
-                                    exist_uniquename.insert(nfc.file.unique_filename);
-                                    start_compress_process_ok = true;
-                                }
-                            }
-                            else
-                                time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << nfc.src_notify_filename << " " << nfc.file.filename << endl;
-                            break; // exit for(NOTIFY_LIST::iterator it = compress_queue.begin()
-                        }
-                        else ++it;
-                    }
-                    if(!start_compress_process_ok) ReleaseSemaphore(hSema, 1, NULL);
-                    if(!find_job)
+                    string received_instance_file_path(nfc.assoc.path);
+                    received_instance_file_path.append(1, '\\').append(nfc.file.filename);
+                    struct _stat64 fs;
+                    if(_stat64(received_instance_file_path.c_str(), &fs))
                     {
-                        if(compress_queue.size())
-                            time_header_out(flog) << "watch_notify() can't find compress job to start process, compress_queue.size() is " << compress_queue.size() << endl;
-                        break; // exit while((dw == WAIT_OBJECT_0 || dw == WAIT_ABANDONED) && compress_queue.size() > 0)
-                    }
-                }
-                else if(dw == WAIT_FAILED)
-                    displayErrorToCerr("compress_queue_to_workers() WaitForSingleObject(hSema)", dw, &flog);
-                // else WAIT_TIMEOUT, compress process is too much.
-            }
-        }
+                        char msg[256];
+                        strerror_s(msg, errno);
+                        time_header_out(flog) << __FUNCSIG__" _stat64(" << received_instance_file_path << ") fail: " << msg << endl;
+                        fs.st_size = 0LL;
 
-        // handle_dir pick up
-        HANDLE_MAP::iterator it = map_handle_context.begin();
-        while(it != map_handle_context.end())
-        {
-            handle_dir *phdir = NULL;
-            if(it->second) phdir = dynamic_cast<handle_dir*>(it->second);
-            if(phdir && phdir->get_association_id().length())
-            {
-                if(close_handle_dir(phdir, pclz_base_dir, nps, true, flog))
-                {
-                    it = map_handle_context.erase(it);
-                    continue;
+                        compress_complete(nfc.assoc.id, nfc.file.studyUID, false, nps, nfc, flog);
+                        continue;                           
+                    }
+                    nfc.file.file_size_receive = fs.st_size;
+
+                    handle_compress* compr_ptr = handle_compress::make_handle_compress(nfc, flog);
+                    if(compr_ptr)
+                    {
+						compr_ptr->set_priority(IDLE_PRIORITY_CLASS);
+                        if(compr_ptr->start_process(false))
+                        {   // failed
+                            time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << nfc.src_notify_filename << " " << nfc.file.filename << endl;
+                            delete compr_ptr;
+                        }
+                        else// succeed
+                        {
+                            map_handle_context[compr_ptr->get_handle()] = compr_ptr;
+                            start_compress_process_ok = true;
+                        }
+                    }
+                    else
+                        time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << nfc.src_notify_filename << " " << nfc.file.filename << endl;
+                    break; // exit for(NOTIFY_LIST::iterator it = compress_queue.begin()
                 }
-            }
-            ++it;
-        }
-        // write jdf to orders_notify
-		set<string> exist_study_in_queue;
-		transform(compress_queue.cbegin(), compress_queue.cend(), inserter(exist_study_in_queue, exist_study_in_queue.begin()),
-			[](const NOTIFY_FILE_CONTEXT &nfc) { return string(nfc.study.studyUID); });
-        nps.check_study_timeout_to_generate_jdf(exist_study_in_queue);
+                else ++it;
+
+				if(!start_compress_process_ok) ReleaseSemaphore(hSema, 1, NULL);
+			}
+			else if(dw == WAIT_FAILED)
+                displayErrorToCerr("watch_notify() WaitForSingleObject(hSema)", GetLastError(), &flog);
+#ifdef _DEBUG
+			else if(dw == WAIT_TIMEOUT)
+				time_header_out(flog) << "watch_notify() WaitForSingleObject(hSema) WAIT_TIMEOUT" << endl;
+#endif
+		} // end while(it != compress_queue.end() && dw == WAIT_OBJECT_0)
+
+ 		if(wr == WAIT_TIMEOUT)
+		{
+			// handle_dir pick up
+			HANDLE_MAP::iterator it = map_handle_context.begin();
+			while(it != map_handle_context.end())
+			{
+				handle_dir *phdir = NULL;
+				if(it->second) phdir = dynamic_cast<handle_dir*>(it->second);
+				if(phdir && phdir->get_association_id().length())
+				{
+					if(close_handle_dir(phdir, pclz_base_dir, nps, true, flog))
+					{
+						it = map_handle_context.erase(it);
+						continue;
+					}
+				}
+				++it;
+			}
+			// write jdf to orders_notify
+			set<string> exist_study_in_queue;
+			transform(compress_queue.cbegin(), compress_queue.cend(), inserter(exist_study_in_queue, exist_study_in_queue.begin()),
+				[](const NOTIFY_FILE_CONTEXT &nfc) { return string(nfc.study.studyUID); });
+			nps.check_study_timeout_to_generate_jdf(exist_study_in_queue);
+		}
     } // end while(GetSignalInterruptValue() == 0)
 
     if(GetSignalInterruptValue())

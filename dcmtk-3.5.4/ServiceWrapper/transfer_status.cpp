@@ -295,7 +295,7 @@ void handle_dir::process_notify_association(std::istream &ifs, unsigned int tag,
     }
 }
 
-DWORD handle_dir::process_notify(const std::string &filename, std::ostream &flog)
+DWORD handle_dir::process_notify(const std::string &filename, NOTIFY_LIST &compress_queue, std::ostream &flog)
 {
     DWORD gle = 0, tag;
     string cmd, filepath(get_path());
