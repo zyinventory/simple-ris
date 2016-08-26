@@ -378,7 +378,7 @@ int watch_notify(string &cmd, ostream &flog)
 
         DWORD wr = WAIT_IO_COMPLETION;
 		do {
-			wr = WaitForMultipleObjectsEx(hsize, pha, FALSE, 1000, TRUE);
+			wr = WaitForMultipleObjectsEx(min(hsize, MAXIMUM_WAIT_OBJECTS), pha, FALSE, 1000, TRUE);
 #ifdef _DEBUG
 			if(wr == WAIT_IO_COMPLETION) time_header_out(cerr) << "WAIT_IO_COMPLETION : WaitForMultipleObjectsEx() again" << endl;
 #endif
@@ -387,7 +387,7 @@ int watch_notify(string &cmd, ostream &flog)
         if(wr == WAIT_TIMEOUT || wr == WAIT_IO_COMPLETION)
         {
         }
-        else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + hsize)
+        else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + min(hsize, MAXIMUM_WAIT_OBJECTS))
         {
             HANDLE waited = pha[wr - WAIT_OBJECT_0];
             handle_compress *phcompr = NULL;
@@ -450,8 +450,12 @@ int watch_notify(string &cmd, ostream &flog)
         }
         else
         {
-            gle = displayErrorToCerr("watch_notify() WaitForMultipleObjects()", GetLastError(), &flog);
-            break;
+			gle = GetLastError();
+			ostringstream errstrm;
+			errstrm << "watch_notify() WaitForMultipleObjectsEx() return " << hex << wr << ", objs count is min(" << hsize << ", MAXIMUM_WAIT_OBJECTS = " << MAXIMUM_WAIT_OBJECTS << ")";
+			for(size_t i = 0; i < min(hsize, MAXIMUM_WAIT_OBJECTS); ++i) errstrm << ", " << hex << pha[i];
+            displayErrorToCerr(errstrm.str().c_str(), gle, &flog);
+			continue;
         }
 
         // try compress queue
