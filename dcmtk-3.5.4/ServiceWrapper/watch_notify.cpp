@@ -180,12 +180,24 @@ static void compress_complete(const string &assoc_id, const string &study_uid, b
 		if(phs == NULL)
 			time_header_out(flog) << "compress_complete() can't create study " << study_uid << ", src file " << nfc.src_notify_filename << endl;
 	}
+
 	if(phd && phs)
 	{	// establish bidirection relationship
 		phd->insert_study(study_uid); // association[1] -> study[n]
 		phs->insert_association_path(phd->get_path());  // add association lock to study, study[1] -> association[n]
 	}
-    if(phd) phd->send_compress_complete_notify(nfc, phs, compress_ok, flog); // phs->append_action(action_from_association(nfc));
+	else time_header_out(flog) << "compress_complete() can't create bidirection relationship between "
+		<< study_uid << " and " << assoc_id << ", src file " << nfc.src_notify_filename << endl;
+
+	if(phs && compress_ok)
+	{
+		if(phd) phs->append_action(action_from_association(nfc, phd->get_path(), &flog));
+		else phs->append_action(action_from_association(nfc, nfc.assoc.path, &flog));
+	}
+	else if(phs == NULL) time_header_out(flog) << "compress_complete() can't find study " << study_uid << endl;
+
+    if(phd) phd->send_compress_complete_notify(nfc, compress_ok, flog); // phs->append_action(action_from_association(nfc));
+	else time_header_out(flog) << "compress_complete() can't find association " << assoc_id << endl;
 }
 
 static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named_pipe_server &nps, bool pick_up, ostream &flog)

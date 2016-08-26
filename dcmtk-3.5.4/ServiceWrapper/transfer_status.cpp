@@ -375,11 +375,9 @@ bool handle_dir::is_time_out() const
     return false;
 }
 
-void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phs, bool compress_ok, ostream &flog)
+void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, bool compress_ok, ostream &flog)
 {
     refresh_last_access();
-
-    if(phs && compress_ok) phs->append_action(action_from_association(nfc, get_path(), &flog));
 
     char notify_file_name[MAX_PATH];
     string prefix(get_path());
@@ -434,7 +432,7 @@ void handle_dir::broadcast_assoc_close_action_to_all_study(named_pipe_server &np
         if(strcmp(assoc.auto_publish, "STUDY") == 0) type = BURN_PER_STUDY;
     }
     else
-        time_header_out(*pflog) << "handle_dir::broadcast_action_to_all_study() failed: association " << get_association_id() << " is not disconnected, force close." << endl;
+        time_header_out(*pflog) << "handle_dir::broadcast_assoc_close_action_to_all_study() failed: association " << get_association_id() << " is not disconnected, force close." << endl;
 
     paaa = new action_from_association(type, get_path(), disconn_release, pflog);
 
@@ -445,7 +443,7 @@ void handle_dir::broadcast_assoc_close_action_to_all_study(named_pipe_server &np
         {
             DWORD gle = phs->append_action(*paaa);
         }
-        else time_header_out(*pflog) << "handle_dir::broadcast_action_to_all_study() can't find study " << *it << endl;
+        else time_header_out(*pflog) << "handle_dir::broadcast_assoc_close_action_to_all_study() can't find study " << *it << endl;
     }
     if(paaa) delete paaa;
 }

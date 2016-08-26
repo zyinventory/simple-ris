@@ -61,7 +61,7 @@ int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_co
         break;
     case 0x00200013:
         cmdstrm >> dec >> lc.file.number;
-        if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.file.number << endl;
+        if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << dec << lc.file.number << endl;
         break;
     case 0x00080018:
         cmdstrm >> lc.file.instanceUID;

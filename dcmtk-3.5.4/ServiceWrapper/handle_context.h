@@ -115,7 +115,7 @@ namespace handle_context
         int file_complete_remain() const { return list_file.size() - set_complete.size(); };
         DWORD find_files(std::ostream &flog, std::function<DWORD(const std::string&)> p);
         DWORD process_notify(const std::string &filename, NOTIFY_LIST &compress_queue, std::ostream &flog);
-        void send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, handle_study *phdir, bool compress_ok, std::ostream &flog);
+        void send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, bool compress_ok, std::ostream &flog);
         bool is_normal_close() const { return assoc_disconn && file_complete_remain() == 0; };
         void broadcast_assoc_close_action_to_all_study(named_pipe_server &nps, bool exception_close = false) const;
         void send_all_compress_ok_notify_and_close_handle();
