@@ -351,13 +351,16 @@ named_pipe_server::~named_pipe_server()
     });
 }
 
-void named_pipe_server::check_study_timeout_to_generate_jdf(const std::set<std::string> &queued_study_uids)
+void named_pipe_server::check_study_timeout_to_generate_jdf(const std::set<std::string> &queued_study_uids, const std::set<std::string> &exist_assoc_paths)
 {
     STUDY_MAP::iterator it = map_study.begin();
     while(it != map_study.end())
     {
         handle_study *phs = it->second;
-		if(phs && queued_study_uids.find(phs->get_study_uid()) == queued_study_uids.cend() && phs->is_time_out())
+        if(phs && !phs->send_remain_message_to_pipe() && phs->is_time_out()
+            && queued_study_uids.find(phs->get_study_uid()) == queued_study_uids.cend()
+            && ! any_of(phs->get_set_association_path().begin(), phs->get_set_association_path().end(),
+                [&exist_assoc_paths](const string &s) { return (exist_assoc_paths.find(s) != exist_assoc_paths.end()); }))
         {
             if(opt_verbose)
             {

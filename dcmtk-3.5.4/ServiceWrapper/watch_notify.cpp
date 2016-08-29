@@ -181,29 +181,53 @@ static void compress_complete(const string &assoc_id, const string &study_uid, b
 			time_header_out(flog) << "compress_complete() can't create study " << study_uid << ", src file " << nfc.src_notify_filename << endl;
 	}
 
-	if(phd && phs)
-	{	// establish bidirection relationship
-		phd->insert_study(study_uid); // association[1] -> study[n]
-		phs->insert_association_path(phd->get_path());  // add association lock to study, study[1] -> association[n]
-	}
-	else time_header_out(flog) << "compress_complete() can't create bidirection relationship between "
-		<< study_uid << " and " << assoc_id << ", src file " << nfc.src_notify_filename << endl;
+    if(phs)
+    {
+        phs->insert_association_path(nfc.assoc.path);  // add association lock to study, study[1] -> association[n]
+        if(compress_ok) phs->append_action(action_from_association(nfc, nfc.assoc.path, &flog));
+        else
+        {
+            time_header_out(flog) << "compress_complete() compress_ok is false, skip append_action(action_from_association()):" << endl;
+            save_notify_context_to_ostream(nfc, compress_ok, flog);
+        }
+    }
+    else
+    {
+        time_header_out(flog) << "compress_complete() can't find study " << study_uid 
+            << ", skip insert_association_path() and append_action(action_from_association()):" << endl;
+        save_notify_context_to_ostream(nfc, compress_ok, flog);
+    }
 
-	if(phs && compress_ok)
-	{
-		if(phd) phs->append_action(action_from_association(nfc, phd->get_path(), &flog));
-		else phs->append_action(action_from_association(nfc, nfc.assoc.path, &flog));
-	}
-	else if(phs == NULL) time_header_out(flog) << "compress_complete() can't find study " << study_uid << endl;
-
-    if(phd) phd->send_compress_complete_notify(nfc, compress_ok, flog); // phs->append_action(action_from_association(nfc));
-	else time_header_out(flog) << "compress_complete() can't find association " << assoc_id << endl;
+    if(phd)
+    {
+        // establish relationship from association to study
+        phd->insert_study(study_uid); // association[1] -> study[n]
+        phd->send_compress_complete_notify(nfc, compress_ok, flog); // phs->append_action(action_from_association(nfc));
+    }
+    else
+    {
+        time_header_out(flog) << "compress_complete() can't find association " << assoc_id 
+            << ", skip insert_study() and send_compress_complete_notify():" << endl;
+        save_notify_context_to_ostream(nfc, compress_ok, flog);
+    }
 }
 
 static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named_pipe_server &nps, bool pick_up, ostream &flog)
 {
     if(phdir && phdir->get_association_id().length())
     {
+        for(HANDLE_MAP::iterator it = map_handle_context.begin(); it != map_handle_context.end(); ++it)
+        {
+            handle_compress *phcompr = NULL;
+            if(it->second) phcompr = dynamic_cast<handle_compress*>(it->second);
+            if(phcompr && phcompr->get_association_id() == phdir->get_association_id()) return false;
+        }
+
+        for(NOTIFY_LIST::iterator it = compress_queue.begin(); it != compress_queue.end(); ++it)
+        {
+            if(phdir->get_association_id().compare(it->assoc.id) == 0) return false;
+        }
+
         if(phdir->is_time_out() || phdir->is_normal_close())
         {
             if(opt_verbose)
@@ -422,11 +446,7 @@ int watch_notify(string &cmd, ostream &flog)
                 else if(phdir = dynamic_cast<handle_dir*>(pb))
                 {
                     if(phdir->get_association_id().length()) // some file in storedir/association_id
-                    {
                         gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, compress_queue, flog); });
-                        if(close_handle_dir(phdir, pclz_base_dir, nps, false, flog))
-                            map_handle_context.erase(waited);
-                    }
                     else // new file in meta notify dir(store_notify)
                         gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return process_meta_notify_file(phdir, filename, flog); });
                 }
@@ -529,6 +549,7 @@ int watch_notify(string &cmd, ostream &flog)
  		if(wr == WAIT_TIMEOUT)
 		{
 			// handle_dir pick up
+			set<string> exist_association_paths;
 			HANDLE_MAP::iterator it = map_handle_context.begin();
 			while(it != map_handle_context.end())
 			{
@@ -536,6 +557,7 @@ int watch_notify(string &cmd, ostream &flog)
 				if(it->second) phdir = dynamic_cast<handle_dir*>(it->second);
 				if(phdir && phdir->get_association_id().length())
 				{
+					exist_association_paths.insert(exist_association_paths.begin(), phdir->get_path());
 					if(close_handle_dir(phdir, pclz_base_dir, nps, true, flog))
 					{
 						it = map_handle_context.erase(it);
@@ -544,11 +566,13 @@ int watch_notify(string &cmd, ostream &flog)
 				}
 				++it;
 			}
+
 			// write jdf to orders_notify
 			set<string> exist_study_in_queue;
 			transform(compress_queue.cbegin(), compress_queue.cend(), inserter(exist_study_in_queue, exist_study_in_queue.begin()),
 				[](const NOTIFY_FILE_CONTEXT &nfc) { return string(nfc.study.studyUID); });
-			nps.check_study_timeout_to_generate_jdf(exist_study_in_queue);
+
+			nps.check_study_timeout_to_generate_jdf(exist_study_in_queue, exist_association_paths);
 		}
     } // end while(GetSignalInterruptValue() == 0)
 

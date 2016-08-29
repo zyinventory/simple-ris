@@ -29,11 +29,11 @@ void meta_notify_file::print_state() const
         char time_buf[32];
         if(strftime(time_buf, sizeof(time_buf), "%Y/%m/%d %H:%M:%S", &tm_last))
         {
-            *pflog << time_buf << endl;
+            *pflog << "\tlast_access: " << time_buf << endl;
             goto convert_time_ok;
         }
     }
-    *pflog << last_access << endl;
+    *pflog << "\tlast_access: " << last_access << endl;
 convert_time_ok:
     base_path::print_state();
 }
@@ -1040,6 +1040,16 @@ bool handle_study::is_time_out() const
     }
     else if(timeout > assoc_timeout) return true;
     return false;
+}
+
+bool handle_study::send_remain_message_to_pipe()
+{
+    if(list_action.size())
+    {
+        if(blocked) write_message_to_pipe();
+        return true;
+    }
+    else return !blocked;
 }
 
 void action_from_association::print_state() const

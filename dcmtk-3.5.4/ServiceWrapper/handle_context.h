@@ -209,6 +209,7 @@ namespace handle_context
         //DWORD instance_add_to_dicomdir_ok(const std::string &filename, const std::string &xfer_new, LPOVERLAPPED_COMPLETION_ROUTINE write_complete_callback, std::ostream &flog);
         DWORD append_action(const action_from_association &action);
         bool is_time_out() const;
+        bool send_remain_message_to_pipe();
     };
 
     class named_pipe_server : public base_path
@@ -243,7 +244,7 @@ namespace handle_context
         void disconnect_connection_auto_detect(LPPIPEINST lpPipeInst);
         handle_study* make_handle_study(const std::string &study);
         handle_study* find_handle_study(const std::string &study) { return map_study[study]; };
-        void check_study_timeout_to_generate_jdf(const std::set<std::string> &queued_study_uids);
+        void check_study_timeout_to_generate_jdf(const std::set<std::string> &queued_study_uids, const std::set<std::string> &exist_assoc_paths);
     };
 }
 
