@@ -228,23 +228,20 @@ static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named
             if(phdir->get_association_id().compare(it->assoc.id) == 0) return false;
         }
 
-        if(phdir->is_time_out() || phdir->is_normal_close())
+        if(phdir->is_association_disconnect() || phdir->is_time_out())
         {
             if(opt_verbose)
             {
                 time_header_out(flog) << "close_handle_dir()" << (pick_up ? " pick up" : "") << " association " << phdir->get_association_id() << " complete, erease from map_handle_context." << endl;
-                if(phdir->is_normal_close())
-                    flog << "\tnormal close." << endl;
-                else
-                    flog << "\ttimeout close." << endl;
+                flog << "\t" << phdir->close_description() << " close." << endl;
             }
             // close monitor handle, all_compress_ok_notify is not processed.
             phdir->send_all_compress_ok_notify_and_close_handle();
-            phdir->broadcast_assoc_close_action_to_all_study(nps, !phdir->is_normal_close());
+            phdir->broadcast_assoc_close_action_to_all_study(nps);
                             
             pclz_base_dir->remove_file_from_list(phdir->get_meta_notify_filename());
 
-            if(opt_verbose)
+            if(opt_verbose || phdir->file_complete_remain())
             {
                 time_header_out(flog) << "close_handle_dir() handle_dir" << (pick_up ? " pick up" : "") << " exit:" << endl;
                 if(debug_mode) phdir->print_state();
@@ -411,7 +408,7 @@ int watch_notify(string &cmd, ostream &flog)
 
         DWORD wr = WAIT_IO_COMPLETION;
 		do {
-			wr = WaitForMultipleObjectsEx(min(hsize, MAXIMUM_WAIT_OBJECTS), pha, FALSE, 100, TRUE);
+			wr = WaitForMultipleObjectsEx(min(hsize, MAXIMUM_WAIT_OBJECTS), pha, FALSE, loop_wait, TRUE);
 #ifdef _DEBUG
 			if(wr == WAIT_IO_COMPLETION) time_header_out(cerr) << "WAIT_IO_COMPLETION : WaitForMultipleObjectsEx() again" << endl;
 #endif

@@ -97,10 +97,7 @@ handle_dir::~handle_dir()
             }
             else
             {
-                if(is_normal_close())
-                    ofs_txt << "OK" << endl;
-                else
-                    ofs_txt << "TIMEOUT" << endl;
+                ofs_txt << close_description() << endl;
                 ofs_txt.close();
             }
         }
@@ -423,7 +420,7 @@ void handle_dir::send_all_compress_ok_notify_and_close_handle()
     }
 }
 
-void handle_dir::broadcast_assoc_close_action_to_all_study(named_pipe_server &nps, bool exception_close) const
+void handle_dir::broadcast_assoc_close_action_to_all_study(named_pipe_server &nps) const
 {
     action_from_association *paaa = NULL;
     ACTION_TYPE type = NO_ACTION;
@@ -446,6 +443,17 @@ void handle_dir::broadcast_assoc_close_action_to_all_study(named_pipe_server &np
         else time_header_out(*pflog) << "handle_dir::broadcast_assoc_close_action_to_all_study() can't find study " << *it << endl;
     }
     if(paaa) delete paaa;
+}
+
+const char* handle_dir::close_description() const
+{
+    if(assoc_disconn)
+    {
+        if(disconn_release) return "OK";
+        else return "ABORT";
+    }
+    else if(is_time_out()) return "TIMEOUT";
+    else return "UNKNOWN";
 }
 
 handle_proc& handle_proc::operator=(const handle_proc &r)
