@@ -273,7 +273,16 @@ static bool handle_less(const HANDLE_PAIR &p1, const HANDLE_PAIR &p2)
 	else if(dynamic_cast<handle_dir*>(p2.second)) c2 = 1;
 	else c2 = 3; // qr or job
 
-	if(c1 == c2) return p1.second->get_last_access() < p2.second->get_last_access();
+	if(c1 == c2)
+    {
+        if(c1 == 1) // p1 and p2 is handle_dir
+        {
+            if(p1.second->get_association_id().length() == 0 && p2.second->get_association_id().length() > 0) return true;
+            else if(p2.second->get_association_id().length() == 0 && p1.second->get_association_id().length() > 0) return false;
+            // else (p1 and p2 length > 0) || (p1 and p2 length == 0), compare last_access
+        }
+        return p1.second->get_last_access() < p2.second->get_last_access();
+    }
 	return c1 < c2;
 }
 
@@ -402,7 +411,7 @@ int watch_notify(string &cmd, ostream &flog)
 
         DWORD wr = WAIT_IO_COMPLETION;
 		do {
-			wr = WaitForMultipleObjectsEx(min(hsize, MAXIMUM_WAIT_OBJECTS), pha, FALSE, 1000, TRUE);
+			wr = WaitForMultipleObjectsEx(min(hsize, MAXIMUM_WAIT_OBJECTS), pha, FALSE, 100, TRUE);
 #ifdef _DEBUG
 			if(wr == WAIT_IO_COMPLETION) time_header_out(cerr) << "WAIT_IO_COMPLETION : WaitForMultipleObjectsEx() again" << endl;
 #endif
