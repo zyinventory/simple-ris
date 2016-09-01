@@ -11,7 +11,7 @@ namespace handle_context
         long long file_size_receive;
         char filename[MAX_PATH], hash[12], unique_filename[65], sopClassUID[65],
             patientID[65], studyUID[65], seriesUID[65], instanceUID[65],
-            xfer[16], xfer_new[16], charset[17];
+            xfer[16], xfer_new[16], charset[65];
         long number;
         bool isEncapsulated;
         const char* StorePath(char sp = '\\');

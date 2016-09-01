@@ -117,9 +117,8 @@ void named_pipe_server::disconnect_connection_auto_detect(LPPIPEINST lpPipeInst)
     {
         handle_study* phs = map_study[study_uid];
         map_study.erase(study_uid);
-        if(phs) delete phs;
+        if(phs) delete phs; // handle_study will delete lpPipeInst, don't delete twice
     }
-	delete lpPipeInst;
 }
 
 void named_pipe_server::client_connect_callback(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap)
