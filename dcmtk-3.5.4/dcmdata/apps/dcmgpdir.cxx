@@ -221,7 +221,7 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
     set<OFString> charsets;
     // file level
     dataset->findAndGetString(DCM_SpecificCharacterSet, charset);
-    normalize_charsets(charset, charsets);
+    if(charset) normalize_charsets(charset, charsets);
     string charset_fixed;
     charset_fixed = accumulate(charsets.cbegin(), charsets.cend(), charset_fixed,
         [](string &init, const string &val) -> string& {
@@ -277,6 +277,8 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
             char *gbkbuff = new char[gbklen];
             if(0 == AutoCharToGBK(gbkbuff, gbklen, patientsName))
                 fallback_b32_patientsname(patientsName);
+            else
+                strncpy_s(nfc.patient.patientsName, gbkbuff, sizeof(nfc.patient.patientsName) - 1);
             if(gbkbuff) delete gbkbuff;
         }
         else//GB18030 or ISO-IR-100
@@ -290,6 +292,7 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
         strcpy_s(nfc.patient.patientsName, "(NULL)");
         strncpy_s(nfc.file.charset, charset_fixed.c_str(), sizeof(nfc.file.charset) - 1);
     }
+    ValidateGBK(reinterpret_cast<unsigned char*>(nfc.patient.patientsName), sizeof(nfc.patient.patientsName));
 
     dataset->findAndGetString(DCM_PatientsBirthDate, patientsBirthDate);
     if(patientsBirthDate) strcpy_s(nfc.patient.birthday, patientsBirthDate);

@@ -48,18 +48,6 @@
     <ClCompile Include="msmq_security.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="process_log.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="compress_file.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="scp_store_loop.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="make_index.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="..\dcmdata\libsrc\util.cpp">
       <Filter>源文件</Filter>
     </ClCompile>

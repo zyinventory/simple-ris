@@ -341,8 +341,38 @@ COMMONLIB_API int AutoCharToGBK(char *buff, int nGBKStrLen, const char *instr)
         if(wc == ESC_1B || wc == PEND_1A || wc == 0) continue;
         wbuff.append(1, wc);
     }
-    
     int nRetLen = WideCharToMultiByte(936, 0, wbuff.c_str(), -1, NULL, NULL, NULL, NULL);  //获取转换到GBK编码后所需要的字符空间长度
     if(nGBKStrLen < nRetLen) return 0; //如果输出缓冲区长度不够则退出
     return WideCharToMultiByte(936, 0, wbuff.c_str(), -1, buff, nRetLen, NULL, NULL);  //转换到GBK编码
+}
+
+COMMONLIB_API int ValidateGBK(unsigned char *buff, int max_len)
+{
+    bool lead = false;
+    int i = 0;
+    for(; i < max_len; ++i)
+    {
+        if(buff[i] == '\0') break;
+        if(lead)
+        {
+            if(buff[i] < 0x40 || buff[i] == 0xff)
+            {
+                buff[i - 1] = '?';
+                buff[i] = '?';
+            }
+            lead = false;
+        }
+        else
+        {
+            if(buff[i] < 0x20 || buff[i] == 0x7f || buff[i] == 0xff) // 0x80: 欧元符号
+            {
+                buff[i] = '?';
+                lead = false;
+            }
+            else if(buff[i] > 0x80 && buff[i] < 0xff)
+                lead = true;
+        }
+    }
+    if(lead) buff[i - 1] = '?';
+    return i;
 }

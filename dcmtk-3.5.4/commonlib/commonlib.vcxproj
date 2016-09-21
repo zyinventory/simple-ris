@@ -118,12 +118,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="commonlib.cpp" />
-    <ClCompile Include="compress_file.cpp" />
     <ClCompile Include="escape_sequence.cpp" />
     <ClCompile Include="index-ir-165.cpp" />
     <ClCompile Include="index-jis0208.cpp" />
     <ClCompile Include="index-ksc5601.cpp" />
-    <ClCompile Include="make_index.cpp" />
     <ClCompile Include="mini-gmp.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -135,8 +133,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Template|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="poststore.cpp" />
-    <ClCompile Include="process_log.cpp" />
-    <ClCompile Include="scp_store_loop.cpp" />
     <ClCompile Include="service.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

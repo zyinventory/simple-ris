@@ -184,7 +184,6 @@ COMMONLIB_API bool DecodeBase32(const char *src, char *dec, size_t dec_buf_size)
 COMMONLIB_API int GetNextUniqueNo(const char *prefix, char *pbuf, const size_t buf_size);
 COMMONLIB_API void ReleaseUniqueNoResource();
 
-COMMONLIB_API int scp_store_main_loop(const char *sessionId, bool verbose);
 COMMONLIB_API size_t in_process_sequence_dll(char *buff, size_t buff_size, const char *prefix);
 COMMONLIB_API int LoadSettings(const char *iniPath, std::ostream &oslog, bool opt_verbose);
 COMMONLIB_API size_t GetSetting(const std::string &key, char *buff, size_t buff_size);
@@ -200,6 +199,7 @@ COMMONLIB_API int TryPublishJDF(bool opt_verbose = false, const char *filename =
 COMMONLIB_API int UTF8ToGBK(const char *lpUTF8Str, char *lpGBKStr, int nGBKStrLen);
 COMMONLIB_API int GBKToUTF8(const char *lpGBKStr, char *lpUTF8Str, int nUTF8StrLen);
 COMMONLIB_API int AutoCharToGBK(char *buff, int nGBKStrLen, const char *instr);
+COMMONLIB_API int ValidateGBK(unsigned char *buff, int max_len);
 
 // common_public.cpp
 #ifndef GetSignalInterruptValue
