@@ -63,6 +63,18 @@
     <ClCompile Include="..\dcmdata\libsrc\util.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="escape_sequence.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="index-ir-165.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="index-jis0208.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="index-ksc5601.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
@@ -102,6 +114,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="common_public.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="escape_sequence.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

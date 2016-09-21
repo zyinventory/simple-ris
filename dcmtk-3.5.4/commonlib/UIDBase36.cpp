@@ -252,6 +252,7 @@ UIDBase36::UIDBase36(void)
  		AddStaticDictDirect("1.3.179.", ++fallback);		//Penango, Inc.
  		AddStaticDictDirect("1.3.180.", ++fallback);		//Lithuanian military Public Key Infrastructure (PKI)
  		AddStaticDictDirect("1.3.183.", ++fallback);		//Unique Identification Business Number (UIDB) (in Fre...
+		AddStaticDictDirect("2.16.840.", ++fallback);		//USA
 
 		if(code < fallback)
 		{

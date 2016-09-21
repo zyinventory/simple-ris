@@ -119,6 +119,10 @@
     </ClCompile>
     <ClCompile Include="commonlib.cpp" />
     <ClCompile Include="compress_file.cpp" />
+    <ClCompile Include="escape_sequence.cpp" />
+    <ClCompile Include="index-ir-165.cpp" />
+    <ClCompile Include="index-jis0208.cpp" />
+    <ClCompile Include="index-ksc5601.cpp" />
     <ClCompile Include="make_index.cpp" />
     <ClCompile Include="mini-gmp.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -149,6 +153,7 @@
     <ClInclude Include="commonlib.h" />
     <ClInclude Include="commonlib_internal.h" />
     <ClInclude Include="common_public.h" />
+    <ClInclude Include="escape_sequence.h" />
     <ClInclude Include="mini-gmp.h" />
     <ClInclude Include="poststore.h" />
     <ClInclude Include="service.h" />

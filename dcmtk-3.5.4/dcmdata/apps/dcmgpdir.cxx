@@ -74,6 +74,8 @@
 #endif
 
 #include "dcmtk/ofstd/oftimer.h"        /* for windows.h */
+#include <set>
+#include <numeric>
 #include <process.h>
 #include "commonlib.h"
 #include "../include/dcmtk/dcmdata/xml_index.h"
@@ -164,8 +166,46 @@ static void checkValueGE(DcmMetaInfo *metainfo,
     }
 }
 
+static size_t normalize_charsets(const char *charset, set<string> &charsets)
+{
+    char *ctx = NULL, *tokens = NULL, *token = NULL;
+    size_t charset_len = strlen(charset);
+    tokens = new char[charset_len + 1];
+    strcpy_s(tokens, charset_len + 1, charset);
+    token = strtok_s(tokens, "\\", &ctx);
+    while(token != NULL)
+    {
+        if(strcmp(token, CHARSET_UTF8) == 0 || strcmp(token, CHARSET_UTF8_ALIAS) == 0)
+            charsets.insert(charsets.end(), CHARSET_UTF8);
+        else if(strcmp(token, CHARSET_ISO_IR_100) == 0 || strcmp(token, CHARSET_ISO_IR_100_ALIAS) == 0)
+            charsets.insert(charsets.end(), CHARSET_ISO_IR_100);
+        else if(strcmp(token, CHARSET_ISO_IR_87) == 0  || strcmp(token, CHARSET_ISO_IR_87_ALIAS) == 0)
+            charsets.insert(charsets.end(), CHARSET_ISO_IR_87);
+        else if(strcmp(token, CHARSET_ISO_IR_149) == 0 || strcmp(token, CHARSET_ISO_IR_149_ALIAS) == 0)
+            charsets.insert(charsets.end(), CHARSET_ISO_IR_149);
+        else if(strcmp(token, CHARSET_ISO_IR_165) == 0 || strcmp(token, CHARSET_ISO_IR_165_ALIAS) == 0)
+            charsets.insert(charsets.end(), CHARSET_ISO_IR_165);
+        else // CHARSET_GB18030 and others
+            charsets.insert(charsets.end(), token);
+
+        token = strtok_s(NULL, "\\", &ctx);
+    }
+    if(tokens) delete tokens; tokens = NULL;
+    return charsets.size();
+}
+
 static handle_context::NOTIFY_FILE_CONTEXT nfc;
 static char association_buff[1024];
+
+static void fallback_b32_patientsname(const char *patientsName)
+{
+    size_t b32len = strlen(patientsName) + 5;
+    char *buff = new char[b32len];
+    strcpy_s(buff, b32len, "E32:");
+    EncodeBase32(patientsName, buff + 4, b32len - 4);
+    strncpy_s(nfc.patient.patientsName, buff, sizeof(nfc.patient.patientsName) - 1);
+    if(buff) delete buff;
+}
 
 static void fill_notify_from_dcmdataset(DcmDataset *dataset)
 {
@@ -178,10 +218,17 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
         *patientsSex = NULL, *patientsSize = NULL, *patientsWeight = NULL, *sopClassUID = NULL,
         *studyUID = NULL, *studyDate = NULL, *studyTime = NULL, *accessionNumber = NULL, *studyID = NULL,
         *seriesUID = NULL, *modality = NULL, *instanceUID = NULL, *charset = NULL;
+    set<OFString> charsets;
     // file level
     dataset->findAndGetString(DCM_SpecificCharacterSet, charset);
-    if(charset) strcpy_s(nfc.file.charset, charset);
-    else strcpy_s(nfc.file.charset, "ISO_IR 100");
+    normalize_charsets(charset, charsets);
+    string charset_fixed;
+    charset_fixed = accumulate(charsets.cbegin(), charsets.cend(), charset_fixed,
+        [](string &init, const string &val) -> string& {
+            if(init.length()) init.append(1, '\\');
+            return init.append(val);
+        });
+    if(charset_fixed.length() == 0) charset_fixed = CHARSET_ISO_IR_100;
 
 	dataset->findAndGetString(DCM_PatientID, patientID);
     if(patientID)
@@ -217,16 +264,32 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
     dataset->findAndGetString(DCM_PatientsName, patientsName);
     if(patientsName)
     {
-        if(strcmp(nfc.file.charset, "ISO_IR 192") == 0)
+        if(charsets.count(CHARSET_UTF8) > 0)
         {
+            strcpy_s(nfc.file.charset, CHARSET_UTF8);
             if(0 == UTF8ToGBK(patientsName, nfc.patient.patientsName, sizeof(nfc.patient.patientsName)))
-                strcpy_s(nfc.patient.patientsName, patientsName);
+                fallback_b32_patientsname(patientsName);
         }
-        else
-            strcpy_s(nfc.patient.patientsName, patientsName);
+        else if(charsets.count(CHARSET_ISO_IR_165) > 0 || charsets.count(CHARSET_ISO_IR_87) > 0 || charsets.count(CHARSET_ISO_IR_149) > 0)
+        {   //CJK
+            strncpy_s(nfc.file.charset, charset_fixed.c_str(), sizeof(nfc.file.charset) - 1);
+            size_t gbklen = strlen(patientsName) + 1;
+            char *gbkbuff = new char[gbklen];
+            if(0 == AutoCharToGBK(gbkbuff, gbklen, patientsName))
+                fallback_b32_patientsname(patientsName);
+            if(gbkbuff) delete gbkbuff;
+        }
+        else//GB18030 or ISO-IR-100
+        {
+            strncpy_s(nfc.patient.patientsName, patientsName, sizeof(nfc.patient.patientsName) - 1);
+            strncpy_s(nfc.file.charset, charset_fixed.c_str(), sizeof(nfc.file.charset) - 1);
+        }
     }
     else
+    {
         strcpy_s(nfc.patient.patientsName, "(NULL)");
+        strncpy_s(nfc.file.charset, charset_fixed.c_str(), sizeof(nfc.file.charset) - 1);
+    }
 
     dataset->findAndGetString(DCM_PatientsBirthDate, patientsBirthDate);
     if(patientsBirthDate) strcpy_s(nfc.patient.birthday, patientsBirthDate);

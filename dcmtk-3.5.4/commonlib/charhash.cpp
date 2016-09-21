@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "commonlib.h"
 #include "UIDBase36.h"
+#include "escape_sequence.h"
 using namespace std;
 
 static char char32map[32] = {'0', '1', '2','3','4','5','6','7','8','9','A','B','C','D','E','F','G','H','J','K','M','N','P','Q','R','S','T','U','V','W','X','Y'};
@@ -328,4 +329,20 @@ COMMONLIB_API size_t extractStudyUid(char *buffer, const size_t bufferSize, cons
 		wcstombs_s(&count, buffer, bufferSize, uidIt.first, uidIt.length());
 	}
 	return count;
+}
+
+COMMONLIB_API int AutoCharToGBK(char *buff, int nGBKStrLen, const char *instr)
+{
+    escape_sequence seq;
+    wstring wbuff;
+    for(int i = 0; instr[i] != '\0'; ++i)
+    {
+        wchar_t wc = seq.add_char(instr[i]);
+        if(wc == ESC_1B || wc == PEND_1A || wc == 0) continue;
+        wbuff.append(1, wc);
+    }
+    
+    int nRetLen = WideCharToMultiByte(936, 0, wbuff.c_str(), -1, NULL, NULL, NULL, NULL);  //获取转换到GBK编码后所需要的字符空间长度
+    if(nGBKStrLen < nRetLen) return 0; //如果输出缓冲区长度不够则退出
+    return WideCharToMultiByte(936, 0, wbuff.c_str(), -1, buff, nRetLen, NULL, NULL);  //转换到GBK编码
 }

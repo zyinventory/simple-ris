@@ -141,7 +141,11 @@ catch(...)\
 
 #endif
 
-const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_GB18030[] = "GB18030", CHARSET_UTF8[] = "ISO_IR 192";
+const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_ISO_IR_100_ALIAS[] = "ISO 2022 IR 100",
+    CHARSET_ISO_IR_87[]  = "ISO_IR 87",  CHARSET_ISO_IR_87_ALIAS[]  = "ISO 2022 IR 87",
+    CHARSET_ISO_IR_149[] = "ISO_IR 149", CHARSET_ISO_IR_149_ALIAS[] = "ISO 2022 IR 149",
+    CHARSET_ISO_IR_165[] = "ISO_IR 165", CHARSET_ISO_IR_165_ALIAS[] = "ISO 2022 IR 165",
+    CHARSET_UTF8[]       = "ISO_IR 192", CHARSET_UTF8_ALIAS[]       = "ISO 2022 IR 192", CHARSET_GB18030[] = "GB18030";
 
 extern COMMONLIB_API char COMMONLIB_PACS_BASE[MAX_PATH];
 extern COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
@@ -195,6 +199,7 @@ COMMONLIB_API bool SelectValidPublisher(const char *ini_path, char *valid_publis
 COMMONLIB_API int TryPublishJDF(bool opt_verbose = false, const char *filename = NULL);
 COMMONLIB_API int UTF8ToGBK(const char *lpUTF8Str, char *lpGBKStr, int nGBKStrLen);
 COMMONLIB_API int GBKToUTF8(const char *lpGBKStr, char *lpUTF8Str, int nUTF8StrLen);
+COMMONLIB_API int AutoCharToGBK(char *buff, int nGBKStrLen, const char *instr);
 
 // common_public.cpp
 #ifndef GetSignalInterruptValue
