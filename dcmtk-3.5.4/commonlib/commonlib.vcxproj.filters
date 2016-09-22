@@ -63,6 +63,9 @@
     <ClCompile Include="index-ksc5601.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="index-jis0212.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />

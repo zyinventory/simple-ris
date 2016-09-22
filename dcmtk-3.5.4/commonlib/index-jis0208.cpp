@@ -1,7 +1,7 @@
 ﻿#include "stdafx.h"
 #include "escape_sequence.h"
 
-const wchar_t cp_jis_0208[11104] = { // iso-2022-jp
+const wchar_t cp_jis_0208[JIS_0208_CP_COUNT] = { // iso-2022-jp
 	0x3000 , //0	　 (IDEOGRAPHIC SPACE)
 	0x3001 , //1	、 (IDEOGRAPHIC COMMA)
 	0x3002 , //2	。 (IDEOGRAPHIC FULL STOP)

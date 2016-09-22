@@ -181,10 +181,12 @@ static size_t normalize_charsets(const char *charset, set<string> &charsets)
             charsets.insert(charsets.end(), CHARSET_ISO_IR_100);
         else if(strcmp(token, CHARSET_ISO_IR_87) == 0  || strcmp(token, CHARSET_ISO_IR_87_ALIAS) == 0)
             charsets.insert(charsets.end(), CHARSET_ISO_IR_87);
-        else if(strcmp(token, CHARSET_ISO_IR_149) == 0 || strcmp(token, CHARSET_ISO_IR_149_ALIAS) == 0)
-            charsets.insert(charsets.end(), CHARSET_ISO_IR_149);
+        else if(strcmp(token, CHARSET_ISO_IR_159) == 0 || strcmp(token, CHARSET_ISO_IR_159_ALIAS) == 0)
+            charsets.insert(charsets.end(), CHARSET_ISO_IR_159);
         else if(strcmp(token, CHARSET_ISO_IR_165) == 0 || strcmp(token, CHARSET_ISO_IR_165_ALIAS) == 0)
             charsets.insert(charsets.end(), CHARSET_ISO_IR_165);
+        else if(strcmp(token, CHARSET_ISO_IR_149) == 0 || strcmp(token, CHARSET_ISO_IR_149_ALIAS) == 0)
+            charsets.insert(charsets.end(), CHARSET_ISO_IR_149);
         else // CHARSET_GB18030 and others
             charsets.insert(charsets.end(), token);
 

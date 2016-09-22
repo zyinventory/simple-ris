@@ -32,10 +32,43 @@ wchar_t escape_sequence::translate(char ic)
         if     (c == 0x5C) return 0xA5;
         else if(c == 0x7E) return 0x203E;
         else return c;
+    case jp_jis_0212:
+        if(lead)    //MBCS
+        {   // is tail
+            wchar_t wch = 0;
+            if(c > 0x20 && c < 0x7f)
+            {
+                int index = ((lead & 0x7f) - 0x21) * 94 + c - 0x21;
+                int i = 0;
+                while(index > jisx0212_to_ucs_idx[i][1]) ++i;
+                if(index >= jisx0212_to_ucs_idx[i][0])
+                {
+                    int cp = jisx0212_to_ucs_idx[i][2] - jisx0212_to_ucs_idx[i][0] + index;
+                    if(cp < JIS_0212_CP_COUNT && cp >= 0) wch = cp_jis_0212[cp];
+                }
+            }
+            lead = '\0';
+            SS = 0;
+            return wch;
+        }
+        else
+        {   // is lead
+            if(c < 0x22 || c > 0x6d)
+            {
+                lead = '\0';
+                SS = 0;
+                return 0;
+            }
+            else
+            {
+                lead = ic;
+                return PEND_1A;
+            }
+        }
     case cn_gb2312:
     case cn_ir_165:
     case jp_jis_1978:
-    case jp_jis_1983:
+    case jp_jis_0208:
     case ksc_5601:
         if(c < 0x21 || c > 0x7e)
         {
@@ -48,34 +81,40 @@ wchar_t escape_sequence::translate(char ic)
             int index = ((lead & 0x7f) - 0x21) * 94 + c - 0x21;
             lead = '\0';
             SS = 0;
-            int bounder = JIS_0208_CP_COUNT;
-            const wchar_t *dict = cp_jis_0208;
-            if(cs == ksc_5601)
-            {   /* 1410 = 15 * 94 , 3760 = 40 * 94
-                Hangul in KS C 5601 : row 16 - row 40 */
-                if (index >= 3854) /* Hanja : row 42 - row 93 : 3854 = 94 * (42-1) */
-                {
-                    if(index - 3854 >= 0 && index - 3854 < KSC_5601_HANJA_CP_COUNT) return cp_ksc5601_hanja[index - 3854];
-                    else return 0;
-                }
-                else if (index >= 1410 && index < 1410 + KSC_5601_HANGUL_CP_COUNT)
-                {
-                    if(index - 1410 >= 0 && index - 1410 < KSC_5601_HANGUL_CP_COUNT) return cp_ksc5601_hangul[index - 1410];
-                    else return 0;
-                }
-                else if (index <= 1114)
-                {
-                    if(index - 1114 >= 0 && index - 1114 < KSC_5601_SYM_CP_COUNT) return cp_ksc5601_sym[index - 1114];
-                    else return cp_ksc5601_sym[index];
-                }
-                else return 0;
+            int bounder = 0;
+            const wchar_t *dict = NULL;
+
+            if(cs == jp_jis_0208)
+            {
+                bounder = JIS_0208_CP_COUNT;
+                dict = cp_jis_0208;
             }
-            if(cs == cn_gb2312 || cs == cn_ir_165)
+            else if(cs == cn_gb2312 || cs == cn_ir_165)
             {
                 bounder = ISO_IR_165_CP_COUNT;
                 dict = cp_iso_ir_165;
             }
-            if(index >= 0 && index < bounder) return dict[index];
+            else if(cs == ksc_5601)
+            {   /* 1410 = 15 * 94 , 3760 = 40 * 94
+                Hangul in KS C 5601 : row 16 - row 40 */
+                if(index - 3854 >= 0 && index - 3854 < KSC_5601_HANJA_CP_COUNT) /* Hanja : row 42 - row 93 : 3854 = 94 * (42-1) */
+                {   // index >= 3854
+                    index -= 3854;
+                    dict = cp_ksc5601_hanja;
+                }
+                else if (index - 1410 >= 0 && index - 1410 < KSC_5601_HANGUL_CP_COUNT)
+                {   // index >= 1410 && index < 1410 + KSC_5601_HANGUL_CP_COUNT
+                    index -= 1410;
+                    dict = cp_ksc5601_hangul;
+                }
+                else if(index - 1114 >= 0 && index - 1114 < KSC_5601_SYM_CP_COUNT)
+                {   // index <= 1114
+                    index -= 1114;
+                    dict = cp_ksc5601_sym;
+                }
+            }
+
+            if(dict && index >= 0 && index < bounder) return dict[index];
             else return 0;
         }
         else
@@ -99,6 +138,8 @@ iso_2022_charset escape_sequence::to_charset(unsigned short i1_f)
         return ascii;
     case 0x43:
         return ksc_5601;
+    case 0x44:
+        return jp_jis_0212;
     case 0x45:
         return cn_ir_165;
     case 0x49:
@@ -111,7 +152,7 @@ iso_2022_charset escape_sequence::to_charset(unsigned short i1_f)
     case 0x2441:
         return cn_gb2312;
     case 0x2442:
-        return jp_jis_1983;
+        return jp_jis_0208;
     default:
         return ascii;
     }

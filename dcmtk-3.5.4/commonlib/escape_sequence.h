@@ -3,6 +3,9 @@
 
 #define JIS_0208_CP_COUNT 11104
 extern const wchar_t cp_jis_0208[JIS_0208_CP_COUNT];
+#define JIS_0212_CP_COUNT 6082
+extern const wchar_t cp_jis_0212[JIS_0212_CP_COUNT];
+extern const unsigned short jisx0212_to_ucs_idx[12][3];
 
 #define ISO_IR_165_CP_COUNT 8836
 extern const wchar_t cp_iso_ir_165[ISO_IR_165_CP_COUNT];
@@ -28,7 +31,7 @@ extern const wchar_t cp_ksc5601_hanja[KSC_5601_HANJA_CP_COUNT];
 #define ESC_LS2R    0x7d
 #define ESC_LS3R    0x7c
 
-enum iso_2022_charset { ascii, jp_roman, jp_katakana, jp_jis_1978, jp_jis_1983, cn_gb2312, cn_ir_165, ksc_5601 };
+enum iso_2022_charset { ascii, jp_roman, jp_katakana, jp_jis_1978, jp_jis_0208, jp_jis_0212, cn_gb2312, cn_ir_165, ksc_5601 };
 
 class escape_sequence
 {
