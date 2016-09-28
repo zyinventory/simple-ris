@@ -255,11 +255,15 @@ DU_findSOPClassAndInstanceInFile(
   char* sopClass, 
   char* sopInstance,
   OFBool tolerateSpacePaddedUIDs,
-  char* transferSyntax)
+  char* transferSyntax,
+  char* mediaStorageSopClass)
 {
     DcmFileFormat ff;
     if (! ff.loadFile(fname, EXS_Unknown, EGL_noChange).good())
         return OFFalse;
+
+    if(mediaStorageSopClass)
+        DU_getStringDOElement(ff.getMetaInfo(), DCM_MediaStorageSOPClassUID, mediaStorageSopClass);
 
     /* look in the meta-header first */
     OFBool found = DU_findSOPClassAndInstanceInDataSet(

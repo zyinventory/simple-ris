@@ -651,7 +651,8 @@ main(int argc, char *argv[])
           if (opt_proposeOnlyRequiredPresentationContexts)
           {
 			  transferSyntax[0] = '\0';
-              if (!DU_findSOPClassAndInstanceInFile(currentFilename, sopClassUID, sopInstanceUID, OFFalse, transferSyntax))
+              char mediaStorageSopClass[128] = "";
+              if (!DU_findSOPClassAndInstanceInFile(currentFilename, sopClassUID, sopInstanceUID, OFFalse, transferSyntax, mediaStorageSopClass))
               {
                 ignoreName = OFTrue;
                 errormsg = "missing SOP class (or instance) in file: ";
@@ -673,8 +674,19 @@ main(int argc, char *argv[])
               }
               else
               {
-                sopClassUIDList.push_back(sopClassUID);
-                sopInstanceUIDList.push_back(sopInstanceUID);
+                  if(strcmp(mediaStorageSopClass, UID_MediaStorageDirectoryStorage) == 0)
+                  {
+                    ignoreName = OFTrue;
+                    errormsg = "media storage sop class in file: ";
+                    errormsg += currentFilename;
+                    errormsg += ": MediaStorageDirectoryStorage";
+                    CERR << "info: " << errormsg << ", ignoring file" << endl;
+                  }
+                  else
+                  {
+                    sopClassUIDList.push_back(sopClassUID);
+                    sopInstanceUIDList.push_back(sopInstanceUID);
+                  }
               }
           }
           if (!ignoreName) fileNameList.push_back(currentFilename);

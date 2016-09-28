@@ -96,7 +96,7 @@ OFBool DU_findSOPClassAndInstanceInFile(
   char* sopClass, 
   char* sopInstance,
   OFBool tolerateSpacePaddedUIDs = OFFalse,
-  char* transferSyntax = NULL);
+  char* transferSyntax = NULL, char* mediaStorageSopClass = NULL);
  
 unsigned long DU_fileSize(const char *fname);
 
