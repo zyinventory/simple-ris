@@ -285,7 +285,7 @@ static bool handle_less(const HANDLE_PAIR &p1, const HANDLE_PAIR &p2)
 
 static const string debug_mode_header("DebugMode");
 
-int watch_notify(string &cmd, ostream &flog)
+int watch_notify(string &cmd, ofstream &flog)
 {
     sprintf_s(buff, "%s\\pacs\\store_notify\\*.dfc", GetPacsBase());
     disable_remained_meta_notify_file(buff, flog);
@@ -579,6 +579,33 @@ int watch_notify(string &cmd, ostream &flog)
 				[](const NOTIFY_FILE_CONTEXT &nfc) { return string(nfc.study.studyUID); });
 
 			nps.check_study_timeout_to_generate_jdf(exist_study_in_queue, exist_association_paths);
+
+            //switch log file
+            GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service_n.txt", buff, sizeof(buff));
+            if(flog.tellp() > 10 * 1024 * 1024 || strncmp(buff, current_log_path.c_str(), 20)) // 20 == strlen("pacs_log\\2016\\10\\10\\")
+            {
+	            if(PrepareFileDir(buff))
+                {
+                    if(flog.is_open())
+                    {
+                        flog << "to be continued" << endl;
+                        flog.close();
+                    }
+                    flog.open(buff);
+                    if(flog.fail())
+                    {
+                        cerr << "watch_notify() switch log " << buff << " failed" << endl;
+                        break; // while(GetSignalInterruptValue() == 0)
+                    }
+                    flog << "continuation of " << current_log_path << endl;
+                    current_log_path = buff;
+                }
+	            else
+                {
+                    cerr << "watch_notify() switch log failed, PrepareFileDir(" << buff << ") failed" << endl;
+		            break; // while(GetSignalInterruptValue() == 0)
+                }
+            }
 		}
     } // end while(GetSignalInterruptValue() == 0)
 

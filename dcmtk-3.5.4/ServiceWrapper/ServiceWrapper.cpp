@@ -13,6 +13,7 @@ static char buff[FILE_BUF_SIZE], **argvSV;
 static bool startXCS = false, xcsFound = false;
 static ofstream flog;
 
+string current_log_path;
 const char *dirmakerCommand;
 bool opt_verbose = false, debug_mode = false;
 int store_timeout = 30, assoc_timeout = 300, loop_wait = 50;
@@ -207,6 +208,9 @@ static void WINAPI SvcMain(DWORD dummy_argc, LPSTR *dummy_argv)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+#ifdef _DEBUG
+    _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+#endif
 	if(argc < 2)
 	{
 		cerr << "使用说明: ServiceWrapper [ServiceName] [params]" << endl;
@@ -240,6 +244,7 @@ int _tmain(int argc, _TCHAR* argv[])
             cerr << "ServiceWrapper open " << buff << " failed" << endl;
             return -4;
         }
+        current_log_path = buff;
     }
 	else
 		return -4;

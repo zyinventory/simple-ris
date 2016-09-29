@@ -1084,10 +1084,14 @@ action_from_association& action_from_association::operator=(const action_from_as
     burn_multi_id = r.burn_multi_id;
     if(r.pnfc)
     {
-        pnfc = new NOTIFY_FILE_CONTEXT;
+        if(pnfc == NULL) pnfc = new NOTIFY_FILE_CONTEXT;
         *pnfc = *r.pnfc;
     }
-    else pnfc = r.pnfc; // r.pnfc is NULL
+    else
+    {
+        if(pnfc) delete pnfc;
+        pnfc = NULL; // r.pnfc is NULL
+    }
     return *this;
 }
 

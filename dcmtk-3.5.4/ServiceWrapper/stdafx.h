@@ -5,6 +5,16 @@
 
 #pragma once
 
+#ifdef _DEBUG
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+#ifndef DBG_NEW
+#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+#define new DBG_NEW
+#endif //DBG_NEW
+#endif //_DEBUG
+
 #include "targetver.h"
 
 #include <stdio.h>
@@ -35,7 +45,7 @@
 #define FILE_BUF_SIZE 1024
 #include "handle_context.h"
 
-int watch_notify(std::string &cmd, std::ostream &flog);
+int watch_notify(std::string &cmd, std::ofstream &flog);
 int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);
 int cmd_patient(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);
 int cmd_study(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);
@@ -48,6 +58,7 @@ extern bool opt_verbose;
 extern bool debug_mode;
 extern int store_timeout, assoc_timeout, loop_wait, lock_number, *ptr_license_count;
 extern char lock_file_name[64];
+extern std::string current_log_path;
 
 // ------- old ServiceWrapper -------
 
