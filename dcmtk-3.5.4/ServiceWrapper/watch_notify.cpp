@@ -244,6 +244,7 @@ static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named
             if(opt_verbose || phdir->file_complete_remain())
                 time_header_out(flog) << "close_handle_dir() handle_dir" << (pick_up ? " pick up" : "") << " exit:" << endl;
 
+            time_header_out(flog) << "close_handle_dir() delete handle_dir:" << endl;
             phdir->print_state();
             delete phdir;
 
@@ -389,6 +390,7 @@ int watch_notify(string &cmd, ofstream &flog)
         goto clean_child_proc;
 
     HANDLE *pha = NULL;
+    size_t file_in_compress_queue = 0;
     while(GetSignalInterruptValue() == 0)
     {
 		// handle's waiting order: named pipe, dir monitor, compress proc, qr & job proc
@@ -399,22 +401,27 @@ int watch_notify(string &cmd, ofstream &flog)
 		vector<HANDLE_PAIR>::const_iterator it_null = find_if(hs.cbegin(), hs.cend(), [](const HANDLE_PAIR &p) { return p.second == NULL; });
 		if(it_null != hs.cend()) hs.erase(it_null, hs.cend());
 
-        if(compress_queue.size() > 2000)
+        if(debug_mode)
         {
-            time_header_out(flog) << "compress queue is too long: " << hs.size() << endl;
-            for_each(hs.cbegin(), hs.cend(), [&flog](const HANDLE_PAIR p) {
-                time_header_out(flog) << hex << setfill('0') << setw(8) << p.first << " ";
-	            if(dynamic_cast<handle_compress*>(p.second))
-                {
-                    handle_compress *phc = dynamic_cast<handle_compress*>(p.second);
-                    flog << phc->get_notify_context().src_notify_filename << endl;
-                }
-	            else
-                {
-                    meta_notify_file *phm = dynamic_cast<meta_notify_file*>(p.second);
-                    flog << phm->get_path() << " " << phm->get_meta_notify_filename() << endl;
-                }
-            });
+            if(compress_queue.size() > file_in_compress_queue * 1.2)
+            {
+                file_in_compress_queue = compress_queue.size();
+                time_header_out(flog) << "compress queue increase 20%: " << file_in_compress_queue << endl;
+                for_each(hs.cbegin(), hs.cend(), [&flog](const HANDLE_PAIR p) {
+                    time_header_out(flog) << hex << setfill('0') << setw(8) << p.first << " ";
+	                if(dynamic_cast<handle_compress*>(p.second))
+                    {
+                        handle_compress *phc = dynamic_cast<handle_compress*>(p.second);
+                        flog << phc->get_notify_context().src_notify_filename << endl;
+                    }
+	                else
+                    {
+                        meta_notify_file *phm = dynamic_cast<meta_notify_file*>(p.second);
+                        flog << phm->get_path() << " " << phm->get_meta_notify_filename() << endl;
+                    }
+                });
+            }
+            else if(compress_queue.size() < file_in_compress_queue * 0.8) file_in_compress_queue = compress_queue.size();
         }
 
         size_t hsize = hs.size() + 1;
@@ -581,7 +588,6 @@ int watch_notify(string &cmd, ofstream &flog)
 				if(phdir && phdir->get_association_id().length())
 				{
 					exist_association_paths.insert(exist_association_paths.begin(), phdir->get_path());
-                    time_header_out(flog) << "prepare close_handle_dir()" << endl;
 					if(close_handle_dir(phdir, pclz_base_dir, nps, true, flog))
 					{
 						it = map_handle_context.erase(it);
