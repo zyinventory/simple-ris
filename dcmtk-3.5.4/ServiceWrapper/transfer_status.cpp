@@ -297,14 +297,18 @@ DWORD handle_dir::process_notify(const std::string &filename, NOTIFY_LIST &compr
     DWORD gle = 0, tag;
     string cmd, filepath(get_path());
     filepath.append("\\state\\").append(filename);
-    if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_file(" << filepath << ") " << get_association_id() << endl;
+    if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << endl;
     ifstream ifs(filepath, ios_base::in, _SH_DENYWR);
     if(ifs.fail())
     {
         gle = GetLastError();
-        string msg("handle_dir::process_notify_file() open file failed: ");
-        msg.append(filepath);
-        return displayErrorToCerr(msg.c_str(), gle, &flog);
+        if(gle != ERROR_SHARING_VIOLATION || opt_verbose)
+        {
+            string msg("handle_dir::process_notify() open file failed: ");
+            msg.append(filepath);
+            return displayErrorToCerr(msg.c_str(), gle, &flog);
+        }
+        else return gle;
     }
 
     refresh_last_access();
@@ -533,7 +537,7 @@ void handle_proc::print_state() const
 
 handle_proc::~handle_proc()
 {
-    time_header_out(*pflog) << "handle_proc destory " << exec_name << ": "
+    if(strcmp(exec_name.c_str(), "dcmcjpeg") || opt_verbose) time_header_out(*pflog) << "handle_proc destory " << exec_name << ": "
         << hex << setw(8) << setfill('0') << uppercase << procinfo.hThread << ", " << procinfo.hProcess << endl;
     if(procinfo.hThread && procinfo.hThread != INVALID_HANDLE_VALUE) CloseHandle(procinfo.hThread);
     if(procinfo.hProcess && procinfo.hProcess != INVALID_HANDLE_VALUE) CloseHandle(procinfo.hProcess);

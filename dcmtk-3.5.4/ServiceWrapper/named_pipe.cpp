@@ -361,14 +361,12 @@ void named_pipe_server::check_study_timeout_to_generate_jdf(const std::set<std::
             && ! any_of(phs->get_set_association_path().begin(), phs->get_set_association_path().end(),
                 [&exist_assoc_paths](const string &s) { return (exist_assoc_paths.find(s) != exist_assoc_paths.end()); }))
         {
-            if(opt_verbose)
-            {
-                time_header_out(*pflog) << "named_pipe_server::check_study_timeout_to_generate_jdf() study timeout: " << phs->get_study_uid() << endl;
-                if(debug_mode) phs->print_state();
-            }
+            if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::check_study_timeout_to_generate_jdf() study timeout: "
+                << phs->get_study_uid() << endl;
             bool auto_publish = phs->get_last_association_action().is_auto_publish();
             if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::check_study_timeout_to_generate_jdf() delete study " << phs->get_study_uid() << endl;
             it = map_study.erase(it);
+            phs->print_state();
             delete phs;
         }
         else ++it;

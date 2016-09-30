@@ -141,11 +141,11 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
     }
 
     handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path, notify_file, &flog);
+    time_header_out(flog) << "process_meta_notify_file() create association " << pclz_dir->get_association_id() << " " << pclz_dir->get_path() << endl;
     gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify(filename, compress_queue, flog); });
     if(gle == 0)
     {
         map_handle_context[hdir] = pclz_dir;
-        if(opt_verbose) time_header_out(flog) << "process_meta_notify_file() add association " << pclz_dir->get_association_id() << " " << pclz_dir->get_path() << endl;
         return 0;
     }
     else
@@ -242,10 +242,9 @@ static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named
             pclz_base_dir->remove_file_from_list(phdir->get_meta_notify_filename());
 
             if(opt_verbose || phdir->file_complete_remain())
-            {
                 time_header_out(flog) << "close_handle_dir() handle_dir" << (pick_up ? " pick up" : "") << " exit:" << endl;
-                if(debug_mode) phdir->print_state();
-            }
+
+            phdir->print_state();
             delete phdir;
 
             return true;
@@ -262,12 +261,12 @@ static bool handle_less(const HANDLE_PAIR &p1, const HANDLE_PAIR &p2)
 
 	int c1 = 3, c2 = 3;
 
-	if(dynamic_cast<handle_compress*>(p1.second)) c1 = 2;
-	else if(dynamic_cast<handle_dir*>(p1.second)) c1 = 1;
+	if(dynamic_cast<handle_compress*>(p1.second)) c1 = 1;
+	else if(dynamic_cast<handle_dir*>(p1.second)) c1 = 2;
 	else c1 = 3; // qr or job
 
-	if(dynamic_cast<handle_compress*>(p2.second)) c2 = 2;
-	else if(dynamic_cast<handle_dir*>(p2.second)) c2 = 1;
+	if(dynamic_cast<handle_compress*>(p2.second)) c2 = 1;
+	else if(dynamic_cast<handle_dir*>(p2.second)) c2 = 2;
 	else c2 = 3; // qr or job
 
 	if(c1 == c2)
@@ -399,6 +398,24 @@ int watch_notify(string &cmd, ofstream &flog)
 		sort(hs.begin(), hs.end(), handle_less);
 		vector<HANDLE_PAIR>::const_iterator it_null = find_if(hs.cbegin(), hs.cend(), [](const HANDLE_PAIR &p) { return p.second == NULL; });
 		if(it_null != hs.cend()) hs.erase(it_null, hs.cend());
+
+        if(compress_queue.size() > 2000)
+        {
+            time_header_out(flog) << "compress queue is too long: " << hs.size() << endl;
+            for_each(hs.cbegin(), hs.cend(), [&flog](const HANDLE_PAIR p) {
+                time_header_out(flog) << hex << setfill('0') << setw(8) << p.first << " ";
+	            if(dynamic_cast<handle_compress*>(p.second))
+                {
+                    handle_compress *phc = dynamic_cast<handle_compress*>(p.second);
+                    flog << phc->get_notify_context().src_notify_filename << endl;
+                }
+	            else
+                {
+                    meta_notify_file *phm = dynamic_cast<meta_notify_file*>(p.second);
+                    flog << phm->get_path() << " " << phm->get_meta_notify_filename() << endl;
+                }
+            });
+        }
 
         size_t hsize = hs.size() + 1;
         if(pha) delete[] pha;
@@ -564,6 +581,7 @@ int watch_notify(string &cmd, ofstream &flog)
 				if(phdir && phdir->get_association_id().length())
 				{
 					exist_association_paths.insert(exist_association_paths.begin(), phdir->get_path());
+                    time_header_out(flog) << "prepare close_handle_dir()" << endl;
 					if(close_handle_dir(phdir, pclz_base_dir, nps, true, flog))
 					{
 						it = map_handle_context.erase(it);
@@ -588,7 +606,7 @@ int watch_notify(string &cmd, ofstream &flog)
                 {
                     if(flog.is_open())
                     {
-                        flog << "to be continued" << endl;
+                        time_header_out(flog) << "to be continued" << endl;
                         flog.close();
                     }
                     flog.open(buff);
@@ -597,7 +615,7 @@ int watch_notify(string &cmd, ofstream &flog)
                         cerr << "watch_notify() switch log " << buff << " failed" << endl;
                         break; // while(GetSignalInterruptValue() == 0)
                     }
-                    flog << "continuation of " << current_log_path << endl;
+                    time_header_out(flog) << "continuation of " << current_log_path << endl;
                     current_log_path = buff;
                 }
 	            else
