@@ -882,7 +882,8 @@ int main(int argc, char *argv[])
 		DcmDataset *dataset = fileformat.getDataset();
         
 		DcmXfer original_xfer(dataset->getOriginalXfer());
-        isEncapsulated = original_xfer.isEncapsulated();
+        // UID_JPEGProcess14TransferSyntax (JpegLess14) can't add to dcmmkdir, treat as UnEncapsulated
+        isEncapsulated = original_xfer.isEncapsulated() && strcmp(original_xfer.getXferID(), UID_JPEGProcess14TransferSyntax);
 
         // 0x0009, 0x1110 The problematic private group, containing a *always* JPEG compressed PixelData
         // GE Icon pixel data are already and always compressed in JPEG -> dont touch lesion !
