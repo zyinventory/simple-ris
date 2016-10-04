@@ -1456,7 +1456,7 @@ OFCondition DicomDirInterface::checkSOPClassAndXfer(DcmMetaInfo *metainfo,
                                 OFOStringStream oss;
                                 oss << xferName1 << ", " << xferName2 << ", " << xferName3
                                     << ", " << xferName4 << ", " << xferName5 << " or " << xferName6
-                                    << " expected: " << filename << OFStringStream_ends;
+                                    << " expected: " << filename << "(" << dcmFindNameOfUID(transferSyntax.c_str()) << ")" << OFStringStream_ends;
                                 OFSTRINGSTREAM_GETSTR(oss, tmpString)
                                 if (TransferSyntaxCheck)
                                 {
@@ -1480,7 +1480,7 @@ OFCondition DicomDirInterface::checkSOPClassAndXfer(DcmMetaInfo *metainfo,
                                     /* create error message */
                                     OFOStringStream oss;
                                     oss << xferName1 << " or " << xferName2 << " expected: "
-                                         << filename << OFStringStream_ends;
+                                         << filename << "(" << dcmFindNameOfUID(transferSyntax.c_str()) << ")" << OFStringStream_ends;
                                     OFSTRINGSTREAM_GETSTR(oss, tmpString)
                                     if (TransferSyntaxCheck)
                                     {
@@ -1503,7 +1503,7 @@ OFCondition DicomDirInterface::checkSOPClassAndXfer(DcmMetaInfo *metainfo,
                                 /* create error message */
                                 OFOStringStream oss;
                                 oss << xferName1 << " or " << xferName2 << " expected: "
-                                     << filename << OFStringStream_ends;
+                                     << filename << "(" << dcmFindNameOfUID(transferSyntax.c_str()) << ")" << OFStringStream_ends;
                                 OFSTRINGSTREAM_GETSTR(oss, tmpString)
                                 if (TransferSyntaxCheck)
                                 {
@@ -1532,7 +1532,7 @@ OFCondition DicomDirInterface::checkSOPClassAndXfer(DcmMetaInfo *metainfo,
                                 /* create error message */
                                 OFOStringStream oss;
                                 oss << xferName1 << ", " << xferName2 << " or " << xferName3
-                                    << " expected: " << filename << OFStringStream_ends;
+                                    << " expected: " << filename << "(" << dcmFindNameOfUID(transferSyntax.c_str()) << ")" << OFStringStream_ends;
                                 OFSTRINGSTREAM_GETSTR(oss, tmpString)
                                 if (TransferSyntaxCheck)
                                 {
@@ -1557,7 +1557,7 @@ OFCondition DicomDirInterface::checkSOPClassAndXfer(DcmMetaInfo *metainfo,
                                     xferName = expectedTransferSyntax;
                                 /* create error message */
                                 OFOStringStream oss;
-                                oss << xferName << " expected: " << filename << OFStringStream_ends;
+                                oss << xferName << " expected: " << filename << "(" << dcmFindNameOfUID(transferSyntax.c_str()) << ")" << OFStringStream_ends;
                                 OFSTRINGSTREAM_GETSTR(oss, tmpString)
                                 if (TransferSyntaxCheck)
                                 {
