@@ -406,7 +406,7 @@ int watch_notify(string &cmd, ofstream &flog)
             if(compress_queue.size() > file_in_compress_queue * 1.2)
             {
                 file_in_compress_queue = compress_queue.size();
-                time_header_out(flog) << "compress queue increase 20%: " << file_in_compress_queue << endl;
+                time_header_out(flog) << "compress queue increase 20%: " << dec << file_in_compress_queue << endl;
                 for_each(hs.cbegin(), hs.cend(), [&flog](const HANDLE_PAIR p) {
                     time_header_out(flog) << hex << setfill('0') << setw(8) << p.first << " ";
 	                if(dynamic_cast<handle_compress*>(p.second))
@@ -465,11 +465,8 @@ int watch_notify(string &cmd, ofstream &flog)
                     ReleaseSemaphore(hSema, 1, NULL);
                     map_handle_context.erase(phcompr->get_handle());
                     NOTIFY_FILE_CONTEXT nfc = phcompr->get_notify_context();
-                    if(opt_verbose)
-                    {
-                        time_header_out(flog) << "watch_notify() compress proc exit:" << endl;
-                        if(debug_mode) phcompr->print_state();
-                    }
+                    time_header_out(flog) << "watch_notify() handle_compress exit: " << nfc.assoc.path << " " << nfc.file.filename << " " << nfc.file.unique_filename << endl;
+                    if(debug_mode) phcompr->print_state();
                     compress_complete(phcompr->get_association_id(), nfc.file.studyUID, true, nps, nfc, flog);
                     delete phcompr;
                 }
@@ -529,7 +526,7 @@ int watch_notify(string &cmd, ofstream &flog)
                 {   // no same study/series/instance
                     NOTIFY_FILE_CONTEXT nfc = *it;
                     it = compress_queue.erase(it);
-                            
+
                     string received_instance_file_path(nfc.assoc.path);
                     received_instance_file_path.append(1, '\\').append(nfc.file.filename);
                     struct _stat64 fs;
@@ -541,6 +538,7 @@ int watch_notify(string &cmd, ofstream &flog)
                         fs.st_size = 0LL;
 
                         compress_complete(nfc.assoc.id, nfc.file.studyUID, false, nps, nfc, flog);
+                        ReleaseSemaphore(hSema, 1, NULL);
                         continue;                           
                     }
                     nfc.file.file_size_receive = fs.st_size;
@@ -551,20 +549,26 @@ int watch_notify(string &cmd, ofstream &flog)
 						compr_ptr->set_priority(IDLE_PRIORITY_CLASS);
                         if(compr_ptr->start_process(false))
                         {   // failed
-                            time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << nfc.src_notify_filename << " " << nfc.file.filename << endl;
+                            time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << nfc.assoc.path << " " << nfc.file.filename << " " << nfc.file.unique_filename << endl;
                             delete compr_ptr;
                         }
                         else// succeed
                         {
+                            time_header_out(flog) << "watch_notify() handle_compress::start_process() OK: " << nfc.assoc.path << " " << nfc.file.filename << " " << nfc.file.unique_filename << endl;
                             map_handle_context[compr_ptr->get_handle()] = compr_ptr;
                             start_compress_process_ok = true;
                         }
                     }
                     else
-                        time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << nfc.src_notify_filename << " " << nfc.file.filename << endl;
+                        time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << nfc.assoc.path << " " << nfc.file.filename << endl;
                     break; // exit for(NOTIFY_LIST::iterator it = compress_queue.begin()
                 }
-                else ++it;
+                else
+                {
+                    if(opt_verbose) time_header_out(flog) << "watch_notify() skip exist compress unique name " << it->file.unique_filename
+                        << " src notify: " << it->src_notify_filename << endl;
+                    ++it;
+                }
 
 				if(!start_compress_process_ok) ReleaseSemaphore(hSema, 1, NULL);
 			}

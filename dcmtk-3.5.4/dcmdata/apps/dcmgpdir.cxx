@@ -879,8 +879,7 @@ int main(int argc, char *argv[])
                         displayErrorToCerr(msg, gle);
                         break;
                     }
-                    if(ddir.verboseMode())
-                        time_header_out(CERR) << "dcmmkdir WriteFile(): " << fnbuf << endl;
+                    time_header_out(CERR) << "dcmmkdir WriteFile(): " << fnbuf << endl;
 
                     gle = 0;
                     do
@@ -905,7 +904,7 @@ int main(int argc, char *argv[])
                         break;  // while(true)
                     }
                     fnbuf[cbRead] = '\0';
-                    if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir ReadFile(): " << fnbuf << endl;
+                    time_header_out(CERR) << "dcmmkdir ReadFile(): " << fnbuf << endl;
                     
                     if(strncmp("close ", fnbuf, 6) == 0)  // server close pipe
                     {
@@ -915,7 +914,7 @@ int main(int argc, char *argv[])
                             ++study_end;
                             study_end_time = study_end;
                         }
-                        if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": server close named pipe, study end at " << study_end_time << endl;
+                        time_header_out(CERR) << "dcmmkdir : server close named pipe, study end at " << study_end_time << endl;
 
                         publish_jdf = (strncmp("close study ", fnbuf, 12) == 0);
                         DisconnectNamedPipe(hPipe);
@@ -930,7 +929,6 @@ int main(int argc, char *argv[])
                     if(assoc_text)
                     {
                         *assoc_text++ = '\0';
-                        time_header_out(CERR) << assoc_text << endl;
                         strcpy_s(association_buff, assoc_text);
                     }
                     else association_buff[0] = '\0';
@@ -964,7 +962,7 @@ int main(int argc, char *argv[])
 							/* ignore inconsistent file, just warn (already done inside "ddir") */
 							result = EC_Normal;
 						}
-                        time_header_out(CERR) << "dicomdir maker: add bad file " << pfn << endl;
+                        time_header_out(CERR) << "dcmmkdir add bad file " << pfn << endl;
 					}
                     else
                     {
@@ -974,7 +972,7 @@ int main(int argc, char *argv[])
                         // save filename for response message that is written to sender
                         sprintf_s(last_file_name, "%s|%s", pfn, dcmxfer.getXferShortName());
 						++goodFiles;
-                        if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: add good file " << pfn << endl;
+                        time_header_out(CERR) << "dcmmkdir add good file " << pfn << endl;
                     }
                 } // while(true)
                 CloseHandle(hPipe);

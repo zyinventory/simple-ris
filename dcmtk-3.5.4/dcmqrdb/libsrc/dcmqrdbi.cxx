@@ -3416,7 +3416,11 @@ OFCondition DcmQueryRetrieveDatabaseHandle::makeNewStoreFileName(
     if (m==NULL) m = "XX";
     
     if(associationId)
-	    ret = sprintf_s(newImageFileName, MAXPATHLEN, "%s\\%s\\%s.%s.dcm", getStorageArea(), associationId, m, SOPInstanceUID);
+    {
+        char seq[256];
+        in_process_sequence(seq, sizeof(seq), "");
+	    ret = sprintf_s(newImageFileName, MAXPATHLEN, "%s\\%s\\%s.%s.%s.dcm", getStorageArea(), associationId, m, SOPInstanceUID, seq);
+    }
     else
    	    ret = sprintf_s(newImageFileName, MAXPATHLEN, "%s\\%s.%s.dcm", getStorageArea(), m, SOPInstanceUID);
 
