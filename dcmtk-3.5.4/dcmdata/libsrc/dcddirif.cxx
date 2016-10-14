@@ -4410,7 +4410,7 @@ OFBool DicomDirInterface::warnAboutInconsistentAttributes(DcmDirectoryRecord *re
                         /* do not check DCM_NumberOfFrames and DCM_RepresentativeFrameNumber out of VerboseMode,
                             these shall modify by getIconFromDataset(), see comment 
                             "optimization for compressed multiframe images" */
-                        if(VerboseMode || (delem->getTag() != DCM_NumberOfFrames && delem->getTag() != DCM_RepresentativeFrameNumber))
+                        if(delem->getTag() != DCM_NumberOfFrames && delem->getTag() != DCM_RepresentativeFrameNumber)
                             /* everything else can be compared as a string */
                             result &= compareStringAttributes(dataset, tag, record, sourceFilename);
                     }
