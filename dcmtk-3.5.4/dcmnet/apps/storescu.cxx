@@ -338,6 +338,10 @@ main(int argc, char *argv[])
       cmd.addOption("--ignore-peer-cert",       "-ic",       "don't verify peer certificate");
 #endif
 
+    cmd.addSubGroup("handling of undefined length UN elements:");
+      cmd.addOption("--enable-cp246",        "+ui",    "read undefined len UN as implicit VR (default)");
+      cmd.addOption("--disable-cp246",       "-ui",    "read undefined len UN as explicit VR");
+
     /* evaluate command line */
     prepareCmdLineArgs(argc, argv, OFFIS_CONSOLE_APPLICATION);
     if (app.parseCommandLine(cmd, argc, argv, OFCommandLine::ExpandWildcards))
@@ -623,7 +627,7 @@ main(int argc, char *argv[])
       }
 
 #endif
-
+      if (cmd.findOption("--disable-cp246")) dcmEnableCP246Support.set(false);
 
       /* finally parse filenames */
       int paramCount = cmd.getParamCount();
