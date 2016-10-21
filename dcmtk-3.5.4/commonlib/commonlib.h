@@ -201,6 +201,7 @@ COMMONLIB_API int UTF8ToGBK(const char *lpUTF8Str, char *lpGBKStr, int nGBKStrLe
 COMMONLIB_API int GBKToUTF8(const char *lpGBKStr, char *lpUTF8Str, int nUTF8StrLen);
 COMMONLIB_API int AutoCharToGBK(char *buff, int nGBKStrLen, const char *instr);
 COMMONLIB_API int ValidateGBK(unsigned char *buff, int max_len);
+COMMONLIB_API size_t normalize_dicom_date(size_t buff_len, char *buff, const char *studyDate);
 
 // common_public.cpp
 #ifndef GetSignalInterruptValue

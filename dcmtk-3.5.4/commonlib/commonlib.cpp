@@ -192,6 +192,38 @@ COMMONLIB_API time_t dcmdate2tm(int dcmdate)
   return mktime(&timeBirth);
 }
 
+COMMONLIB_API size_t normalize_dicom_date(size_t buff_len, char *buff, const char *studyDate)
+{
+	size_t count = 0;
+    size_t converted = 0;
+    wchar_t wsd[65];
+    mbstowcs_s(&converted, wsd, studyDate, 64);
+	wcout << wsd << endl;
+
+    wregex pattern(L"(\\d{4})[^\\d]?(\\d{1,2})[^\\d]?(\\d{1,2})");
+	wcmatch mr;
+    wstring result;
+	if(regex_match(wsd, mr, pattern, regex_constants::match_flag_type::format_first_only | regex_constants::match_flag_type::format_no_copy))
+	{
+		//wcmatch::const_reference == const sub_match<const wchar_t*> &
+        wcmatch::const_iterator it = ++mr.begin();
+        if(it->length() < 4) result.append(4 - it->length(), L'0');
+        result.append(it->first, it->length());
+        ++it;
+        if(it->length() < 2) result.append(2 - it->length(), L'0');
+        result.append(it->first, it->length());
+        ++it;
+        if(it->length() < 2) result.append(2 - it->length(), L'0');
+        result.append(it->first, it->length());
+
+        if(result.length() == 8)
+            wcstombs_s(&count, buff, buff_len, result.c_str(), result.length());
+	}
+	else
+		cerr << __FUNCSIG__ << " not match study date: " << studyDate << endl;
+    return count;
+}
+
 size_t sys_core_num = 4, worker_core_num = 2;
 BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved )
 {

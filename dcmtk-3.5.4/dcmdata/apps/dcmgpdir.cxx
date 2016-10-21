@@ -297,7 +297,7 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
     ValidateGBK(reinterpret_cast<unsigned char*>(nfc.patient.patientsName), sizeof(nfc.patient.patientsName));
 
     dataset->findAndGetString(DCM_PatientsBirthDate, patientsBirthDate);
-    if(patientsBirthDate) strcpy_s(nfc.patient.birthday, patientsBirthDate);
+    if(patientsBirthDate) normalize_dicom_date(sizeof(nfc.patient.birthday), nfc.patient.birthday, patientsBirthDate);
 
     dataset->findAndGetString(DCM_PatientsSex, patientsSex);
     if(patientsSex) strcpy_s(nfc.patient.sex, patientsSex);
@@ -310,7 +310,7 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
 
     //study level
     dataset->findAndGetString(DCM_StudyDate, studyDate);
-    if(studyDate) strcpy_s(nfc.study.studyDate, studyDate);
+    if(studyDate) normalize_dicom_date(sizeof(nfc.study.studyDate), nfc.study.studyDate, studyDate);
 
     dataset->findAndGetString(DCM_StudyTime, studyTime);
     if(studyTime) strcpy_s(nfc.study.studyTime, studyTime);
@@ -1010,7 +1010,7 @@ int main(int argc, char *argv[])
 				while ((iter != last) && result.good())
 				{
 					/* add files to the DICOMDIR */
-					result = ddir.addDicomFile(iter->c_str(), opt_directory);
+					result = ddir.addDicomFile(iter->c_str(), opt_directory);//, fill_notify_from_dcmdataset);
 					if (result.bad())
 					{
 						badFiles.push_back(*iter);

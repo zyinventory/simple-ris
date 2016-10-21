@@ -99,25 +99,26 @@ int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_co
 int cmd_patient(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog)
 {
     unsigned int tag = 0;
-    string temp_patients_name;
+    string temp;
     bool dirty = false;
 
     cmdstrm >> hex >> tag;
     switch(tag)
     {
     case 0x00100010:
-        cmdstrm >> temp_patients_name;
+        cmdstrm >> temp;
         dirty = true;
-        if(temp_patients_name.empty())
+        if(temp.empty())
             time_header_out(flog) << "Unexpected empty patient's name " << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << endl;
         else
         {
-            x_www_form_codec<char>::decode(temp_patients_name.c_str(), lc.patient.patientsName, sizeof(lc.patient.patientsName));
-            if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp_patients_name << endl;
+            x_www_form_codec<char>::decode(temp.c_str(), lc.patient.patientsName, sizeof(lc.patient.patientsName));
+            if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << temp << endl;
         }
         break;
     case 0x00100030:
-        cmdstrm >> lc.patient.birthday;
+        cmdstrm >> temp;
+        normalize_dicom_date(sizeof(lc.patient.birthday), lc.patient.birthday, temp.c_str());
         dirty = true;
         if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.patient.birthday << endl;
         break;
@@ -165,7 +166,8 @@ int cmd_study(const std::string &type, std::istringstream &cmdstrm, handle_conte
     switch(tag)
     {
     case 0x00080020:
-        cmdstrm >> lc.study.studyDate;
+        cmdstrm >> temp;
+        normalize_dicom_date(sizeof(lc.study.studyDate), lc.study.studyDate, temp.c_str());
         dirty = true;
         if(debug_mode) time_header_out(flog) << type << " " << hex << uppercase << setw(8) << setfill('0') << tag << " " << lc.study.studyDate << endl;
         break;
