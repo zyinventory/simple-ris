@@ -192,6 +192,7 @@ static int realMain(int argc, char **argv)
     if(GetSetting("ACSETimeout", buff, sizeof(buff))) cmd.append(" -ta ").append(buff); // default -ta is 30
     sprintf_s(buff, " -td %d ", assoc_timeout);
     cmd.append(buff);
+    if(GetSetting("AdditionalQRConfig", buff, sizeof(buff))) cmd.append(" ").append(buff);
     return watch_notify(cmd, flog);
 }
 
