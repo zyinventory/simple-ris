@@ -12,7 +12,7 @@ char lock_file_name[64] = "..\\etc\\*.key", buff[1024];
 int _tmain(int argc, _TCHAR* argv[])
 {
 	int ret = 0;
-    bool debug_mode = false;
+    bool debug_mode = false, balance = true;
     HANDLE hParentProcess = NULL, hmap = NULL, hfile = INVALID_HANDLE_VALUE, hdir = INVALID_HANDLE_VALUE;
     HANDLE wa[2];
     list<string> pending_jdf;
@@ -36,6 +36,10 @@ int _tmain(int argc, _TCHAR* argv[])
         if(GetSetting("JobloaderDebugMode", buff, sizeof(buff)))
         {
             if(strcmp("1", buff) == 0) debug_mode = true;
+        }
+        if(GetSetting("JobloaderBalance", buff, sizeof(buff)))
+        {
+            if(strcmp("0", buff) == 0) balance = false;
         }
     }
     else time_header_out(flog) << "Load Settings failed." << endl;
@@ -162,7 +166,22 @@ int _tmain(int argc, _TCHAR* argv[])
                     if(debug_mode && !no_valid_publish) time_header_out(flog) << "TryPublishJDF(" << *it << ")." << endl;
 
                     ClearGenerateIndexLog();
-                    try_publish_ret = TryPublishJDF(debug_mode, it->c_str());
+                    if(balance) // load balance to epson
+                        try_publish_ret = TryPublishJDF(debug_mode, jdf_file.c_str());
+                    else
+                    {   // remove jdf only
+                        string file_removed("..\\orders_balance\\");
+                        file_removed.append(jdf_file);
+                        if(_unlink(file_removed.c_str()))
+                        {
+                            int en = errno;
+                            char msg[256];
+                            try_publish_ret = TryPublishJDF_SrcOpenError;
+                            strerror_s(msg, en);
+                            time_header_out(flog) << "remove " << file_removed << " failed:" << msg << endl;
+                        }
+                        else try_publish_ret = TryPublishJDF_PublishOK;
+                    }
                     if(try_publish_ret == TryPublishJDF_PublishOK) // debug_mode is controlled by JobloaderDebugMode in settings.ini
                     {
 #ifdef NDEBUG

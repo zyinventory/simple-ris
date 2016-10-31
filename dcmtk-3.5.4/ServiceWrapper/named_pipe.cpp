@@ -269,14 +269,7 @@ DWORD named_pipe_server::pipe_client_connect_incoming()
     // start a new listening named pipe, hPipe is changed
     gle = start_listening();
     if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
-    {
-        if(hPipe == INVALID_HANDLE_VALUE)
-        {
-            DisconnectNamedPipe(hPipe);
-            hPipe = NULL;
-        }
         return displayErrorToCerr(__FUNCSIG__ " start_listening()", gle, pflog);
-    }
     return 0; //ERROR_SUCCESS
 }
 
@@ -334,6 +327,7 @@ handle_study* named_pipe_server::make_handle_study(const std::string &study_uid)
 named_pipe_server::~named_pipe_server()
 {
     if(hPipe && hPipe != INVALID_HANDLE_VALUE) CloseHandle(hPipe);
+
     hPipe = NULL;
     if(hPipeEvent && hPipeEvent != INVALID_HANDLE_VALUE)
     {
