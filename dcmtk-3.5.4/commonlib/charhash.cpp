@@ -206,7 +206,7 @@ COMMONLIB_API bool EncodeBase32(const char *src, char *enc, size_t enc_buf_size)
     vector<char> encstr;
     for(size_t i = 0; i < src_len; ++i)
     {
-        char c = src[i];
+        unsigned char c = src[i];
         switch(rbit)
         {
         case 0:
@@ -284,7 +284,7 @@ COMMONLIB_API bool DecodeBase32(const char *src, char *dec, size_t dec_buf_size)
             remain |= c >> 1;
             decvt.push_back(remain);
             rbit = 1;
-            remain = (c & 0x10) << 7;
+            remain = (c & 0x1) << 7;
             break;
         case 5:
             remain |= c >> 2;
