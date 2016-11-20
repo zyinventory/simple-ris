@@ -377,6 +377,8 @@ unsigned long dcmGuessModalityBytes(const char *sopClassUID);
 #define UID_EncapsulatedPDFStorage                                 "1.2.840.10008.5.1.4.1.1.104.1"
 #define UID_RealWorldValueMappingStorage                           "1.2.840.10008.5.1.4.1.1.67"
 #define UID_XRayRadiationDoseSR                                    "1.2.840.10008.5.1.4.1.1.88.67"
+//private uid
+#define UID_PrivateGE3DModelStorage                                "1.2.840.113619.4.26"
 
 // Worklist and Query/Retrieve
 #define UID_FINDPatientRootQueryRetrieveInformationModel           "1.2.840.10008.5.1.4.1.2.1.1"

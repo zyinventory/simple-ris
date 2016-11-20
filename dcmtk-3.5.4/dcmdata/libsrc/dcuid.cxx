@@ -204,6 +204,8 @@ static const UIDNameMap uidNameMap[] = {
     { UID_XRayAngiographicImageStorage,                        "XRayAngiographicImageStorage" },
     { UID_XRayFluoroscopyImageStorage,                         "XRayFluoroscopyImageStorage" },
     { UID_XRayRadiationDoseSR,                                 "XRayRadiationDoseSR" },
+    // private uid
+    { UID_PrivateGE3DModelStorage,                             "PrivateGE3DModel" },
 
     // Worklist and Query/Retrieve
     { UID_FINDModalityWorklistInformationModel,                "FINDModalityWorklistInformationModel" },
@@ -482,6 +484,8 @@ const char* dcmAllStorageSOPClassUIDs[] =
     UID_XRayAngiographicImageStorage,
     UID_XRayFluoroscopyImageStorage,
     UID_XRayRadiationDoseSR,
+    //private uid
+    UID_PrivateGE3DModelStorage,
     NULL
 };
 
@@ -580,6 +584,8 @@ const char* dcmLongSCUStorageSOPClassUIDs[] =
     UID_XRayAngiographicImageStorage,
     UID_XRayFluoroscopyImageStorage,
     UID_XRayRadiationDoseSR,
+    //private uid
+    UID_PrivateGE3DModelStorage,
     NULL
 };
 
@@ -737,7 +743,8 @@ const char* dcmImageSOPClassUIDs[] = {
     UID_VideoPhotographicImageStorage,
     UID_XRayAngiographicImageStorage,
     UID_XRayFluoroscopyImageStorage,
-
+    // private uid
+    UID_PrivateGE3DModelStorage,
     NULL
 };
 
@@ -843,6 +850,8 @@ static const DcmModalityTable modalities[] = {
     { UID_XRayAngiographicImageStorage,                        "XA",  256 * 512 * 512 },
     { UID_XRayFluoroscopyImageStorage,                         "RF",  256 * 512 * 512 },
     { UID_XRayRadiationDoseSR,                                 "SRd", 4096 },
+    // private uid
+    { UID_PrivateGE3DModelStorage,                             "GEp", 256 * 512 * 512 },
 };
 
 static const int numberOfDcmModalityTableEntries = (sizeof(modalities) / sizeof(DcmModalityTable));
