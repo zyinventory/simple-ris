@@ -102,11 +102,11 @@ static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v"
 OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 
 static char timeBuffer[32], fnbuf[1024], last_file_name[MAX_PATH] = "";
+//GE CT Impl Class UID
+static OFString GE_ImplementationClassUID("1.2.840.113619.6.286"), GE_MediaStorageSOPInstanceUID("1.2.840.113619.6.286.%Y%m%d.%H%M%S.");
 
 #define SHORTCOL 4
 #define LONGCOL 23
-#define GE_ImplementationClassUID "1.2.840.113619.6.286"
-#define GE_MediaStorageSOPInstanceUID "1.2.840.113619.6.286.%Y%m%d.%H%M%S."
 
 // ********************************************
 
@@ -117,7 +117,7 @@ static bool GEMediaStorageSOPInstanceUID(char *buf, uint buf_len)
 	errno_t err = localtime_s(&calendar, &now);
 	if(!err)
 	{
-		size_t pathLen = strftime(buf, buf_len, GE_MediaStorageSOPInstanceUID, &calendar);
+        size_t pathLen = strftime(buf, buf_len, GE_MediaStorageSOPInstanceUID.c_str(), &calendar);
 		if( ! pathLen ) return false;
 		sprintf_s(buf + pathLen, buf_len - pathLen, "%d", _getpid());
 		return true;
@@ -125,9 +125,7 @@ static bool GEMediaStorageSOPInstanceUID(char *buf, uint buf_len)
 	return false;
 }
 
-static void checkValueGE(DcmMetaInfo *metainfo,
-                                      const DcmTagKey &atagkey,
-                                      const E_TransferSyntax oxfer)
+static void checkValueGE(DcmMetaInfo *metainfo, const DcmTagKey &atagkey, const E_TransferSyntax oxfer)
 {
 	DcmStack stack;
     DcmTag tag(atagkey);
@@ -148,7 +146,7 @@ static void checkValueGE(DcmMetaInfo *metainfo,
     {
         elem = new DcmUniqueIdentifier(tag);
         metainfo->insert(elem, OFTrue);
-        OFstatic_cast(DcmUniqueIdentifier *, elem)->putString(GE_ImplementationClassUID);
+        OFstatic_cast(DcmUniqueIdentifier *, elem)->putString(GE_ImplementationClassUID.c_str());
     }
 	else if (xtag == DCM_ImplementationVersionName)     // (0002,0013)
     {
@@ -161,7 +159,7 @@ static void checkValueGE(DcmMetaInfo *metainfo,
     {
         elem = new DcmApplicationEntity(tag);
         metainfo->insert(elem, OFTrue);
-        const char uid[] = "EK1000";
+        const char uid[] = "EK-Series";
 		elem->putString(uid);
     }
 }
@@ -349,7 +347,6 @@ int main(int argc, char *argv[])
 	const char *opt_charset = DEFAULT_DESCRIPTOR_CHARSET;
 	const char *opt_directory = NULL;
 	const char *opt_pattern = NULL;
-	const char *opt_viewer = "eFilm";
     const char *opt_pipename = NULL;
 	DicomDirInterface::E_ApplicationProfile opt_profile = DicomDirInterface::AP_GeneralPurpose;
 
@@ -690,8 +687,6 @@ int main(int argc, char *argv[])
 		{
 			app.checkConflict("--icon-image-size", "--basic-cardiac, --xray-angiographic or --ct-and-mr", cmd.findOption("--icon-image-size"));
 		}
-		if (cmd.findOption("--viewer"))
-			app.checkValue(cmd.getValue(opt_viewer));
         if (cmd.findOption("--pipe-name"))
 			app.checkValue(cmd.getValue(opt_pipename));
 	}
@@ -770,6 +765,18 @@ int main(int argc, char *argv[])
     {
         com_init = true;
         atexit(exitHook);
+
+        char buff[MAX_PATH];
+        sprintf_s(buff, "%s\\etc\\settings.ini", GetPacsBase());
+        if(LoadSettings(buff, CERR, ddir.verboseMode()))
+        {
+            if(GetSetting("DicomdirImplClassUID", buff, sizeof(buff)))
+            {
+                GE_ImplementationClassUID = buff;
+                GE_MediaStorageSOPInstanceUID = buff;
+                GE_MediaStorageSOPInstanceUID += ".%Y%m%d.%H%M%S.";
+            }
+        }
     }
 
     if(readPipe)
@@ -777,10 +784,6 @@ int main(int argc, char *argv[])
         bool pipeStandby = false;
         char pipe_name[MAX_PATH] = "\\\\.\\pipe\\";
         strcat_s(pipe_name, opt_pipename);
-
-        char settings_path[MAX_PATH];
-        sprintf_s(settings_path, "%s\\etc\\settings.ini", GetPacsBase());
-        LoadSettings(settings_path, CERR, ddir.verboseMode());
 
         if(ddir.verboseMode())
             time_header_out(CERR) << "dcmmkdir " << clientId << ": StudyUID is " << opt_directory << endl;
@@ -1049,15 +1052,13 @@ int main(int argc, char *argv[])
 				OFSTRINGSTREAM_FREESTR(tmpString)
 			}
 
-			if(opt_viewer != NULL && opt_viewer[0] == 'G' && opt_viewer[1] == 'E') // opt_viewer start with "GE"
-			{
-				DcmMetaInfo *metinf = ddir.getDicomDir()->getDirFileFormat().getMetaInfo();
-				checkValueGE(metinf, DCM_MediaStorageSOPInstanceUID, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
-				checkValueGE(metinf, DCM_ImplementationClassUID, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
-				checkValueGE(metinf, DCM_ImplementationVersionName, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
-				checkValueGE(metinf, DCM_SourceApplicationEntityTitle, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
-			}
-			/* write DICOMDIR file */
+			DcmMetaInfo *metinf = ddir.getDicomDir()->getDirFileFormat().getMetaInfo();
+			checkValueGE(metinf, DCM_MediaStorageSOPInstanceUID, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
+			checkValueGE(metinf, DCM_ImplementationClassUID, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
+			checkValueGE(metinf, DCM_ImplementationVersionName, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
+			checkValueGE(metinf, DCM_SourceApplicationEntityTitle, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
+
+            /* write DICOMDIR file */
 			if (result.good() && opt_write)
             {
 				result = ddir.writeDicomDir(opt_enctype, opt_glenc);
