@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 {
 	const char *opt_output = DEFAULT_DICOMDIR_NAME;
 	const char *opt_fileset = "DCMTK_MEDIA_DEMO";
-    const char *opt_descriptor = NULL;
+    const char *opt_descriptor = NULL, *opt_class_uid_prefix = NULL;
     const char *opt_charset = "ISO_IR 100";
 
 	//_setmode( _fileno( stdout ), _O_BINARY );
@@ -46,6 +46,8 @@ int main(int argc, char *argv[])
 	cmd.addParam("dicomdir-in", "referenced DICOMDIR file", OFCmdParam::PM_MultiOptional);
 	cmd.addGroup("input options:");
 	cmd.addOption("--verbose",               "-v",     "verbose mode, print processing details");
+    cmd.addOption("--class-uid",             "-C", 1,  "Implementation Class UID prefix",
+                                                           "modify MediaStorage SOP Instance UID(0002,0003), Implementation Class UID(0002,0012), Implementation Version Name(0002,0013), Source Application Entity Title(0002,0016)");
 	cmd.addOption("--output-file",           "+D", 1,  "[f]ilename : string",
                                                            "generate specific DICOMDIR file\n(default: " DEFAULT_DICOMDIR_NAME " in current directory)");
     cmd.addOption("--fileset-id",            "+F", 1,  "[i]d : string (default: DCMTK_MEDIA_DEMO)",
@@ -63,6 +65,8 @@ int main(int argc, char *argv[])
         /* print help text and exit */
         if (cmd.getArgCount() == 0)
             app.printUsage();
+        if (cmd.findOption("--class-uid"))
+            app.checkValue(cmd.getValue(opt_class_uid_prefix));
         if (cmd.findOption("--output-file"))
             app.checkValue(cmd.getValue(opt_output));
         if (cmd.findOption("--fileset-id"))
@@ -107,6 +111,6 @@ int main(int argc, char *argv[])
     for_each(fileNames.begin(), fileNames.end(), [&oss](const string &s) { oss << s << endl; });
     string file_name_str(oss.str());
     oss.str("");
-    return MergeDicomDir(file_name_str.c_str(), opt_output, opt_fileset, CERR, opt_verbose);
+    return MergeDicomDir(file_name_str.c_str(), opt_output, opt_fileset, opt_class_uid_prefix, CERR, opt_verbose);
 	//return DicomDir2Xml(fileNames.front().c_str(), opt_output) ? 0 : -1;
 }

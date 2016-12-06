@@ -21,8 +21,7 @@ static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v"
 
 using namespace std;
 
-#define GE_ImplementationClassUID "1.2.840.113619.6.286"
-#define GE_MediaStorageSOPInstanceUID "1.2.840.113619.6.286.%Y%m%d.%H%M%S."
+static OFString GE_ImplementationClassUID("1.2.840.113619.6.286"), GE_MediaStorageSOPInstanceUID("1.2.840.113619.6.286.%Y%m%d.%H%M%S.");
 
 // ********************************************
 
@@ -33,7 +32,7 @@ static bool GEMediaStorageSOPInstanceUID(char *buf, uint buf_len)
 	errno_t err = localtime_s(&calendar, &now);
 	if(!err)
 	{
-		size_t pathLen = strftime(buf, buf_len, GE_MediaStorageSOPInstanceUID, &calendar);
+        size_t pathLen = strftime(buf, buf_len, GE_MediaStorageSOPInstanceUID.c_str(), &calendar);
 		if( ! pathLen ) return false;
 		sprintf_s(buf + pathLen, buf_len - pathLen, "%d", _getpid());
 		return true;
@@ -64,7 +63,7 @@ static void checkValueGE(DcmMetaInfo *metainfo,
     {
         elem = new DcmUniqueIdentifier(tag);
         metainfo->insert(elem, OFTrue);
-        OFstatic_cast(DcmUniqueIdentifier *, elem)->putString(GE_ImplementationClassUID);
+        OFstatic_cast(DcmUniqueIdentifier *, elem)->putString(GE_ImplementationClassUID.c_str());
     }
 	else if (xtag == DCM_ImplementationVersionName)     // (0002,0013)
     {
@@ -77,7 +76,7 @@ static void checkValueGE(DcmMetaInfo *metainfo,
     {
         elem = new DcmApplicationEntity(tag);
         metainfo->insert(elem, OFTrue);
-        const char uid[] = "EK2000";
+        const char uid[] = "EK-Series";
 		elem->putString(uid);
     }
 }
@@ -216,7 +215,7 @@ static OFCondition mergeToDest(DcmDirectoryRecord *dest, DcmDirectoryRecord *src
 	return EC_IllegalParameter;
 }
 
-DCMDYNAMIC_API int __stdcall MergeDicomDir(const char *fileNames, const char *opt_output, const char *opt_fileset, ostream &errlog, bool verbose)
+DCMDYNAMIC_API int __stdcall MergeDicomDir(const char *fileNames, const char *opt_output, const char *opt_fileset, const char *opt_class_uid_prefix, ostream &errlog, bool verbose)
 {
 	opt_verbose = verbose;
 	int errCount = 0;
@@ -283,6 +282,13 @@ DCMDYNAMIC_API int __stdcall MergeDicomDir(const char *fileNames, const char *op
 		    delete src;
 	    }
 
+        if(opt_class_uid_prefix)
+        {
+            GE_ImplementationClassUID = opt_class_uid_prefix;
+            GE_MediaStorageSOPInstanceUID = opt_class_uid_prefix;
+            GE_MediaStorageSOPInstanceUID.append(".%Y%m%d.%H%M%S.");
+        }
+
         DcmMetaInfo *metinf = dest->getDirFileFormat().getMetaInfo();
 		checkValueGE(metinf, DCM_MediaStorageSOPInstanceUID, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
 		checkValueGE(metinf, DCM_ImplementationClassUID, DICOMDIR_DEFAULT_TRANSFERSYNTAX);
@@ -309,7 +315,7 @@ DCMDYNAMIC_API int __stdcall MergeDicomDir(const char *fileNames, const char *op
 	return errCount;
 }
 
-DCMDYNAMIC_API int __stdcall MergeDicomDirCerr(const char *fileNames, const char *opt_output, const char *opt_fileset, bool verbose)
+DCMDYNAMIC_API int __stdcall MergeDicomDirCerr(const char *fileNames, const char *opt_output, const char *opt_fileset, const char *opt_class_uid_prefix, bool verbose)
 {
-    return MergeDicomDir(fileNames, opt_output, opt_fileset, cerr, verbose);
+    return MergeDicomDir(fileNames, opt_output, opt_fileset, opt_class_uid_prefix, cerr, verbose);
 }
