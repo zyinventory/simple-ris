@@ -5,6 +5,7 @@
 #include <string.h>
 #include <fcntl.h>  //_O_BINARY
 #include <direct.h>
+#include <commonlib.h>
 
 #include "dcmtk/config/osconfig.h"     /* make sure OS specific configuration is included first */
 #include "dcmtk/dcmdata/dctk.h"
@@ -101,6 +102,20 @@ int main(int argc, char *argv[])
         OFSTRINGSTREAM_FREESTR(tmpString)
         return -2;  /* DcmDicomDir class dumps core when no data dictionary */
     }
+    
+    OFString uid_prefix("1.2.840.113619.6.286");
+    if(opt_class_uid_prefix)
+        uid_prefix = opt_class_uid_prefix;
+    else
+    {
+        char buff[MAX_PATH];
+        sprintf_s(buff, "%s\\etc\\settings.ini", GetPacsBase());
+        if(LoadSettings(buff, CERR, opt_verbose))
+        {
+            if(GetSetting("DicomdirImplClassUID", buff, sizeof(buff)))
+                uid_prefix = buff;
+        }
+    }
 
     //string storedir(_getcwd(NULL, 0));
     //bool verbose = opt_verbose;
@@ -111,6 +126,6 @@ int main(int argc, char *argv[])
     for_each(fileNames.begin(), fileNames.end(), [&oss](const string &s) { oss << s << endl; });
     string file_name_str(oss.str());
     oss.str("");
-    return MergeDicomDir(file_name_str.c_str(), opt_output, opt_fileset, opt_class_uid_prefix, CERR, opt_verbose);
+    return MergeDicomDir(file_name_str.c_str(), opt_output, opt_fileset, uid_prefix.c_str(), CERR, opt_verbose);
 	//return DicomDir2Xml(fileNames.front().c_str(), opt_output) ? 0 : -1;
 }
