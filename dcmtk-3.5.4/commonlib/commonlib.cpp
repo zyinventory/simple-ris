@@ -224,7 +224,7 @@ COMMONLIB_API size_t normalize_dicom_date(size_t buff_len, char *buff, const cha
     return count;
 }
 
-size_t worker_core_num = 0;
+size_t WORKER_CORE_NUM = 0;
 BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved )
 {
     string ini_path;
@@ -238,17 +238,17 @@ BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpRese
             char buff[1024];
             if(GetSetting("WorkerCoreNum", buff, sizeof(buff)))
             {
-                worker_core_num = atoi(buff);
+                WORKER_CORE_NUM = atoi(buff);
             }
         }
-        if(worker_core_num <= 0 || worker_core_num > 32)
+        if(WORKER_CORE_NUM <= 0 || WORKER_CORE_NUM > 32)
         {
             SYSTEM_INFO sysInfo;
 		    GetSystemInfo(&sysInfo);
             size_t sys_core_num = sysInfo.dwNumberOfProcessors;
-            if(sys_core_num <= 4) worker_core_num = 2;
-            else if(sys_core_num >= 8) worker_core_num = 4;
-            else worker_core_num = max(2, sys_core_num - 2);
+            if(sys_core_num <= 4) WORKER_CORE_NUM = 2;
+            else if(sys_core_num >= 8) WORKER_CORE_NUM = 4;
+            else WORKER_CORE_NUM = max(2, sys_core_num - 2);
         }
         break;
 	case DLL_THREAD_ATTACH:

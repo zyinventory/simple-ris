@@ -356,10 +356,7 @@ int watch_notify(string &cmd, ofstream &flog)
     map_handle_context[phproc->get_handle()] = phproc;
     map_handle_context[phproc_job->get_handle()] = phproc_job;
 
-    SYSTEM_INFO sysInfo;
-	GetSystemInfo(&sysInfo);
-    DWORD worker_core_num = max(2, sysInfo.dwNumberOfProcessors - 2);
-    HANDLE hSema = CreateSemaphore(NULL, worker_core_num, worker_core_num, "Global\\semaphore_compress_process");
+    HANDLE hSema = CreateSemaphore(NULL, WORKER_CORE_NUM, WORKER_CORE_NUM, "Global\\semaphore_compress_process");
     if(hSema == NULL)
     {
         gle = GetLastError();
