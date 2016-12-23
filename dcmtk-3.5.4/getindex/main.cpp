@@ -121,7 +121,7 @@ int queryXml(int hostLength)
 	else
 	{
 		if(cgiQueryString) index_errlog << "ÎÞÐ§ÇëÇó:" << cgiQueryString << endl;
-		if(pPacsBase) index_errlog << "PACS_BASE:" << pPacsBase << endl;;
+		if(pPacsBase) index_errlog << "PACS_BASE:" << pPacsBase << endl;
 		outputContent(true);
 		return 0;
 	}

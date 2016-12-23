@@ -149,7 +149,7 @@ const char CHARSET_ISO_IR_100[] = "ISO_IR 100", CHARSET_ISO_IR_100_ALIAS[] = "IS
     CHARSET_UTF8[]       = "ISO_IR 192", CHARSET_UTF8_ALIAS[]       = "ISO 2022 IR 192", CHARSET_GB18030[] = "GB18030";
 
 extern COMMONLIB_API size_t WORKER_CORE_NUM;
-extern COMMONLIB_API char COMMONLIB_PACS_BASE[MAX_PATH];
+extern COMMONLIB_API char COMMONLIB_PACS_BASE[MAX_PATH], COMMONLIB_PACS_TEMP[MAX_PATH];
 extern COMMONLIB_API bool CommonlibBurnOnce, CommonlibInstanceUniquePath;
 
 COMMONLIB_API bool IsASCII(const char *str);
@@ -219,6 +219,11 @@ COMMONLIB_API void SignalInterruptHandler_dll(int signal);
 #define Capture_Ctrl_C Capture_Ctrl_C_dll
 #endif
 COMMONLIB_API void Capture_Ctrl_C_dll();
+
+#ifndef GetPacsTemp
+#define GetPacsTemp GetPacsTemp_dll
+#endif
+COMMONLIB_API const char* GetPacsTemp_dll();
 
 #ifndef GetPacsBase
 #define GetPacsBase GetPacsBase_dll

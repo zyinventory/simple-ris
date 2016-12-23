@@ -84,6 +84,30 @@ std::ostream& time_header_out_internal(std::ostream &os)
 	return os;
 }
 
+#define ENV_PACS_TEMP "PACS_TEMP"
+
+#ifdef COMMONLIB_EXPORTS
+extern COMMONLIB_API char COMMONLIB_PACS_TEMP[MAX_PATH];
+#define GetPacsTemp GetPacsTemp_dll
+COMMONLIB_API const char* GetPacsTemp_dll()
+#else
+static char COMMONLIB_PACS_TEMP[MAX_PATH] = "";
+#define GetPacsTemp GetPacsTemp_internal
+const char* GetPacsTemp_internal()
+#endif
+{
+	size_t requiredSize = 0;
+    if(strlen(COMMONLIB_PACS_TEMP) == 0)
+    {
+	    getenv_s( &requiredSize, NULL, 0, ENV_PACS_TEMP);
+	    if(requiredSize > 0)
+            getenv_s(&requiredSize, COMMONLIB_PACS_TEMP, requiredSize, ENV_PACS_TEMP);
+	    else
+            strcpy_s(COMMONLIB_PACS_TEMP, "C:\\usr\\local\\dicom");
+    }
+    return COMMONLIB_PACS_TEMP;
+}
+
 #define ENV_PACS_BASE "PACS_BASE"
 
 #ifdef COMMONLIB_EXPORTS

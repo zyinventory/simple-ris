@@ -4,7 +4,7 @@
 
 using namespace std;
 
-COMMONLIB_API char COMMONLIB_PACS_BASE[MAX_PATH] = "";
+COMMONLIB_API char COMMONLIB_PACS_BASE[MAX_PATH] = "", COMMONLIB_PACS_TEMP[MAX_PATH] = "";
 
 COMMONLIB_API size_t in_process_sequence_dll(char *buff, size_t buff_size, const char *prefix)
 {

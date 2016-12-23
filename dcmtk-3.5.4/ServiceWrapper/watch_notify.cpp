@@ -543,7 +543,7 @@ int watch_notify(string &cmd, ofstream &flog)
                     handle_compress* compr_ptr = handle_compress::make_handle_compress(nfc, flog);
                     if(compr_ptr)
                     {
-						compr_ptr->set_priority(IDLE_PRIORITY_CLASS);
+						compr_ptr->set_priority(BELOW_NORMAL_PRIORITY_CLASS);
                         if(compr_ptr->start_process(false))
                         {   // failed
                             time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << nfc.assoc.path << " " << nfc.file.filename << " " << nfc.file.unique_filename << endl;
