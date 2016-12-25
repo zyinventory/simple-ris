@@ -54,7 +54,7 @@ void save_notify_context_to_ostream(const handle_context::NOTIFY_FILE_CONTEXT &n
 void send_all_compress_ok_notify(const std::string &association_base, std::ostream &flog);
 int x_www_form_codec_encode_to_ostream(const char *str, std::ostream *output);
 
-extern bool opt_verbose;
+extern int opt_verbose;
 extern bool debug_mode;
 extern int store_timeout, assoc_timeout, loop_wait, lock_number, *ptr_license_count;
 extern char lock_file_name[64];

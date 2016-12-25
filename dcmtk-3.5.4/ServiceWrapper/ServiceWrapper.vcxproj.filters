@@ -51,6 +51,12 @@
     <ClCompile Include="..\dcmdata\apps\notify_context.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="named_pipe_connection.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="named_pipe_listener.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -63,6 +69,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="..\dcmdata\include\dcmtk\dcmdata\notify_context.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="named_pipe_listener.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

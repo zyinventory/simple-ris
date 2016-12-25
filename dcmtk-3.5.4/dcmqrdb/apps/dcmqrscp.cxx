@@ -80,6 +80,7 @@ END_EXTERN_C
 #include <signal.h>
 #endif
 //Winsock2.h disable winsock.h in dicom.h -> dcompat.h -> windows.h
+#include <algorithm>
 #include "dcmtk/dcmnet/dicom.h"
 #include "dcmtk/dcmqrdb/dcmqropt.h"
 #include "dcmtk/dcmnet/dimse.h"
@@ -93,7 +94,7 @@ END_EXTERN_C
 #include "dcmtk/dcmqrdb/dcmqrcbs.h"
 #include "dcmtk/dcmdata/dcdatset.h"
 #include "dcmtk/dcmdata/dcdeftag.h"
-#include <algorithm>
+#include "../ServiceWrapper/named_pipe_listener.h"
 
 #ifdef WITH_SQL_DATABASE
 #include "dcmtk/dcmqrdbx/dcmqrdbq.h"
@@ -118,6 +119,7 @@ const char *opt_configFileName = "dcmqrscp.cfg";
 OFBool      opt_checkFindIdentifier = OFFalse;
 OFBool      opt_checkMoveIdentifier = OFFalse;
 OFCmdUnsignedInt opt_port = 0;
+int opt_verbose = 0;
 
 static char pacs_base[MAX_PATH];
 static DcmQueryRetrieveConfig *configPtr = NULL;
@@ -142,7 +144,24 @@ static void exitHook()
 #endif
 }
 
-static int opt_verbose = 0;
+class my_np_conn : public handle_context::named_pipe_connection
+{
+public:
+    my_np_conn(const char *path, size_t w_size, size_t r_size, ostream *plog) : handle_context::named_pipe_connection(path, w_size, r_size, plog) { };
+    virtual ~my_np_conn() { };
+    virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size)
+    {
+        if(cbBytesRead) time_header_out(*pflog) << "my_np_conn::process_message(): " << ptr_data_buffer << endl;
+        else time_header_out(*pflog) << "my_np_conn::process_message(): cbBytesRead is 0" << endl;
+
+        return 0;
+    };
+};
+
+static my_np_conn *pnpc;
+static DcmQueryRetrieveSCP *pscp = NULL;
+static OFString current_assoc_id;
+
 static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
 {
     //if(!association_established) association_establishment(pc);
@@ -158,6 +177,30 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
         strcpy_s(fn_only, sizeof(notifyFileName) - (fn_only - notifyFileName), "_" NOTIFY_FILE_TAG ".dfc");
         datasetToNotify(instanceName.c_str(), notifyFileName, &pds, true);
         if(opt_verbose) time_header_out(cerr) << notifyFileName << " write OK" << endl;
+
+        if(current_assoc_id.length() == 0)
+        {
+            current_assoc_id = pscp->getAssociationId();
+            pnpc = new my_np_conn(NAMED_PIPE_QR, 4095, 4095, &CERR);
+            if(pnpc->start_working())
+            {
+                time_header_out(CERR) << "Error Connect Named Pipe: " << NAMED_PIPE_QR << endl;
+                delete pnpc;
+                pnpc = NULL;
+            }
+            else handle_context::named_pipe_connection::regist_alone_connection(pnpc);
+        }
+
+        if(pnpc && pscp)
+        {
+            string msg(pscp->getAssociationId());
+            msg.append(1, ';').append(notifyFileName);
+            pnpc->queue_message(msg);
+        }
+        DWORD gle = 0;
+        do {
+            gle = WaitForSingleObjectEx(GetCurrentProcess(), 0, TRUE);
+        } while(gle == WAIT_IO_COMPLETION);
         return EC_Normal;
     }
     return EC_IllegalParameter;
@@ -701,6 +744,7 @@ main(int argc, char *argv[])
 		if(!options.singleProcess_) DUL_requestForkOnTransportConnectionReceipt(argc, argv);
 	}
 #endif
+
     cond = ASC_initializeNetwork(NET_ACCEPTORREQUESTOR, (int)opt_port, options.acse_timeout_, &options.net_);
     if (cond.bad()) {
 		time_header_out(CERR) << "Error initialising network:";
@@ -767,6 +811,7 @@ main(int argc, char *argv[])
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     DcmQueryRetrieveSCP scp(config, options, factory, triggerReceiveEvent, pacs_base);
     scp.setDatabaseFlags(opt_checkFindIdentifier, opt_checkMoveIdentifier, options.debug_);
+    pscp = &scp;
 
 	Capture_Ctrl_C();
 
@@ -786,6 +831,16 @@ main(int argc, char *argv[])
                 SignalInterruptHandler(1);
                 time_header_out(CERR) << "hParentProcess is released, ServiceWrapper is not alive, dcmqrscp send Ctrl-C to self" << endl;
             }
+        }
+        DWORD gle = 0;
+        do {
+            gle = WaitForSingleObjectEx(GetCurrentProcess(), 0, TRUE);
+        } while(gle == WAIT_IO_COMPLETION);
+        if(current_assoc_id.length())
+        {
+            pnpc->queue_message("close_pipe");
+            pnpc = NULL;
+            current_assoc_id.clear();
         }
 		if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */
 		if (options.forkedChild_) break;

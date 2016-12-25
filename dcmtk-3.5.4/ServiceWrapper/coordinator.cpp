@@ -10,7 +10,6 @@ using namespace MSMQ;
 #include "commonlib.h"
 
 extern const char *dirmakerCommand;
-extern bool opt_verbose;
 
 static SECURITY_ATTRIBUTES logSA;
 static size_t procnum;

@@ -733,7 +733,7 @@ bool handle_proc::make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, con
 handle_study::handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
     const std::string &dicomdir, const std::string &study, std::ostream *plog)
     : handle_proc("", cwd, cmd, exec_prog_name, plog), pipe_context(NULL), dicomdir_path(dicomdir), study_uid(study),
-    blocked(false), ris_integration_start(false), last_association_action(ACTION_TYPE::INDEX_INSTANCE, cwd, false, plog)
+    blocked(false), ris_integration_start(false), last_association_action(INDEX_INSTANCE, cwd, false, plog)
 {
     char seq_buff[MAX_PATH];
     size_t pos = in_process_sequence_dll(seq_buff, sizeof(seq_buff), "");
@@ -842,7 +842,7 @@ bool handle_study::open_study_lock_file(map<string, string> &map_ini)
         ifstream sfs(study_notify_path.c_str(), ios_base::in, _SH_DENYWR);
         if(sfs.good())
         {
-            CreateMapFieldsLocal(map_ini, sfs, *pflog, opt_verbose);
+            CreateMapFieldsLocal(map_ini, sfs, *pflog, opt_verbose != 0);
             sfs.close();
             return true;
         }
@@ -945,7 +945,7 @@ DWORD handle_study::write_message_to_pipe()
         refresh_last_access();
         switch(it->type)
         {
-        case ACTION_TYPE::INDEX_INSTANCE:
+        case INDEX_INSTANCE:
             pipe_context->cbShouldWrite = sprintf_s(pipe_context->chBuffer, "%s|%s|%lld\n%s %s %s %s %s %s %s %s %d %s %s %s",
                 it->pnfc->file.studyUID, it->pnfc->file.unique_filename, it->pnfc->file.file_size_receive,
                 it->pnfc->assoc.path, it->pnfc->file.filename, it->pnfc->file.xfer, it->pnfc->assoc.id, it->pnfc->assoc.store_assoc_id,
@@ -961,8 +961,8 @@ DWORD handle_study::write_message_to_pipe()
             if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " write message " << pipe_context->chBuffer << endl;
             write_message_ok = true;
             break;
-        case ACTION_TYPE::BURN_PER_STUDY:
-        case ACTION_TYPE::NO_ACTION:
+        case BURN_PER_STUDY:
+        case NO_ACTION:
             if(opt_verbose)
             {
                 time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " erase association " << it->get_path() << ", disconnect ";
@@ -974,7 +974,7 @@ DWORD handle_study::write_message_to_pipe()
             if(opt_verbose) time_header_out(*pflog) << "handle_study::write_message_to_pipe() erease_association " << study_uid << endl
                 << "\tand erease assoc " << it->get_path() << endl;
             break;
-        case ACTION_TYPE::NO_INSTANCE:
+        case NO_INSTANCE:
             // instance file is not found, erase it only.
             break;
         default:
@@ -1029,12 +1029,12 @@ void handle_study::print_state() const
     for(list<action_from_association>::const_iterator it = list_action.begin(); it != list_action.end(); ++it)
     {
         *pflog << "\t" << action_from_association::translate_action_type(it->type);
-        if(it->type == ACTION_TYPE::INDEX_INSTANCE)
+        if(it->type == INDEX_INSTANCE)
         {
             if(it->pnfc) *pflog << " " << it->pnfc->file.unique_filename;
             else *pflog << " pnfc is NULL";
         }
-        else if(it->type == ACTION_TYPE::BURN_MULTI) *pflog << it->burn_multi_id;
+        else if(it->type == BURN_MULTI) *pflog << it->burn_multi_id;
         *pflog << endl;
     }
     handle_proc::print_state();

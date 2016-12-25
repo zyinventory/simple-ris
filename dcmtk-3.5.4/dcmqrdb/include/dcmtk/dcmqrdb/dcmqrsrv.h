@@ -82,6 +82,7 @@ public:
   
     const char *pPacsBase;
     void ReleseAssociationMutex();
+    const char *getAssociationId() { return assoc_context.associationId; };
 
   /** constructor
    *  @param config SCP configuration facility

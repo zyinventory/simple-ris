@@ -264,6 +264,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\ServiceWrapper\named_pipe_listener.cpp" />
+    <ClCompile Include="..\..\ServiceWrapper\named_pipe_connection.cpp" />
     <ClCompile Include="dcmqrdbx.cpp" />
     <ClCompile Include="dcmqrscp.cxx" />
   </ItemGroup>
@@ -286,6 +288,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\ServiceWrapper\named_pipe_listener.h" />
     <ClInclude Include="dcmqrdbx.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

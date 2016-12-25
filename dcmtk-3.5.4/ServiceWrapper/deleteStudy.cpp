@@ -5,8 +5,6 @@
 
 using namespace std;
 
-extern bool opt_verbose;
-
 bool deleteDayStudy(const char *dayxml)
 {
 	if(opt_verbose) time_header_out(cout) << "start cleaning day " << dayxml << endl;

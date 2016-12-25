@@ -15,7 +15,8 @@ static ofstream flog;
 
 string current_log_path;
 const char *dirmakerCommand;
-bool opt_verbose = false, debug_mode = false;
+int opt_verbose = 0;
+bool debug_mode = false;
 int store_timeout = 30, assoc_timeout = 300, loop_wait = 50;
 
 static size_t checkDiskFreeSpaceInMB(const char * path)
@@ -169,9 +170,9 @@ static int realMain(int argc, char **argv)
 	for_each(argv + 2, argv + argc, bind1st(ptr_fun(mkcmd), &cmdStream)); // skip program and ServiceName
 	string cmd(cmdStream.str());
 	cmdStream.clear();
-	opt_verbose = (string::npos != cmd.find(" -v "));
+	if(string::npos != cmd.find(" -v ")) opt_verbose = 1;
     
-    if(LoadSettings("..\\etc\\settings.ini", flog, opt_verbose))
+    if(LoadSettings("..\\etc\\settings.ini", flog, opt_verbose != 0))
     {
         if(GetSetting("StoreTimeout", buff, sizeof(buff)))
         {
