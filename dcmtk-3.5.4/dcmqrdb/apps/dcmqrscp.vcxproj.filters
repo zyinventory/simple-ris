@@ -15,10 +15,10 @@
     <ClCompile Include="dcmqrdbx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ServiceWrapper\named_pipe_listener.cpp">
+    <ClCompile Include="..\..\ServiceWrapper\named_pipe\named_pipe_connection.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ServiceWrapper\named_pipe_connection.cpp">
+    <ClCompile Include="..\..\ServiceWrapper\named_pipe\named_pipe_listener.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -26,7 +26,10 @@
     <ClInclude Include="dcmqrdbx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\ServiceWrapper\named_pipe_listener.h">
+    <ClInclude Include="..\..\ServiceWrapper\named_pipe\named_pipe_listener.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dummy_stdafx\stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

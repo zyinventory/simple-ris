@@ -94,7 +94,7 @@ END_EXTERN_C
 #include "dcmtk/dcmqrdb/dcmqrcbs.h"
 #include "dcmtk/dcmdata/dcdatset.h"
 #include "dcmtk/dcmdata/dcdeftag.h"
-#include "../ServiceWrapper/named_pipe_listener.h"
+#include "../ServiceWrapper/named_pipe/named_pipe_listener.h"
 
 #ifdef WITH_SQL_DATABASE
 #include "dcmtk/dcmqrdbx/dcmqrdbq.h"

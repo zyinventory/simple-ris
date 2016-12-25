@@ -1,9 +1,10 @@
 #pragma once
-
+#ifndef _ATL_STATIC_REGISTRY
 #include <string>
 #include <iostream>
 #include <list>
 #include <map>
+#endif
 
 #define NAMED_PIPE_QR "\\\\.\\pipe\\dcmtk_qr"
 
