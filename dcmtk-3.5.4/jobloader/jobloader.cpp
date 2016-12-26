@@ -152,7 +152,10 @@ int _tmain(int argc, _TCHAR* argv[])
             {
                 int try_publish_ret = 0;
 #ifdef NDEBUG
-				if((license_count = currentCount(rw_passwd)) > 0)
+                license_count = currentCount(rw_passwd);
+                license_count = (license_count < 0 ? 0 : license_count);
+                if(ptr_license_count) *ptr_license_count = license_count;
+                if(license_count > 0)
 				{
                     if(no_license)
                     {
@@ -186,7 +189,7 @@ int _tmain(int argc, _TCHAR* argv[])
                     {
 #ifdef NDEBUG
                         license_count = decreaseCount(rw_passwd);
-                        if(ptr_license_count) *ptr_license_count = license_count;
+                        if(ptr_license_count) *ptr_license_count = (license_count < 0 ? 0 : license_count);
 #endif
                         time_header_out(flog) << "publish " << jdf_file << " OK." << endl;
                         pending_jdf.erase(it);
