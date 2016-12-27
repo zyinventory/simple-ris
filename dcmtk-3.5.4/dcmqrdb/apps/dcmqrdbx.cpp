@@ -355,7 +355,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyDate(const set<string> &ser
     if(strlen(date) == 8 && strcmp(date, "99999999"))
     {
         char buff[260], hash[9];
-        sprintf_s(buff, "%s\\pacs\\indexdir\\00080020\\%c%c%c%c\\%c%c\\%c%c.xml", getPacsBase(),
+        sprintf_s(buff, "%s\\pacs\\indexdir\\00080020\\%c%c%c%c\\%c%c\\%c%c.xml", GetPacsBase(),
             date[0], date[1], date[2], date[3], date[4], date[5], date[6], date[7]);
         HRESULT hr = 0;
         try {
@@ -383,7 +383,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyDate(const set<string> &ser
                 while(MSXML2::IXMLDOMNodePtr pStudyUID = study_uids->nextNode())
                 {
                     HashStrW((LPCWSTR)pStudyUID->text, hash, sizeof(hash));
-                    sprintf_s(buff, "%s\\pacs\\indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml", getPacsBase(),
+                    sprintf_s(buff, "%s\\pacs\\indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml", GetPacsBase(),
                         hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], (LPCSTR)pStudyUID->text);
                     try {
                         MSXML2::IXMLDOMDocument2Ptr pDomStudy;
@@ -416,7 +416,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByStudyUIDs(const set<string> &stu
     {
         char buff[260], hash[9];
         HashStr(it->c_str(), hash, sizeof(hash));
-        sprintf_s(buff, "%s\\pacs\\indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml", getPacsBase(),
+        sprintf_s(buff, "%s\\pacs\\indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml", GetPacsBase(),
             hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], it->c_str());
         HRESULT hr = 0;
         try {
@@ -446,7 +446,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByPatientIDs(const set<string> &pi
         char pid_b32[128], buff[260], hash[9];
         HashStr(it->c_str(), hash, sizeof(hash));
         EncodeBase32(it->c_str(), pid_b32, sizeof(pid_b32));
-        sprintf_s(buff, "%s\\pacs\\indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml", getPacsBase(),
+        sprintf_s(buff, "%s\\pacs\\indexdir\\00100020\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml", GetPacsBase(),
             hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], pid_b32);
         HRESULT hr = 0;
         try {
@@ -474,7 +474,7 @@ size_t DcmQueryRetrieveXmlDatabaseHandle::findByPatientIDs(const set<string> &pi
                 while(MSXML2::IXMLDOMNodePtr pStudyUID = study_uids->nextNode())
                 {
                     HashStrW((LPCWSTR)pStudyUID->text, hash, sizeof(hash));
-                    sprintf_s(buff, "%s\\pacs\\indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml", getPacsBase(),
+                    sprintf_s(buff, "%s\\pacs\\indexdir\\0020000d\\%c%c\\%c%c\\%c%c\\%c%c\\%s.xml", GetPacsBase(),
                         hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], (LPCSTR)pStudyUID->text);
                     try {
                         MSXML2::IXMLDOMDocument2Ptr pDomStudy;
@@ -838,7 +838,7 @@ OFCondition DcmQueryRetrieveXmlDatabaseHandle::nextMoveResponse(char *SOPClassUI
             char hash[9];
             HashStr(st_uid.length() ? (LPCSTR)st_uid : "", hash, sizeof(hash));
             int buff_used = sprintf_s(imageFileName, MAX_PATH, "%s\\pacs\\archdir\\v0000000\\%c%c\\%c%c\\%c%c\\%c%c\\%s\\%s\\",
-                getPacsBase(), hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7],
+                GetPacsBase(), hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7],
                 st_uid.length() ? (LPCSTR)st_uid : "", hash);
             SeriesInstancePath(se_uid.length() ? (LPCSTR)se_uid : "", inst_uid.length() ? (LPCSTR)inst_uid : "",
                 imageFileName + buff_used, MAX_PATH - buff_used);

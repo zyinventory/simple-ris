@@ -94,7 +94,7 @@ END_EXTERN_C
 #include "dcmtk/dcmqrdb/dcmqrcbs.h"
 #include "dcmtk/dcmdata/dcdatset.h"
 #include "dcmtk/dcmdata/dcdeftag.h"
-#include "../ServiceWrapper/named_pipe/named_pipe_listener.h"
+#include "named_pipe_listener.h"
 
 #ifdef WITH_SQL_DATABASE
 #include "dcmtk/dcmqrdbx/dcmqrdbq.h"
@@ -121,7 +121,6 @@ OFBool      opt_checkMoveIdentifier = OFFalse;
 OFCmdUnsignedInt opt_port = 0;
 int opt_verbose = 0;
 
-static char pacs_base[MAX_PATH];
 static DcmQueryRetrieveConfig *configPtr = NULL;
 #ifdef _DEBUG
 static OFCommandLine *pCmd = NULL;
@@ -712,7 +711,7 @@ main(int argc, char *argv[])
         }
     }
 
-    ChangeToPacsWebSub(pacs_base, sizeof(pacs_base));
+    ChangeToBasePacsSub(GetPacsTemp(), NULL, 0);
 	
 	if (options.forkedChild_)
 	{
@@ -809,7 +808,7 @@ main(int argc, char *argv[])
 #endif
 
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-    DcmQueryRetrieveSCP scp(config, options, factory, triggerReceiveEvent, pacs_base);
+    DcmQueryRetrieveSCP scp(config, options, factory, triggerReceiveEvent);
     scp.setDatabaseFlags(opt_checkFindIdentifier, opt_checkMoveIdentifier, options.debug_);
     pscp = &scp;
 
@@ -838,8 +837,11 @@ main(int argc, char *argv[])
         } while(gle == WAIT_IO_COMPLETION);
         if(current_assoc_id.length())
         {
-            pnpc->queue_message("close_pipe");
-            pnpc = NULL;
+            if(pnpc)
+            {
+                pnpc->queue_message("close_pipe");
+                pnpc = NULL;
+            }
             current_assoc_id.clear();
         }
 		if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */

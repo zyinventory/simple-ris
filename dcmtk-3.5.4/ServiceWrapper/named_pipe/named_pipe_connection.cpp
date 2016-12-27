@@ -287,6 +287,7 @@ DWORD named_pipe_connection::write_message_pack()
 
 DWORD named_pipe_connection::queue_message(const std::string &msg)
 {
+    time_header_out(*pflog) << "named_pipe_connection::queue_message(" << msg << ")" << endl;
     if(bytes_queued)
     {
         message_write_buffer.push_back(msg);

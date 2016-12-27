@@ -216,12 +216,6 @@ public:
   virtual const char *getStorageArea() const = 0;
 
   virtual bool addRequiredStoragePresentationContexts(T_ASC_Parameters *params) const { return false; };
-
-  const char *getPacsBase() const { return pacs_base; };
-  void setPacsBase(const char *p) { pacs_base = p; };
-
-private:
-  const char *pacs_base;
 };
 
 

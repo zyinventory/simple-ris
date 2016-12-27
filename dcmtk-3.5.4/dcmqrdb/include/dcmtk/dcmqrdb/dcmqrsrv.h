@@ -80,7 +80,6 @@ class DcmQueryRetrieveSCP
 {
 public:
   
-    const char *pPacsBase;
     void ReleseAssociationMutex();
     const char *getAssociationId() { return assoc_context.associationId; };
 
@@ -93,8 +92,7 @@ public:
     const DcmQueryRetrieveConfig& config,
     const DcmQueryRetrieveOptions& options,
     const DcmQueryRetrieveDatabaseHandleFactory& factory,
-    const IndexCallback cbStore = NULL,
-    const char *pacs_base = NULL);
+    const IndexCallback cbStore = NULL);
 
   /// destructor
   virtual ~DcmQueryRetrieveSCP() {

@@ -235,7 +235,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	Capture_Ctrl_C();
 
-	if(ChangeToPacsWebSub(NULL, 0)) return -3;
+	if(ChangeToBasePacsSub(GetPacsBase(), NULL, 0)) return -3;
 
 	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", buff, sizeof(buff));
 	if(PrepareFileDir(buff))

@@ -661,7 +661,7 @@ int work()
 #endif
 	//locale::global(locale(CHINESE_LOCAL));
     pPacsBase = GetPacsBase();
-	int chdirOK = ChangeToPacsWebSub(NULL, 0);
+	int chdirOK = ChangeToBasePacsSub(GetPacsBase(), NULL, 0);
 	if(chdirOK < 0)
 	{
 		index_errlog << "init working dir failed:" << -1 << ',' << chdirOK << endl;

@@ -230,10 +230,10 @@ COMMONLIB_API const char* GetPacsTemp_dll();
 #endif
 COMMONLIB_API const char* GetPacsBase_dll();
 
-#ifndef ChangeToPacsWebSub
-#define ChangeToPacsWebSub ChangeToPacsWebSub_dll
+#ifndef ChangeToBasePacsSub
+#define ChangeToBasePacsSub ChangeToBasePacsSub_dll
 #endif
-COMMONLIB_API int ChangeToPacsWebSub_dll(char *pPacsBase, size_t buff_size);
+COMMONLIB_API int ChangeToBasePacsSub_dll(const char *pBase, char* const pPacsBase, size_t buff_size);
 
 #ifndef time_header_out
 #define time_header_out time_header_out_dll

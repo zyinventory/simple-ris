@@ -17,7 +17,7 @@ int _tmain(int argc, _TCHAR* argv[])
     HANDLE wa[2];
     list<string> pending_jdf;
 
-	if(ChangeToPacsWebSub(NULL, 0)) return -3;
+	if(ChangeToBasePacsSub(GetPacsBase(), NULL, 0)) return -3;
 
 	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_jobloader.txt", buff, sizeof(buff));
 	if(PrepareFileDir(buff))

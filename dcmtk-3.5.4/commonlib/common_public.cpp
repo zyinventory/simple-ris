@@ -133,20 +133,31 @@ const char* GetPacsBase_internal()
 }
 
 #ifdef COMMONLIB_EXPORTS
-COMMONLIB_API int ChangeToPacsWebSub_dll(char *pPacsBase, size_t buff_size)
+COMMONLIB_API int ChangeToBasePacsSub_dll(const char *pBase, char* const pPacsBase, size_t buff_size)
 #else
-int ChangeToPacsWebSub_internal(char *pPacsBase, size_t buff_size)
+int ChangeToBasePacsSub_internal(const char *pBase, char* const pPacsBase, size_t buff_size)
 #endif
 {
-    size_t base_size = strlen(GetPacsBase());
-    strcpy_s(COMMONLIB_PACS_BASE + base_size, MAX_PATH - base_size, "\\pacs"); // PACS_BASE + <web_dir>
-    errno_t en = _chdir(COMMONLIB_PACS_BASE);
-    COMMONLIB_PACS_BASE[base_size] = '\0';
-    if(en) return en;
+    const char pacs[] = "\\pacs";
+    char *path = NULL;
     if(pPacsBase)
-        return strcpy_s(pPacsBase, buff_size, COMMONLIB_PACS_BASE);
+        path = pPacsBase;
     else
-        return 0;
+    {
+        path = new char[MAX_PATH];
+        buff_size = MAX_PATH;
+    }
+    size_t base_len = strlen(pBase);
+    if(base_len + sizeof(pacs) > buff_size)
+    {
+        if(pPacsBase == NULL) delete[] path;
+        return ENOBUFS;
+    }
+    strncpy_s(path, buff_size, pBase, base_len);
+    strncpy_s(path + base_len, buff_size - base_len, pacs, _TRUNCATE);
+    errno_t en = _chdir(path);
+    if(pPacsBase == NULL) delete[] path;
+    return en;
 }
 
 #ifdef COMMONLIB_EXPORTS

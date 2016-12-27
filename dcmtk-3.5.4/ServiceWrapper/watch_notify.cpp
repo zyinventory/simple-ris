@@ -114,7 +114,7 @@ static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify
 #ifdef _DEBUG
     time_header_out(cerr) << cmd << " " << hex << tag << " " << path << " " << dec << pid << " " << assoc_id << " " << calling << " " << remote << " " << called << " " << port << endl;
 #endif
-    if(path[1] != ':') path.insert(0, "\\pacs\\").insert(0, GetPacsBase());
+    if(path[1] != ':') path.insert(0, "\\pacs\\").insert(0, GetPacsTemp());
     pos = path.length();
     path.append("\\state");
     
@@ -287,9 +287,9 @@ static const string debug_mode_header("DebugMode");
 
 int watch_notify(string &cmd, ofstream &flog)
 {
-    sprintf_s(buff, "%s\\pacs\\store_notify\\*.dfc", GetPacsBase());
+    sprintf_s(buff, "%s\\pacs\\store_notify\\*.dfc", GetPacsTemp());
     disable_remained_meta_notify_file(buff, flog);
-    sprintf_s(buff, "%s\\orders_study\\*.ini", GetPacsBase());
+    sprintf_s(buff, "%s\\orders_study\\*.ini", GetPacsTemp());
     disable_remained_meta_notify_file(buff, flog);
 
     // start dcmqrscp.exe parent proc
@@ -371,7 +371,7 @@ int watch_notify(string &cmd, ofstream &flog)
             return gle;
     }
     
-    sprintf_s(buff, "%s\\pacs\\"NOTIFY_BASE, GetPacsBase());
+    sprintf_s(buff, "%s\\pacs\\"NOTIFY_BASE, GetPacsTemp());
     HANDLE hbase = FindFirstChangeNotification(buff, FALSE, FILE_NOTIFY_CHANGE_SIZE);
     if(hbase == INVALID_HANDLE_VALUE)
     {

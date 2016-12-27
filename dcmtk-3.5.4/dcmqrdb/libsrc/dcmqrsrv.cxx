@@ -108,7 +108,7 @@ DcmQueryRetrieveSCP::DcmQueryRetrieveSCP(
   const DcmQueryRetrieveConfig& config,
   const DcmQueryRetrieveOptions& options,
   const DcmQueryRetrieveDatabaseHandleFactory& factory,
-  const IndexCallback cbStore, const char *pacs_base)
+  const IndexCallback cbStore)
 : config_(&config)
 , dbCheckFindIdentifier_(OFFalse)
 , dbCheckMoveIdentifier_(OFFalse)
@@ -116,12 +116,10 @@ DcmQueryRetrieveSCP::DcmQueryRetrieveSCP(
 , factory_(factory)
 , options_(options)
 , storeResult(STORE_NONE), hAssociationMutex(NULL)
-, pPacsBase(pacs_base)
 {
     memset(&assoc_context, 0, sizeof(ASSOCIATION_CONTEXT));
     assoc_context.pConfig = config_;
     assoc_context.cbToDcmQueryRetrieveStoreContext = cbStore;
-    pPacsBase = GetPacsBase();
 }
 
 
@@ -157,7 +155,6 @@ OFCondition DcmQueryRetrieveSCP::dispatch(T_ASC_Association *assoc, OFBool corre
         }
 
         dbHandle->setDebugLevel(options_.debug_ ? 3 : options_.verbose_);
-        dbHandle->setPacsBase(pPacsBase);
         dbHandle->setIdentifierChecking(dbCheckFindIdentifier_, dbCheckMoveIdentifier_);
         firstLoop = OFTrue;
 
@@ -462,11 +459,10 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                     time_header_out(cerr) << "DcmQueryRetrieveSCP::storeSCP() can't create sequence file name " << filename << ", missing command:" << endl << content << endl;
             }
 
-            if(pPacsBase)
             {
                 char filename[MAX_PATH], content[1024];
                 sprintf_s(filename, "%s\\pacs\\store_notify\\%s_" NOTIFY_ACKN_TAG ".dfc",
-                    pPacsBase, assoc_context.associationId);
+                    GetPacsTemp(), assoc_context.associationId);
                 const char *xfer = config_->getXferName(assoc_context.calledAPTitle);
                 if(xfer == NULL) xfer = "KEEP";
                 int content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s\\%s %d %s %s %s %s %d %s %s %s\n",

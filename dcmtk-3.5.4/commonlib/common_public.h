@@ -13,7 +13,9 @@ void SignalInterruptHandler_internal(int signal);
 void Capture_Ctrl_C_internal();
 #define GetPacsBase GetPacsBase_internal
 const char* GetPacsBase_internal();
-#define ChangeToPacsWebSub ChangeToPacsWebSub_internal
-int ChangeToPacsWebSub_internal(char *pPacsBase, size_t buff_size);
+#define GetPacsTemp GetPacsTemp_internal
+const char* GetPacsTemp_internal();
+#define ChangeToBasePacsSub ChangeToBasePacsSub_internal
+int ChangeToBasePacsSub_internal(const char *pBase, char* const pPacsBase, size_t buff_size);
 
 #endif // COMMON_PUBLIC_H

@@ -985,7 +985,7 @@ int main(int argc, char *argv[])
     }
   }
 #endif
-  ChangeToPacsWebSub(0, NULL);
+  ChangeToBasePacsSub(GetPacsBase(), 0, NULL);
   if(opt_verbose || opt_debug)
   {
   	char *buffer = _getcwd(NULL, 0);
