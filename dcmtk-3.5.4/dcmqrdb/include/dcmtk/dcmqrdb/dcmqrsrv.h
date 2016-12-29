@@ -127,15 +127,22 @@ public:
     const DcmQueryRetrieveConfig *pConfig = assoc_context.pConfig;
     IndexCallback cb = assoc_context.cbToDcmQueryRetrieveStoreContext;
     memset(&assoc_context, 0, sizeof(ASSOCIATION_CONTEXT));
+    assoc_file_start.clear();
+    assoc_file_end.clear();
     assoc_context.pConfig = pConfig;
     assoc_context.cbToDcmQueryRetrieveStoreContext = cb;
   }
 
-  STORE_PROCESSING getStoreResult() { return storeResult; }
+  STORE_PROCESSING getStoreResult() { return storeResult; };
+
+  const ASSOCIATION_CONTEXT& getAssocContext() const { return assoc_context; };
+  const OFString& getAssocFileStart() const { return assoc_file_start; };
+  const OFString& getAssocFileEnd() const { return assoc_file_end; };
 
 private:
 
   ASSOCIATION_CONTEXT assoc_context;
+  OFString assoc_file_start, assoc_file_end;
 
   HANDLE hAssociationMutex;
 

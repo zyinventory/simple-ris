@@ -285,6 +285,10 @@ OFCondition DcmQueryRetrieveSCP::handleAssociation(T_ASC_Association * assoc, OF
         {
             fwrite(content, content_used, 1, fplog);
             fclose(fplog);
+            char *p = strrchr(filename, '\\');
+            if(p) ++p;
+            else p = filename;
+            assoc_file_end = p;
         }
         else
             time_header_out(cerr) << "DcmQueryRetrieveSCP::handleAssociation() can't create sequence file name " << filename << ", missing command:" << endl << content << endl;
@@ -454,6 +458,10 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                 {
                     fwrite(content, content_used, 1, fplog);
                     fclose(fplog);
+                    char *p = strrchr(filename, '\\');
+                    if(p) ++p;
+                    else p = filename;
+                    assoc_file_start = p;
                 }
                 else
                     time_header_out(cerr) << "DcmQueryRetrieveSCP::storeSCP() can't create sequence file name " << filename << ", missing command:" << endl << content << endl;

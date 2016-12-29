@@ -50,7 +50,6 @@ meta_notify_file& meta_notify_file::operator=(const meta_notify_file &r)
 handle_dir& handle_dir::operator=(const handle_dir &r)
 {
     meta_notify_file::operator=(r);
-    handle = r.handle;
     assoc = r.assoc;
     last_association_notify_filename = r.last_association_notify_filename;
     assoc_disconn = r.assoc_disconn;
@@ -64,8 +63,6 @@ handle_dir& handle_dir::operator=(const handle_dir &r)
 
 handle_dir::~handle_dir()
 {
-    if(handle) FindCloseChangeNotification(handle);
-    
     named_pipe_server *nps = named_pipe_server::get_named_pipe_server_singleton();
     if(nps)
     {
@@ -76,12 +73,10 @@ handle_dir::~handle_dir()
         });
     }
 
-    string meta_file(get_meta_notify_filename());
-    if(meta_file.length())
+    if(get_meta_notify_filename().length())
     {
-        meta_file.insert(0, 1, '\\').insert(0, NOTIFY_BASE);
         char newname[MAX_PATH];
-        strcpy_s(newname, meta_file.c_str());
+        strcpy_s(newname, get_meta_notify_filename().c_str());
         char *p = strrchr(newname, '.');
         if(p)
         {
@@ -179,9 +174,6 @@ DWORD handle_dir::find_files(std::ostream &flog, std::function<DWORD(const std::
 	} while(_findnext(hSearch, &wfd) == 0);
     last_find_error = process_file_error;
 	_findclose(hSearch);
-
-    if(FALSE == FindNextChangeNotification(handle))
-        return displayErrorToCerr("handle_dir::find_files() FindNextChangeNotification()", GetLastError(), &flog);
 
     // handle OK, process new files.
     new_files.sort();
@@ -297,7 +289,8 @@ DWORD handle_dir::process_notify(const std::string &filename, NOTIFY_LIST &compr
     DWORD gle = 0, tag;
     string cmd, filepath(get_path());
     filepath.append("\\state\\").append(filename);
-    if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << endl;
+    if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filename << "): " << get_association_id() << ":" << filepath << endl;
+
     ifstream ifs(filepath, ios_base::in, _SH_DENYWR);
     if(ifs.fail())
     {
@@ -323,9 +316,9 @@ DWORD handle_dir::process_notify(const std::string &filename, NOTIFY_LIST &compr
             this->fill_association_section(pnfc->assoc);
             strcpy_s(pnfc->src_notify_filename, filename.c_str());
             pnfc->file.StorePath();
-            if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK." << endl;
+            if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filename << ") " << get_association_id() << " read OK." << endl;
 #ifdef _DEBUG
-            time_header_out(cerr) << "handle_dir::process_notify(" << filepath << ") " << get_association_id() << " read OK." << endl;
+            time_header_out(cerr) << "handle_dir::process_notify(" << filename << ") " << get_association_id() << " read OK." << endl;
 #endif
             // don't insert file to set_complete now, insert it after compress complete
             compress_queue.push_back(*pnfc);
@@ -399,12 +392,8 @@ void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, b
     }
 }
 
-void handle_dir::send_all_compress_ok_notify_and_close_handle()
+void handle_dir::send_all_compress_ok_notify()
 {
-    // close motinor handle, avoid all_compress_ok notify loop
-    FindCloseChangeNotification(handle);
-    handle = NULL;
-
     char notify_file_name[MAX_PATH];
     string prefix(get_path());
     prefix.append("\\state\\");
@@ -664,7 +653,7 @@ handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT
 	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never -ds %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
 #endif
         int ctn = mkdir_pos;
-        ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "..\\..\\archdir\\v0000000\\%s\\%s\\", nfc.file.hash, nfc.file.studyUID);
+        ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), nfc.file.hash, nfc.file.studyUID);
         strcpy_s(cmd + ctn, sizeof(cmd) - ctn, nfc.file.unique_filename);
         return new handle_compress(nfc.assoc.id, nfc.assoc.path, cmd, "dcmcjpeg", nfc, &flog);
     }

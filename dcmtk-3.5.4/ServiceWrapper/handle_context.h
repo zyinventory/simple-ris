@@ -20,10 +20,10 @@ namespace handle_context
         time_t last_access;
 
     protected:
-        meta_notify_file(const std::string &assoc_id, const std::string &p, std::ostream *plog)
-            : base_path(p, plog), association_id(assoc_id) { time(&last_access); };
-        meta_notify_file(const std::string &assoc_id, const std::string &p, const std::string &filename, std::ostream *plog)
-            : base_path(p, plog), association_id(assoc_id), meta_notify_filename(filename) { time(&last_access); };
+        meta_notify_file(const std::string &assoc_id, const std::string &path, std::ostream *plog)
+            : base_path(path, plog), association_id(assoc_id) { time(&last_access); };
+        meta_notify_file(const std::string &assoc_id, const std::string &path, const std::string &filename, std::ostream *plog)
+            : base_path(path, plog), association_id(assoc_id), meta_notify_filename(filename) { time(&last_access); };
 
     public:
         meta_notify_file(const meta_notify_file& r) : base_path(r), association_id(r.association_id),
@@ -37,8 +37,15 @@ namespace handle_context
         virtual bool is_time_out() { return false; };
     };
 
-    typedef std::map<HANDLE, meta_notify_file*> HANDLE_MAP;
-    typedef std::pair<HANDLE, meta_notify_file*> HANDLE_PAIR;
+    typedef std::pair<HANDLE, meta_notify_file*> BASE_HANDLE_PAIR;
+    class handle_compress;
+    typedef std::map<HANDLE, handle_compress*> HANDLE_MAP;
+    typedef std::pair<HANDLE, handle_compress*> HANDLE_PAIR;
+    class handle_dir;
+    typedef std::map<std::string, handle_dir*> HANDLE_DIR_MAP;
+    typedef std::pair<std::string, handle_dir*> HANDLE_DIR_PAIR;
+    class handle_proc;
+    typedef std::list<handle_proc*> HANDLE_PROC_LIST;
     class handle_study;
     typedef std::map<std::string, handle_study*> STUDY_MAP;
     typedef std::pair<std::string, handle_study*> STUDY_PAIR;
@@ -82,7 +89,6 @@ namespace handle_context
     class handle_dir : public meta_notify_file // handle_dir is association
     {
     private:
-        HANDLE handle;
         std::list<std::string> list_file;
         std::set<std::string> set_complete, set_study; // set_study: association[1] -> study[n]
         bool last_find_error, assoc_disconn, disconn_release;
@@ -94,10 +100,10 @@ namespace handle_context
         void fill_association_section(NOTIFY_ASSOC_SECTION &nas) const { nas = assoc; };
 
     public:
-        handle_dir(HANDLE h, const std::string &assoc_id, const std::string &file, const std::string notify_filename, std::ostream *plog)
-            : meta_notify_file(assoc_id, file, notify_filename, plog), handle(h), last_find_error(false), last_association_notify_filename(notify_filename),
+        handle_dir(const std::string &assoc_id, const std::string &path, const std::string notify_filename, std::ostream *plog)
+            : meta_notify_file(assoc_id, path, notify_filename, plog), last_find_error(false), last_association_notify_filename(notify_filename),
             assoc_disconn(false), disconn_release(true) { memset(&assoc, 0, sizeof(NOTIFY_ASSOC_SECTION)); assoc.port = 104; };
-        handle_dir(const handle_dir& o) : meta_notify_file(o), handle(o.handle), last_find_error(o.last_find_error),
+        handle_dir(const handle_dir& o) : meta_notify_file(o), last_find_error(o.last_find_error),
             list_file(o.list_file), set_complete(o.set_complete), set_study(o.set_study), last_association_notify_filename(o.last_association_notify_filename),
             assoc_disconn(o.assoc_disconn), disconn_release(o.disconn_release), assoc(o.assoc) {};
         virtual ~handle_dir();
@@ -105,7 +111,6 @@ namespace handle_context
         bool is_time_out() const;
         handle_dir& operator=(const handle_dir &r);
         void print_state() const;
-        HANDLE get_handle() const { return handle; };
         bool insert_study(const std::string &study_uid) { return set_study.insert(study_uid).second; };
         void remove_file_from_list(const std::string &filename) { list_file.remove(filename); };
         std::string& get_find_filter(std::string&) const;
@@ -118,7 +123,7 @@ namespace handle_context
         void send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, bool compress_ok, std::ostream &flog);
         bool is_normal_close() const { return assoc_disconn && disconn_release; };
         void broadcast_assoc_close_action_to_all_study(named_pipe_server &nps) const;
-        void send_all_compress_ok_notify_and_close_handle();
+        void send_all_compress_ok_notify();
         const char* handle_dir::close_description() const;
     };
 

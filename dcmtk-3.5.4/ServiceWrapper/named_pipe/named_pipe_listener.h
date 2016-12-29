@@ -129,6 +129,7 @@ namespace handle_context
         size_t get_bytes_queued() { return bytes_queued; };
         size_t get_write_buff_size() const { return write_buff_size; };
         size_t get_read_buff_size() const { return read_buff_size; };
+        bool is_write_queue_empty() const { return (bytes_queued == 0 && message_write_buffer.size() == 0); };
         bool close_pipe();
         bool is_closing() { return closing; };
         bool is_reading() { return reading; };

@@ -1,15 +1,96 @@
 #include "stdafx.h"
 #include "commonlib.h"
+#include "named_pipe/named_pipe_listener.h"
 
 using namespace std;
 using namespace handle_context;
 
 static char buff[FILE_BUF_SIZE];
+static const string debug_mode_header("DebugMode");
 
 static HANDLE_MAP map_handle_context;
+static HANDLE_DIR_MAP handle_dir_map;
+static HANDLE_PROC_LIST proc_list;
 static NOTIFY_LIST compress_queue;
 
-static bool select_handle_dir_by_association_path(const meta_notify_file* pnf, const string &association_id, const string &path, ostream &flog)
+class my_np_conn : public named_pipe_connection
+{
+private:
+    DWORD process_file_incoming(const char *assoc_id, const char *notify_file);
+    handle_dir* create_new_handle_dir(const char *assoc_id);
+
+public:
+    my_np_conn(named_pipe_listener *pnps) : named_pipe_connection(pnps) { };
+    virtual ~my_np_conn() { };
+    virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size);
+};
+
+DWORD my_np_conn::process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size)
+{
+    if(cbBytesRead) time_header_out(*pflog) << "my_np_conn::process_message(): " << ptr_data_buffer << endl;
+    else time_header_out(*pflog) << "my_np_conn::process_message(): cbBytesRead is 0" << endl;
+
+    // process message, must retrieve ack message unless ptr_data_buffer == "close_pipe"
+    // if(gle) void CALLBACK handle_context::read_pipe_complete(...) shall close pipe
+    if(strncmp(ptr_data_buffer, "close_pipe", 10) == 0) return ERROR_HANDLE_EOF;
+
+    char *notify_file = strchr(ptr_data_buffer, ';');
+    if(notify_file == NULL)
+        time_header_out(*pflog) << "my_np_conn::process_message() receive an unknown message: " << ptr_data_buffer << endl;
+    else
+    {
+        *notify_file++ = '\0';
+        process_file_incoming(ptr_data_buffer, notify_file);
+    }
+    return 0;
+}
+
+handle_dir* my_np_conn::create_new_handle_dir(const char *p_assoc_id)
+{
+    string meta_notify_file(GetPacsTemp());
+    meta_notify_file.append("\\pacs\\").append(NOTIFY_BASE).append(1, '\\').append(p_assoc_id).append("_ACKN.dfc");
+#ifdef _DEBUG
+    time_header_out(cerr) << "my_np_conn::process_meta_notify_file() process meta notify: " << meta_notify_file << endl;
+#endif
+    ifstream ntff(meta_notify_file, ios_base::in, _SH_DENYWR);
+    if(ntff.fail())
+    {
+        DWORD gle = GetLastError();
+        string msg("my_np_conn::process_meta_notify_file() open file ");
+        msg.append(meta_notify_file);
+        displayErrorToCerr(msg.c_str(), gle, pflog);
+        return NULL;
+    }
+    string cmd, path, assoc_id, calling, called, remote, port, transfer_syntax, auto_publish;
+    DWORD tag, pid, gle = 0;
+    ntff >> cmd >> hex >> tag >> path >> dec >> pid >> assoc_id >> calling >> remote >> called >> port >> transfer_syntax >> auto_publish;
+    if(ntff.is_open()) ntff.close();
+#ifdef _DEBUG
+    time_header_out(cerr) << cmd << " " << hex << tag << " " << path << " " << dec << pid << " " << assoc_id << " " << calling << " " << remote << " " << called << " " << port << endl;
+#endif
+    path.insert(0, "\\pacs\\").insert(0, GetPacsTemp());
+    return new handle_dir(p_assoc_id, path, meta_notify_file, pflog);
+}
+
+DWORD my_np_conn::process_file_incoming(const char *p_assoc_id, const char *notify_file)
+{
+#ifdef _DEBUG
+    time_header_out(cerr) << "my_np_conn::process_file_incoming() receive association notify " << p_assoc_id << ";"<< notify_file << endl;
+#endif
+    HANDLE_DIR_MAP::iterator it = handle_dir_map.find(p_assoc_id);
+    handle_dir *phd = NULL;
+    if(it != handle_dir_map.end()) phd = it->second;
+    if(phd == NULL)
+    {
+        phd = create_new_handle_dir(p_assoc_id);
+        if(phd) handle_dir_map[p_assoc_id] = phd;
+    }
+    if(phd) phd->process_notify(notify_file, compress_queue, *pflog);
+    else time_header_out(*pflog) << "my_np_conn::process_file_incoming() can't create handle_dir()" << endl;
+    return 0;
+}
+
+static bool select_handle_dir_by_association_path(const handle_compress *pnf, const string &association_id, const string &path, ostream &flog)
 {
     if(pnf == NULL) return false;
     bool same_assoc = (association_id.compare(pnf->get_association_id()) == 0);
@@ -83,94 +164,15 @@ static DWORD disable_remained_meta_notify_file(const char *pattern, ostream &flo
     return 0;
 }
 
-static DWORD process_meta_notify_file(handle_dir *base_dir, const string &notify_file, ostream &flog)
-{
-    string ntffn(NOTIFY_BASE);
-    ntffn.append(1, '\\').append(notify_file);
-    string meta_notify_file_txt(ntffn);
-    string::size_type pos = meta_notify_file_txt.rfind('.');
-    meta_notify_file_txt.erase(pos).append(".txt");
-    // if .txt exist, meta notify file has been processed.
-    if(0 == _access(meta_notify_file_txt.c_str(), 0))
-        return ERROR_DATATYPE_MISMATCH; // skip it
-
-    if(opt_verbose) time_header_out(flog) << "process_meta_notify_file() receive association notify " << notify_file << endl;
-#ifdef _DEBUG
-    time_header_out(cerr) << "process_meta_notify_file() receive association notify " << notify_file << endl;
-#endif
-    ifstream ntff(ntffn, ios_base::in, _SH_DENYWR);
-    if(ntff.fail())
-    {
-        DWORD gle = GetLastError();
-        string msg("process_meta_notify_file() open file ");
-        msg.append(ntffn);
-        return displayErrorToCerr(msg.c_str(), gle, &flog);
-    }
-    
-    string cmd, path, assoc_id, calling, called, remote, port, transfer_syntax, auto_publish;
-    DWORD tag, pid, gle = 0;
-    ntff >> cmd >> hex >> tag >> path >> dec >> pid >> assoc_id >> calling >> remote >> called >> port >> transfer_syntax >> auto_publish;
-    if(ntff.is_open()) ntff.close();
-#ifdef _DEBUG
-    time_header_out(cerr) << cmd << " " << hex << tag << " " << path << " " << dec << pid << " " << assoc_id << " " << calling << " " << remote << " " << called << " " << port << endl;
-#endif
-    if(path[1] != ':') path.insert(0, "\\pacs\\").insert(0, GetPacsTemp());
-    pos = path.length();
-    path.append("\\state");
-    
-    HANDLE hdir = FindFirstChangeNotification(path.c_str(), FALSE, FILE_NOTIFY_CHANGE_SIZE);
-    if(hdir == INVALID_HANDLE_VALUE)
-    {
-        gle = GetLastError();
-        sprintf_s(buff, "process_meta_notify_file() FindFirstChangeNotification(%s)", path.c_str());
-        write_association_complete_text_file(meta_notify_file_txt, buff, gle, flog);
-        return displayErrorToCerr(buff, gle, &flog);
-    }
-
-    // create association(handle_dir) instance
-    path.erase(pos);
-    // path is association base dir
-    const HANDLE_MAP::iterator it = find_if(map_handle_context.begin(), map_handle_context.end(),
-        [&assoc_id, &path, &flog](const HANDLE_PAIR &p) { return select_handle_dir_by_association_path(p.second, assoc_id, path, flog); });
-    if(it != map_handle_context.end())
-    {
-        sprintf_s(buff, "association id %s : %s exist.", assoc_id.c_str(), path.c_str());
-        write_association_complete_text_file(meta_notify_file_txt, buff, ERROR_FILE_EXISTS, flog);
-        time_header_out(flog) << "process_meta_notify_file() " << buff << endl;
-        return ERROR_DATATYPE_MISMATCH;
-    }
-
-    handle_dir *pclz_dir = new handle_dir(hdir, assoc_id, path, notify_file, &flog);
-    time_header_out(flog) << "process_meta_notify_file() create association " << pclz_dir->get_association_id() << " " << pclz_dir->get_path() << endl;
-    gle = pclz_dir->find_files(flog, [&flog, pclz_dir](const string &filename) { return pclz_dir->process_notify(filename, compress_queue, flog); });
-    if(gle == 0)
-    {
-        map_handle_context[hdir] = pclz_dir;
-        return 0;
-    }
-    else
-    {   // discard the meta notify
-        delete pclz_dir;
-        write_association_complete_text_file(meta_notify_file_txt, "process_meta_notify_file() handle_dir::find_files()", gle, flog);
-        return displayErrorToCerr("process_meta_notify_file() handle_dir::find_files()", gle, &flog);
-    }
-}
-
 static void compress_complete(const string &assoc_id, const string &study_uid, bool compress_ok,
     named_pipe_server &nps, NOTIFY_FILE_CONTEXT &nfc, ostream &flog)
 {
     if(opt_verbose) time_header_out(flog) << "compress_complete() dcmcjpeg " << (compress_ok ? "complete" : "failed")
         << ", find association " << assoc_id << " to set complete." << endl;
+
     handle_dir *phd = NULL;
-	for(HANDLE_MAP::const_iterator it = map_handle_context.cbegin(); it != map_handle_context.cend(); ++it)
-	{
-        if(it->second == NULL) continue;
-        if(0 == assoc_id.compare(it->second->get_association_id()))
-        {
-            phd = dynamic_cast<handle_dir*>(it->second);
-            if(phd) break;
-        }
-	}
+    HANDLE_DIR_MAP::iterator it = handle_dir_map.find(assoc_id);
+    if(it != handle_dir_map.end() && it->second) phd = it->second;
 	if(phd == NULL) time_header_out(flog) << "compress_complete() can't find association " << assoc_id << ", src file " << nfc.src_notify_filename << endl;
 
     handle_study* phs = nps.find_handle_study(study_uid);
@@ -236,10 +238,10 @@ static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named
                 flog << "\t" << phdir->close_description() << " close." << endl;
             }
             // close monitor handle, all_compress_ok_notify is not processed.
-            phdir->send_all_compress_ok_notify_and_close_handle();
+            phdir->send_all_compress_ok_notify();
             phdir->broadcast_assoc_close_action_to_all_study(nps);
                             
-            pclz_base_dir->remove_file_from_list(phdir->get_meta_notify_filename());
+            if(pclz_base_dir) pclz_base_dir->remove_file_from_list(phdir->get_meta_notify_filename());
 
             if(opt_verbose || phdir->file_complete_remain())
                 time_header_out(flog) << "close_handle_dir() handle_dir" << (pick_up ? " pick up" : "") << " exit:" << endl;
@@ -254,7 +256,7 @@ static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named
     return false;
 }
 
-static bool handle_less(const HANDLE_PAIR &p1, const HANDLE_PAIR &p2)
+static bool handle_less(const BASE_HANDLE_PAIR &p1, const BASE_HANDLE_PAIR &p2)
 {
 	if(p1.second == NULL && p2.second == NULL) return p1.first < p2.first;
 	else if(p2.second == NULL) return true;
@@ -262,28 +264,19 @@ static bool handle_less(const HANDLE_PAIR &p1, const HANDLE_PAIR &p2)
 
 	int c1 = 3, c2 = 3;
 
-	if(dynamic_cast<handle_compress*>(p1.second)) c1 = 1;
-	else if(dynamic_cast<handle_dir*>(p1.second)) c1 = 2;
-	else c1 = 3; // qr or job
-
-	if(dynamic_cast<handle_compress*>(p2.second)) c2 = 1;
-	else if(dynamic_cast<handle_dir*>(p2.second)) c2 = 2;
-	else c2 = 3; // qr or job
-
-	if(c1 == c2)
+    if(c1 == 1) // p1 and p2 is handle_dir
     {
-        if(c1 == 1) // p1 and p2 is handle_dir
-        {
-            if(p1.second->get_association_id().length() == 0 && p2.second->get_association_id().length() > 0) return true;
-            else if(p2.second->get_association_id().length() == 0 && p1.second->get_association_id().length() > 0) return false;
-            // else (p1 and p2 length > 0) || (p1 and p2 length == 0), compare last_access
-        }
-        return p1.second->get_last_access() < p2.second->get_last_access();
+        if(p1.second->get_association_id().length() == 0 && p2.second->get_association_id().length() > 0) return true;
+        else if(p2.second->get_association_id().length() == 0 && p1.second->get_association_id().length() > 0) return false;
+        // else (p1 and p2 length > 0) || (p1 and p2 length == 0), compare last_access
     }
-	return c1 < c2;
+    return p1.second->get_last_access() < p2.second->get_last_access();
 }
 
-static const string debug_mode_header("DebugMode");
+static named_pipe_connection* WINAPI create_new_pipe_connect(named_pipe_listener *pnps)
+{
+    return new my_np_conn(pnps);
+}
 
 int watch_notify(string &cmd, ofstream &flog)
 {
@@ -292,10 +285,19 @@ int watch_notify(string &cmd, ofstream &flog)
     sprintf_s(buff, "%s\\orders_study\\*.ini", GetPacsTemp());
     disable_remained_meta_notify_file(buff, flog);
 
+    // listen on named pipe
+    named_pipe_listener qrnps("\\\\.\\pipe\\dcmtk_qr", 4095, 4095, create_new_pipe_connect, &flog);
+    DWORD gle = qrnps.start_listening();
+    if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
+    {
+        displayErrorToCerr("named_pipe_listener.start_listening()", gle, &cerr);
+        return gle;
+    }
+
     // start dcmqrscp.exe parent proc
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
     handle_proc *phproc = new handle_proc("", buff, cmd, "dcmqrscp", &flog);
-    DWORD gle = phproc->start_process(true);
+    gle = phproc->start_process(true);
     if(gle)
     {
         displayErrorToCerr("watch_notify() handle_proc::create_process(dcmqrscp) at beginning", gle, &flog);
@@ -353,8 +355,8 @@ int watch_notify(string &cmd, ofstream &flog)
     WaitForInputIdle(phproc->get_handle(), INFINITE);
     WaitForInputIdle(phproc_job->get_handle(), INFINITE);
 #endif
-    map_handle_context[phproc->get_handle()] = phproc;
-    map_handle_context[phproc_job->get_handle()] = phproc_job;
+    proc_list.push_back(phproc);
+    proc_list.push_back(phproc_job);
 
     HANDLE hSema = CreateSemaphore(NULL, WORKER_CORE_NUM, WORKER_CORE_NUM, "Global\\semaphore_compress_process");
     if(hSema == NULL)
@@ -371,32 +373,20 @@ int watch_notify(string &cmd, ofstream &flog)
             return gle;
     }
     
-    sprintf_s(buff, "%s\\pacs\\"NOTIFY_BASE, GetPacsTemp());
-    HANDLE hbase = FindFirstChangeNotification(buff, FALSE, FILE_NOTIFY_CHANGE_SIZE);
-    if(hbase == INVALID_HANDLE_VALUE)
-    {
-        gle = GetLastError();
-        displayErrorToCerr("watch_notify() FindFirstChangeNotification(store_notify)", gle, &flog);
-        goto clean_child_proc;
-    }
-    handle_dir *pclz_base_dir = new handle_dir(hbase, "", NOTIFY_BASE, "", &flog);
-    map_handle_context[hbase] = pclz_base_dir;
-    
-    // collect exist dfc files
-    if(pclz_base_dir->find_files(flog, [pclz_base_dir, &flog](const string& filename) { return process_meta_notify_file(pclz_base_dir, filename, flog); }))
-        goto clean_child_proc;
-
     HANDLE *pha = NULL;
     size_t file_in_compress_queue = 0;
     while(GetSignalInterruptValue() == 0)
     {
 		// handle's waiting order: named pipe, dir monitor, compress proc, qr & job proc
-		vector<HANDLE_PAIR> hs;
-		hs.reserve(map_handle_context.size());
-        transform(map_handle_context.begin(), map_handle_context.end(), back_inserter(hs), [](const HANDLE_PAIR &p) { return p; });
+		vector< BASE_HANDLE_PAIR > hs;
+        hs.reserve(map_handle_context.size() + proc_list.size());
+        transform(map_handle_context.begin(), map_handle_context.end(), back_inserter(hs), [](const HANDLE_PAIR &p) { return BASE_HANDLE_PAIR(p.first, p.second); });
 		sort(hs.begin(), hs.end(), handle_less);
-		vector<HANDLE_PAIR>::const_iterator it_null = find_if(hs.cbegin(), hs.cend(), [](const HANDLE_PAIR &p) { return p.second == NULL; });
+		vector< BASE_HANDLE_PAIR >::const_iterator it_null = find_if(hs.cbegin(), hs.cend(), [](const BASE_HANDLE_PAIR &p) { return p.second == NULL; });
 		if(it_null != hs.cend()) hs.erase(it_null, hs.cend());
+
+        // append proc handle to hs
+        transform(proc_list.begin(), proc_list.end(), back_inserter(hs), [](handle_proc *p) { return BASE_HANDLE_PAIR(p->get_handle(), p); });
 
         if(debug_mode)
         {
@@ -404,7 +394,7 @@ int watch_notify(string &cmd, ofstream &flog)
             {
                 file_in_compress_queue = compress_queue.size();
                 time_header_out(flog) << "compress queue increase 20%: " << dec << file_in_compress_queue << endl;
-                for_each(hs.cbegin(), hs.cend(), [&flog](const HANDLE_PAIR p) {
+                for_each(hs.cbegin(), hs.cend(), [&flog](const BASE_HANDLE_PAIR p) {
                     time_header_out(flog) << hex << setfill('0') << setw(8) << p.first << " ";
 	                if(dynamic_cast<handle_compress*>(p.second))
                     {
@@ -421,11 +411,12 @@ int watch_notify(string &cmd, ofstream &flog)
             else if(compress_queue.size() < file_in_compress_queue * 0.8) file_in_compress_queue = compress_queue.size();
         }
 
-        size_t hsize = hs.size() + 1;
+        size_t hsize = 2 + hs.size();
         if(pha) delete[] pha;
         pha = new HANDLE[hsize];
         pha[0] = nps.get_handle(); // map_handle_context[named pipe listening handle] == NULL
-        transform(hs.cbegin(), hs.cend(), &pha[1], [](const HANDLE_PAIR &p) { return p.first; });
+        pha[1] = qrnps.get_handle();
+        transform(hs.cbegin(), hs.cend(), &pha[2], [](const BASE_HANDLE_PAIR &p) { return p.first; });
 
         DWORD wr = WAIT_IO_COMPLETION;
 		do {
@@ -446,7 +437,16 @@ int watch_notify(string &cmd, ofstream &flog)
             handle_dir *phdir = NULL;
             meta_notify_file *pb = map_handle_context.count(waited) ? map_handle_context[waited] : NULL;
             
-            if(waited == nps.get_handle()) // pipe client(dcmmkdir) connect incoming
+            if(waited == qrnps.get_handle()) // pipe client(dcmmkdir) connect incoming
+            {
+                gle = qrnps.pipe_client_connect_incoming();
+                if(gle)
+                {
+                    displayErrorToCerr("watch_notify() named_pipe_listener::pipe_client_connect_incoming()", gle, &flog);
+                    break;
+                }
+            }
+            else if(waited == nps.get_handle()) // pipe client(dcmmkdir) connect incoming
             {
                 gle = nps.pipe_client_connect_incoming();
                 if(gle)
@@ -467,19 +467,16 @@ int watch_notify(string &cmd, ofstream &flog)
                     compress_complete(phcompr->get_association_id(), nfc.file.studyUID, true, nps, nfc, flog);
                     delete phcompr;
                 }
-                else if(phdir = dynamic_cast<handle_dir*>(pb))
-                {
-                    if(phdir->get_association_id().length()) // some file in storedir/association_id
-                        gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return phdir->process_notify(filename, compress_queue, flog); });
-                    else // new file in meta notify dir(store_notify)
-                        gle = phdir->find_files(flog, [&flog, phdir](const string& filename) { return process_meta_notify_file(phdir, filename, flog); });
-                }
                 else if(phproc = dynamic_cast<handle_proc*>(pb))
                 {
                     time_header_out(flog) << "watch_notify() " << phproc->get_exec_name() << " encounter error, exit." << endl;
                     map_handle_context.erase(waited);
                     goto clean_child_proc;
                     // restart proc?
+                }
+                else if(phdir = dynamic_cast<handle_dir*>(pb))
+                {
+                    time_header_out(flog) << "unexcepting phdir notify file " << phdir->get_association_id() << ", " << phdir->get_path() << endl;
                 }
                 else
                 {
@@ -514,9 +511,7 @@ int watch_notify(string &cmd, ofstream &flog)
 				set<string> exist_uniquename; // don't start same study/series/instance, avoid file lock
 				for(HANDLE_MAP::const_iterator ite = map_handle_context.begin(); ite != map_handle_context.end(); ++ite)
 				{
-					handle_compress *phc = NULL;
-					if(phc = dynamic_cast<handle_compress*>(ite->second))
-						exist_uniquename.insert(phc->get_notify_context().file.unique_filename);
+					if(ite->second) exist_uniquename.insert(ite->second->get_notify_context().file.unique_filename);
 				}
 
                 if(exist_uniquename.find(it->file.unique_filename) == exist_uniquename.end())
@@ -581,17 +576,17 @@ int watch_notify(string &cmd, ofstream &flog)
 		{
 			// handle_dir pick up
 			set<string> exist_association_paths;
-			HANDLE_MAP::iterator it = map_handle_context.begin();
-			while(it != map_handle_context.end())
+			HANDLE_DIR_MAP::iterator it = handle_dir_map.begin();
+			while(it != handle_dir_map.end())
 			{
 				handle_dir *phdir = NULL;
-				if(it->second) phdir = dynamic_cast<handle_dir*>(it->second);
+				if(it->second) phdir = it->second;
 				if(phdir && phdir->get_association_id().length())
 				{
 					exist_association_paths.insert(exist_association_paths.begin(), phdir->get_path());
-					if(close_handle_dir(phdir, pclz_base_dir, nps, true, flog))
+					if(close_handle_dir(phdir, NULL, nps, true, flog))
 					{
-						it = map_handle_context.erase(it);
+						it = handle_dir_map.erase(it);
 						continue;
 					}
 				}
@@ -649,9 +644,9 @@ clean_child_proc:
     }
     
     // print association state
-    for(HANDLE_MAP::iterator it = map_handle_context.begin(); it != map_handle_context.end(); ++it)
+    for(HANDLE_DIR_MAP::iterator it = handle_dir_map.begin(); it != handle_dir_map.end(); ++it)
     {
-        handle_dir *pha = dynamic_cast<handle_dir*>(it->second);
+        handle_dir *pha = it->second;
         if(debug_mode && pha) pha->print_state();
         delete it->second;
     }
