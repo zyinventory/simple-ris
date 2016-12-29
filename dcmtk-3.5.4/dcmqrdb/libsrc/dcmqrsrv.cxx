@@ -276,7 +276,7 @@ OFCondition DcmQueryRetrieveSCP::handleAssociation(T_ASC_Association * assoc, OF
     {
         FILE *fplog = NULL;
         char filename[MAX_PATH], content[1024];
-        int used = sprintf_s(filename, "%s\\%s\\" STATE_DIR, assoc_context.storageArea, assoc_context.associationId);
+        int used = sprintf_s(filename, "%s\\pacs\\%s\\%s\\" STATE_DIR, GetPacsTemp(), assoc_context.storageArea, assoc_context.associationId);
         used += in_process_sequence(filename + used, sizeof(filename) - used, "");
         strcpy_s(filename + used, sizeof(filename) - used, "_" NOTIFY_STORE_TAG ".dfc");
         int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s\n", 
@@ -443,7 +443,7 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                     }
                 }
 
-                sprintf_s(filename, "%s\\%s\\" STATE_DIR "%s_" NOTIFY_STORE_TAG ".dfc",
+                sprintf_s(filename, "%s\\pacs\\%s\\%s\\" STATE_DIR "%s_" NOTIFY_STORE_TAG ".dfc", GetPacsTemp(),
                     assoc_context.storageArea, assoc_context.associationId, assoc_context.associationId);
                 const char *xfer = config_->getXferName(assoc_context.calledAPTitle);
                 if(xfer == NULL) xfer = "DEFAULT";
@@ -461,8 +461,7 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
 
             {
                 char filename[MAX_PATH], content[1024];
-                sprintf_s(filename, "%s\\pacs\\store_notify\\%s_" NOTIFY_ACKN_TAG ".dfc",
-                    GetPacsTemp(), assoc_context.associationId);
+                sprintf_s(filename, "%s\\pacs\\store_notify\\%s_" NOTIFY_ACKN_TAG ".dfc", GetPacsTemp(), assoc_context.associationId);
                 const char *xfer = config_->getXferName(assoc_context.calledAPTitle);
                 if(xfer == NULL) xfer = "KEEP";
                 int content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s\\%s %d %s %s %s %s %d %s %s %s\n",

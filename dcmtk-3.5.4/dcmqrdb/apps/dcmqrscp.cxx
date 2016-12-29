@@ -711,7 +711,7 @@ main(int argc, char *argv[])
         }
     }
 
-    ChangeToBasePacsSub(GetPacsTemp(), NULL, 0);
+    ChangeToBasePacsSub(GetPacsBase(), NULL, 0);
 	
 	if (options.forkedChild_)
 	{

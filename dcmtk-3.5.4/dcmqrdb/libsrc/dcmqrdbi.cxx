@@ -59,6 +59,7 @@ END_EXTERN_C
 #include "dcmtk/dcmnet/diutil.h"
 #include "dcmtk/dcmdata/dcfilefo.h"
 #include "dcmtk/ofstd/ofstd.h"
+#include "common_public.h"
 
 const OFConditionConst DcmQRIndexDatabaseErrorC(OFM_imagectn, 0x001, OF_error, "DcmQR Index Database Error");
 const OFCondition DcmQRIndexDatabaseError(DcmQRIndexDatabaseErrorC);
@@ -70,7 +71,7 @@ OFCondition DcmQueryRetrieveDatabaseHandle::makeStoreAssociationDir(
     if(storageArea && storageAreaBuffSize) strcpy_s(storageArea, storageAreaBuffSize, getStorageArea());
     if(associationId == NULL) return EC_IllegalParameter;
 
-    int pos = sprintf_s(store_path, "%s", getStorageArea());
+    int pos = sprintf_s(store_path, "%s\\pacs\\%s", GetPacsTemp(), getStorageArea());
     if(_mkdir(store_path) == 0 || errno == EEXIST)
     {
         pos += sprintf_s(store_path + pos, sizeof(store_path) - pos, "\\%s", associationId);
@@ -3419,7 +3420,7 @@ OFCondition DcmQueryRetrieveDatabaseHandle::makeNewStoreFileName(
     {
         char seq[256];
         in_process_sequence(seq, sizeof(seq), "");
-	    ret = sprintf_s(newImageFileName, MAXPATHLEN, "%s\\%s\\%s.%s.%s.dcm", getStorageArea(), associationId, m, SOPInstanceUID, seq);
+	    ret = sprintf_s(newImageFileName, MAXPATHLEN, "%s\\pacs\\%s\\%s\\%s.%s.%s.dcm", GetPacsTemp(), getStorageArea(), associationId, m, SOPInstanceUID, seq);
     }
     else
    	    ret = sprintf_s(newImageFileName, MAXPATHLEN, "%s\\%s.%s.dcm", getStorageArea(), m, SOPInstanceUID);

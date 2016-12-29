@@ -219,7 +219,7 @@ void DcmQueryRetrieveStoreContext::callbackHandler(
             printf("Sending:\n");
             DIMSE_printCStoreRSP(stdout, rsp);
         } else if (rsp->DimseStatus != STATUS_Success) {
-            fprintf(stdout, "NOTICE: StoreSCP:\n");
+            fprintf(stdout, "NOTICE: DcmQRSCP StoreSCP:\n");
             DIMSE_printCStoreRSP(stdout, rsp);
         }
         status = rsp->DimseStatus;
