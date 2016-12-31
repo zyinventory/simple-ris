@@ -157,7 +157,7 @@ namespace handle_context
     private:
         LPPIPEINST pipe_context;
         bool blocked, ris_integration_start;
-        std::string lock_file_name, dicomdir_path;
+        std::string lock_file_name;
         std::list<action_from_association> list_action;
         std::set<std::string> set_association_path;
         action_from_association last_association_action;
@@ -165,11 +165,10 @@ namespace handle_context
         void save_and_close_lock_file(std::map<std::string, std::string> &map_ini);
 
     public:
-        handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
-            const std::string &dicomdir, const std::string &study, std::ostream *plog);
+        handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name, const std::string &study, std::ostream *plog);
         handle_study(const handle_study &r) : handle_proc(r), pipe_context(r.pipe_context), lock_file_name(r.lock_file_name),
-            dicomdir_path(r.dicomdir_path), set_association_path(r.set_association_path), list_action(r.list_action),
-            blocked(r.blocked), ris_integration_start(r.ris_integration_start), last_association_action(r.last_association_action) {};
+            set_association_path(r.set_association_path), list_action(r.list_action), blocked(r.blocked),
+            ris_integration_start(r.ris_integration_start), last_association_action(r.last_association_action) {};
         
         virtual ~handle_study();
         handle_study& operator=(const handle_study &r);
@@ -177,7 +176,6 @@ namespace handle_context
         void bind_pipe_context(LPPIPEINST p_context) { pipe_context = p_context; };
         DWORD write_message_to_pipe();
         void remove_compress_ok_action(const std::string &filename, const std::string &xfer);
-        const std::string& get_dicomdir_path() const { return dicomdir_path; };
         const action_from_association& get_last_association_action() const { return last_association_action; };
         const std::set<std::string>& get_set_association_path() const { return set_association_path; };
         bool insert_association_path(const std::string &assoc_path);

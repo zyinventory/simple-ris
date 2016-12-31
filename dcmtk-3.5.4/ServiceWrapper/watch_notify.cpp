@@ -298,7 +298,7 @@ int watch_notify(string &cmd, ofstream &flog)
 
     // start dcmqrscp.exe parent proc
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
-    handle_proc *phproc = new handle_proc("", buff, "", cmd, "dcmqrscp", &flog);
+    handle_proc *phproc = new handle_proc("dcmqrscp", buff, "", cmd, "dcmqrscp", &flog);
     gle = phproc->start_process(true);
     if(gle)
     {
@@ -324,7 +324,7 @@ int watch_notify(string &cmd, ofstream &flog)
 #endif
     cmd = buff;
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
-    handle_proc *phproc_job = new handle_proc("", buff, "", cmd, "jobloader", &flog);
+    handle_proc *phproc_job = new handle_proc("jobloader", buff, "", cmd, "jobloader", &flog);
     gle = phproc_job->start_process(false);
     if(gle)
     {

@@ -690,10 +690,9 @@ bool handle_proc::make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, con
     else return false;
 }
 
-handle_study::handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
-    const std::string &dicomdir, const std::string &study, std::ostream *plog)
-    : handle_proc(study, cwd, "", cmd, exec_prog_name, plog), pipe_context(NULL), dicomdir_path(dicomdir),
-    blocked(false), ris_integration_start(false), last_association_action(INDEX_INSTANCE, cwd, false, plog)
+handle_study::handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name, const std::string &study, std::ostream *plog)
+    : handle_proc(study, cwd, "", cmd, exec_prog_name, plog), pipe_context(NULL), blocked(false),
+    ris_integration_start(false), last_association_action(INDEX_INSTANCE, cwd, false, plog)
 {
     char seq_buff[MAX_PATH];
     size_t pos = in_process_sequence_dll(seq_buff, sizeof(seq_buff), "");
@@ -709,7 +708,6 @@ handle_study& handle_study::operator=(const handle_study &r)
     ris_integration_start = r.ris_integration_start;
     last_association_action = r.last_association_action;
     lock_file_name = r.lock_file_name;
-    dicomdir_path = r.dicomdir_path;
     copy(r.set_association_path.begin(), r.set_association_path.end(), inserter(set_association_path, set_association_path.end()));
     copy(r.list_action.begin(), r.list_action.end(), back_inserter(list_action));
     return *this;
@@ -976,7 +974,6 @@ void handle_study::remove_compress_ok_action(const string &filename, const strin
 void handle_study::print_state() const
 {
     *pflog << "handle_study::print_state() " << get_id() << endl
-        << "\tdicomdir_path: " << dicomdir_path << endl
         << "\tblocked: " << blocked << endl
         << "\tlast_association_action: " << endl;
     last_association_action.print_state();

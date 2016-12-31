@@ -304,7 +304,7 @@ handle_study* named_pipe_server::make_handle_study(const std::string &study_uid)
         sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +id %s +D %s.dir -pn %s #", 
             opt_verbose ? "-v" : "", study_uid.c_str(), study_uid.c_str(), get_path().c_str());
 
-        phs = new handle_study(dicomdir, cmd, "dcmmkdir", dicomdir, study_uid, pflog);
+        phs = new handle_study(dicomdir, cmd, "dcmmkdir", study_uid, pflog);
         if(phs)
         {
             if(0 == phs->start_process(true)) map_study[study_uid] = phs;
