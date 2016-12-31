@@ -11,33 +11,7 @@
 
 namespace handle_context
 {
-    typedef std::list<NOTIFY_FILE_CONTEXT> NOTIFY_LIST;
-
-    class meta_notify_file : public base_path
-    {
-    private:
-        std::string association_id, meta_notify_filename;
-        time_t last_access;
-
-    protected:
-        meta_notify_file(const std::string &assoc_id, const std::string &path, std::ostream *plog)
-            : base_path(path, plog), association_id(assoc_id) { time(&last_access); };
-        meta_notify_file(const std::string &assoc_id, const std::string &path, const std::string &filename, std::ostream *plog)
-            : base_path(path, plog), association_id(assoc_id), meta_notify_filename(filename) { time(&last_access); };
-
-    public:
-        meta_notify_file(const meta_notify_file& r) : base_path(r), association_id(r.association_id),
-            meta_notify_filename(r.meta_notify_filename),  last_access(r.last_access) {};
-        meta_notify_file& operator=(const meta_notify_file &r);
-        void print_state() const;
-        const std::string& get_association_id() const { return association_id; };
-        const std::string& get_meta_notify_filename() const { return meta_notify_filename; };
-        time_t get_last_access() const { return last_access; };
-        time_t refresh_last_access() { return time(&last_access); };
-        virtual bool is_time_out() { return false; };
-    };
-
-    typedef std::pair<HANDLE, meta_notify_file*> BASE_HANDLE_PAIR;
+    typedef std::pair<HANDLE, base_dir*> BASE_HANDLE_PAIR;
     class handle_compress;
     typedef std::map<HANDLE, handle_compress*> HANDLE_MAP;
     typedef std::pair<HANDLE, handle_compress*> HANDLE_PAIR;
@@ -86,7 +60,7 @@ namespace handle_context
     
     class named_pipe_server;
 
-    class handle_dir : public meta_notify_file // handle_dir is association
+    class handle_dir : public base_dir // handle_dir is association
     {
     private:
         std::list<std::string> list_file;
@@ -101,9 +75,9 @@ namespace handle_context
 
     public:
         handle_dir(const std::string &assoc_id, const std::string &path, const std::string notify_filename, std::ostream *plog)
-            : meta_notify_file(assoc_id, path, notify_filename, plog), last_find_error(false), last_association_notify_filename(notify_filename),
+            : base_dir(assoc_id, path, notify_filename, plog), last_find_error(false), last_association_notify_filename(notify_filename),
             assoc_disconn(false), disconn_release(true) { memset(&assoc, 0, sizeof(NOTIFY_ASSOC_SECTION)); assoc.port = 104; };
-        handle_dir(const handle_dir& o) : meta_notify_file(o), last_find_error(o.last_find_error),
+        handle_dir(const handle_dir& o) : base_dir(o), last_find_error(o.last_find_error),
             list_file(o.list_file), set_complete(o.set_complete), set_study(o.set_study), last_association_notify_filename(o.last_association_notify_filename),
             assoc_disconn(o.assoc_disconn), disconn_release(o.disconn_release), assoc(o.assoc) {};
         virtual ~handle_dir();
@@ -127,7 +101,7 @@ namespace handle_context
         const char* handle_dir::close_description() const;
     };
 
-    class handle_proc : public meta_notify_file
+    class handle_proc : public base_dir
     {
     private:
         HANDLE hlog;
@@ -136,9 +110,9 @@ namespace handle_context
 		DWORD priority;
     public:
         handle_proc(const std::string &assoc_id, const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name, std::ostream *plog) 
-            : meta_notify_file(assoc_id, cwd, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name), priority(NORMAL_PRIORITY_CLASS)
+            : base_dir(assoc_id, cwd, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name), priority(NORMAL_PRIORITY_CLASS)
             { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
-        handle_proc(const handle_proc& o) : meta_notify_file(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
+        handle_proc(const handle_proc& o) : base_dir(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
 			log_path(o.log_path), procinfo(o.procinfo), priority(o.priority) {};
         
         static bool make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, const std::string &prog_path, std::ostream &flog);

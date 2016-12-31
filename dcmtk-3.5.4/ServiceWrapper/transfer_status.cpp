@@ -18,38 +18,9 @@ const char* action_from_association::translate_action_type(ACTION_TYPE t)
     }
 }
 
-void meta_notify_file::print_state() const
-{
-    *pflog << "meta_notify_file::print_state() association_id: " << association_id << endl
-        << "\tmeta_notify_filename: " << meta_notify_filename << endl;
-
-    struct tm tm_last;
-    if(0 == localtime_s(&tm_last, &last_access))
-    {
-        char time_buf[32];
-        if(strftime(time_buf, sizeof(time_buf), "%Y/%m/%d %H:%M:%S", &tm_last))
-        {
-            *pflog << "\tlast_access: " << time_buf << endl;
-            goto convert_time_ok;
-        }
-    }
-    *pflog << "\tlast_access: " << last_access << endl;
-convert_time_ok:
-    base_path::print_state();
-}
-
-meta_notify_file& meta_notify_file::operator=(const meta_notify_file &r)
-{
-    base_path::operator=(r);
-    association_id = r.association_id;
-    meta_notify_filename = r.meta_notify_filename;
-    last_access = r.last_access;
-    return *this;
-}
-
 handle_dir& handle_dir::operator=(const handle_dir &r)
 {
-    meta_notify_file::operator=(r);
+    base_dir::operator=(r);
     assoc = r.assoc;
     last_association_notify_filename = r.last_association_notify_filename;
     assoc_disconn = r.assoc_disconn;
@@ -128,7 +99,7 @@ void handle_dir::print_state() const
     for(set<string>::iterator it = set_study.begin(); it != set_study.end(); ++it)
         *pflog << "\tstudy " << *it << endl;
 
-    meta_notify_file::print_state();
+    base_dir::print_state();
 }
 
 string& handle_dir::get_find_filter(std::string &filter) const
@@ -451,7 +422,7 @@ const char* handle_dir::close_description() const
 
 handle_proc& handle_proc::operator=(const handle_proc &r)
 {
-    meta_notify_file::operator=(r);
+    base_dir::operator=(r);
     hlog = r.hlog;
     exec_cmd = r.exec_cmd;
     exec_name = r.exec_name;
@@ -521,7 +492,7 @@ void handle_proc::print_state() const
 		break;
 	}
 	*pflog << endl;
-    meta_notify_file::print_state();
+    base_dir::print_state();
 }
 
 handle_proc::~handle_proc()

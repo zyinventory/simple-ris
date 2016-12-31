@@ -220,8 +220,7 @@ static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named
     {
         for(HANDLE_MAP::iterator it = map_handle_context.begin(); it != map_handle_context.end(); ++it)
         {
-            handle_compress *phcompr = NULL;
-            if(it->second) phcompr = dynamic_cast<handle_compress*>(it->second);
+            handle_compress *phcompr = it->second;
             if(phcompr && phcompr->get_association_id() == phdir->get_association_id()) return false;
         }
 
@@ -240,7 +239,8 @@ static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named
             // close monitor handle, all_compress_ok_notify is not processed.
             phdir->send_all_compress_ok_notify();
             phdir->broadcast_assoc_close_action_to_all_study(nps);
-                            
+
+            // todo: need meta_handle_dir
             if(pclz_base_dir) pclz_base_dir->remove_file_from_list(phdir->get_meta_notify_filename());
 
             if(opt_verbose || phdir->file_complete_remain())
@@ -403,7 +403,7 @@ int watch_notify(string &cmd, ofstream &flog)
                     }
 	                else
                     {
-                        meta_notify_file *phm = dynamic_cast<meta_notify_file*>(p.second);
+                        base_dir *phm = dynamic_cast<base_dir*>(p.second);
                         flog << phm->get_path() << " " << phm->get_meta_notify_filename() << endl;
                     }
                 });
@@ -432,10 +432,7 @@ int watch_notify(string &cmd, ofstream &flog)
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + min(hsize, MAXIMUM_WAIT_OBJECTS))
         {
             HANDLE waited = pha[wr - WAIT_OBJECT_0];
-            handle_compress *phcompr = NULL;
-            handle_proc *phproc = NULL;
-            handle_dir *phdir = NULL;
-            meta_notify_file *pb = map_handle_context.count(waited) ? map_handle_context[waited] : NULL;
+            handle_compress *phcompr = map_handle_context.count(waited) ? map_handle_context[waited] : NULL;
             
             if(waited == qrnps.get_handle()) // pipe client(dcmmkdir) connect incoming
             {
@@ -455,38 +452,21 @@ int watch_notify(string &cmd, ofstream &flog)
                     break;
                 }
             }
-            else if(pb)
+            else if(phcompr)
             {
-                if(phcompr = dynamic_cast<handle_compress*>(pb))
-                {
-                    ReleaseSemaphore(hSema, 1, NULL);
-                    map_handle_context.erase(phcompr->get_handle());
-                    NOTIFY_FILE_CONTEXT nfc = phcompr->get_notify_context();
-                    time_header_out(flog) << "watch_notify() handle_compress exit: " << nfc.assoc.path << " " << nfc.file.filename << " " << nfc.file.unique_filename << endl;
-                    if(debug_mode) phcompr->print_state();
-                    compress_complete(phcompr->get_association_id(), nfc.file.studyUID, true, nps, nfc, flog);
-                    delete phcompr;
-                }
-                else if(phproc = dynamic_cast<handle_proc*>(pb))
-                {
-                    time_header_out(flog) << "watch_notify() " << phproc->get_exec_name() << " encounter error, exit." << endl;
-                    map_handle_context.erase(waited);
-                    goto clean_child_proc;
-                    // restart proc?
-                }
-                else if(phdir = dynamic_cast<handle_dir*>(pb))
-                {
-                    time_header_out(flog) << "unexcepting phdir notify file " << phdir->get_association_id() << ", " << phdir->get_path() << endl;
-                }
-                else
-                {
-                    time_header_out(flog) << "unexcepting notify file " << pb->get_association_id() << ", " << pb->get_path() << endl;
-                }
+                ReleaseSemaphore(hSema, 1, NULL);
+                map_handle_context.erase(phcompr->get_handle());
+                NOTIFY_FILE_CONTEXT nfc = phcompr->get_notify_context();
+                time_header_out(flog) << "watch_notify() handle_compress exit: " << nfc.assoc.path << " " << nfc.file.filename << " " << nfc.file.unique_filename << endl;
+                if(debug_mode) phcompr->print_state();
+                compress_complete(phcompr->get_association_id(), nfc.file.studyUID, true, nps, nfc, flog);
+                delete phcompr;
             }
             else
             {
-                time_header_out(flog) << "watch_notify() missing handle " << waited << endl;
-                map_handle_context.erase(waited);
+                time_header_out(flog) << "watch_notify() phcompr is NULL, missing handle " << waited << endl;
+                for(int i = 0; i < hsize; ++i) flog << pha[i] << ' '; flog << endl;
+                break;
             }
         }
         else
@@ -635,7 +615,6 @@ int watch_notify(string &cmd, ofstream &flog)
     }
     else displayErrorToCerr("watch_notify() main loop exit", gle, &flog);
 
-clean_child_proc:
     if(hSema)
     {
         while(ReleaseSemaphore(hSema, 1, NULL)) ;

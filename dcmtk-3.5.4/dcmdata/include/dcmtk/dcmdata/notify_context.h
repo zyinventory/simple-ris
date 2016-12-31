@@ -3,7 +3,9 @@
 #ifndef _NOTIFY_CONTEXT_CLASS_
 #define _NOTIFY_CONTEXT_CLASS_
 
+#include <time.h>
 #include <iostream>
+#include <list>
 
 namespace handle_context
 {
@@ -48,6 +50,8 @@ namespace handle_context
         bool operator==(const struct _tag_NOTIFY_FILE_CONTEXT &r) const { return (!(*this < r) && !(r < *this)); };
     } NOTIFY_FILE_CONTEXT;
 
+    typedef std::list<NOTIFY_FILE_CONTEXT> NOTIFY_LIST;
+
     class base_path
     {
     private:
@@ -63,6 +67,43 @@ namespace handle_context
         virtual void print_state() const { *pflog << "base_path::print_state() path: " << path << std::endl; };
         virtual HANDLE get_handle() const { return NULL; };
         const std::string& get_path() const { return path; };
+    };
+
+    class base_dir : public base_path
+    {
+    private:
+        std::string association_id, meta_notify_filename;
+        time_t last_access;
+
+    protected:
+        base_dir(const std::string &assoc_id, const std::string &path, std::ostream *plog)
+            : base_path(path, plog), association_id(assoc_id) { time(&last_access); };
+        base_dir(const std::string &assoc_id, const std::string &path, const std::string &filename, std::ostream *plog)
+            : base_path(path, plog), association_id(assoc_id), meta_notify_filename(filename) { time(&last_access); };
+
+    public:
+        base_dir(const base_dir& r) : base_path(r), association_id(r.association_id),
+            meta_notify_filename(r.meta_notify_filename),  last_access(r.last_access) {};
+        base_dir& operator=(const base_dir &r)
+        {
+            base_path::operator=(r);
+            association_id = r.association_id;
+            meta_notify_filename = r.meta_notify_filename;
+            last_access = r.last_access;
+            return *this;
+        };
+        void print_state() const
+        {
+            *pflog << "base_dir::print_state() association_id: " << association_id << std::endl
+                << "\tmeta_notify_filename: " << meta_notify_filename << std::endl
+                << "\tlast_access: " << ctime(&last_access) << std::endl;
+            base_path::print_state();
+        };
+        const std::string& get_association_id() const { return association_id; };
+        const std::string& get_meta_notify_filename() const { return meta_notify_filename; };
+        time_t get_last_access() const { return last_access; };
+        time_t refresh_last_access() { return time(&last_access); };
+        virtual bool is_time_out() { return false; };
     };
 }
 
