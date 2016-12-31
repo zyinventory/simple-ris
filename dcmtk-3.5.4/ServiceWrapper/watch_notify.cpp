@@ -93,7 +93,7 @@ DWORD my_np_conn::process_file_incoming(const char *p_assoc_id, const char *noti
 static bool select_handle_dir_by_association_path(const handle_compress *pnf, const string &association_id, const string &path, ostream &flog)
 {
     if(pnf == NULL) return false;
-    bool same_assoc = (association_id.compare(pnf->get_association_id()) == 0);
+    bool same_assoc = (association_id.compare(pnf->get_id()) == 0);
     bool same_path = (path.compare(pnf->get_path()) == 0);
 
     if(same_assoc && same_path)
@@ -101,7 +101,7 @@ static bool select_handle_dir_by_association_path(const handle_compress *pnf, co
     else if(same_assoc || same_path)
     {
         time_header_out(flog) << "select_handle_dir_by_association_path(" << association_id << ", " << path 
-            << ") mismatch (" << pnf->get_association_id() << ", " << pnf->get_path() << ")" << endl;
+            << ") mismatch (" << pnf->get_id() << ", " << pnf->get_path() << ")" << endl;
         // path is unique key
         if(same_path) return (NULL != dynamic_cast<const handle_dir*>(pnf));
     }
@@ -216,24 +216,24 @@ static void compress_complete(const string &assoc_id, const string &study_uid, b
 
 static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named_pipe_server &nps, bool pick_up, ostream &flog)
 {
-    if(phdir && phdir->get_association_id().length())
+    if(phdir && phdir->get_id().length())
     {
         for(HANDLE_MAP::iterator it = map_handle_context.begin(); it != map_handle_context.end(); ++it)
         {
             handle_compress *phcompr = it->second;
-            if(phcompr && phcompr->get_association_id() == phdir->get_association_id()) return false;
+            if(phcompr && phcompr->get_id() == phdir->get_id()) return false;
         }
 
         for(NOTIFY_LIST::iterator it = compress_queue.begin(); it != compress_queue.end(); ++it)
         {
-            if(phdir->get_association_id().compare(it->assoc.id) == 0) return false;
+            if(phdir->get_id().compare(it->assoc.id) == 0) return false;
         }
 
         if(phdir->is_association_disconnect() || phdir->is_time_out())
         {
             if(opt_verbose)
             {
-                time_header_out(flog) << "close_handle_dir()" << (pick_up ? " pick up" : "") << " association " << phdir->get_association_id() << " complete, erease from map_handle_context." << endl;
+                time_header_out(flog) << "close_handle_dir()" << (pick_up ? " pick up" : "") << " association " << phdir->get_id() << " complete, erease from map_handle_context." << endl;
                 flog << "\t" << phdir->close_description() << " close." << endl;
             }
             // close monitor handle, all_compress_ok_notify is not processed.
@@ -266,8 +266,8 @@ static bool handle_less(const BASE_HANDLE_PAIR &p1, const BASE_HANDLE_PAIR &p2)
 
     if(c1 == 1) // p1 and p2 is handle_dir
     {
-        if(p1.second->get_association_id().length() == 0 && p2.second->get_association_id().length() > 0) return true;
-        else if(p2.second->get_association_id().length() == 0 && p1.second->get_association_id().length() > 0) return false;
+        if(p1.second->get_id().length() == 0 && p2.second->get_id().length() > 0) return true;
+        else if(p2.second->get_id().length() == 0 && p1.second->get_id().length() > 0) return false;
         // else (p1 and p2 length > 0) || (p1 and p2 length == 0), compare last_access
     }
     return p1.second->get_last_access() < p2.second->get_last_access();
@@ -296,7 +296,7 @@ int watch_notify(string &cmd, ofstream &flog)
 
     // start dcmqrscp.exe parent proc
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
-    handle_proc *phproc = new handle_proc("", buff, cmd, "dcmqrscp", &flog);
+    handle_proc *phproc = new handle_proc("", buff, "", cmd, "dcmqrscp", &flog);
     gle = phproc->start_process(true);
     if(gle)
     {
@@ -322,7 +322,7 @@ int watch_notify(string &cmd, ofstream &flog)
 #endif
     cmd = buff;
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
-    handle_proc *phproc_job = new handle_proc("", buff, cmd, "jobloader", &flog);
+    handle_proc *phproc_job = new handle_proc("", buff, "", cmd, "jobloader", &flog);
     gle = phproc_job->start_process(false);
     if(gle)
     {
@@ -459,7 +459,7 @@ int watch_notify(string &cmd, ofstream &flog)
                 NOTIFY_FILE_CONTEXT nfc = phcompr->get_notify_context();
                 time_header_out(flog) << "watch_notify() handle_compress exit: " << nfc.assoc.path << " " << nfc.file.filename << " " << nfc.file.unique_filename << endl;
                 if(debug_mode) phcompr->print_state();
-                compress_complete(phcompr->get_association_id(), nfc.file.studyUID, true, nps, nfc, flog);
+                compress_complete(phcompr->get_id(), nfc.file.studyUID, true, nps, nfc, flog);
                 delete phcompr;
             }
             else
@@ -561,7 +561,7 @@ int watch_notify(string &cmd, ofstream &flog)
 			{
 				handle_dir *phdir = NULL;
 				if(it->second) phdir = it->second;
-				if(phdir && phdir->get_association_id().length())
+				if(phdir && phdir->get_id().length())
 				{
 					exist_association_paths.insert(exist_association_paths.begin(), phdir->get_path());
 					if(close_handle_dir(phdir, NULL, nps, true, flog))

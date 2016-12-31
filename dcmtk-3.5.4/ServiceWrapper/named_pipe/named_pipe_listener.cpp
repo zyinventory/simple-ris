@@ -17,7 +17,7 @@ LISTENER_MAP named_pipe_listener::servers;
 
 named_pipe_listener& named_pipe_listener::operator=(const named_pipe_listener &r)
 {
-    named_pipe_base::operator=(r);
+    base_path::operator=(r);
     pflog = r.pflog;
     hPipeEvent = r.hPipeEvent;
     hPipe = r.hPipe;
@@ -69,7 +69,7 @@ void named_pipe_listener::print_state(void) const
         << "\thPipe: " << hPipe << endl
         << "\tmap_connections_read.size: " << map_connections_read.size() << endl
         << "\tmap_connections_write.size: " << map_connections_write.size() << endl;
-    named_pipe_base::print_state();
+    base_path::print_state();
 }
 
 DWORD named_pipe_listener::start_listening()

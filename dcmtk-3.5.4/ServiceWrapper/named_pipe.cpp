@@ -351,14 +351,14 @@ void named_pipe_server::check_study_timeout_to_generate_jdf(const std::set<std::
     {
         handle_study *phs = it->second;
         if(phs && !phs->send_remain_message_to_pipe() && phs->is_time_out()
-            && queued_study_uids.find(phs->get_study_uid()) == queued_study_uids.cend()
+            && queued_study_uids.find(phs->get_id()) == queued_study_uids.cend()
             && ! any_of(phs->get_set_association_path().begin(), phs->get_set_association_path().end(),
                 [&exist_assoc_paths](const string &s) { return (exist_assoc_paths.find(s) != exist_assoc_paths.end()); }))
         {
             if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::check_study_timeout_to_generate_jdf() study timeout: "
-                << phs->get_study_uid() << endl;
+                << phs->get_id() << endl;
             bool auto_publish = phs->get_last_association_action().is_auto_publish();
-            if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::check_study_timeout_to_generate_jdf() delete study " << phs->get_study_uid() << endl;
+            if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::check_study_timeout_to_generate_jdf() delete study " << phs->get_id() << endl;
             it = map_study.erase(it);
             phs->print_state();
             delete phs;

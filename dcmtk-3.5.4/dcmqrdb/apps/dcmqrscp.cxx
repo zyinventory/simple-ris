@@ -146,7 +146,8 @@ static void exitHook()
 class my_np_conn : public handle_context::named_pipe_connection
 {
 public:
-    my_np_conn(const char *path, size_t w_size, size_t r_size, ostream *plog) : handle_context::named_pipe_connection(path, w_size, r_size, plog) { };
+    my_np_conn(const char *assoc_id, const char *path, const char *meta_notify_file, size_t w_size, size_t r_size, ostream *plog)
+        : handle_context::named_pipe_connection(assoc_id, path, meta_notify_file, w_size, r_size, plog) { };
     virtual ~my_np_conn() { };
     virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size)
     {
@@ -178,8 +179,10 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
 
     if(current_assoc_id.length() == 0)
     {
+        string meta_notify_filename(GetPacsTemp());
         current_assoc_id = pscp->getAssociationId();
-        pnpc = new my_np_conn(NAMED_PIPE_QR, 4095, 4095, &CERR);
+        meta_notify_filename.append("\\" NOTIFY_BASE "\\").append(current_assoc_id).append("_" NOTIFY_FILE_TAG ".dfc");
+        pnpc = new my_np_conn(current_assoc_id.c_str(), NAMED_PIPE_QR, meta_notify_filename.c_str(), 4095, 4095, &CERR);
         if(pnpc->start_working())
         {
             time_header_out(CERR) << "Error Connect Named Pipe: " << NAMED_PIPE_QR << endl;

@@ -4,33 +4,16 @@
 #include <iostream>
 #include <list>
 #include <map>
+#include "dcmtk/dcmdata/notify_context.h"
 #endif
 
 #define NAMED_PIPE_QR "\\\\.\\pipe\\dcmtk_qr"
+#define NOTIFY_BASE "store_notify"
 
 namespace handle_context
 {
-    class named_pipe_base
-    {
-    private:
-        std::string path;
-
-    protected:
-        std::ostream *pflog;
-        named_pipe_base(const std::string p, std::ostream *plog) : path(p), pflog(plog) { if(pflog == NULL) pflog = &std::cerr; };
-
-    public:
-        named_pipe_base(const named_pipe_base &r) : path(r.path), pflog(r.pflog) {};
-        named_pipe_base& operator=(const named_pipe_base &r) { path = r.path; pflog = r.pflog; return *this; };
-        virtual void print_state() const { *pflog << "named_pipe_base::print_state() path: " << path << std::endl; };
-        virtual HANDLE get_handle() const { return NULL; };
-        const std::string& get_path() const { return path; };
-        std::ostream* get_err_stream() const { return pflog; };
-    };
-
     class named_pipe_listener;
     class named_pipe_connection;
-    
     typedef named_pipe_connection* (WINAPI *LPPIPE_CONNECT_CALLBACK)(named_pipe_listener*);
     void CALLBACK read_pipe_complete(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap);
     void CALLBACK write_pipe_complete(DWORD dwErr, DWORD cbBytesWrite, LPOVERLAPPED lpOverLap);
@@ -41,7 +24,7 @@ namespace handle_context
     typedef std::map<LPOVERLAPPED, named_pipe_connection*> CONN_MAP;
     typedef std::pair<LPOVERLAPPED, named_pipe_connection*> CONN_PAIR;
     
-    class named_pipe_listener : public named_pipe_base
+    class named_pipe_listener : public base_path
     {
     private:
         static LISTENER_MAP servers;
@@ -55,12 +38,10 @@ namespace handle_context
     public:
         static named_pipe_listener* find_named_pipe_listener(HANDLE h){ return servers.count(h) ? servers[h] : NULL; };
         static std::ostream* find_err_log();
-        named_pipe_listener(const char *pipe_path, DWORD write_size, DWORD read_size,
-            LPPIPE_CONNECT_CALLBACK conn_callback, std::ostream *plog)
-            : named_pipe_base(pipe_path, plog), hPipeEvent(NULL), hPipe(NULL),
-            write_buff_size(write_size), read_buff_size(read_size), connect_callback(conn_callback)
+        named_pipe_listener(const char *pipe_path, DWORD write_size, DWORD read_size, LPPIPE_CONNECT_CALLBACK conn_callback, std::ostream *plog)
+            : base_path(pipe_path, plog), hPipeEvent(NULL), hPipe(NULL), write_buff_size(write_size), read_buff_size(read_size), connect_callback(conn_callback)
             { memset(&olPipeConnectOnly, 0, sizeof(OVERLAPPED)); };
-        named_pipe_listener(const named_pipe_listener &r) : named_pipe_base(r), hPipeEvent(r.hPipeEvent), hPipe(r.hPipe),
+        named_pipe_listener(const named_pipe_listener &r) : base_path(r), hPipeEvent(r.hPipeEvent), hPipe(r.hPipe),
             write_buff_size(r.write_buff_size), read_buff_size(r.read_buff_size), olPipeConnectOnly(r.olPipeConnectOnly),
             connect_callback(r.connect_callback){};
         named_pipe_listener& operator=(const named_pipe_listener &r);
@@ -77,7 +58,7 @@ namespace handle_context
         HANDLE get_current_pipe_handle() const { return hPipe; };
     };
 
-    class named_pipe_connection : public named_pipe_base
+    class named_pipe_connection : public base_dir
     {
     private:
         static CONN_MAP map_alone_connections_read, map_alone_connections_write;
@@ -101,15 +82,15 @@ namespace handle_context
         static void remove_alone_connection(named_pipe_connection*);
         static named_pipe_connection* find_alone_connection(LPOVERLAPPED, bool is_write);
         static std::ostream* find_err_log_from_alone();
-        named_pipe_connection(const char *path, size_t wbuff_size, size_t rbuff_size, std::ostream *plog)
-            : named_pipe_base(path, plog), hPipeInst(NULL), write_buff_size(wbuff_size), read_buff_size(rbuff_size),
+        named_pipe_connection(const char *assoc_id, const char *path, const char *meta_notify_file, size_t wbuff_size, size_t rbuff_size, std::ostream *plog)
+            : base_dir(assoc_id, path, meta_notify_file, plog), hPipeInst(NULL), write_buff_size(wbuff_size), read_buff_size(rbuff_size),
             closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), p_listener(NULL)
         {
             memset(&oOverlap_read, 0, sizeof(oOverlap_read));
             memset(&oOverlap_write, 0, sizeof(oOverlap_write));
             ptr_read_buff = new char[read_buff_size + 1];
         };
-        named_pipe_connection(named_pipe_listener *pnps) : named_pipe_base(pnps->get_path().c_str(), pnps->get_err_stream()),
+        named_pipe_connection(named_pipe_listener *pnps) : base_dir("", pnps->get_path().c_str(), "", pnps->get_err_stream()),
             closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), p_listener(pnps),
             write_buff_size(pnps->get_write_buff_size()), read_buff_size(pnps->get_read_buff_size()), hPipeInst(pnps->get_current_pipe_handle())
         {

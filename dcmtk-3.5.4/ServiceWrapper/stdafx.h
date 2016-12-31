@@ -43,6 +43,7 @@
 #include <functional>
 
 #define FILE_BUF_SIZE 1024
+#include "../dcmdata/include/dcmtk/dcmdata/notify_context.h"
 #include "handle_context.h"
 
 int watch_notify(std::string &cmd, std::ofstream &flog);

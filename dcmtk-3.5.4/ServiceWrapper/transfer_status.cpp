@@ -86,7 +86,7 @@ void handle_dir::print_state() const
         << "\tdisconn_release: " << disconn_release << endl
         << "\tlast_find_error: " << last_find_error << endl;
     set<string> remain(set_complete);
-    *pflog << "\tassociation " << get_association_id() << " " << get_path() << " file " << dec << list_file.size() << ", complete " << set_complete.size() << endl;
+    *pflog << "\tassociation " << get_id() << " " << get_path() << " file " << dec << list_file.size() << ", complete " << set_complete.size() << endl;
     for(list<string>::const_iterator it = list_file.begin(); it != list_file.end(); ++it)
     {
         if(remain.find(*it) == remain.end())
@@ -105,7 +105,7 @@ void handle_dir::print_state() const
 string& handle_dir::get_find_filter(std::string &filter) const
 {
     filter = get_path();
-    if(get_association_id().length()) filter.append("\\state"); // is association
+    if(get_id().length()) filter.append("\\state"); // is association
     // else is store_notify
     return filter.append("\\*.dfc");
 }
@@ -228,7 +228,7 @@ void handle_dir::process_notify_association(std::istream &ifs, unsigned int tag,
     switch(tag)
     {
     case NOTIFY_ASSOC_ESTA:
-        strcpy_s(assoc.id, get_association_id().c_str());
+        strcpy_s(assoc.id, get_id().c_str());
         strcpy_s(assoc.path, get_path().c_str());
         ifs >> assoc.store_assoc_id >> assoc.callingAE >> assoc.callingAddr >> assoc.calledAE >> dec >> assoc.port >> assoc.expected_xfer >> assoc.auto_publish >> assoc.calledAddr;
         if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << assoc.id << " "
@@ -237,12 +237,12 @@ void handle_dir::process_notify_association(std::istream &ifs, unsigned int tag,
     case NOTIFY_ASSOC_RELEASE:
         assoc_disconn = true;
         disconn_release = true;
-        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_association_id() << " disconnect release." << endl;
+        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_id() << " disconnect release." << endl;
         break;
     case NOTIFY_ASSOC_ABORT:
         assoc_disconn = true;
         disconn_release = false;
-        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_association_id() << " disconnect abort." << endl;
+        if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify_association() " << get_id() << " disconnect abort." << endl;
         break;
     default:
         {
@@ -260,7 +260,7 @@ DWORD handle_dir::process_notify(const std::string &filename, NOTIFY_LIST &compr
     DWORD gle = 0, tag;
     string cmd, filepath(get_path());
     filepath.append("\\state\\").append(filename);
-    if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filename << "): " << get_association_id() << ":" << filepath << endl;
+    if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filename << "): " << get_id() << ":" << filepath << endl;
 
     ifstream ifs(filepath, ios_base::in, _SH_DENYWR);
     if(ifs.fail())
@@ -287,9 +287,9 @@ DWORD handle_dir::process_notify(const std::string &filename, NOTIFY_LIST &compr
             this->fill_association_section(pnfc->assoc);
             strcpy_s(pnfc->src_notify_filename, filename.c_str());
             pnfc->file.StorePath();
-            if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filename << ") " << get_association_id() << " read OK." << endl;
+            if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filename << ") " << get_id() << " read OK." << endl;
 #ifdef _DEBUG
-            time_header_out(cerr) << "handle_dir::process_notify(" << filename << ") " << get_association_id() << " read OK." << endl;
+            time_header_out(cerr) << "handle_dir::process_notify(" << filename << ") " << get_id() << " read OK." << endl;
 #endif
             // don't insert file to set_complete now, insert it after compress complete
             compress_queue.push_back(*pnfc);
@@ -393,7 +393,7 @@ void handle_dir::broadcast_assoc_close_action_to_all_study(named_pipe_server &np
         if(strcmp(assoc.auto_publish, "STUDY") == 0) type = BURN_PER_STUDY;
     }
     else
-        time_header_out(*pflog) << "handle_dir::broadcast_assoc_close_action_to_all_study() failed: association " << get_association_id() << " is not disconnected, force close." << endl;
+        time_header_out(*pflog) << "handle_dir::broadcast_assoc_close_action_to_all_study() failed: association " << get_id() << " is not disconnected, force close." << endl;
 
     paaa = new action_from_association(type, get_path(), disconn_release, pflog);
 
@@ -599,7 +599,7 @@ handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT
         ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), nfc.file.hash, nfc.file.studyUID);
         strcpy_s(cmd + ctn, sizeof(cmd) - ctn, nfc.file.unique_filename);
         PrepareFileDir(cmd + mkdir_pos);
-        return new handle_compress(nfc.assoc.id, nfc.assoc.path, cmd, "move", nfc, &flog);
+        return new handle_compress(nfc.assoc.id, nfc.assoc.path, nfc.src_notify_filename, cmd, "move", nfc, &flog);
     }
     else // compress
     {
@@ -626,7 +626,7 @@ handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT
         int ctn = mkdir_pos;
         ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), nfc.file.hash, nfc.file.studyUID);
         strcpy_s(cmd + ctn, sizeof(cmd) - ctn, nfc.file.unique_filename);
-        return new handle_compress(nfc.assoc.id, nfc.assoc.path, cmd, "dcmcjpeg", nfc, &flog);
+        return new handle_compress(nfc.assoc.id, nfc.assoc.path, nfc.src_notify_filename, cmd, "dcmcjpeg", nfc, &flog);
     }
 }
 
@@ -671,7 +671,7 @@ bool handle_proc::make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, con
     string cmd(GetPacsBase());
     cmd.append(1, '\\').append(prog_path).append(1, ' ').append(pnfc->file.patientID)
         .append(1, ' ').append(pnfc->file.studyUID).append(1, ' ').append(pnfc->study.accessionNumber);
-    handle_proc *pris = new handle_proc(pnfc->file.studyUID, path, cmd, "RisIntegration", &flog);
+    handle_proc *pris = new handle_proc(pnfc->file.studyUID, path, "", cmd, "RisIntegration", &flog);
     if(pris)
     {
         DWORD gle = pris->start_process(false);
@@ -692,12 +692,12 @@ bool handle_proc::make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, con
 
 handle_study::handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
     const std::string &dicomdir, const std::string &study, std::ostream *plog)
-    : handle_proc("", cwd, cmd, exec_prog_name, plog), pipe_context(NULL), dicomdir_path(dicomdir), study_uid(study),
+    : handle_proc(study, cwd, "", cmd, exec_prog_name, plog), pipe_context(NULL), dicomdir_path(dicomdir),
     blocked(false), ris_integration_start(false), last_association_action(INDEX_INSTANCE, cwd, false, plog)
 {
     char seq_buff[MAX_PATH];
     size_t pos = in_process_sequence_dll(seq_buff, sizeof(seq_buff), "");
-    sprintf_s(seq_buff + pos, sizeof(seq_buff) - pos, "_%s", study_uid.c_str());
+    sprintf_s(seq_buff + pos, sizeof(seq_buff) - pos, "_%s", get_id());
     lock_file_name = seq_buff;
 }
 
@@ -708,7 +708,6 @@ handle_study& handle_study::operator=(const handle_study &r)
     blocked = r.blocked;
     ris_integration_start = r.ris_integration_start;
     last_association_action = r.last_association_action;
-    study_uid = r.study_uid;
     lock_file_name = r.lock_file_name;
     dicomdir_path = r.dicomdir_path;
     copy(r.set_association_path.begin(), r.set_association_path.end(), inserter(set_association_path, set_association_path.end()));
@@ -718,7 +717,7 @@ handle_study& handle_study::operator=(const handle_study &r)
 
 handle_study::~handle_study()
 {
-    if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__ << " " << study_uid << endl;
+    if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__ << " " << get_id() << endl;
     if(pipe_context)
     {
         if(pipe_context->hPipeInst && pipe_context->hPipeInst != INVALID_HANDLE_VALUE)
@@ -884,7 +883,7 @@ DWORD handle_study::write_message_to_pipe()
     DWORD gle = 0;
     if(list_action.empty())
     {
-        if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " blocked, list_action is empty."  << endl;
+        if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << get_id() << " blocked, list_action is empty."  << endl;
         blocked = true;
         return gle;
     } // return error shall cause ~handle_study()
@@ -918,20 +917,20 @@ DWORD handle_study::write_message_to_pipe()
             {   // return error shall cause ~handle_study()
                 return displayErrorToCerr(__FUNCSIG__ " WriteFileEx()", GetLastError(), pflog);
             }
-            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " write message " << pipe_context->chBuffer << endl;
+            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" handle_study " << get_id() << " write message " << pipe_context->chBuffer << endl;
             write_message_ok = true;
             break;
         case BURN_PER_STUDY:
         case NO_ACTION:
             if(opt_verbose)
             {
-                time_header_out(*pflog) << __FUNCSIG__" handle_study " << study_uid << " erase association " << it->get_path() << ", disconnect ";
+                time_header_out(*pflog) << __FUNCSIG__" handle_study " << get_id() << " erase association " << it->get_path() << ", disconnect ";
                 if(it->release) *pflog << " release." << endl;
                 else *pflog << " abort." << endl;
             }
 
             remove_association_path(it->get_path());
-            if(opt_verbose) time_header_out(*pflog) << "handle_study::write_message_to_pipe() erease_association " << study_uid << endl
+            if(opt_verbose) time_header_out(*pflog) << "handle_study::write_message_to_pipe() erease_association " << get_id() << endl
                 << "\tand erease assoc " << it->get_path() << endl;
             break;
         case NO_INSTANCE:
@@ -976,7 +975,7 @@ void handle_study::remove_compress_ok_action(const string &filename, const strin
 
 void handle_study::print_state() const
 {
-    *pflog << "handle_study::print_state() " << study_uid << endl
+    *pflog << "handle_study::print_state() " << get_id() << endl
         << "\tdicomdir_path: " << dicomdir_path << endl
         << "\tblocked: " << blocked << endl
         << "\tlast_association_action: " << endl;

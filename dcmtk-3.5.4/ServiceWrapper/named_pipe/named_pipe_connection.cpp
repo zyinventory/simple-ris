@@ -116,7 +116,7 @@ void named_pipe_connection::print_state(void) const
         << "\toOverlap_write: " << &oOverlap_write << endl
         << "\twrite_buff_size: " << write_buff_size << endl
         << "\tread_buff_size: " << read_buff_size << endl;
-    named_pipe_base::print_state();
+    base_dir::print_state();
 }
 
 DWORD named_pipe_connection::read_message()

@@ -5,9 +5,6 @@
 
 #include <time.h>
 #include <string>
-#include "../dcmdata/include/dcmtk/dcmdata/notify_context.h"
-
-#define NOTIFY_BASE "store_notify"
 
 namespace handle_context
 {
@@ -109,8 +106,8 @@ namespace handle_context
         PROCESS_INFORMATION procinfo;
 		DWORD priority;
     public:
-        handle_proc(const std::string &assoc_id, const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name, std::ostream *plog) 
-            : base_dir(assoc_id, cwd, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name), priority(NORMAL_PRIORITY_CLASS)
+        handle_proc(const std::string &assoc_id, const std::string &cwd, const std::string &notify_file, const std::string &cmd, const std::string &exec_prog_name, std::ostream *plog) 
+            : base_dir(assoc_id, cwd, notify_file, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name), priority(NORMAL_PRIORITY_CLASS)
             { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
         handle_proc(const handle_proc& o) : base_dir(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
 			log_path(o.log_path), procinfo(o.procinfo), priority(o.priority) {};
@@ -135,8 +132,8 @@ namespace handle_context
         NOTIFY_FILE_CONTEXT notify_ctx;
         
     protected:
-        handle_compress(const std::string &assoc_id, const std::string &path, const std::string &cmd, const std::string &exec_prog_name, const NOTIFY_FILE_CONTEXT &nfc, std::ostream *plog)
-            : handle_proc(assoc_id, path, cmd, exec_prog_name, plog), notify_ctx(nfc) { };
+        handle_compress(const std::string &assoc_id, const std::string &path, const std::string &notify_file, const std::string &cmd, const std::string &exec_prog_name, const NOTIFY_FILE_CONTEXT &nfc, std::ostream *plog)
+            : handle_proc(assoc_id, path, notify_file, cmd, exec_prog_name, plog), notify_ctx(nfc) { };
 
     public:
         static handle_compress* make_handle_compress(const NOTIFY_FILE_CONTEXT &nfc, std::ostream &flog);
@@ -160,7 +157,7 @@ namespace handle_context
     private:
         LPPIPEINST pipe_context;
         bool blocked, ris_integration_start;
-        std::string study_uid, lock_file_name, dicomdir_path;
+        std::string lock_file_name, dicomdir_path;
         std::list<action_from_association> list_action;
         std::set<std::string> set_association_path;
         action_from_association last_association_action;
@@ -170,7 +167,7 @@ namespace handle_context
     public:
         handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name,
             const std::string &dicomdir, const std::string &study, std::ostream *plog);
-        handle_study(const handle_study &r) : handle_proc(r), pipe_context(r.pipe_context), study_uid(r.study_uid), lock_file_name(r.lock_file_name),
+        handle_study(const handle_study &r) : handle_proc(r), pipe_context(r.pipe_context), lock_file_name(r.lock_file_name),
             dicomdir_path(r.dicomdir_path), set_association_path(r.set_association_path), list_action(r.list_action),
             blocked(r.blocked), ris_integration_start(r.ris_integration_start), last_association_action(r.last_association_action) {};
         
@@ -180,7 +177,6 @@ namespace handle_context
         void bind_pipe_context(LPPIPEINST p_context) { pipe_context = p_context; };
         DWORD write_message_to_pipe();
         void remove_compress_ok_action(const std::string &filename, const std::string &xfer);
-        const std::string& get_study_uid() const { return study_uid; };
         const std::string& get_dicomdir_path() const { return dicomdir_path; };
         const action_from_association& get_last_association_action() const { return last_association_action; };
         const std::set<std::string>& get_set_association_path() const { return set_association_path; };
