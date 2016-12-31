@@ -9,6 +9,7 @@
 
 #define NAMED_PIPE_QR "\\\\.\\pipe\\dcmtk_qr"
 #define NOTIFY_BASE "store_notify"
+#define PIPE_BUFFER_SIZE 4095
 
 namespace handle_context
 {

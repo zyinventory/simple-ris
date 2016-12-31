@@ -288,7 +288,7 @@ int watch_notify(string &cmd, ofstream &flog)
     disable_remained_meta_notify_file(buff, flog);
 
     // listen on named pipe
-    named_pipe_listener qrnps("\\\\.\\pipe\\dcmtk_qr", 4095, 4095, create_new_pipe_connect, &flog);
+    named_pipe_listener qrnps("\\\\.\\pipe\\dcmtk_qr", PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, create_new_pipe_connect, &flog);
     DWORD gle = qrnps.start_listening();
     if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
     {
