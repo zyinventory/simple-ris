@@ -282,7 +282,7 @@ static named_pipe_connection* WINAPI create_new_pipe_connect(named_pipe_listener
 
 int watch_notify(string &cmd, ofstream &flog)
 {
-    sprintf_s(buff, "%s\\pacs\\store_notify\\*.dfc", GetPacsTemp());
+    sprintf_s(buff, "%s\\pacs\\"NOTIFY_BASE"\\*.dfc", GetPacsTemp());
     disable_remained_meta_notify_file(buff, flog);
     sprintf_s(buff, "%s\\orders_study\\*.ini", GetPacsTemp());
     disable_remained_meta_notify_file(buff, flog);
