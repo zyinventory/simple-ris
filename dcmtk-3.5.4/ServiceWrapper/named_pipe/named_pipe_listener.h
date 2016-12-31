@@ -75,8 +75,6 @@ namespace handle_context
         DWORD write_message(size_t num, const void *ptr_data);
         DWORD write_message_pack();
 
-    protected:
-
     public:
         static void regist_alone_connection(named_pipe_connection*);
         static void remove_alone_connection(named_pipe_connection*);

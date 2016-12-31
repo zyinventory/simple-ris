@@ -48,7 +48,7 @@ DWORD my_np_conn::process_message(char *ptr_data_buffer, size_t cbBytesRead, siz
 handle_dir* my_np_conn::create_new_handle_dir(const char *p_assoc_id)
 {
     string meta_notify_file(GetPacsTemp());
-    meta_notify_file.append("\\pacs\\").append(NOTIFY_BASE).append(1, '\\').append(p_assoc_id).append("_ACKN.dfc");
+    meta_notify_file.append("\\pacs\\"NOTIFY_BASE"\\").append(p_assoc_id).append("_ACKN.dfc");
 #ifdef _DEBUG
     time_header_out(cerr) << "my_np_conn::process_meta_notify_file() process meta notify: " << meta_notify_file << endl;
 #endif
@@ -82,6 +82,8 @@ DWORD my_np_conn::process_file_incoming(const char *p_assoc_id, const char *noti
     if(it != handle_dir_map.end()) phd = it->second;
     if(phd == NULL)
     {
+        set_id(p_assoc_id);
+        set_meta_notify_filename(notify_file);
         phd = create_new_handle_dir(p_assoc_id);
         if(phd) handle_dir_map[p_assoc_id] = phd;
     }

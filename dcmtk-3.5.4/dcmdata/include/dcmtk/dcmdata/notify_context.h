@@ -79,6 +79,8 @@ namespace handle_context
     protected:
         base_dir(const std::string &assoc_id, const std::string &path, const std::string &filename, std::ostream *plog)
             : base_path(path, plog), id(assoc_id), meta_notify_filename(filename) { time(&last_access); };
+        void set_id(const std::string &new_id) { id = new_id; };
+        void set_meta_notify_filename(const std::string &new_meta) { meta_notify_filename = new_meta; };
 
     public:
         base_dir(const base_dir& r) : base_path(r), id(r.id),
