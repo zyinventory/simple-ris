@@ -77,7 +77,7 @@ OFCondition DcmQueryRetrieveDatabaseHandle::makeStoreAssociationDir(
         pos += sprintf_s(store_path + pos, sizeof(store_path) - pos, "\\%s", associationId);
         if(_mkdir(store_path) == 0 || errno == EEXIST)
         {
-            sprintf_s(store_path + pos, sizeof(store_path) - pos, "\\%s", STATE_DIR_NO_SP);
+            sprintf_s(store_path + pos, sizeof(store_path) - pos, "\\%s", STORE_STATE_DIR);
             if(_mkdir(store_path) == 0 || errno == EEXIST)
                 return EC_Normal;
         }

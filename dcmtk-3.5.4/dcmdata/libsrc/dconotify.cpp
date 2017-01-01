@@ -13,9 +13,6 @@
 #include "dcmtk/dcmdata/dcdatset.h"
 #include "dcmtk/dcmdata/dcdeftag.h"
 
-static OFList<OFString>  patients, studies, series;
-static size_t            instances = NOTIFY_FILE_SEQ_START;
-
 namespace
 {
     class numpunct_no_gouping : public std::numpunct_byname<char>
@@ -27,12 +24,12 @@ namespace
     };
 }
 
-void datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet, bool isFull)
+const std::string& DatasetNotifyWriter::datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet, bool isFull)
 {
     const char *charset = NULL;
     (*imageDataSet)->findAndGetString(DCM_SpecificCharacterSet, charset);
 
-    OFString patientID, studyUID, seriesUID;
+    std::string patientID, seriesUID;
     std::ostringstream strmbuf;
     std::locale loc_nnp(std::locale::locale(""), ::new numpunct_no_gouping("")); // force ::new, otherwise will encounter DEBUG_NEW bug
     strmbuf.imbue(loc_nnp);
@@ -40,7 +37,10 @@ void datasetToNotify(const char* instanceFileName, const char *notifyFileName, D
     strmbuf << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << instances << " " << instanceFileName << endl;
 
     if(isFull)
+    {
         (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_FULL);
+        (*imageDataSet)->findAndGetOFString(DCM_StudyInstanceUID, currentStudyUID);
+    }
     else
     {
         (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_INSTANCE);
@@ -51,11 +51,11 @@ void datasetToNotify(const char* instanceFileName, const char *notifyFileName, D
             (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_PATIENT);
             patients.push_back(patientID);
         }
-        (*imageDataSet)->findAndGetOFString(DCM_StudyInstanceUID, studyUID);
-        if(studies.end() == find(studies.begin(), studies.end(), studyUID))
+        (*imageDataSet)->findAndGetOFString(DCM_StudyInstanceUID, currentStudyUID);
+        if(studies.end() == find(studies.begin(), studies.end(), currentStudyUID))
         {
             (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_STUDY);
-            studies.push_back(studyUID);
+            studies.push_back(currentStudyUID);
         }
         (*imageDataSet)->findAndGetOFString(DCM_SeriesInstanceUID, seriesUID);
         if(series.end() == find(series.begin(), series.end(), seriesUID))
@@ -81,6 +81,7 @@ void datasetToNotify(const char* instanceFileName, const char *notifyFileName, D
 
     sw.clear();
     strmbuf.str(sw);
+    return currentStudyUID;
 }
 
 bool mkdir_recursive_dcm(const char *subdir)

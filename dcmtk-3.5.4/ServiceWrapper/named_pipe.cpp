@@ -1,6 +1,4 @@
 #include "stdafx.h"
-#include "commonlib.h"
-#include "../dcmdata/include/dcmtk/dcmdata/dconotify.h"
 
 using namespace std;
 using namespace handle_context;

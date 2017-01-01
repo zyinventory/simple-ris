@@ -97,7 +97,7 @@ namespace handle_context
         {
             *pflog << "base_dir::print_state() id: " << id << std::endl
                 << "\tmeta_notify_filename: " << meta_notify_filename << std::endl
-                << "\tlast_access: " << ctime(&last_access) << std::endl;
+                << "\tlast_access: " << ctime(&last_access); // ctime() shall term with LF
             base_path::print_state();
         };
         const std::string& get_id() const { return id; };

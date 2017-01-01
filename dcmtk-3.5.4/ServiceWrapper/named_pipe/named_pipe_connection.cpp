@@ -4,15 +4,15 @@
 #include <windows.h>
 #include <iterator>
 #include <sstream>
-#endif
-
 #include "named_pipe_listener.h"
 #include <commonlib.h>
+#endif
 
 using namespace std;
 using namespace handle_context;
 
 CONN_MAP named_pipe_connection::map_alone_connections_read, named_pipe_connection::map_alone_connections_write;
+std::list<named_pipe_connection*> named_pipe_connection::wait_close_conn_list;
 
 void named_pipe_connection::regist_alone_connection(named_pipe_connection *pnpc)
 {
@@ -23,13 +23,17 @@ void named_pipe_connection::regist_alone_connection(named_pipe_connection *pnpc)
     }
 }
 
-void named_pipe_connection::remove_alone_connection(named_pipe_connection *pnpc)
+size_t named_pipe_connection::remove_alone_connection(named_pipe_connection *pnpc)
 {
     if(pnpc)
     {
-        map_alone_connections_read.erase(pnpc->get_overlap_read());
-        map_alone_connections_write.erase(pnpc->get_overlap_read());
+        CONN_MAP::size_type removed = map_alone_connections_read.erase(pnpc->get_overlap_read());
+        removed += map_alone_connections_write.erase(pnpc->get_overlap_write());
+        if(removed) time_header_out(*find_err_log_all()) << "named_pipe_listener::remove_alone_connection() remove "
+            << pnpc->get_overlap_read() << ", " << pnpc->get_overlap_write() << endl;
+        return removed;
     }
+    return 0;
 }
 
 named_pipe_connection* named_pipe_connection::find_alone_connection(LPOVERLAPPED pol, bool is_write)
@@ -54,7 +58,7 @@ named_pipe_connection::~named_pipe_connection()
 {
     if(ptr_write_buff) delete ptr_write_buff;
     if(ptr_read_buff) delete ptr_read_buff;
-    if(!closing) close_pipe();
+    if(!close_pipe()) SleepEx(0, TRUE);
     if(hPipeInst && hPipeInst != INVALID_HANDLE_VALUE) CloseHandle(hPipeInst);
     hPipeInst = NULL;
 }
@@ -75,11 +79,10 @@ DWORD named_pipe_connection::start_working()
             if(hPipeInst != INVALID_HANDLE_VALUE) break;
         }
     }
-    if(hPipeInst == INVALID_HANDLE_VALUE)
+    if(hPipeInst == NULL || hPipeInst == INVALID_HANDLE_VALUE)
     {
         gle = GetLastError();
-        time_header_out(*pflog) << __FUNCSIG__ " can't WaitNamedPipe(" << NAMED_PIPE_QR << ")" << endl;
-        return gle;
+        return displayErrorToCerr(__FUNCSIG__" can't WaitNamedPipe("NAMED_PIPE_QR")", gle);
     }
     DWORD dwMode = PIPE_READMODE_MESSAGE;
     BOOL fSuccess = SetNamedPipeHandleState(hPipeInst, &dwMode, NULL, NULL);
@@ -94,7 +97,9 @@ bool named_pipe_connection::close_pipe()
     if(!closing)
     {
         closing = true;
-        if(p_listener)
+        wait_close_conn_list.push_back(this);
+        if(hPipeInst && hPipeInst != INVALID_HANDLE_VALUE) CancelIo(hPipeInst);
+        if(p_listener) // is server side?
         {
             if(hPipeInst && hPipeInst != INVALID_HANDLE_VALUE)
             {
@@ -104,8 +109,24 @@ bool named_pipe_connection::close_pipe()
             else time_header_out(*pflog) << __FUNCSIG__ " hPipeInst is invalid." << endl;
         }
     }
+
     if(reading || bytes_queued) return false;
-    else return true;
+    else
+    {
+        if(!removed_from_map)
+        {
+            time_header_out(*pflog) << "named_pipe_connection::close_pipe() try removing pipe " << get_id() << ", " << get_handle() << endl;
+            size_t removed = 0;
+            if(p_listener) removed += p_listener->remove_pipe(this);
+            else removed += remove_alone_connection(this);
+            if(removed)
+            {
+                removed_from_map = true;
+                time_header_out(*pflog) << "named_pipe_connection::close_pipe() remove pipe " << get_id() << ", " << get_handle() << endl;
+            }
+        }
+        return true;
+    }
 }
 
 void named_pipe_connection::print_state(void) const
@@ -115,19 +136,24 @@ void named_pipe_connection::print_state(void) const
         << "\toOverlap_read: " << &oOverlap_read << endl
         << "\toOverlap_write: " << &oOverlap_write << endl
         << "\twrite_buff_size: " << write_buff_size << endl
-        << "\tread_buff_size: " << read_buff_size << endl;
+        << "\tread_buff_size: " << read_buff_size << endl
+        << "\tclosing: " << closing << endl
+        << "\treading: " << reading << endl
+        << "\tremoved_from_map: " << removed_from_map << endl;
     base_dir::print_state();
 }
 
 DWORD named_pipe_connection::read_message()
 {
     if(closing) return ERROR_HANDLE_EOF;
+
     if(ptr_read_buff == NULL)
     {
         ptr_read_buff = new char[read_buff_size + 1];
         if(ptr_write_buff == NULL)
             return displayErrorToCerr(__FUNCSIG__" malloc read buffer", ERROR_NOT_ENOUGH_MEMORY, pflog);
     }
+    refresh_last_access();
     reading = true;
     if(!ReadFileEx(hPipeInst, ptr_read_buff, read_buff_size, &oOverlap_read, handle_context::read_pipe_complete))
     {
@@ -141,13 +167,14 @@ DWORD named_pipe_connection::read_pipe_complete(DWORD dwErr, DWORD cbBytesRead, 
 {
     DWORD gle = 0;
     reading = false;
+    refresh_last_access();
 
     if(dwErr == 0)
     {
         if(lpOverLap->Internal)
         {
             gle = GetLastError();
-            if(gle == ERROR_IO_PENDING)
+            if(gle == ERROR_IO_PENDING) // fragment message
             {
                 copy(ptr_read_buff, ptr_read_buff + cbBytesRead, back_inserter(message_read_buffer));
                 gle = 0;
@@ -189,31 +216,29 @@ DWORD named_pipe_connection::read_pipe_complete(DWORD dwErr, DWORD cbBytesRead, 
             size_t len = strlen(ptr_read_buff);
             if(len)
             {
-                if(strncmp(ptr_read_buff, "close_pipe", 10) == 0)
+                if(strncmp(ptr_read_buff, COMMAND_CLOSE_PIPE, sizeof(COMMAND_CLOSE_PIPE) - 1) == 0)
                 {
                     gle = ERROR_HANDLE_EOF;
                     time_header_out(*pflog) << __FUNCSIG__" read close_pipe complete." << endl;
                 }
-                else
-                    gle = process_message(ptr_read_buff, len, len + 1);
+                else gle = process_message(ptr_read_buff, len, len + 1);
                 if(gle) break;
             }
         }
 
         if(gle)
         {
-            if(gle == ERROR_HANDLE_EOF) return gle;
-            else return displayErrorToCerr(__FUNCSIG__ " process_message error", gle, pflog);
+            if(gle != ERROR_HANDLE_EOF) displayErrorToCerr(__FUNCSIG__ " process_message error", gle, pflog);
         }
         else
         {
-            if(closing) return ERROR_HANDLE_EOF;
-            else return read_message();
+            if(closing) gle = ERROR_HANDLE_EOF;
+            else gle = read_message();
         }
     }
     else
     {
-        if(closing && dwErr == ERROR_PIPE_NOT_CONNECTED)
+        if(closing && dwErr == ERROR_OPERATION_ABORTED)
             time_header_out(*pflog) << __FUNCSIG__ " peer close pipe." << endl;
         else
             gle = displayErrorToCerr(__FUNCSIG__ " dwErr error", dwErr, pflog);
@@ -225,12 +250,14 @@ DWORD named_pipe_connection::write_pipe_complete(DWORD dwErr, DWORD cbBytesWrite
 {
     DWORD gle = 0;
     bool shall_close_pipe = false;
+    refresh_last_access();
+
     if (dwErr == 0)
     {
         if(cbBytesWrite)
             time_header_out(*pflog) << "named_pipe_connection::write_pipe_complete(): " << (ptr_write_buff ? ptr_write_buff : "(NULL)") << endl;
         
-        shall_close_pipe = (ptr_write_buff && strstr(ptr_write_buff, "close_pipe"));
+        shall_close_pipe = (ptr_write_buff && strstr(ptr_write_buff, COMMAND_CLOSE_PIPE));
 
         bytes_queued = 0;
         if(ptr_write_buff)
@@ -239,12 +266,11 @@ DWORD named_pipe_connection::write_pipe_complete(DWORD dwErr, DWORD cbBytesWrite
             ptr_write_buff = NULL;
         }
 
-        if(shall_close_pipe) gle = ERROR_HANDLE_EOF;
-        else if(message_write_buffer.size()) gle = write_message_pack();
+        if(!shall_close_pipe && message_write_buffer.size()) gle = write_message_pack();
     }
     else gle = displayErrorToCerr(__FUNCSIG__, dwErr, pflog);
 
-    if(closing)
+    if(closing || shall_close_pipe)
     {
         bytes_queued = 0;
         gle = ERROR_HANDLE_EOF;
@@ -257,6 +283,8 @@ DWORD named_pipe_connection::write_message(size_t num, const void *ptr_data)
 {
     if(bytes_queued) return ERROR_PIPE_BUSY;
     if(closing) return ERROR_HANDLE_EOF;
+    
+    refresh_last_access();
 
     // packing message, save data to buffer
     bytes_queued = num;
@@ -300,4 +328,25 @@ DWORD named_pipe_connection::queue_message(const std::string &msg)
         return write_message_pack();
     }
     else return write_message(msg.size(), msg.c_str());
+}
+
+void named_pipe_connection::delete_closing_connection()
+{
+    list<named_pipe_connection*>::iterator it = wait_close_conn_list.begin();
+    while(it != wait_close_conn_list.end())
+    {
+        named_pipe_connection *pnpc = *it;
+        if(pnpc)
+        {
+            if(pnpc->close_pipe())
+            {
+                it = wait_close_conn_list.erase(it);
+                time_header_out(*find_err_log_all()) << "named_pipe_connection::delete_closing_connection() delete named_pipe_connection:" << endl;
+                pnpc->print_state();
+                delete pnpc;
+            }
+            else ++it;
+        }
+        else it = wait_close_conn_list.erase(it);
+    }
 }

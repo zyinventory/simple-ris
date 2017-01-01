@@ -1,6 +1,4 @@
 #include "stdafx.h"
-#include "commonlib.h"
-#include "../dcmdata/include/dcmtk/dcmdata/dconotify.h"
 #include "../ofstd/include/dcmtk/ofstd/x_www_form_codec.h"
 
 using namespace std;

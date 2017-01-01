@@ -43,8 +43,13 @@
 #include <functional>
 
 #define FILE_BUF_SIZE 1024
+#include "commonlib.h"
+#include "../dcmdata/include/dcmtk/dcmdata/dconotify.h"
 #include "../dcmdata/include/dcmtk/dcmdata/notify_context.h"
+#include "named_pipe/named_pipe_listener.h"
+
 #include "handle_context.h"
+#include "handle_context2.h"
 
 int watch_notify(std::string &cmd, std::ofstream &flog);
 int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);

@@ -139,6 +139,7 @@ static QuerySyntax querySyntax[3] = {
     { UID_FINDPatientStudyOnlyQueryRetrieveInformationModel,
       UID_MOVEPatientStudyOnlyQueryRetrieveInformationModel }
 };
+static DatasetNotifyWriter *pDSWriter = NULL;
 
 static void
 errmsg(const char *msg,...)
@@ -1137,11 +1138,14 @@ storeSCPCallback(
             StoreCallbackData *cbdata = (StoreCallbackData*) callbackData;
             const char* fileName = cbdata->imageFileName;
             char notifyFileName[MAX_PATH];
-            size_t used = in_process_sequence(notifyFileName, sizeof(notifyFileName), STATE_DIR);
+            size_t used = in_process_sequence(notifyFileName, sizeof(notifyFileName), STORE_STATE_DIR"\\");
             if(used > 0 && -1 != sprintf_s(notifyFileName + used, sizeof(notifyFileName) - used, "_%s.dfc", NOTIFY_FILE_TAG))
-                datasetToNotify(fileName, notifyFileName, imageDataSet, true);
+            {
+                if(pDSWriter) pDSWriter->datasetToNotify(fileName, notifyFileName, imageDataSet, true);
+                else cerr << "storeSCPCallback() pDSWriter->datasetToNotify() failed: pDSWriter is NULL." << endl;
+            }
             else
-                cerr << "storeSCPCallback() can't generate in_process_sequence file name" << endl;
+                cerr << "storeSCPCallback() can't generate in_process_sequence file name." << endl;
 
             E_TransferSyntax xfer = opt_writeTransferSyntax;
             if (xfer == EXS_Unknown) xfer = (*imageDataSet)->getOriginalXfer();
@@ -1208,16 +1212,17 @@ static OFCondition storeSCP(
             cerr << "storeSCP() can't mkdir " << path_buff << ": " << msg << endl;
         }
 
-        if(_mkdir(STATE_DIR_NO_SP))
+        if(_mkdir(STORE_STATE_DIR))
         {
             char msg[1024];
             strerror_s(msg, errno);
-            cerr << "storeSCP() can't mkdir " STATE_DIR_NO_SP ": " << msg << endl;
+            cerr << "storeSCP() can't mkdir " STORE_STATE_DIR ": " << msg << endl;
         }
 
+        pDSWriter = new DatasetNotifyWriter();
         FILE *fplog = NULL;
         char filename[MAX_PATH], content[1024];
-        int fn_used = sprintf_s(filename, STATE_DIR"%s_%s.dfc", cb->associationId, NOTIFY_STORE_TAG);
+        int fn_used = sprintf_s(filename, STORE_STATE_DIR"\\%s_%s.dfc", cb->associationId, NOTIFY_STORE_TAG);
         int content_used = sprintf_s(content, NOTIFY_STORE_TAG " %08X %s %s %s %s %d DEFAULT %s %s\n",
             NOTIFY_ASSOC_ESTA, cb->associationId, assoc->params->DULparams.callingAPTitle, 
             assoc->params->DULparams.callingPresentationAddress, assoc->params->DULparams.calledAPTitle,
@@ -1364,7 +1369,7 @@ subOpSCP(T_ASC_Association **subAssoc, void *pCallbackData)
 
         size_t used = in_process_sequence(filename, sizeof(filename), "");
         OFString seq(filename);
-        if(used > 0 && -1 != sprintf_s(filename, STATE_DIR"%s_%s.dfc", seq.c_str(), NOTIFY_STORE_TAG))
+        if(used > 0 && -1 != sprintf_s(filename, STORE_STATE_DIR"\\%s_%s.dfc", seq.c_str(), NOTIFY_STORE_TAG))
         {
             FILE *fplog = fopen(filename, "w");
             if(fplog != NULL)
@@ -1391,6 +1396,7 @@ subOpSCP(T_ASC_Association **subAssoc, void *pCallbackData)
         {
             cerr << "subOpSCP() can't create sequence file name " << filename << ", missing command: " << term << endl;
         }
+        if(pDSWriter) { delete pDSWriter; pDSWriter = NULL; }
     }
 
     /* clean up on association termination */

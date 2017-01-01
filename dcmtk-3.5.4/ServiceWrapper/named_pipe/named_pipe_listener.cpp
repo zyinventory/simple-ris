@@ -4,11 +4,10 @@
 #include <windows.h>
 #include <set>
 #include <algorithm>
-extern int opt_verbose;
-#endif
-
 #include "named_pipe_listener.h"
 #include <commonlib.h>
+extern int opt_verbose;
+#endif
 
 using namespace std;
 using namespace handle_context;
@@ -129,6 +128,8 @@ DWORD named_pipe_listener::pipe_client_connect_incoming()
         pnpc = connect_callback(this);
         map_connections_read[pnpc->get_overlap_read()] = pnpc;
         map_connections_write[pnpc->get_overlap_write()] = pnpc;
+        if(opt_verbose) time_header_out(*pflog) << "named_pipe_listener::pipe_client_connect_incoming() add "
+            << pnpc->get_overlap_read() << ", " << pnpc->get_overlap_write() << endl;
     }
     else
     {
@@ -146,24 +147,27 @@ DWORD named_pipe_listener::pipe_client_connect_incoming()
     if(gle)
     {
         displayErrorToCerr(__FUNCSIG__ " pnpc->start_working()", gle, pflog);
-        pnpc->close_pipe();
-        remove_pipe(pnpc);
+        if(pnpc->close_pipe())
+        {
+            remove_pipe(pnpc);
+            delete pnpc;
+        }
     }
     return 0;
 }
 
-void named_pipe_listener::remove_pipe(named_pipe_connection *pnpc)
+size_t named_pipe_listener::remove_pipe(named_pipe_connection *pnpc)
 {
     if(pnpc == NULL)
     {
         time_header_out(*pflog) << __FUNCSIG__ " connection ptr is NULL." << endl;
-        return;
+        return 0;
     }
-    time_header_out(*pflog) << "remove pipe " << pnpc->get_path() << " : " << pnpc->get_handle() << endl;
-    pnpc->print_state();
-    map_connections_read.erase(pnpc->get_overlap_read());
-    map_connections_write.erase(pnpc->get_overlap_write());
-    delete pnpc;
+    CONN_MAP::size_type removed = map_connections_read.erase(pnpc->get_overlap_read());
+    removed += map_connections_write.erase(pnpc->get_overlap_write());
+    if(opt_verbose && removed) time_header_out(*pflog) << "named_pipe_listener::remove_pipe() remove "
+        << pnpc->get_overlap_read() << ", " << pnpc->get_overlap_write() << endl;
+    return removed;
 }
 
 std::ostream* named_pipe_listener::find_err_log()
@@ -175,7 +179,7 @@ std::ostream* named_pipe_listener::find_err_log()
     return NULL;
 }
 
-static ostream* find_err_log_all()
+ostream* handle_context::find_err_log_all()
 {
     ostream *plog = named_pipe_listener::find_err_log();
     if(plog) return plog;
@@ -232,11 +236,7 @@ void CALLBACK handle_context::read_pipe_complete(DWORD dwErr, DWORD cbBytesRead,
 
     if(pnpc->read_pipe_complete(dwErr, cbBytesRead, lpOverLap))
     {
-        if(pnpc->close_pipe())
-        {
-            time_header_out(*perrlog) << "handle_context::read_pipe_complete() QueueUserAPC(handle_context::remove_named_pipe)" << endl;
-            QueueUserAPC(remove_named_pipe, GetCurrentThread(), reinterpret_cast<ULONG_PTR>(pnpc));
-        }
+        pnpc->close_pipe();
     }
 }
 
@@ -260,27 +260,6 @@ void CALLBACK handle_context::write_pipe_complete(DWORD dwErr, DWORD cbBytesWrit
 
     if(pnpc->write_pipe_complete(dwErr, cbBytesWrite, lpOverLap))
     {
-        if(pnpc->close_pipe())
-        {
-            time_header_out(*perrlog) << "handle_context::write_pipe_complete() QueueUserAPC(handle_context::remove_named_pipe)" << endl;
-            QueueUserAPC(remove_named_pipe, GetCurrentThread(), reinterpret_cast<ULONG_PTR>(pnpc));
-        }
-    }
-}
-
-void CALLBACK handle_context::remove_named_pipe(ULONG_PTR dwParam)
-{
-    if(dwParam == NULL) return;
-    named_pipe_connection *pnpc = reinterpret_cast<named_pipe_connection*>(dwParam);
-    named_pipe_listener *pnps = pnpc->get_listener();
-    if(pnps)
-    {
-        time_header_out(*pnps->get_err_stream()) << "handle_context::remove_named_pipe()" << endl;
-        pnps->remove_pipe(pnpc);
-    }
-    else
-    {
-        time_header_out(*pnpc->get_err_stream()) << "handle_context::remove_named_pipe(alone_connection)" << endl;
-        named_pipe_connection::remove_alone_connection(pnpc);
+        pnpc->close_pipe();
     }
 }

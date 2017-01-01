@@ -1,6 +1,4 @@
 #include "stdafx.h"
-#include "commonlib.h"
-#include "named_pipe/named_pipe_listener.h"
 
 using namespace std;
 using namespace handle_context;
@@ -12,85 +10,6 @@ static HANDLE_MAP map_handle_context;
 static HANDLE_DIR_MAP handle_dir_map;
 static HANDLE_PROC_LIST proc_list;
 static NOTIFY_LIST compress_queue;
-
-class my_np_conn : public named_pipe_connection
-{
-private:
-    DWORD process_file_incoming(const char *assoc_id, const char *notify_file);
-    handle_dir* create_new_handle_dir(const char *assoc_id);
-
-public:
-    my_np_conn(named_pipe_listener *pnps) : named_pipe_connection(pnps) { };
-    virtual ~my_np_conn() { };
-    virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size);
-};
-
-DWORD my_np_conn::process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size)
-{
-    if(cbBytesRead) time_header_out(*pflog) << "my_np_conn::process_message(): " << ptr_data_buffer << endl;
-    else time_header_out(*pflog) << "my_np_conn::process_message(): cbBytesRead is 0" << endl;
-
-    // process message, must retrieve ack message unless ptr_data_buffer == "close_pipe"
-    // if(gle) void CALLBACK handle_context::read_pipe_complete(...) shall close pipe
-    if(strncmp(ptr_data_buffer, "close_pipe", 10) == 0) return ERROR_HANDLE_EOF;
-
-    char *notify_file = strchr(ptr_data_buffer, ';');
-    if(notify_file == NULL)
-        time_header_out(*pflog) << "my_np_conn::process_message() receive an unknown message: " << ptr_data_buffer << endl;
-    else
-    {
-        *notify_file++ = '\0';
-        process_file_incoming(ptr_data_buffer, notify_file);
-    }
-    return 0;
-}
-
-handle_dir* my_np_conn::create_new_handle_dir(const char *p_assoc_id)
-{
-    string meta_notify_file(GetPacsTemp());
-    meta_notify_file.append("\\pacs\\"NOTIFY_BASE"\\").append(p_assoc_id).append("_ACKN.dfc");
-#ifdef _DEBUG
-    time_header_out(cerr) << "my_np_conn::process_meta_notify_file() process meta notify: " << meta_notify_file << endl;
-#endif
-    ifstream ntff(meta_notify_file, ios_base::in, _SH_DENYWR);
-    if(ntff.fail())
-    {
-        DWORD gle = GetLastError();
-        string msg("my_np_conn::process_meta_notify_file() open file ");
-        msg.append(meta_notify_file);
-        displayErrorToCerr(msg.c_str(), gle, pflog);
-        return NULL;
-    }
-    string cmd, path, assoc_id, calling, called, remote, port, transfer_syntax, auto_publish;
-    DWORD tag, pid, gle = 0;
-    ntff >> cmd >> hex >> tag >> path >> dec >> pid >> assoc_id >> calling >> remote >> called >> port >> transfer_syntax >> auto_publish;
-    if(ntff.is_open()) ntff.close();
-#ifdef _DEBUG
-    time_header_out(cerr) << cmd << " " << hex << tag << " " << path << " " << dec << pid << " " << assoc_id << " " << calling << " " << remote << " " << called << " " << port << endl;
-#endif
-    path.insert(0, "\\pacs\\").insert(0, GetPacsTemp());
-    return new handle_dir(p_assoc_id, path, meta_notify_file, pflog);
-}
-
-DWORD my_np_conn::process_file_incoming(const char *p_assoc_id, const char *notify_file)
-{
-#ifdef _DEBUG
-    time_header_out(cerr) << "my_np_conn::process_file_incoming() receive association notify " << p_assoc_id << ";"<< notify_file << endl;
-#endif
-    HANDLE_DIR_MAP::iterator it = handle_dir_map.find(p_assoc_id);
-    handle_dir *phd = NULL;
-    if(it != handle_dir_map.end()) phd = it->second;
-    if(phd == NULL)
-    {
-        set_id(p_assoc_id);
-        set_meta_notify_filename(notify_file);
-        phd = create_new_handle_dir(p_assoc_id);
-        if(phd) handle_dir_map[p_assoc_id] = phd;
-    }
-    if(phd) phd->process_notify(notify_file, compress_queue, *pflog);
-    else time_header_out(*pflog) << "my_np_conn::process_file_incoming() can't create handle_dir()" << endl;
-    return 0;
-}
 
 static bool select_handle_dir_by_association_path(const handle_compress *pnf, const string &association_id, const string &path, ostream &flog)
 {
@@ -277,7 +196,7 @@ static bool handle_less(const BASE_HANDLE_PAIR &p1, const BASE_HANDLE_PAIR &p2)
 
 static named_pipe_connection* WINAPI create_new_pipe_connect(named_pipe_listener *pnps)
 {
-    return new my_np_conn(pnps);
+    return new np_conn_assoc_dir(pnps);
 }
 
 int watch_notify(string &cmd, ofstream &flog)
@@ -430,6 +349,7 @@ int watch_notify(string &cmd, ofstream &flog)
 
         if(wr == WAIT_TIMEOUT || wr == WAIT_IO_COMPLETION)
         {
+            named_pipe_connection::delete_closing_connection();
         }
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + min(hsize, MAXIMUM_WAIT_OBJECTS))
         {

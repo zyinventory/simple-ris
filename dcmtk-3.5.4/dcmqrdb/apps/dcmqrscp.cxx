@@ -143,24 +143,10 @@ static void exitHook()
 #endif
 }
 
-class my_np_conn : public handle_context::named_pipe_connection
-{
-public:
-    my_np_conn(const char *assoc_id, const char *path, const char *meta_notify_file, size_t w_size, size_t r_size, ostream *plog)
-        : handle_context::named_pipe_connection(assoc_id, path, meta_notify_file, w_size, r_size, plog) { };
-    virtual ~my_np_conn() { };
-    virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size)
-    {
-        if(cbBytesRead) time_header_out(*pflog) << "my_np_conn::process_message(): " << ptr_data_buffer << endl;
-        else time_header_out(*pflog) << "my_np_conn::process_message(): cbBytesRead is 0" << endl;
-
-        return 0;
-    };
-};
-
-static my_np_conn *pnpc;
+static handle_context::named_pipe_connection *pnpc;
 static DcmQueryRetrieveSCP *pscp = NULL;
 static OFString current_assoc_id;
+static DatasetNotifyWriter *pDSWriter = NULL;
 
 static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
 {
@@ -172,17 +158,19 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
     
     OFString instanceName(fn_only);
     char *fn_only_start = fn_only;
-    fn_only += in_process_sequence(fn_only, sizeof(notifyFileName) - (fn_only - notifyFileName), STATE_DIR);
+    fn_only += in_process_sequence(fn_only, sizeof(notifyFileName) - (fn_only - notifyFileName), STORE_STATE_DIR"\\");
     strcpy_s(fn_only, sizeof(notifyFileName) - (fn_only - notifyFileName), "_" NOTIFY_FILE_TAG ".dfc");
-    datasetToNotify(instanceName.c_str(), notifyFileName, &pds, true);
+
+    if(pDSWriter == NULL) pDSWriter = new DatasetNotifyWriter();
+    OFString currStudyUID(pDSWriter->datasetToNotify(instanceName.c_str(), notifyFileName, &pds, true));
     if(opt_verbose) time_header_out(cerr) << notifyFileName << " write OK" << endl;
 
     if(current_assoc_id.length() == 0)
     {
-        string meta_notify_filename(GetPacsTemp());
         current_assoc_id = pscp->getAssociationId();
-        meta_notify_filename.append("\\" NOTIFY_BASE "\\").append(current_assoc_id).append("_" NOTIFY_FILE_TAG ".dfc");
-        pnpc = new my_np_conn(current_assoc_id.c_str(), NAMED_PIPE_QR, meta_notify_filename.c_str(), 4095, 4095, &CERR);
+        string meta_notify_filename(current_assoc_id);
+        meta_notify_filename.append("_" NOTIFY_ACKN_TAG ".dfc");
+        pnpc = new handle_context::named_pipe_connection(current_assoc_id.c_str(), NAMED_PIPE_QR, meta_notify_filename.c_str(), PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, &CERR);
         if(pnpc->start_working())
         {
             time_header_out(CERR) << "Error Connect Named Pipe: " << NAMED_PIPE_QR << endl;
@@ -194,8 +182,8 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
             handle_context::named_pipe_connection::regist_alone_connection(pnpc);
             if(pscp->getAssocFileStart().length())
             {
-                OFString msg(current_assoc_id);
-                msg.append(1, ';').append(pscp->getAssocFileStart());
+                OFString msg(NOTIFY_STORE_TAG"_BEG ");
+                msg.append(current_assoc_id).append(1, ' ').append(meta_notify_filename);
                 pnpc->queue_message(msg);
             }
         }
@@ -203,11 +191,11 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
 
     if(pnpc && pscp)
     {
-        string msg(pscp->getAssociationId());
+        string msg(NOTIFY_FILE_TAG);
         char *p = strrchr(fn_only_start, '\\');
         if(p) ++p;
         else p = fn_only_start;
-        msg.append(1, ';').append(p);
+        msg.append(1, ' ').append(pscp->getAssociationId()).append(1, ' ').append(currStudyUID).append(1, ' ').append(p);
         pnpc->queue_message(msg);
     }
     DWORD gle = 0;
@@ -830,16 +818,21 @@ main(int argc, char *argv[])
     /* loop waiting for associations */
     while (cond.good())
     {
+        STORE_PROCESSING store_result = STORE_NONE;
 		cond = scp.waitForAssociation(options.net_);
         if(options.singleProcess_ || options.forkedChild_)
         {
-            if(pscp->getAssocFileEnd().length())
+            store_result = scp.getStoreResult();
+            if(pnpc && pscp && pscp->getAssocFileEnd().length())
             {
-                OFString msg(current_assoc_id);
-                msg.append(1, ';').append(pscp->getAssocFileEnd());
+                OFString msg(NOTIFY_STORE_TAG"_END ");
+                msg.append(current_assoc_id).append(1, ' ');
+                if(store_result == STORE_RELEASE) msg.append(handle_context::STORE_RESULT_RELEASE);
+                else msg.append(handle_context::STORE_RESULT_ABORT);
+                msg.append(1, ' ').append(pscp->getAssocFileEnd());
                 pnpc->queue_message(msg);
             }
-            if(scp.getStoreResult() != STORE_NONE) scp.cleanAssocContextExceptCallback();
+            if(store_result != STORE_NONE) scp.cleanAssocContextExceptCallback();
         }
         else if(hParentProcess)
         {
@@ -855,20 +848,37 @@ main(int argc, char *argv[])
         {
             if(pnpc)
             {
-                pnpc->queue_message("close_pipe");
+                pnpc->queue_message(handle_context::COMMAND_CLOSE_PIPE);
                 time_header_out(CERR) << "dcmqrscp is closing pipe." << endl;
-                for(int i = 0; i < 30 && !pnpc->is_write_queue_empty(); ++i)
+                // wait pipe flush COMMAND_CLOSE_PIPE, 30 sec
+                for(int i = 0; i < 300 && pnpc->get_bytes_queued() > 0; ++i)
                 {
                     DWORD gle = 0;
                     do {
-                        gle = WaitForSingleObjectEx(GetCurrentProcess(), 1000, TRUE);
+                        gle = WaitForSingleObjectEx(GetCurrentProcess(), 100, TRUE);
+                    } while(gle == WAIT_IO_COMPLETION);
+                    time_header_out(CERR) << i + 1 << " times wait flush " << handle_context::COMMAND_CLOSE_PIPE << endl;
+                    if(pnpc->is_write_queue_empty()) break; //flush OK
+                }
+
+                if(pnpc->close_pipe())
+                    time_header_out(CERR) << "dcmqrscp pipe is closed OK." << endl;
+                else
+                {
+                    time_header_out(CERR) << "dcmqrscp pipe is closed timeout." << endl;
+                    DWORD gle = 0;
+                    do {
+                        gle = WaitForSingleObjectEx(GetCurrentProcess(), 3 * 1000, TRUE);
                     } while(gle == WAIT_IO_COMPLETION);
                 }
-                delete pnpc;
+                
+                handle_context::named_pipe_connection::delete_closing_connection();
                 pnpc = NULL;
             }
             current_assoc_id.clear();
         }
+        if(pDSWriter) { delete pDSWriter; pDSWriter = NULL; }
+
 		if (!options.singleProcess_) scp.cleanChildren(options.verbose_ ? OFTrue : OFFalse);  /* clean up any child processes */
 		if (options.forkedChild_) break;
 		if (GetSignalInterruptValue()) break;

@@ -39,13 +39,26 @@
 #define NOTIFY_ARCHIVE_DICOMDIR 0xFFFFFFF1
 #define NOTIFY_XML_OK           0xFFFFFFF0
 
-#define STATE_DIR_NO_SP "state"
-#define STATE_DIR       "state\\"
+#define STORE_STATE_DIR "state"
+
+#include <string>
+#include <list>
 
 class DcmDataset;
 
 unsigned int in_process_sequence(char *buff, size_t buff_size, const char *prefix);
-void datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet, bool isFull);
 bool mkdir_recursive_dcm(const char *subdir);
+
+class DatasetNotifyWriter
+{
+private:
+    std::list<std::string>  patients, studies, series;
+    std::string currentStudyUID;
+    size_t            instances;
+
+public:
+    DatasetNotifyWriter() : instances(NOTIFY_FILE_SEQ_START) {};
+    const std::string& datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet, bool isFull);
+};
 
 #endif // DCONOTIFY_H
