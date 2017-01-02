@@ -139,7 +139,7 @@ DWORD named_pipe_listener::pipe_client_connect_incoming()
         CloseHandle(hPipe);
     }
 
-    gle = start_listening(); // start a new listening named pipe, hPipe is changed
+    gle = start_listening(); // start a new listening named pipe, new hPipe is created
     if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
         return displayErrorToCerr(__FUNCSIG__ " start_listening()", gle, pflog);
 
@@ -177,6 +177,13 @@ std::ostream* named_pipe_listener::find_err_log()
         if(it->second) return it->second->get_err_stream();
     }
     return NULL;
+}
+
+void named_pipe_listener::detect_timeout_connection()
+{
+    set<named_pipe_connection*> ps;
+    transform(map_connections_read.begin(), map_connections_read.end(), inserter(ps, ps.begin()), [](const CONN_PAIR &p) { return p.second; });
+    for_each(ps.begin(), ps.end(), [](named_pipe_connection *p) { if(p && p->is_time_out()) p->close_pipe(); });
 }
 
 ostream* handle_context::find_err_log_all()

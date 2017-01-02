@@ -65,8 +65,10 @@ named_pipe_connection::~named_pipe_connection()
 
 DWORD named_pipe_connection::start_working()
 {
+    // server connection
     if(p_listener) return read_message();
 
+    // client connection
     DWORD gle = 0;
     bool pipeStandby = false;
     for(int i = 0; i < 100; ++i)
@@ -328,6 +330,14 @@ DWORD named_pipe_connection::queue_message(const std::string &msg)
         return write_message_pack();
     }
     else return write_message(msg.size(), msg.c_str());
+}
+
+void named_pipe_connection::detect_timeout_alone_connection()
+{
+    for(CONN_MAP::const_iterator it = map_alone_connections_read.cbegin(); it != map_alone_connections_read.end(); ++it)
+    {
+        if(it->second && it->second->is_time_out()) it->second->close_pipe();
+    }
 }
 
 void named_pipe_connection::delete_closing_connection()

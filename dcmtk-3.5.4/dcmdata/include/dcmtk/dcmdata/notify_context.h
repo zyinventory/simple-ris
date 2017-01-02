@@ -60,6 +60,7 @@ namespace handle_context
     protected:
         std::ostream *pflog;
         base_path(const std::string p, std::ostream *plog) : path(p), pflog(plog) { if(pflog == NULL) pflog = &std::cerr; };
+        void set_path(const std::string& new_path) { path = new_path; };
 
     public:
         base_path(const base_path &r) : path(r.path), pflog(r.pflog) {};
@@ -75,10 +76,11 @@ namespace handle_context
     private:
         std::string id, meta_notify_filename;
         time_t last_access;
+        int timeout;
 
     protected:
-        base_dir(const std::string &assoc_id, const std::string &path, const std::string &filename, std::ostream *plog)
-            : base_path(path, plog), id(assoc_id), meta_notify_filename(filename) { time(&last_access); };
+        base_dir(const std::string &assoc_id, const std::string &path, const std::string &filename, int time_out_diff, std::ostream *plog)
+            : base_path(path, plog), id(assoc_id), meta_notify_filename(filename), timeout(time_out_diff) { time(&last_access); };
         void set_id(const std::string &new_id) { id = new_id; };
         void set_meta_notify_filename(const std::string &new_meta) { meta_notify_filename = new_meta; };
 
@@ -102,9 +104,20 @@ namespace handle_context
         };
         const std::string& get_id() const { return id; };
         const std::string& get_meta_notify_filename() const { return meta_notify_filename; };
+        int get_timeout() const { return timeout; };
         time_t get_last_access() const { return last_access; };
         time_t refresh_last_access() { return time(&last_access); };
-        virtual bool is_time_out() { return false; };
+        virtual bool is_time_out() const
+        {
+            if(timeout)
+            {
+                time_t diff = 0LL, last_access = get_last_access();
+                time(&diff);
+                diff -= last_access;
+                if(diff > timeout) return true;
+            }
+            return false;
+        };
     };
 }
 

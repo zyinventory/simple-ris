@@ -10,16 +10,8 @@ const char* np_conn_assoc_dir::close_description() const
         if(disconn_release) return "OK";
         else return "ABORT";
     }
-    //else if(is_time_out()) return "TIMEOUT";
+    //else if(is_time_out(assoc_timeout)) return "TIMEOUT";
     else return "UNKNOWN";
-}
-
-bool np_conn_assoc_dir::is_time_out() const
-{
-    time_t timeout, now = time(&now);
-    timeout = now - get_last_access();
-    if(timeout > assoc_timeout) return true;
-    return false;
 }
 
 np_conn_assoc_dir::~np_conn_assoc_dir()
@@ -52,7 +44,6 @@ np_conn_assoc_dir::~np_conn_assoc_dir()
 void np_conn_assoc_dir::print_state() const
 {
     *pflog << "np_conn_assoc_dir::print_state() id: " << get_id() << endl
-        << "\twork_path: " << work_path << endl
         << "\tcalling: " << calling << endl
         << "\tremote: " << remote << endl
         << "\tcalled: " << called << endl
@@ -116,24 +107,23 @@ DWORD np_conn_assoc_dir::establish_conn_dir(char *p_assoc_id)
         displayErrorToCerr(msg.c_str(), gle, pflog);
         return ERROR_INVALID_ACCESS;
     }
-    string cmd, assoc_id;
+    string cmd, assoc_id, work_path;
     DWORD tag, gle = 0;
     ntff >> cmd >> hex >> tag >> work_path >> dec >> pid >> assoc_id >> calling >> remote >> called >> port >> transfer_syntax >> auto_publish;
     if(ntff.is_open()) ntff.close();
 
     if(assoc_id.compare(p_assoc_id) == 0)
     {
-        work_path.insert(0, "\\pacs\\").insert(0, GetPacsTemp());
+        set_path(work_path);
         set_id(assoc_id);
         set_meta_notify_filename(mnf);
         assoc_disconn = false;
-
 #ifdef _DEBUG
         time_header_out(cerr) << cmd << " " << hex << tag << " " << work_path << " " << dec << pid << " " << assoc_id << " " << calling << " " << remote << " " << called << " " << port << endl;
 #endif
         return 0;
     }
-    else return ERROR_INVALID_DATA;
+    else return displayErrorToCerr("np_conn_assoc_dir::establish_conn_dir() assoc id match", ERROR_INVALID_DATA, pflog);
 }
 
 DWORD np_conn_assoc_dir::release_conn_dir(char *p_assoc_id)
@@ -171,7 +161,7 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
     char *study_uid = strchr(p_assoc_id, ' ');
     if(study_uid == NULL)
     {
-        time_header_out(*pflog) << "np_conn_assoc_dir::process_message() receive an unknown file notify: no study uid." << endl;
+        time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no study uid." << endl;
         return ERROR_INVALID_DATA;
     }
     else *study_uid++ = '\0';
@@ -179,11 +169,33 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
     char *notify_file = strchr(study_uid, ' ');
     if(notify_file == NULL)
     {
-        time_header_out(*pflog) << "np_conn_assoc_dir::process_message() receive an unknown file notify: no notify file." << endl;
+        time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no notify file." << endl;
         return ERROR_INVALID_DATA;
     }
     else *notify_file++ = '\0';
 
-    //process_notify(notify_file, compress_queue, *pflog);
+    if(get_listener())
+    {   // server connection shall establish assoc <--> study many to many relationship
+        study_compr_job_dir* pstudy = NULL;
+        STUDY_MAP::iterator it = studies.find(study_uid);
+        if(it != studies.end()) pstudy = it->second;
+        if(pstudy = NULL)
+        {
+            char study_path[MAX_PATH];
+            int used = sprintf_s(study_path, "%s\\orders_study\\", GetPacsTemp());
+            char *orders_study_name = study_path + used;
+            used += in_process_sequence_dll(study_path + used, sizeof(study_path) - used, "");
+            study_path[used++] = '_';
+            strcpy_s(study_path + used, sizeof(study_path) - used, study_uid);
+            if(MkdirRecursive(study_path))
+            {
+                pstudy = study_compr_job_dir::create_instance(study_uid, orders_study_name, notify_file, pflog);
+                studies[study_uid] = pstudy;
+            }
+            else time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() can't create dir " << study_path << endl;
+        }
+        if(pstudy) pstudy->add_file(this, notify_file);
+    }
+
     return 0;
 }

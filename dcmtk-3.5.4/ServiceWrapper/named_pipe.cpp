@@ -216,7 +216,7 @@ void named_pipe_server::read_pipe_complete(DWORD dwErr, DWORD cbBytesRead, LPOVE
         }
 
         // find handle_study by study_uid
-        STUDY_MAP::iterator it = map_study.find(study_uid);
+        STUDY2_MAP::iterator it = map_study.find(study_uid);
         if(it == map_study.end())
         {
             time_header_out(*pflog) << __FUNCSIG__ " pipe message read is corrupt, " << lpPipeInst->chBuffer << endl;
@@ -333,7 +333,7 @@ named_pipe_server::~named_pipe_server()
         hPipeEvent = NULL;
     }
     if(opt_verbose) time_header_out(*pflog) << "named_pipe_server::~named_pipe_server()" << endl;
-    for_each(map_study.begin(), map_study.end(), [](const STUDY_PAIR &p) {
+    for_each(map_study.begin(), map_study.end(), [](const STUDY2_PAIR &p) {
         if(p.second)
         {
             if(debug_mode) p.second->print_state();
@@ -344,7 +344,7 @@ named_pipe_server::~named_pipe_server()
 
 void named_pipe_server::check_study_timeout_to_generate_jdf(const std::set<std::string> &queued_study_uids, const std::set<std::string> &exist_assoc_paths)
 {
-    STUDY_MAP::iterator it = map_study.begin();
+    STUDY2_MAP::iterator it = map_study.begin();
     while(it != map_study.end())
     {
         handle_study *phs = it->second;

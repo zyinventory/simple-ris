@@ -5,10 +5,10 @@ using namespace handle_context;
 
 static char buff[FILE_BUF_SIZE];
 static const string debug_mode_header("DebugMode");
+static HANDLE_PROC_LIST proc_list;
 
 static HANDLE_MAP map_handle_context;
 static HANDLE_DIR_MAP handle_dir_map;
-static HANDLE_PROC_LIST proc_list;
 static NOTIFY_LIST compress_queue;
 
 static bool select_handle_dir_by_association_path(const handle_compress *pnf, const string &association_id, const string &path, ostream &flog)
@@ -194,9 +194,11 @@ static bool handle_less(const BASE_HANDLE_PAIR &p1, const BASE_HANDLE_PAIR &p2)
     return p1.second->get_last_access() < p2.second->get_last_access();
 }
 
-static named_pipe_connection* WINAPI create_new_pipe_connect(named_pipe_listener *pnps)
-{
-    return new np_conn_assoc_dir(pnps);
+static named_pipe_connection* WINAPI create_qr_pipe_connection(named_pipe_listener *pnps) { return new np_conn_assoc_dir(pnps, assoc_timeout); }
+
+static named_pipe_connection* WINAPI create_mkdir_pipe_connection(named_pipe_listener *pnps)
+{   // todo: bind study_uid and others
+    return new named_pipe_connection("", "", "", PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, assoc_timeout, pnps->get_err_stream());
 }
 
 int watch_notify(string &cmd, ofstream &flog)
@@ -206,14 +208,24 @@ int watch_notify(string &cmd, ofstream &flog)
     sprintf_s(buff, "%s\\orders_study\\*.ini", GetPacsTemp());
     disable_remained_meta_notify_file(buff, flog);
 
-    // listen on named pipe
-    named_pipe_listener qrnps("\\\\.\\pipe\\dcmtk_qr", PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, create_new_pipe_connect, &flog);
+    // listen on named pipe dcmtk_qr
+    named_pipe_listener qrnps("\\\\.\\pipe\\dcmtk_qr", PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, create_qr_pipe_connection, &flog);
     DWORD gle = qrnps.start_listening();
     if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
     {
-        displayErrorToCerr("named_pipe_listener.start_listening()", gle, &cerr);
+        displayErrorToCerr("dcmtk_qr.start_listening()", gle, &flog);
         return gle;
     }
+    // listen on named pipe dcmtk_mkdir
+    named_pipe_listener dirnps("\\\\.\\pipe\\dcmtk_mkdir", PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, create_mkdir_pipe_connection, &flog);
+    gle = dirnps.start_listening();
+    if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
+    {
+        displayErrorToCerr("dcmtk_mkdir.start_listening()", gle, &flog);
+        return gle;
+    }
+    // todo: replace nps to dirnps
+    named_pipe_server nps("", &flog);
 
     // start dcmqrscp.exe parent proc
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
@@ -257,21 +269,6 @@ int watch_notify(string &cmd, ofstream &flog)
         int debug_flag = atoi(buff);
         if(debug_flag) debug_mode = true;
     }
-
-    //xml_index xi(&flog);
-    //xml_index::singleton_ptr = &xi;
-
-    in_process_sequence_dll(buff, sizeof(buff), "");
-    named_pipe_server nps(buff, &flog);
-    named_pipe_server::register_named_pipe_server(&nps);
-    gle = nps.start_listening();
-    if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
-    {
-        displayErrorToCerr("watch_notify() named_pipe_server::start_listening()", gle, &flog);
-        return gle;
-    }
-    if(opt_verbose) time_header_out(flog) << "watch_notify() named_pipe_server start" << endl;
-
 #ifdef _DEBUG
     WaitForInputIdle(phproc->get_handle(), INFINITE);
     WaitForInputIdle(phproc_job->get_handle(), INFINITE);
@@ -308,30 +305,7 @@ int watch_notify(string &cmd, ofstream &flog)
 
         // append proc handle to hs
         transform(proc_list.begin(), proc_list.end(), back_inserter(hs), [](handle_proc *p) { return BASE_HANDLE_PAIR(p->get_handle(), p); });
-
-        if(debug_mode)
-        {
-            if(compress_queue.size() > file_in_compress_queue * 1.2)
-            {
-                file_in_compress_queue = compress_queue.size();
-                time_header_out(flog) << "compress queue increase 20%: " << dec << file_in_compress_queue << endl;
-                for_each(hs.cbegin(), hs.cend(), [&flog](const BASE_HANDLE_PAIR p) {
-                    time_header_out(flog) << hex << setfill('0') << setw(8) << p.first << " ";
-	                if(dynamic_cast<handle_compress*>(p.second))
-                    {
-                        handle_compress *phc = dynamic_cast<handle_compress*>(p.second);
-                        flog << phc->get_notify_context().src_notify_filename << endl;
-                    }
-	                else
-                    {
-                        base_dir *phm = dynamic_cast<base_dir*>(p.second);
-                        flog << phm->get_path() << " " << phm->get_meta_notify_filename() << endl;
-                    }
-                });
-            }
-            else if(compress_queue.size() < file_in_compress_queue * 0.8) file_in_compress_queue = compress_queue.size();
-        }
-
+        
         size_t hsize = 2 + hs.size();
         if(pha) delete[] pha;
         pha = new HANDLE[hsize];
@@ -497,7 +471,7 @@ int watch_notify(string &cmd, ofstream &flog)
 
 			// write jdf to orders_notify
 			set<string> exist_study_in_queue;
-			transform(compress_queue.cbegin(), compress_queue.cend(), inserter(exist_study_in_queue, exist_study_in_queue.begin()),
+			transform(compress_queue.cbegin(), compress_queue.cend(), inserter(exist_study_in_queue, exist_study_in_queue.end()),
 				[](const NOTIFY_FILE_CONTEXT &nfc) { return string(nfc.study.studyUID); });
 
 			nps.check_study_timeout_to_generate_jdf(exist_study_in_queue, exist_association_paths);

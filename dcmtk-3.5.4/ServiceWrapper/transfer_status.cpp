@@ -329,15 +329,6 @@ DWORD handle_dir::process_notify(const std::string &filename, NOTIFY_LIST &compr
     return gle;
 }
 
-bool handle_dir::is_time_out() const
-{
-    time_t now = 0, last_access = get_last_access(), timeout;
-    time(&now);
-    timeout = now - last_access;
-    if(timeout > assoc_timeout) return true;
-    return false;
-}
-
 void handle_dir::send_compress_complete_notify(const NOTIFY_FILE_CONTEXT &nfc, bool compress_ok, ostream &flog)
 {
     refresh_last_access();
@@ -996,15 +987,15 @@ void handle_study::print_state() const
 
 bool handle_study::is_time_out() const
 {
-    time_t now = 0, last_access = get_last_access(), timeout;
-    time(&now);
-    timeout = now - last_access;
+    time_t diff = 0;
+    time(&diff);
+    diff -= get_last_access();
     
     if(last_association_action.is_disconnect() && list_action.size() == 0 && set_association_path.size() == 0)
     {
-        if(timeout > store_timeout) return true;
+        if(diff > store_timeout) return true;
     }
-    else if(timeout > assoc_timeout) return true;
+    else if(diff > get_timeout()) return true;
     return false;
 }
 

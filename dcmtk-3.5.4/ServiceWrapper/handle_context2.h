@@ -18,8 +18,8 @@ namespace handle_context
     class handle_proc;
     typedef std::list<handle_proc*> HANDLE_PROC_LIST;
     class handle_study;
-    typedef std::map<std::string, handle_study*> STUDY_MAP;
-    typedef std::pair<std::string, handle_study*> STUDY_PAIR;
+    typedef std::map<std::string, handle_study*> STUDY2_MAP;
+    typedef std::pair<std::string, handle_study*> STUDY2_PAIR;
 
     enum ACTION_TYPE { NO_ACTION = 0, BURN_PER_STUDY, BURN_MULTI, INDEX_INSTANCE, NO_INSTANCE };
 
@@ -71,15 +71,14 @@ namespace handle_context
         void fill_association_section(NOTIFY_ASSOC_SECTION &nas) const { nas = assoc; };
 
     public:
-        handle_dir(const std::string &assoc_id, const std::string &path, const std::string notify_filename, std::ostream *plog)
-            : base_dir(assoc_id, path, notify_filename, plog), last_find_error(false), last_association_notify_filename(notify_filename),
+        handle_dir(const std::string &assoc_id, const std::string &path, const std::string notify_filename, int timeout, std::ostream *plog)
+            : base_dir(assoc_id, path, notify_filename, timeout, plog), last_find_error(false), last_association_notify_filename(notify_filename),
             assoc_disconn(false), disconn_release(true) { memset(&assoc, 0, sizeof(NOTIFY_ASSOC_SECTION)); assoc.port = 104; };
         handle_dir(const handle_dir& o) : base_dir(o), last_find_error(o.last_find_error),
             list_file(o.list_file), set_complete(o.set_complete), set_study(o.set_study), last_association_notify_filename(o.last_association_notify_filename),
             assoc_disconn(o.assoc_disconn), disconn_release(o.disconn_release), assoc(o.assoc) {};
         virtual ~handle_dir();
 
-        bool is_time_out() const;
         handle_dir& operator=(const handle_dir &r);
         void print_state() const;
         bool insert_study(const std::string &study_uid) { return set_study.insert(study_uid).second; };
@@ -107,7 +106,7 @@ namespace handle_context
 		DWORD priority;
     public:
         handle_proc(const std::string &assoc_id, const std::string &cwd, const std::string &notify_file, const std::string &cmd, const std::string &exec_prog_name, std::ostream *plog) 
-            : base_dir(assoc_id, cwd, notify_file, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name), priority(NORMAL_PRIORITY_CLASS)
+            : base_dir(assoc_id, cwd, notify_file, 0, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name), priority(NORMAL_PRIORITY_CLASS)
             { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
         handle_proc(const handle_proc& o) : base_dir(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
 			log_path(o.log_path), procinfo(o.procinfo), priority(o.priority) {};
@@ -182,7 +181,7 @@ namespace handle_context
         void remove_association_path(const std::string &assoc_path);
         //DWORD instance_add_to_dicomdir_ok(const std::string &filename, const std::string &xfer_new, LPOVERLAPPED_COMPLETION_ROUTINE write_complete_callback, std::ostream &flog);
         DWORD append_action(const action_from_association &action);
-        bool is_time_out() const;
+        virtual bool is_time_out() const;
         bool send_remain_message_to_pipe();
     };
 
@@ -192,7 +191,7 @@ namespace handle_context
         static named_pipe_server *singleton_ptr;
         HANDLE hPipeEvent, hPipe; // hPipe will change per listening
         OVERLAPPED olPipeConnectOnly;
-        STUDY_MAP map_study;
+        STUDY2_MAP map_study;
 
     public:
         named_pipe_server(const char *pipe_path, std::ostream *plog);

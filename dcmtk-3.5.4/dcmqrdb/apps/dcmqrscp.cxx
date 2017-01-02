@@ -170,7 +170,7 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
         current_assoc_id = pscp->getAssociationId();
         string meta_notify_filename(current_assoc_id);
         meta_notify_filename.append("_" NOTIFY_ACKN_TAG ".dfc");
-        pnpc = new handle_context::named_pipe_connection(current_assoc_id.c_str(), NAMED_PIPE_QR, meta_notify_filename.c_str(), PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, &CERR);
+        pnpc = new handle_context::named_pipe_connection(current_assoc_id.c_str(), NAMED_PIPE_QR, meta_notify_filename.c_str(), PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 300, &CERR);
         if(pnpc->start_working())
         {
             time_header_out(CERR) << "Error Connect Named Pipe: " << NAMED_PIPE_QR << endl;

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <list>
 #include <map>
+#include <iterator>
 #include "dcmtk/dcmdata/notify_context.h"
 #endif
 
@@ -60,6 +61,7 @@ namespace handle_context
         virtual void print_state(void) const;
         virtual HANDLE get_handle() const { return hPipeEvent; };
         HANDLE get_current_pipe_handle() const { return hPipe; };
+        void detect_timeout_connection();
     };
 
     class named_pipe_connection : public base_dir
@@ -84,17 +86,18 @@ namespace handle_context
         static void regist_alone_connection(named_pipe_connection*);
         static size_t remove_alone_connection(named_pipe_connection*);
         static named_pipe_connection* find_alone_connection(LPOVERLAPPED, bool is_write);
+        static void detect_timeout_alone_connection();
         static void delete_closing_connection();
         static std::ostream* find_err_log_from_alone();
-        named_pipe_connection(const char *assoc_id, const char *path, const char *meta_notify_file, size_t wbuff_size, size_t rbuff_size, std::ostream *plog)
-            : base_dir(assoc_id, path, meta_notify_file, plog), hPipeInst(NULL), write_buff_size(wbuff_size), read_buff_size(rbuff_size),
+        named_pipe_connection(const char *assoc_id, const char *path, const char *meta_notify_file, size_t wbuff_size, size_t rbuff_size, int timeout, std::ostream *plog)
+            : base_dir(assoc_id, path, meta_notify_file, timeout, plog), hPipeInst(NULL), write_buff_size(wbuff_size), read_buff_size(rbuff_size),
             closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), p_listener(NULL), removed_from_map(false)
         {
             memset(&oOverlap_read, 0, sizeof(oOverlap_read));
             memset(&oOverlap_write, 0, sizeof(oOverlap_write));
             ptr_read_buff = new char[read_buff_size + 1];
         };
-        named_pipe_connection(named_pipe_listener *pnps) : base_dir("", pnps->get_path().c_str(), "", pnps->get_err_stream()),
+        named_pipe_connection(named_pipe_listener *pnps, int timeout) : base_dir("", pnps->get_path().c_str(), "", timeout, pnps->get_err_stream()),
             closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), removed_from_map(false), p_listener(pnps),
             write_buff_size(pnps->get_write_buff_size()), read_buff_size(pnps->get_read_buff_size()), hPipeInst(pnps->get_current_pipe_handle())
         {
