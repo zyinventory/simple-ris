@@ -170,6 +170,20 @@ size_t named_pipe_listener::remove_pipe(named_pipe_connection *pnpc)
     return removed;
 }
 
+const named_pipe_connection* named_pipe_listener::find_and_remove_dead_connection()
+{
+    CONN_MAP::iterator it = find_if(map_connections_read.begin(), map_connections_read.end(),
+        [](const CONN_PAIR &p) { return (p.second && p.second->close_pipe()); });
+    if(it != map_connections_read.end())
+    {
+        named_pipe_connection *p = it->second;
+        map_connections_write.erase(p->get_overlap_write());
+        map_connections_read.erase(it);
+        return p;
+    }
+    return NULL;
+}
+
 std::ostream* named_pipe_listener::find_err_log()
 {
     for(LISTENER_MAP::const_iterator it = servers.cbegin(); it != servers.end(); ++it)

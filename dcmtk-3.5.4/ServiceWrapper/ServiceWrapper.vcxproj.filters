@@ -57,10 +57,10 @@
     <ClCompile Include="np_conn_assoc_dir.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="study_compr_job_dir.cpp">
+    <ClCompile Include="handle_proc.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="handle_proc.cpp">
+    <ClCompile Include="study_assoc_dir.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

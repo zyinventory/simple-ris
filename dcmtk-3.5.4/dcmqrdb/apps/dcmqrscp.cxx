@@ -836,6 +836,8 @@ main(int argc, char *argv[])
                 else msg.append(handle_context::STORE_RESULT_ABORT);
                 msg.append(1, ' ').append(pscp->getAssocFileEnd());
                 pnpc->queue_message(msg);
+                pnpc->queue_message(handle_context::COMMAND_CLOSE_PIPE);
+                time_header_out(CERR) << "dcmqrscp is closing pipe." << endl;
             }
             if(store_result != STORE_NONE) scp.cleanAssocContextExceptCallback();
         }
@@ -852,10 +854,7 @@ main(int argc, char *argv[])
         if(current_assoc_id.length())
         {
             if(pnpc)
-            {
-                pnpc->queue_message(handle_context::COMMAND_CLOSE_PIPE);
-                time_header_out(CERR) << "dcmqrscp is closing pipe." << endl;
-                // wait pipe flush COMMAND_CLOSE_PIPE, 30 sec
+            {   // wait pipe flush COMMAND_CLOSE_PIPE, 30 sec
                 for(int i = 0; i < 300 && pnpc->get_bytes_queued() > 0; ++i)
                 {
                     DWORD gle = 0;
@@ -877,7 +876,8 @@ main(int argc, char *argv[])
                     } while(gle == WAIT_IO_COMPLETION);
                 }
                 
-                handle_context::named_pipe_connection::delete_closing_connection();
+                pnpc->print_state();
+                delete pnpc;
                 pnpc = NULL;
             }
             current_assoc_id.clear();

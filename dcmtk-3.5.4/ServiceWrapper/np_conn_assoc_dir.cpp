@@ -158,7 +158,16 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
     time_header_out(cerr) << "np_conn_assoc_dir::process_file_incoming() receive file notify: " << p_assoc_id << endl;
 #endif
     if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive file notify: " << p_assoc_id << endl;
-    char *study_uid = strchr(p_assoc_id, ' ');
+
+    char *hash = strchr(p_assoc_id, ' ');
+    if(hash == NULL)
+    {
+        time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no hash." << endl;
+        return ERROR_INVALID_DATA;
+    }
+    else *hash++ = '\0';
+
+    char *study_uid = strchr(hash, ' ');
     if(study_uid == NULL)
     {
         time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no study uid." << endl;
@@ -166,7 +175,15 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
     }
     else *study_uid++ = '\0';
 
-    char *notify_file = strchr(study_uid, ' ');
+    char *unique_filename = strchr(study_uid, ' ');
+    if(unique_filename == NULL)
+    {
+        time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no unique file name." << endl;
+        return ERROR_INVALID_DATA;
+    }
+    else *unique_filename++ = '\0';
+
+    char *notify_file = strchr(unique_filename, ' ');
     if(notify_file == NULL)
     {
         time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no notify file." << endl;
@@ -176,7 +193,7 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
 
     if(get_listener())
     {   // server connection shall establish assoc <--> study many to many relationship
-        study_compr_job_dir* pstudy = NULL;
+        study_assoc_dir* pstudy = NULL;
         STUDY_MAP::iterator it = studies.find(study_uid);
         if(it != studies.end()) pstudy = it->second;
         if(pstudy = NULL)
@@ -189,12 +206,12 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
             strcpy_s(study_path + used, sizeof(study_path) - used, study_uid);
             if(MkdirRecursive(study_path))
             {
-                pstudy = study_compr_job_dir::create_instance(study_uid, orders_study_name, notify_file, pflog);
+                pstudy = study_assoc_dir::create_instance(study_uid, orders_study_name, notify_file, pflog);
                 studies[study_uid] = pstudy;
             }
             else time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() can't create dir " << study_path << endl;
         }
-        if(pstudy) pstudy->add_file(this, notify_file);
+        if(pstudy) pstudy->add_file(this, hash, unique_filename, notify_file);
     }
 
     return 0;

@@ -39,6 +39,8 @@
 #include <set>
 #include <map>
 #include <iterator>
+#include <tuple>
+#include <array>
 #include <algorithm>
 #include <functional>
 

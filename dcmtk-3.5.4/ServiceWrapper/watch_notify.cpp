@@ -323,7 +323,12 @@ int watch_notify(string &cmd, ofstream &flog)
 
         if(wr == WAIT_TIMEOUT || wr == WAIT_IO_COMPLETION)
         {
-            named_pipe_connection::delete_closing_connection();
+            const named_pipe_connection *p_dead = qrnps.find_and_remove_dead_connection();
+            if(p_dead)
+            {
+                p_dead->print_state();
+                delete p_dead;
+            }
         }
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + min(hsize, MAXIMUM_WAIT_OBJECTS))
         {

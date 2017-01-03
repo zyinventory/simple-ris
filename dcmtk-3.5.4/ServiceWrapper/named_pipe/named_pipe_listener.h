@@ -5,7 +5,10 @@
 #include <list>
 #include <map>
 #include <iterator>
+#include <tuple>
+#include <array>
 #include "dcmtk/dcmdata/notify_context.h"
+extern int opt_verbose;
 #endif
 
 #define NAMED_PIPE_QR "\\\\.\\pipe\\dcmtk_qr"
@@ -62,18 +65,18 @@ namespace handle_context
         virtual HANDLE get_handle() const { return hPipeEvent; };
         HANDLE get_current_pipe_handle() const { return hPipe; };
         void detect_timeout_connection();
+        const named_pipe_connection* find_and_remove_dead_connection();
     };
 
     class named_pipe_connection : public base_dir
     {
     private:
         static CONN_MAP map_alone_connections_read, map_alone_connections_write;
-        static std::list<named_pipe_connection*> wait_close_conn_list;
 	    OVERLAPPED oOverlap_read, oOverlap_write;
         named_pipe_listener *p_listener;
 	    HANDLE hPipeInst;
         size_t bytes_queued, write_buff_size, read_buff_size;
-        bool closing, reading, removed_from_map;
+        bool closing, reading;
         char *ptr_write_buff, *ptr_read_buff;
         std::list<char> message_read_buffer;
         std::list<std::string> message_write_buffer;
@@ -84,21 +87,21 @@ namespace handle_context
 
     public:
         static void regist_alone_connection(named_pipe_connection*);
-        static size_t remove_alone_connection(named_pipe_connection*);
+        static size_t remove_connection(named_pipe_connection*);
+        static const named_pipe_connection* find_and_remove_dead_alone_connection();
         static named_pipe_connection* find_alone_connection(LPOVERLAPPED, bool is_write);
         static void detect_timeout_alone_connection();
-        static void delete_closing_connection();
         static std::ostream* find_err_log_from_alone();
         named_pipe_connection(const char *assoc_id, const char *path, const char *meta_notify_file, size_t wbuff_size, size_t rbuff_size, int timeout, std::ostream *plog)
             : base_dir(assoc_id, path, meta_notify_file, timeout, plog), hPipeInst(NULL), write_buff_size(wbuff_size), read_buff_size(rbuff_size),
-            closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), p_listener(NULL), removed_from_map(false)
+            closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), p_listener(NULL)
         {
             memset(&oOverlap_read, 0, sizeof(oOverlap_read));
             memset(&oOverlap_write, 0, sizeof(oOverlap_write));
             ptr_read_buff = new char[read_buff_size + 1];
         };
         named_pipe_connection(named_pipe_listener *pnps, int timeout) : base_dir("", pnps->get_path().c_str(), "", timeout, pnps->get_err_stream()),
-            closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), removed_from_map(false), p_listener(pnps),
+            closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), p_listener(pnps),
             write_buff_size(pnps->get_write_buff_size()), read_buff_size(pnps->get_read_buff_size()), hPipeInst(pnps->get_current_pipe_handle())
         {
             memset(&oOverlap_read, 0, sizeof(oOverlap_read));
@@ -114,13 +117,12 @@ namespace handle_context
         virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size) { return 0; };
         LPOVERLAPPED get_overlap_read() { return &oOverlap_read; };
         LPOVERLAPPED get_overlap_write() { return &oOverlap_write; };
-        size_t get_bytes_queued() { return bytes_queued; };
+        size_t get_bytes_queued() const { return bytes_queued; };
         size_t get_write_buff_size() const { return write_buff_size; };
         size_t get_read_buff_size() const { return read_buff_size; };
         bool is_write_queue_empty() const { return (bytes_queued == 0 && message_write_buffer.size() == 0); };
         bool close_pipe();
-        bool is_closing() { return closing; };
-        bool is_reading() { return reading; };
+        bool is_dead() const { return !(reading || bytes_queued || hPipeInst); };
         named_pipe_listener* get_listener() const { return p_listener; };
         
         DWORD queue_message(const std::string &msg);
