@@ -9,9 +9,6 @@
     <ClCompile Include="dcmmkdir.cxx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\dcmdata\apps\notify_context.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\dcmdata\apps\xml_index.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

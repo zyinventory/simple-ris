@@ -24,7 +24,8 @@ namespace
     };
 }
 
-const std::string& DatasetNotifyWriter::datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet, bool isFull)
+void DatasetNotifyWriter::datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet,
+    handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION *pnfc, bool isFull)
 {
     const char *charset = NULL;
     (*imageDataSet)->findAndGetString(DCM_SpecificCharacterSet, charset);
@@ -38,29 +39,29 @@ const std::string& DatasetNotifyWriter::datasetToNotify(const char* instanceFile
 
     if(isFull)
     {
-        (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_FULL);
+        (*imageDataSet)->briefToStream(strmbuf, pnfc, NOTIFY_LEVEL_FULL);
         (*imageDataSet)->findAndGetOFString(DCM_StudyInstanceUID, currentStudyUID);
     }
     else
     {
-        (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_INSTANCE);
+        (*imageDataSet)->briefToStream(strmbuf, pnfc, NOTIFY_LEVEL_INSTANCE);
 
         (*imageDataSet)->findAndGetOFString(DCM_PatientID, patientID);
         if(patients.end() == find(patients.begin(), patients.end(), patientID))
         {
-            (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_PATIENT);
+            (*imageDataSet)->briefToStream(strmbuf, pnfc, NOTIFY_LEVEL_PATIENT);
             patients.push_back(patientID);
         }
         (*imageDataSet)->findAndGetOFString(DCM_StudyInstanceUID, currentStudyUID);
         if(studies.end() == find(studies.begin(), studies.end(), currentStudyUID))
         {
-            (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_STUDY);
+            (*imageDataSet)->briefToStream(strmbuf, pnfc, NOTIFY_LEVEL_STUDY);
             studies.push_back(currentStudyUID);
         }
         (*imageDataSet)->findAndGetOFString(DCM_SeriesInstanceUID, seriesUID);
         if(series.end() == find(series.begin(), series.end(), seriesUID))
         {
-            (*imageDataSet)->briefToStream(strmbuf, NOTIFY_LEVEL_SERIES);
+            (*imageDataSet)->briefToStream(strmbuf, pnfc, NOTIFY_LEVEL_SERIES);
             series.push_back(seriesUID);
         }
     }
@@ -81,7 +82,7 @@ const std::string& DatasetNotifyWriter::datasetToNotify(const char* instanceFile
 
     sw.clear();
     strmbuf.str(sw);
-    return currentStudyUID;
+    return;
 }
 
 bool mkdir_recursive_dcm(const char *subdir)

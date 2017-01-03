@@ -94,6 +94,7 @@ END_EXTERN_C
 #include "dcmtk/dcmqrdb/dcmqrcbs.h"
 #include "dcmtk/dcmdata/dcdatset.h"
 #include "dcmtk/dcmdata/dcdeftag.h"
+#include "dcmtk/dcmdata/notify_context.h"
 #include "named_pipe_listener.h"
 
 #ifdef WITH_SQL_DATABASE
@@ -150,6 +151,7 @@ static DatasetNotifyWriter *pDSWriter = NULL;
 
 static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
 {
+    handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION nfc;
     char notifyFileName[MAX_PATH];
     strcpy_s(notifyFileName, fn);
     char *fn_only = strrchr(notifyFileName, '\\');
@@ -162,8 +164,10 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
     strcpy_s(fn_only, sizeof(notifyFileName) - (fn_only - notifyFileName), "_" NOTIFY_FILE_TAG ".dfc");
 
     if(pDSWriter == NULL) pDSWriter = new DatasetNotifyWriter();
-    OFString currStudyUID(pDSWriter->datasetToNotify(instanceName.c_str(), notifyFileName, &pds, true));
+    memset(&nfc, 0, sizeof(handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION));
+    pDSWriter->datasetToNotify(instanceName.c_str(), notifyFileName, &pds, &nfc, true);
     if(opt_verbose) time_header_out(cerr) << notifyFileName << " write OK" << endl;
+    NotifyFileContextStorePath(nfc, '\\');
 
     if(current_assoc_id.length() == 0)
     {
@@ -195,7 +199,8 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
         char *p = strrchr(fn_only_start, '\\');
         if(p) ++p;
         else p = fn_only_start;
-        msg.append(1, ' ').append(pscp->getAssociationId()).append(1, ' ').append(currStudyUID).append(1, ' ').append(p);
+        msg.append(1, ' ').append(pscp->getAssociationId()).append(1, ' ').append(nfc.hash)
+            .append(1, ' ').append(nfc.studyUID).append(1, ' ').append(nfc.unique_filename).append(1, ' ').append(p);
         pnpc->queue_message(msg);
     }
     DWORD gle = 0;

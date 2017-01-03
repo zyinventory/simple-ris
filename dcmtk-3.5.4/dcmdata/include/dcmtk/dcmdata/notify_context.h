@@ -3,6 +3,7 @@
 #ifndef _NOTIFY_CONTEXT_CLASS_
 #define _NOTIFY_CONTEXT_CLASS_
 
+#include <Windows.h>
 #include <time.h>
 #include <iostream>
 #include <list>
@@ -16,7 +17,6 @@ namespace handle_context
             xfer[16], xfer_new[16], charset[65];
         long number;
         bool isEncapsulated;
-        const char* StorePath(char sp = '\\');
         char PathSeparator() const { return unique_filename[8]; }
     } NOTIFY_FILE_CONTEXT_FILE_SECTION;
 
@@ -46,7 +46,24 @@ namespace handle_context
         NOTIFY_FILE_CONTEXT_PATIENT_SECTION patient;
         NOTIFY_FILE_CONTEXT_STUDY_SECTION study;
         NOTIFY_FILE_CONTEXT_SERIES_SECTION series;
-        bool operator<(const struct _tag_NOTIFY_FILE_CONTEXT &r) const;
+        bool operator<(const struct _tag_NOTIFY_FILE_CONTEXT &r) const
+        {
+            int cmp = strcmp(src_notify_filename, r.src_notify_filename);
+            if(cmp < 0) return true;
+            else if(cmp > 0) return false;
+            else
+            {
+                cmp = strcmp(file.unique_filename, r.file.unique_filename);
+                if(cmp < 0) return true;
+                else if(cmp > 0) return false;
+                else
+                {
+                    cmp = strcmp(file.filename, r.file.filename);
+                    if(cmp < 0) return true;
+                    else return false;
+                }
+            }
+        };
         bool operator==(const struct _tag_NOTIFY_FILE_CONTEXT &r) const { return (!(*this < r) && !(r < *this)); };
     } NOTIFY_FILE_CONTEXT;
 

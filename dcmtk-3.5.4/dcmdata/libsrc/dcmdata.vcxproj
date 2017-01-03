@@ -379,6 +379,7 @@
     <ClInclude Include="..\include\dcmtk\dcmdata\dcxfer.h" />
     <ClInclude Include="..\apps\mdfconen.h" />
     <ClInclude Include="..\apps\mdfdsman.h" />
+    <ClInclude Include="..\include\dcmtk\dcmdata\notify_context.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\ofstd\libsrc\ofstd.vcxproj">

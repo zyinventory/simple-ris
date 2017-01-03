@@ -11,6 +11,17 @@ COMMONLIB_API size_t in_process_sequence_dll(char *buff, size_t buff_size, const
     return in_process_sequence(buff, buff_size, prefix);
 }
 
+COMMONLIB_API const char* NotifyFileContextStorePath(handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION &nfc, char sp)
+{
+    HashStr(nfc.studyUID, nfc.unique_filename, sizeof(nfc.unique_filename));
+    nfc.unique_filename[8] = sp;
+    SeriesInstancePath(nfc.seriesUID, nfc.instanceUID, nfc.unique_filename + 9, sizeof(nfc.unique_filename) - 9, sp);
+    sprintf_s(nfc.hash, "%c%c%c%c%c%c%c%c%c%c%c",
+        nfc.unique_filename[0], nfc.unique_filename[1], sp, nfc.unique_filename[2], nfc.unique_filename[3], sp, 
+        nfc.unique_filename[4], nfc.unique_filename[5], sp, nfc.unique_filename[6], nfc.unique_filename[7]);
+    return nfc.unique_filename;
+}
+
 COMMONLIB_API errno_t setEnvParentPID()
 {
   char pidString[16];

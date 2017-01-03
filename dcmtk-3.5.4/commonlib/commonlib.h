@@ -203,6 +203,11 @@ COMMONLIB_API int GBKToUTF8(const char *lpGBKStr, char *lpUTF8Str, int nUTF8StrL
 COMMONLIB_API int AutoCharToGBK(char *buff, int nGBKStrLen, const char *instr);
 COMMONLIB_API int ValidateGBK(unsigned char *buff, int max_len);
 COMMONLIB_API size_t normalize_dicom_date(size_t buff_len, char *buff, const char *studyDate);
+namespace handle_context
+{
+    typedef struct _tag_NOTIFY_FILE_CONTEXT_FILE_SECTION NOTIFY_FILE_CONTEXT_FILE_SECTION;
+};
+COMMONLIB_API const char* NotifyFileContextStorePath(handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION &nfc, char sp = '\\');
 
 // common_public.cpp
 #ifndef GetSignalInterruptValue

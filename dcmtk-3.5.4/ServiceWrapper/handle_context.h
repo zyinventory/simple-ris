@@ -60,6 +60,34 @@ namespace handle_context
         virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size);
         const char* close_description() const;
     };
+
+    class handle_proc : public base_dir
+    {
+    private:
+        HANDLE hlog;
+        std::string exec_cmd, exec_name, log_path;
+        PROCESS_INFORMATION procinfo;
+		DWORD priority;
+    public:
+        handle_proc(const std::string &assoc_id, const std::string &cwd, const std::string &notify_file, const std::string &cmd, const std::string &exec_prog_name, std::ostream *plog) 
+            : base_dir(assoc_id, cwd, notify_file, 0, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name), priority(NORMAL_PRIORITY_CLASS)
+            { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
+        handle_proc(const handle_proc& o) : base_dir(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
+			log_path(o.log_path), procinfo(o.procinfo), priority(o.priority) {};
+        
+        static bool make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, const std::string &prog_path, std::ostream &flog);
+
+        handle_proc& operator=(const handle_proc &r);
+		DWORD set_priority(DWORD p);
+        void print_state() const;
+        virtual ~handle_proc();
+        HANDLE get_handle() const { return procinfo.hProcess; };
+        const std::string& get_exec_cmd() const { return exec_cmd; };
+        const std::string& get_exec_name() const { return exec_name; };
+        const std::string& get_log_path() const { return log_path; };
+        const PROCESS_INFORMATION& get_procinfo() const { return procinfo; };
+        int start_process(bool out_redirect);
+    };
 }
 
 #endif

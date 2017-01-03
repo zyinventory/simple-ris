@@ -146,7 +146,6 @@
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\dcmdata\include\dcmtk\dcmdata\dconotify.h" />
     <ClInclude Include="commonlib.h" />
     <ClInclude Include="commonlib_internal.h" />
     <ClInclude Include="common_public.h" />

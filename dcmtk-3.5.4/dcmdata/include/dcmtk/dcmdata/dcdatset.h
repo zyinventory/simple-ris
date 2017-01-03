@@ -257,8 +257,8 @@ class DcmDataset
     /** write brief info to ostream, such as OriginalXfer, DCM_PatientID, 
      *  DCM_SOPInstanceUID, DCM_Modality, DCM_StudyDate, etc.
      */
-    OFBool briefToStream(ostream &strm, const char *level = NOTIFY_LEVEL_FULL);
-    OFBool briefToStream(FILE *fp, const char *level = NOTIFY_LEVEL_FULL);
+    OFBool briefToStream(ostream &strm, handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION *pnfc, const char *level = NOTIFY_LEVEL_FULL);
+    OFBool briefToStream(FILE *fp, handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION *pnfc, const char *level = NOTIFY_LEVEL_FULL);
     OFBool doNotChangeGEBug(E_TransferSyntax opt_oxfer, const DcmRepresentationParameter *rp);
 
   private:

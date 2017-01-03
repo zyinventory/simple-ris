@@ -276,7 +276,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="dcmgpdir.cxx" />
-    <ClCompile Include="notify_context.cpp" />
     <ClCompile Include="xml_index.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -306,7 +305,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\dcmtk\dcmdata\notify_context.h" />
     <ClInclude Include="..\include\dcmtk\dcmdata\xml_index.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

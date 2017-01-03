@@ -43,6 +43,7 @@
 
 #include <string>
 #include <list>
+#include "notify_context.h"
 
 class DcmDataset;
 
@@ -58,7 +59,8 @@ private:
 
 public:
     DatasetNotifyWriter() : instances(NOTIFY_FILE_SEQ_START) {};
-    const std::string& datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet, bool isFull);
+    void datasetToNotify(const char* instanceFileName, const char *notifyFileName, DcmDataset **imageDataSet,
+        handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION *pnfc, bool isFull);
 };
 
 #endif // DCONOTIFY_H

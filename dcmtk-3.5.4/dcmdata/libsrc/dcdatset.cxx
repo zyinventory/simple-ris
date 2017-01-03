@@ -593,7 +593,7 @@ void DcmDataset::removeAllButOriginalRepresentations()
     }
 }
 
-OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
+OFBool DcmDataset::briefToStream(ostream &strmbuf, handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION *pnfc, const char *level)
 {
 	const char *patientID = NULL, *patientsName = NULL, *patientsBirthDate, 
         *patientsSex, *patientsSize, *patientsWeight, *sopClassUID = NULL,
@@ -607,8 +607,11 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
         findAndGetString(DCM_SpecificCharacterSet, charset);
 	    findAndGetString(DCM_PatientID, patientID);
         findAndGetString(DCM_StudyInstanceUID, studyUID);
+        strncpy_s(pnfc->studyUID, studyUID, _TRUNCATE);
         findAndGetString(DCM_SeriesInstanceUID, seriesUID);
+        strncpy_s(pnfc->seriesUID, seriesUID, _TRUNCATE);
         findAndGetString(DCM_SOPInstanceUID, instanceUID);
+        strncpy_s(pnfc->instanceUID, instanceUID, _TRUNCATE);
         findAndGetSint32(DCM_InstanceNumber, instanceNumber);
         findAndGetString(DCM_SOPClassUID, sopClassUID);
 
@@ -710,10 +713,10 @@ OFBool DcmDataset::briefToStream(ostream &strmbuf, const char *level)
     return OFTrue;
 }
 
-OFBool DcmDataset::briefToStream(FILE *fp, const char *level)
+OFBool DcmDataset::briefToStream(FILE *fp, handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION *pnfc, const char *level)
 {
     stringstream ss;
-    OFBool ret = briefToStream(ss, level);
+    OFBool ret = briefToStream(ss, pnfc, level);
     if(!ret) return ret;
     string sw = ss.str();
     size_t wt = fwrite(sw.c_str(), 1, sw.length(), fp);

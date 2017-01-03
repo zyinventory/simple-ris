@@ -1141,7 +1141,8 @@ storeSCPCallback(
             size_t used = in_process_sequence(notifyFileName, sizeof(notifyFileName), STORE_STATE_DIR"\\");
             if(used > 0 && -1 != sprintf_s(notifyFileName + used, sizeof(notifyFileName) - used, "_%s.dfc", NOTIFY_FILE_TAG))
             {
-                if(pDSWriter) pDSWriter->datasetToNotify(fileName, notifyFileName, imageDataSet, true);
+                handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION nfc;
+                if(pDSWriter) pDSWriter->datasetToNotify(fileName, notifyFileName, imageDataSet, &nfc, true);
                 else cerr << "storeSCPCallback() pDSWriter->datasetToNotify() failed: pDSWriter is NULL." << endl;
             }
             else

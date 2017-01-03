@@ -15,15 +15,9 @@
     <ClCompile Include="xml_index.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="notify_context.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dcmtk\dcmdata\xml_index.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\dcmtk\dcmdata\notify_context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
