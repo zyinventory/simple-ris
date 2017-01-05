@@ -66,8 +66,11 @@ named_pipe_connection::~named_pipe_connection()
 DWORD named_pipe_connection::start_working()
 {
     // server connection
-    if(p_listener) return read_message();
-
+    if(p_listener)
+    {
+        callback_pipe_connected();
+        return read_message();
+    }
     // client connection
     DWORD gle = 0;
     bool pipeStandby = false;
@@ -91,6 +94,7 @@ DWORD named_pipe_connection::start_working()
     if(!fSuccess)
         return displayErrorToCerr(__FUNCSIG__ " SetNamedPipeHandleState(PIPE_READMODE_MESSAGE) failed", GetLastError(), pflog);
 
+    callback_pipe_connected();
     return read_message();
 }
 
@@ -127,6 +131,7 @@ bool named_pipe_connection::close_pipe()
             CloseHandle(hPipeInst);
         }
         hPipeInst = NULL;
+        callback_pipe_closed();
         return true;
     }
 }
@@ -147,13 +152,13 @@ void named_pipe_connection::print_state(void) const
 DWORD named_pipe_connection::read_message()
 {
     if(closing) return ERROR_HANDLE_EOF;
-
     if(ptr_read_buff == NULL)
     {
         ptr_read_buff = new char[read_buff_size + 1];
         if(ptr_write_buff == NULL)
             return displayErrorToCerr(__FUNCSIG__" malloc read buffer", ERROR_NOT_ENOUGH_MEMORY, pflog);
     }
+
     refresh_last_access();
     reading = true;
     if(!ReadFileEx(hPipeInst, ptr_read_buff, read_buff_size, &oOverlap_read, handle_context::read_pipe_complete))
@@ -331,7 +336,7 @@ DWORD named_pipe_connection::queue_message(const std::string &msg)
     else return write_message(msg.size(), msg.c_str());
 }
 
-void named_pipe_connection::detect_timeout_alone_connection()
+void named_pipe_connection::close_timeout_alone_connection()
 {
     for(CONN_MAP::const_iterator it = map_alone_connections_read.cbegin(); it != map_alone_connections_read.end(); ++it)
     {

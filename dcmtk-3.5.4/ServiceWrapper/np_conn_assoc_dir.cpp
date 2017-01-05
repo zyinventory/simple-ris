@@ -5,13 +5,13 @@ using namespace handle_context;
 
 const char* np_conn_assoc_dir::close_description() const
 {
-    if(assoc_disconn)
+    if(is_disconn())
     {
         if(disconn_release) return "OK";
         else return "ABORT";
     }
     //else if(is_time_out(assoc_timeout)) return "TIMEOUT";
-    else return "UNKNOWN";
+    else return "CONNECTED";
 }
 
 np_conn_assoc_dir::~np_conn_assoc_dir()
@@ -50,7 +50,7 @@ void np_conn_assoc_dir::print_state() const
         << "\ttransfer_syntax: " << transfer_syntax << endl
         << "\tauto_publish: " << auto_publish << endl
         << "\tport: " << dec << port << endl
-        << "\tassoc_disconn: " << assoc_disconn << endl
+        << "\tis_disconn: " << is_disconn() << endl
         << "\tdisconn_release: " << disconn_release << endl;
     named_pipe_connection::print_state();
 }
@@ -117,7 +117,6 @@ DWORD np_conn_assoc_dir::establish_conn_dir(char *p_assoc_id)
         set_path(work_path);
         set_id(assoc_id);
         set_meta_notify_filename(mnf);
-        assoc_disconn = false;
 #ifdef _DEBUG
         time_header_out(cerr) << cmd << " " << hex << tag << " " << work_path << " " << dec << pid << " " << assoc_id << " " << calling << " " << remote << " " << called << " " << port << endl;
 #endif
@@ -147,7 +146,6 @@ DWORD np_conn_assoc_dir::release_conn_dir(char *p_assoc_id)
     }
     else *notify_file++ = '\0';
 
-    assoc_disconn = true;
     disconn_release = (strncmp(release_result, STORE_RESULT_RELEASE, sizeof(STORE_RESULT_RELEASE) - 1) == 0);
     return 0;
 }

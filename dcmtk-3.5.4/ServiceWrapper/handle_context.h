@@ -46,7 +46,7 @@ namespace handle_context
     private:
         std::string calling, called, remote, port, transfer_syntax, auto_publish;
         DWORD pid;
-        bool assoc_disconn, disconn_release;
+        bool disconn_release;
         std::map<std::string, study_assoc_dir*> studies;
 
         DWORD process_file_incoming(char *assoc_id);
@@ -54,7 +54,7 @@ namespace handle_context
         DWORD release_conn_dir(char *assoc_id);
 
     public:
-        np_conn_assoc_dir(named_pipe_listener *pnps, int timeout) : named_pipe_connection(pnps, timeout), pid(0), assoc_disconn(true), disconn_release(false) { };
+        np_conn_assoc_dir(named_pipe_listener *pnps, int timeout) : named_pipe_connection(pnps, timeout), pid(0), disconn_release(false) { };
         virtual ~np_conn_assoc_dir();
         virtual void print_state() const;
         virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size);

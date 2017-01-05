@@ -90,7 +90,7 @@ namespace handle_context
         static size_t remove_connection(named_pipe_connection*);
         static const named_pipe_connection* find_and_remove_dead_alone_connection();
         static named_pipe_connection* find_alone_connection(LPOVERLAPPED, bool is_write);
-        static void detect_timeout_alone_connection();
+        static void close_timeout_alone_connection();
         static std::ostream* find_err_log_from_alone();
         named_pipe_connection(const char *assoc_id, const char *path, const char *meta_notify_file, size_t wbuff_size, size_t rbuff_size, int timeout, std::ostream *plog)
             : base_dir(assoc_id, path, meta_notify_file, timeout, plog), hPipeInst(NULL), write_buff_size(wbuff_size), read_buff_size(rbuff_size),
@@ -115,6 +115,8 @@ namespace handle_context
         virtual HANDLE get_handle() const { return hPipeInst; };
         virtual DWORD start_working();
         virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size) { return 0; };
+        virtual void callback_pipe_connected() { };
+        virtual void callback_pipe_closed() { };
         LPOVERLAPPED get_overlap_read() { return &oOverlap_read; };
         LPOVERLAPPED get_overlap_write() { return &oOverlap_write; };
         size_t get_bytes_queued() const { return bytes_queued; };
@@ -123,6 +125,7 @@ namespace handle_context
         bool is_write_queue_empty() const { return (bytes_queued == 0 && message_write_buffer.size() == 0); };
         bool close_pipe();
         bool is_dead() const { return !(reading || bytes_queued || hPipeInst); };
+        bool is_disconn() const { return hPipeInst == NULL; };
         named_pipe_listener* get_listener() const { return p_listener; };
         
         DWORD queue_message(const std::string &msg);
