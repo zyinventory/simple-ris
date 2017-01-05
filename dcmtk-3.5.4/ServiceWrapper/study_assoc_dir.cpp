@@ -42,23 +42,43 @@ void study_assoc_dir::add_file(np_conn_assoc_dir *p_assoc_dir, const char *hash,
     }
 }
 
-study_assoc_dir* study_assoc_dir::find_first_job_in_studies()
+const std::string& study_assoc_dir::get_first_greater_notify_filename(const string &base) const
 {
-    set<string> notify_files;
-    transform(studies_map.cbegin(), studies_map.cend(), inserter(notify_files, notify_files.end()), [](const STUDY_PAIR &p) -> const string& {
-        if(p.second == NULL) return empty_notify_filename;
-        return p.second->get_first_notify_filename();
-    });
-
-    for(set<string>::const_iterator itnf = notify_files.cbegin(); itnf != notify_files.cend(); ++itnf)
+    for(JOB_LIST::const_iterator it = compress_queue.begin(); it != compress_queue.end(); ++it)
     {
-        if(itnf->length() == 0) continue;
-        const string& first = *itnf;
-        STUDY_MAP::const_iterator it = find_if(studies_map.cbegin(), studies_map.cend(), [&first](const STUDY_PAIR &p) -> bool {
-            if(p.second == NULL) return false;
-            return (first.compare(p.second->get_first_notify_filename()) == 0);
-        });
-        if(it != studies_map.cend()) return it->second;
+        if(get<0>(*it).compare(base) > 0) return get<0>(*it);
+    }
+    return empty_notify_filename;
+}
+
+const JOB_TUPLE* study_assoc_dir::get_first_tuple_equal(const std::string &base) const
+{
+    if(compress_queue.size() == 0) return NULL;
+    for(JOB_LIST::const_iterator it = compress_queue.cbegin(); it != compress_queue.cend(); ++it)
+    {
+        int result = get<0>(*it).compare(base);
+        if(result == 0) return &*it;
+        else if(result > 0) return NULL;
+        //else result < 0, continue
     }
     return NULL;
+}
+
+study_assoc_dir* study_assoc_dir::find_first_job_in_studies(const string &base)
+{
+    set<string> notify_files;
+    study_assoc_dir* ps = NULL;
+    for(STUDY_MAP::const_iterator it = studies_map.cbegin(); it != studies_map.cend(); ++it)
+    {
+        if(it->second)
+        {
+            const string &str = it->second->get_first_greater_notify_filename(base);
+            if(str.length())
+            {
+                notify_files.insert(str);
+                if(str.compare(*notify_files.cbegin()) == 0) ps = it->second;
+            }
+        }
+    }
+    return ps;
 }

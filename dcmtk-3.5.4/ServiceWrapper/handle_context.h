@@ -26,11 +26,13 @@ namespace handle_context
 
     public:
         static study_assoc_dir* create_instance(const char *study_uid, const char *path, const char *meta_notify_file, std::ostream *pflog);
-        static study_assoc_dir* find_first_job_in_studies();
+        static study_assoc_dir* find_first_job_in_studies(const std::string &base);
         virtual void print_state() const;
         void add_file(np_conn_assoc_dir *p_assoc_dir, const char *hash, const char *unique_filename, const char *p_notify_file);
-        const std::string& get_first_notify_filename() const { return compress_queue.size() ? std::get<0>(*compress_queue.begin()) : empty_notify_filename; };
+        const std::string& get_first_greater_notify_filename(const std::string &base) const;
+        bool find_notify_filename(const std::string &base) const { return get_first_tuple_equal(base) != NULL; };
         const JOB_TUPLE* get_first_tuple() const { return compress_queue.size() ? &compress_queue.front() : NULL; };
+        const JOB_TUPLE* get_first_tuple_equal(const std::string &base) const;
         void pop_front_tuple() { compress_queue.pop_front(); };
     };
 
