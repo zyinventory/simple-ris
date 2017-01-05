@@ -88,9 +88,9 @@ namespace handle_context
     public:
         static void regist_alone_connection(named_pipe_connection*);
         static size_t remove_connection(named_pipe_connection*);
-        static const named_pipe_connection* find_and_remove_dead_alone_connection();
         static named_pipe_connection* find_alone_connection(LPOVERLAPPED, bool is_write);
-        static void close_timeout_alone_connection();
+        //static const named_pipe_connection* find_and_remove_dead_alone_connection();
+        //static void close_timeout_alone_connection();
         static std::ostream* find_err_log_from_alone();
         named_pipe_connection(const char *assoc_id, const char *path, const char *meta_notify_file, size_t wbuff_size, size_t rbuff_size, int timeout, std::ostream *plog)
             : base_dir(assoc_id, path, meta_notify_file, timeout, plog), hPipeInst(NULL), write_buff_size(wbuff_size), read_buff_size(rbuff_size),

@@ -54,6 +54,7 @@
 #include "handle_context2.h"
 
 int watch_notify(std::string &cmd, std::ofstream &flog);
+bool process_notify_file(const handle_context::JOB_TUPLE* pt, handle_context::NOTIFY_FILE_CONTEXT *pnfc);
 int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);
 int cmd_patient(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);
 int cmd_study(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);

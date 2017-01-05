@@ -279,3 +279,9 @@ void save_notify_context_to_ostream(const NOTIFY_FILE_CONTEXT &cnc, bool compres
     output << NOTIFY_LEVEL_SERIES << " 00080060 " << cnc.series.modality << endl;
     output << NOTIFY_LEVEL_SERIES << " 00200011 " << dec << cnc.series.number << endl;
 }
+
+bool process_notify_file(const JOB_TUPLE* pt, NOTIFY_FILE_CONTEXT *pnfc)
+{
+    // todo: implemention
+    return true;
+}

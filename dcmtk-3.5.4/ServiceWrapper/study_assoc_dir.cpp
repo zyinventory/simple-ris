@@ -49,14 +49,16 @@ study_assoc_dir* study_assoc_dir::find_first_job_in_studies()
         if(p.second == NULL) return empty_notify_filename;
         return p.second->get_first_notify_filename();
     });
-    if(notify_files.size() == 0) return NULL;
-    set<string>::const_iterator itnf = notify_files.cbegin();
-    if(itnf->length() == 0) ++itnf;
-    const string& first = *itnf;
-    STUDY_MAP::const_iterator it = find_if(studies_map.cbegin(), studies_map.cend(), [&first](const STUDY_PAIR &p) -> bool {
-        if(p.second == NULL) return false;
-        return (first.compare(p.second->get_first_notify_filename()) == 0);
-    });
-    if(it == studies_map.cend()) return NULL;
-    else return it->second;
+
+    for(set<string>::const_iterator itnf = notify_files.cbegin(); itnf != notify_files.cend(); ++itnf)
+    {
+        if(itnf->length() == 0) continue;
+        const string& first = *itnf;
+        STUDY_MAP::const_iterator it = find_if(studies_map.cbegin(), studies_map.cend(), [&first](const STUDY_PAIR &p) -> bool {
+            if(p.second == NULL) return false;
+            return (first.compare(p.second->get_first_notify_filename()) == 0);
+        });
+        if(it != studies_map.cend()) return it->second;
+    }
+    return NULL;
 }

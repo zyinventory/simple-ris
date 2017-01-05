@@ -15,8 +15,6 @@ namespace handle_context
     class handle_dir;
     typedef std::map<std::string, handle_dir*> HANDLE_DIR_MAP;
     typedef std::pair<std::string, handle_dir*> HANDLE_DIR_PAIR;
-    class handle_proc;
-    typedef std::list<handle_proc*> HANDLE_PROC_LIST;
     class handle_study;
     typedef std::map<std::string, handle_study*> STUDY2_MAP;
     typedef std::pair<std::string, handle_study*> STUDY2_PAIR;

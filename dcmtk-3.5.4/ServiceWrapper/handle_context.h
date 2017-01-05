@@ -10,7 +10,7 @@ namespace handle_context
     typedef std::pair<std::string, study_assoc_dir*> STUDY_PAIR;
     // <notify_file, notify_path, hash, unique_filename>
     typedef std::tuple<std::string, std::string, std::string, std::string> JOB_TUPLE; 
-    typedef std::list<JOB_TUPLE > JOB_LIST;
+    typedef std::list< JOB_TUPLE > JOB_LIST;
     class np_conn_assoc_dir;
 
     class study_assoc_dir : public base_dir
@@ -28,8 +28,10 @@ namespace handle_context
         static study_assoc_dir* create_instance(const char *study_uid, const char *path, const char *meta_notify_file, std::ostream *pflog);
         static study_assoc_dir* find_first_job_in_studies();
         virtual void print_state() const;
-        const std::string& get_first_notify_filename() const { return compress_queue.size() ? std::get<0>(*compress_queue.begin()) : empty_notify_filename; };
         void add_file(np_conn_assoc_dir *p_assoc_dir, const char *hash, const char *unique_filename, const char *p_notify_file);
+        const std::string& get_first_notify_filename() const { return compress_queue.size() ? std::get<0>(*compress_queue.begin()) : empty_notify_filename; };
+        const JOB_TUPLE* get_first_tuple() const { return compress_queue.size() ? &compress_queue.front() : NULL; };
+        void pop_front_tuple() { compress_queue.pop_front(); };
     };
 
     class np_conn_study_dir : public named_pipe_connection
@@ -88,6 +90,7 @@ namespace handle_context
         const PROCESS_INFORMATION& get_procinfo() const { return procinfo; };
         int start_process(bool out_redirect);
     };
+    typedef std::list<handle_proc*> HANDLE_PROC_LIST;
 }
 
 #endif

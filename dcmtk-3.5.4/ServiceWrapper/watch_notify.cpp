@@ -6,10 +6,7 @@ using namespace handle_context;
 static char buff[FILE_BUF_SIZE];
 static const string debug_mode_header("DebugMode");
 static HANDLE_PROC_LIST proc_list;
-
-static HANDLE_MAP map_handle_context;
 static HANDLE_DIR_MAP handle_dir_map;
-static NOTIFY_LIST compress_queue;
 
 static bool select_handle_dir_by_association_path(const handle_compress *pnf, const string &association_id, const string &path, ostream &flog)
 {
@@ -139,6 +136,7 @@ static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named
 {
     if(phdir && phdir->get_id().length())
     {
+        /*
         for(HANDLE_MAP::iterator it = map_handle_context.begin(); it != map_handle_context.end(); ++it)
         {
             handle_compress *phcompr = it->second;
@@ -149,7 +147,7 @@ static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named
         {
             if(phdir->get_id().compare(it->assoc.id) == 0) return false;
         }
-
+        */
         if(phdir->is_association_disconnect() || phdir->is_time_out())
         {
             if(opt_verbose)
@@ -224,13 +222,11 @@ int watch_notify(string &cmd, ofstream &flog)
         displayErrorToCerr("dcmtk_mkdir.start_listening()", gle, &flog);
         return gle;
     }
-    // todo: replace nps to dirnps
-    named_pipe_server nps("", &flog);
 
     // start dcmqrscp.exe parent proc
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
-    handle_proc *phproc = new handle_proc("dcmqrscp", buff, "", cmd, "dcmqrscp", &flog);
-    gle = phproc->start_process(true);
+    handle_proc *phqr = new handle_proc("dcmqrscp", buff, "", cmd, "dcmqrscp", &flog);
+    gle = phqr->start_process(true);
     if(gle)
     {
         displayErrorToCerr("watch_notify() handle_proc::create_process(dcmqrscp) at beginning", gle, &flog);
@@ -255,8 +251,8 @@ int watch_notify(string &cmd, ofstream &flog)
 #endif
     cmd = buff;
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
-    handle_proc *phproc_job = new handle_proc("jobloader", buff, "", cmd, "jobloader", &flog);
-    gle = phproc_job->start_process(false);
+    handle_proc *phjob = new handle_proc("jobloader", buff, "", cmd, "jobloader", &flog);
+    gle = phjob->start_process(false);
     if(gle)
     {
         displayErrorToCerr("watch_notify() handle_proc::create_process(jobloader) at beginning", gle, &flog);
@@ -270,11 +266,11 @@ int watch_notify(string &cmd, ofstream &flog)
         if(debug_flag) debug_mode = true;
     }
 #ifdef _DEBUG
-    WaitForInputIdle(phproc->get_handle(), INFINITE);
-    WaitForInputIdle(phproc_job->get_handle(), INFINITE);
+    WaitForInputIdle(phqr->get_handle(), INFINITE);
+    WaitForInputIdle(phjob->get_handle(), INFINITE);
 #endif
-    proc_list.push_back(phproc);
-    proc_list.push_back(phproc_job);
+    proc_list.push_back(phqr);
+    proc_list.push_back(phjob);
 
     HANDLE hSema = CreateSemaphore(NULL, WORKER_CORE_NUM, WORKER_CORE_NUM, "Global\\semaphore_compress_process");
     if(hSema == NULL)
@@ -295,23 +291,12 @@ int watch_notify(string &cmd, ofstream &flog)
     size_t file_in_compress_queue = 0;
     while(GetSignalInterruptValue() == 0)
     {
-		// handle's waiting order: named pipe, dir monitor, compress proc, qr & job proc
-		vector< BASE_HANDLE_PAIR > hs;
-        hs.reserve(map_handle_context.size() + proc_list.size());
-        transform(map_handle_context.begin(), map_handle_context.end(), back_inserter(hs), [](const HANDLE_PAIR &p) { return BASE_HANDLE_PAIR(p.first, p.second); });
-		sort(hs.begin(), hs.end(), handle_less);
-		vector< BASE_HANDLE_PAIR >::const_iterator it_null = find_if(hs.cbegin(), hs.cend(), [](const BASE_HANDLE_PAIR &p) { return p.second == NULL; });
-		if(it_null != hs.cend()) hs.erase(it_null, hs.cend());
-
-        // append proc handle to hs
-        transform(proc_list.begin(), proc_list.end(), back_inserter(hs), [](handle_proc *p) { return BASE_HANDLE_PAIR(p->get_handle(), p); });
-        
-        size_t hsize = 2 + hs.size();
+        size_t hsize = 2 + proc_list.size();
         if(pha) delete[] pha;
         pha = new HANDLE[hsize];
-        pha[0] = nps.get_handle(); // map_handle_context[named pipe listening handle] == NULL
+        pha[0] = dirnps.get_handle(); // map_handle_context[named pipe listening handle] == NULL
         pha[1] = qrnps.get_handle();
-        transform(hs.cbegin(), hs.cend(), &pha[2], [](const BASE_HANDLE_PAIR &p) { return p.first; });
+        transform(proc_list.rbegin(), proc_list.rend(), &pha[2], [](const handle_proc *p) { return p->get_handle(); });
 
         DWORD wr = WAIT_IO_COMPLETION;
 		do {
@@ -323,51 +308,64 @@ int watch_notify(string &cmd, ofstream &flog)
 
         if(wr == WAIT_TIMEOUT || wr == WAIT_IO_COMPLETION)
         {
+            /*
             const named_pipe_connection *p_dead = qrnps.find_and_remove_dead_connection();
             if(p_dead)
             {
                 p_dead->print_state();
                 delete p_dead;
             }
+            */
         }
         else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + min(hsize, MAXIMUM_WAIT_OBJECTS))
         {
             HANDLE waited = pha[wr - WAIT_OBJECT_0];
-            handle_compress *phcompr = map_handle_context.count(waited) ? map_handle_context[waited] : NULL;
             
             if(waited == qrnps.get_handle()) // pipe client(dcmmkdir) connect incoming
             {
                 gle = qrnps.pipe_client_connect_incoming();
                 if(gle)
                 {
-                    displayErrorToCerr("watch_notify() named_pipe_listener::pipe_client_connect_incoming()", gle, &flog);
+                    displayErrorToCerr("watch_notify() qrnps.pipe_client_connect_incoming()", gle, &flog);
                     break;
                 }
             }
-            else if(waited == nps.get_handle()) // pipe client(dcmmkdir) connect incoming
+            else if(waited == dirnps.get_handle()) // pipe client(dcmmkdir) connect incoming
             {
-                gle = nps.pipe_client_connect_incoming();
+                gle = dirnps.pipe_client_connect_incoming();
                 if(gle)
                 {
-                    displayErrorToCerr("watch_notify() named_pipe_server::pipe_client_connect_incoming()", gle, &flog);
+                    displayErrorToCerr("watch_notify() dirnps.pipe_client_connect_incoming()", gle, &flog);
                     break;
                 }
-            }
-            else if(phcompr)
-            {
-                ReleaseSemaphore(hSema, 1, NULL);
-                map_handle_context.erase(phcompr->get_handle());
-                NOTIFY_FILE_CONTEXT nfc = phcompr->get_notify_context();
-                time_header_out(flog) << "watch_notify() handle_compress exit: " << nfc.assoc.path << " " << nfc.file.filename << " " << nfc.file.unique_filename << endl;
-                if(debug_mode) phcompr->print_state();
-                compress_complete(phcompr->get_id(), nfc.file.studyUID, true, nps, nfc, flog);
-                delete phcompr;
             }
             else
             {
-                time_header_out(flog) << "watch_notify() phcompr is NULL, missing handle " << waited << endl;
-                for(int i = 0; i < hsize; ++i) flog << pha[i] << ' '; flog << endl;
-                break;
+                ReleaseSemaphore(hSema, 1, NULL);
+                HANDLE_PROC_LIST::iterator it_proc = find_if(proc_list.begin(), proc_list.end(), [waited](const handle_proc *p) { return waited == p->get_handle(); });
+                if(it_proc != proc_list.end())
+                {
+                    handle_proc *phcompr = *it_proc;
+                    proc_list.erase(it_proc);
+                    if(phcompr == phqr || phcompr == phjob)
+                    {
+                        time_header_out(flog) << "watch_notify() " << phcompr->get_exec_name() << " exit: " << waited << endl;
+                        break; // break main loop
+                    }
+                    else
+                    {
+                        time_header_out(flog) << "watch_notify() handle_compress exit: " << phcompr->get_id() << " " << phcompr->get_path() << endl;
+                        //compress_complete(phcompr->get_id(), nfc.file.studyUID, true, nps, nfc, flog);
+                        phcompr->print_state();
+                        delete phcompr;
+                    }
+                }
+                else
+                {
+                    time_header_out(flog) << "watch_notify() miss handle " << waited << endl;
+                    for(int i = 0; i < hsize; ++i) flog << pha[i] << ' '; flog << endl;
+                    break; // break main loop
+                }
             }
         }
         else
@@ -377,71 +375,84 @@ int watch_notify(string &cmd, ofstream &flog)
 			errstrm << "watch_notify() WaitForMultipleObjectsEx() return " << hex << wr << ", objs count is min(" << hsize << ", MAXIMUM_WAIT_OBJECTS = " << MAXIMUM_WAIT_OBJECTS << ")";
 			for(size_t i = 0; i < min(hsize, MAXIMUM_WAIT_OBJECTS); ++i) errstrm << ", " << hex << pha[i];
             displayErrorToCerr(errstrm.str().c_str(), gle, &flog);
-			continue;
+			break; // break main loop
         }
 
         // try compress queue
 		DWORD dw = WAIT_OBJECT_0;
-		NOTIFY_LIST::iterator it = compress_queue.begin();
-        while(it != compress_queue.end() && dw == WAIT_OBJECT_0)
+		study_assoc_dir* pStudy = NULL;
+        do
         {
 			bool start_compress_process_ok = false;
 			dw = WaitForSingleObject(hSema, 0);
 			if(dw == WAIT_OBJECT_0)
 			{
-				set<string> exist_uniquename; // don't start same study/series/instance, avoid file lock
-				for(HANDLE_MAP::const_iterator ite = map_handle_context.begin(); ite != map_handle_context.end(); ++ite)
-				{
-					if(ite->second) exist_uniquename.insert(ite->second->get_notify_context().file.unique_filename);
-				}
-
-                if(exist_uniquename.find(it->file.unique_filename) == exist_uniquename.end())
-                {   // no same study/series/instance
-                    NOTIFY_FILE_CONTEXT nfc = *it;
-                    it = compress_queue.erase(it);
-
-                    string received_instance_file_path(nfc.assoc.path);
-                    received_instance_file_path.append(1, '\\').append(nfc.file.filename);
-                    struct _stat64 fs;
-                    if(_stat64(received_instance_file_path.c_str(), &fs))
-                    {
-                        char msg[256];
-                        strerror_s(msg, errno);
-                        time_header_out(flog) << __FUNCSIG__" _stat64(" << received_instance_file_path << ") fail: " << msg << endl;
-                        fs.st_size = 0LL;
-
-                        compress_complete(nfc.assoc.id, nfc.file.studyUID, false, nps, nfc, flog);
-                        ReleaseSemaphore(hSema, 1, NULL);
-                        continue;                           
-                    }
-                    nfc.file.file_size_receive = fs.st_size;
-
-                    handle_compress* compr_ptr = handle_compress::make_handle_compress(nfc, flog);
-                    if(compr_ptr)
-                    {
-						compr_ptr->set_priority(BELOW_NORMAL_PRIORITY_CLASS);
-                        if(compr_ptr->start_process(false))
-                        {   // failed
-                            time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << nfc.assoc.path << " " << nfc.file.filename << " " << nfc.file.unique_filename << endl;
-                            delete compr_ptr;
-                        }
-                        else// succeed
-                        {
-                            time_header_out(flog) << "watch_notify() handle_compress::start_process() OK: " << nfc.assoc.path << " " << nfc.file.filename << " " << nfc.file.unique_filename << endl;
-                            map_handle_context[compr_ptr->get_handle()] = compr_ptr;
-                            start_compress_process_ok = true;
-                        }
-                    }
-                    else
-                        time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << nfc.assoc.path << " " << nfc.file.filename << endl;
-                    break; // exit for(NOTIFY_LIST::iterator it = compress_queue.begin()
-                }
-                else
+                pStudy = study_assoc_dir::find_first_job_in_studies();
+                if(pStudy && pStudy->get_first_tuple())
                 {
-                    if(opt_verbose) time_header_out(flog) << "watch_notify() skip exist compress unique name " << it->file.unique_filename
-                        << " src notify: " << it->src_notify_filename << endl;
-                    ++it;
+                    NOTIFY_FILE_CONTEXT *pnfc = new NOTIFY_FILE_CONTEXT;
+                    if(process_notify_file(pStudy->get_first_tuple(), pnfc))
+                    {
+                        const char *instance_uid = pnfc->file.instanceUID;
+                        HANDLE_PROC_LIST::iterator ite = find_if(proc_list.begin(), proc_list.end(),
+                            [instance_uid](const handle_proc *p) { return (p->get_id().compare(instance_uid) == 0); });
+
+                        if(ite == proc_list.end())
+                        {
+                            pStudy->pop_front_tuple();
+
+                            string received_instance_file_path(pnfc->assoc.path);
+                            received_instance_file_path.append(1, '\\').append(pnfc->file.filename);
+                            struct _stat64 fs;
+                            if(_stat64(received_instance_file_path.c_str(), &fs))
+                            {
+                                char msg[256];
+                                strerror_s(msg, errno);
+                                time_header_out(flog) << __FUNCSIG__" _stat64(" << received_instance_file_path << ") fail: " << msg << endl;
+                                fs.st_size = 0LL;
+
+                                delete pnfc;
+                                ReleaseSemaphore(hSema, 1, NULL);
+                                continue;                           
+                            }
+                            pnfc->file.file_size_receive = fs.st_size;
+
+                            // todo: move pnfc to study_assoc_dir
+                            handle_compress* compr_ptr = handle_compress::make_handle_compress(*pnfc, flog);
+                            if(compr_ptr)
+                            {
+						        compr_ptr->set_priority(BELOW_NORMAL_PRIORITY_CLASS);
+                                if(compr_ptr->start_process(false))
+                                {   // failed
+                                    time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << pnfc->assoc.path << " " << pnfc->file.filename << " " << pnfc->file.unique_filename << endl;
+                                    delete compr_ptr;
+                                }
+                                else// succeed
+                                {
+                                    time_header_out(flog) << "watch_notify() handle_compress::start_process() OK: " << pnfc->assoc.path << " " << pnfc->file.filename << " " << pnfc->file.unique_filename << endl;
+                                    proc_list.push_back(compr_ptr);
+                                    start_compress_process_ok = true;
+                                }
+                            }
+                            else time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << pnfc->assoc.path << " " << pnfc->file.filename << endl;
+                        }
+                        else // the same instance is in compressing
+                        {
+                            time_header_out(flog) << "watch_notify() skip exist compress unique name "
+                                << pnfc->file.unique_filename << " src notify: " << pnfc->src_notify_filename << endl;
+                            delete pnfc;
+                            pStudy = NULL;
+                            ReleaseSemaphore(hSema, 1, NULL);
+                        }
+                    }
+                    else // process notify file fail
+                    {
+                        time_header_out(flog) << "watch_notify() process notify file fail: " << get<0>(*pStudy->get_first_tuple()) << endl;
+                        if(pnfc) delete pnfc;
+                        pStudy->pop_front_tuple();
+                    }
                 }
+                else  pStudy = NULL; //no job in queue
 
 				if(!start_compress_process_ok) ReleaseSemaphore(hSema, 1, NULL);
 			}
@@ -451,39 +462,13 @@ int watch_notify(string &cmd, ofstream &flog)
 			else if(dw == WAIT_TIMEOUT)
 				time_header_out(flog) << "watch_notify() WaitForSingleObject(hSema) WAIT_TIMEOUT" << endl;
 #endif
-		} // end while(it != compress_queue.end() && dw == WAIT_OBJECT_0)
+		} while(pStudy && dw == WAIT_OBJECT_0);
 
- 		if(wr == WAIT_TIMEOUT)
-		{
-			// handle_dir pick up
-			set<string> exist_association_paths;
-			HANDLE_DIR_MAP::iterator it = handle_dir_map.begin();
-			while(it != handle_dir_map.end())
-			{
-				handle_dir *phdir = NULL;
-				if(it->second) phdir = it->second;
-				if(phdir && phdir->get_id().length())
-				{
-					exist_association_paths.insert(exist_association_paths.begin(), phdir->get_path());
-					if(close_handle_dir(phdir, NULL, nps, true, flog))
-					{
-						it = handle_dir_map.erase(it);
-						continue;
-					}
-				}
-				++it;
-			}
-
-			// write jdf to orders_notify
-			set<string> exist_study_in_queue;
-			transform(compress_queue.cbegin(), compress_queue.cend(), inserter(exist_study_in_queue, exist_study_in_queue.end()),
-				[](const NOTIFY_FILE_CONTEXT &nfc) { return string(nfc.study.studyUID); });
-
-			nps.check_study_timeout_to_generate_jdf(exist_study_in_queue, exist_association_paths);
-
+        if(wr == WAIT_TIMEOUT)
+        {
             //switch log file
             GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service_n.txt", buff, sizeof(buff));
-            if(flog.tellp() > 10 * 1024 * 1024 || strncmp(buff, current_log_path.c_str(), 20)) // 20 == strlen("pacs_log\\2016\\10\\10\\")
+            if(flog.tellp() > 10 * 1024 * 1024 || strncmp(buff, current_log_path.c_str(), 20)) // 20 == strlen("pacs_log\\YYYY\\MM\\DD\\")
             {
 	            if(PrepareFileDir(buff))
                 {
