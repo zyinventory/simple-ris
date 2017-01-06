@@ -213,3 +213,53 @@ bool handle_proc::make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, con
     }
     else return false;
 }
+
+handle_compress* handle_compress::make_handle_compress(NOTIFY_FILE_CONTEXT *pnfc, ostream &flog)
+{
+    char cmd[1024];
+    if(strcmp("KEEP", pnfc->assoc.expected_xfer) == 0)
+    {
+        int mkdir_pos = sprintf_s(cmd, "cmd.exe /c move /y %s ", pnfc->file.filename);
+        int ctn = mkdir_pos;
+        ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), pnfc->file.hash, pnfc->file.studyUID);
+        strcpy_s(cmd + ctn, sizeof(cmd) - ctn, pnfc->file.unique_filename);
+        PrepareFileDir(cmd + mkdir_pos);
+        return new handle_compress(cmd, "move", pnfc, &flog);
+    }
+    else // compress
+    {
+        const char *verbose_flag = opt_verbose ? "-v" : "";
+        const char *codec = ""; // JpegLess14SV1
+        if(strcmp("Jp2kLossLess", pnfc->assoc.expected_xfer) == 0) codec = "--encode-jpeg2k-lossless";
+
+#ifdef _DEBUG
+        int mkdir_pos = 0;
+        char cmd[1024] = __FILE__;
+        char *p = strrchr(cmd, '\\');
+        if(p)
+        {
+            ++p;
+            mkdir_pos = p - cmd;
+            mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s %s --uid-never %s ", verbose_flag, codec, pnfc->file.filename);
+        }
+        else
+            mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never %s ", GetPacsBase(), verbose_flag, codec, pnfc->file.filename);
+#else
+        char cmd[1024];
+	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never -ds %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
+#endif
+        int ctn = mkdir_pos;
+        ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), pnfc->file.hash, pnfc->file.studyUID);
+        strcpy_s(cmd + ctn, sizeof(cmd) - ctn, pnfc->file.unique_filename);
+        return new handle_compress(cmd, "dcmcjpeg", pnfc, &flog);
+    }
+}
+
+void handle_compress::print_state() const
+{
+    *pflog << "handle_compress::print_state() " << notify_ctx->file.unique_filename << endl
+        << "\tnotify_ctx->src_notify_filename: " << notify_ctx->src_notify_filename << endl
+        << "\tnotify_ctx->file_seq: " << hex << setw(8) << setfill('0') << uppercase << notify_ctx->file_seq << endl
+        << "\tnotify_ctx->file.studyUID: " << notify_ctx->file.studyUID << endl;
+    handle_proc::print_state();
+}

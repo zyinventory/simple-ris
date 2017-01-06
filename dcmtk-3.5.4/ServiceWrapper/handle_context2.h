@@ -95,23 +95,6 @@ namespace handle_context
         const char* close_description() const;
     };
 
-    class handle_compress : public handle_proc
-    {
-    private:
-        NOTIFY_FILE_CONTEXT notify_ctx;
-        
-    protected:
-        handle_compress(const std::string &assoc_id, const std::string &path, const std::string &notify_file, const std::string &cmd, const std::string &exec_prog_name, const NOTIFY_FILE_CONTEXT &nfc, std::ostream *plog)
-            : handle_proc(assoc_id, path, notify_file, cmd, exec_prog_name, plog), notify_ctx(nfc) { };
-
-    public:
-        static handle_compress* make_handle_compress(const NOTIFY_FILE_CONTEXT &nfc, std::ostream &flog);
-        handle_compress(const handle_compress& o) : handle_proc(o), notify_ctx(o.notify_ctx) {};
-        handle_compress& operator=(const handle_compress &r);
-        void print_state() const;
-        NOTIFY_FILE_CONTEXT& get_notify_context() { return notify_ctx; };
-    };
-
     typedef struct _tag_PIPEINST
     {
 	    OVERLAPPED oOverlap;

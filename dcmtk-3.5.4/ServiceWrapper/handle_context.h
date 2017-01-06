@@ -93,6 +93,22 @@ namespace handle_context
         int start_process(bool out_redirect);
     };
     typedef std::list<handle_proc*> HANDLE_PROC_LIST;
+
+    class handle_compress : public handle_proc
+    {
+    private:
+        NOTIFY_FILE_CONTEXT *notify_ctx;
+        
+    protected:
+        handle_compress(const std::string &cmd, const std::string &exec_prog_name, NOTIFY_FILE_CONTEXT *pnfc, std::ostream *plog)
+            : handle_proc(pnfc->assoc.id, pnfc->assoc.path, pnfc->src_notify_filename, cmd, exec_prog_name, plog), notify_ctx(pnfc) { };
+
+    public:
+        static handle_compress* make_handle_compress(NOTIFY_FILE_CONTEXT *pnfc, std::ostream &flog);
+        void print_state() const;
+        NOTIFY_FILE_CONTEXT* get_notify_context() { return notify_ctx; };
+    };
+
 }
 
 #endif

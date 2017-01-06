@@ -427,7 +427,7 @@ int watch_notify(string &cmd, ofstream &flog)
                     {
                         pStudy->pop_front_tuple();
                         // todo: move pnfc to study_assoc_dir
-                        handle_compress* compr_ptr = handle_compress::make_handle_compress(*pnfc, flog);
+                        handle_compress* compr_ptr = handle_compress::make_handle_compress(pnfc, flog);
                         if(compr_ptr)
                         {
 						    compr_ptr->set_priority(BELOW_NORMAL_PRIORITY_CLASS);

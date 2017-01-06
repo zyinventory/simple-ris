@@ -409,63 +409,6 @@ const char* handle_dir::close_description() const
     else return "UNKNOWN";
 }
 
-handle_compress* handle_compress::make_handle_compress(const NOTIFY_FILE_CONTEXT &nfc, ostream &flog)
-{
-    char cmd[1024];
-    if(strcmp("KEEP", nfc.assoc.expected_xfer) == 0)
-    {
-        int mkdir_pos = sprintf_s(cmd, "cmd.exe /c move /y %s ", nfc.file.filename);
-        int ctn = mkdir_pos;
-        ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), nfc.file.hash, nfc.file.studyUID);
-        strcpy_s(cmd + ctn, sizeof(cmd) - ctn, nfc.file.unique_filename);
-        PrepareFileDir(cmd + mkdir_pos);
-        return new handle_compress(nfc.assoc.id, nfc.assoc.path, nfc.src_notify_filename, cmd, "move", nfc, &flog);
-    }
-    else // compress
-    {
-        const char *verbose_flag = opt_verbose ? "-v" : "";
-        const char *codec = ""; // JpegLess14SV1
-        if(strcmp("Jp2kLossLess", nfc.assoc.expected_xfer) == 0) codec = "--encode-jpeg2k-lossless";
-
-#ifdef _DEBUG
-        int mkdir_pos = 0;
-        char cmd[1024] = __FILE__;
-        char *p = strrchr(cmd, '\\');
-        if(p)
-        {
-            ++p;
-            mkdir_pos = p - cmd;
-            mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s %s --uid-never %s ", verbose_flag, codec, nfc.file.filename);
-        }
-        else
-            mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
-#else
-        char cmd[1024];
-	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never -ds %s ", GetPacsBase(), verbose_flag, codec, nfc.file.filename);
-#endif
-        int ctn = mkdir_pos;
-        ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), nfc.file.hash, nfc.file.studyUID);
-        strcpy_s(cmd + ctn, sizeof(cmd) - ctn, nfc.file.unique_filename);
-        return new handle_compress(nfc.assoc.id, nfc.assoc.path, nfc.src_notify_filename, cmd, "dcmcjpeg", nfc, &flog);
-    }
-}
-
-handle_compress& handle_compress::operator=(const handle_compress &r)
-{
-    handle_proc::operator=(r);
-    notify_ctx = r.notify_ctx;
-    return *this;
-}
-
-void handle_compress::print_state() const
-{
-    *pflog << "handle_compress::print_state() " << notify_ctx.file.unique_filename << endl
-        << "\tnotify_ctx.src_notify_filename: " << notify_ctx.src_notify_filename << endl
-        << "\tnotify_ctx.file_seq: " << hex << setw(8) << setfill('0') << uppercase << notify_ctx.file_seq << endl
-        << "\tnotify_ctx.file.studyUID: " << notify_ctx.file.studyUID << endl;
-    handle_proc::print_state();
-}
-
 handle_study::handle_study(const std::string &cwd, const std::string &cmd, const std::string &exec_prog_name, const std::string &study, std::ostream *plog)
     : handle_proc(study, cwd, "", cmd, exec_prog_name, plog), pipe_context(NULL), blocked(false),
     ris_integration_start(false), last_association_action(INDEX_INSTANCE, cwd, false, plog)
