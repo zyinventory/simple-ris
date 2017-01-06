@@ -214,3 +214,18 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
 
     return 0;
 }
+
+void np_conn_assoc_dir::fill_association(NOTIFY_FILE_CONTEXT *pnfc) const
+{
+    strncpy_s(pnfc->src_notify_filename, get_meta_notify_filename().c_str(), _TRUNCATE);
+    pnfc->assoc.port = port;
+    strncpy_s(pnfc->assoc.id, get_id().c_str(), _TRUNCATE);
+    strncpy_s(pnfc->assoc.store_assoc_id, get_id().c_str(), _TRUNCATE);
+    strncpy_s(pnfc->assoc.path, get_path().c_str(), _TRUNCATE);
+    strncpy_s(pnfc->assoc.calledAE, called.c_str(), _TRUNCATE);
+    strncpy_s(pnfc->assoc.callingAE, calling.c_str(), _TRUNCATE);
+    strncpy_s(pnfc->assoc.callingAddr, remote.c_str(), _TRUNCATE);
+    strncpy_s(pnfc->assoc.calledAE, called.c_str(), _TRUNCATE);
+    strncpy_s(pnfc->assoc.expected_xfer, transfer_syntax.c_str(), _TRUNCATE);
+    strncpy_s(pnfc->assoc.auto_publish, auto_publish.c_str(), _TRUNCATE);
+}

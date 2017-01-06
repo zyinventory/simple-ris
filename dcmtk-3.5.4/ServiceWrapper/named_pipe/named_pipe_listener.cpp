@@ -29,15 +29,9 @@ named_pipe_listener& named_pipe_listener::operator=(const named_pipe_listener &r
 
 named_pipe_listener::~named_pipe_listener(void)
 {
+    if(opt_verbose) time_header_out(*pflog) << "named_pipe_listener::~named_pipe_listener()" << endl;
     if(hPipe && hPipe != INVALID_HANDLE_VALUE) CloseHandle(hPipe);
     hPipe = NULL;
-    if(hPipeEvent && hPipeEvent != INVALID_HANDLE_VALUE)
-    {
-        CloseHandle(hPipeEvent);
-        hPipeEvent = NULL;
-    }
-    if(opt_verbose) time_header_out(*pflog) << "named_pipe_listener::~named_pipe_listener()" << endl;
-    
     ostream *plog = get_err_stream();
     set<named_pipe_connection*> ps;
     for_each(map_connections_read.begin(), map_connections_read.end(), [plog, &ps](const CONN_PAIR &p) {
@@ -57,9 +51,34 @@ named_pipe_listener::~named_pipe_listener(void)
     time_header_out(*pflog) << "named_pipe_listener::~named_pipe_listener() start closing " << ps.size() << " connections..." << endl;
     named_pipe_listener *plsnr = this;
     for_each(ps.begin(), ps.end(), [plsnr](named_pipe_connection *p) {
-        p->print_state();
         plsnr->remove_pipe(p);
+        p->print_state();
+        p->close_pipe();
+        SleepEx(0, TRUE);
     });
+    for(int i = 0; i < 1000 && ps.size(); ++i)
+    {
+        SleepEx(0, TRUE);
+        set<named_pipe_connection*>::iterator it = ps.begin();
+        while(it != ps.end())
+        {
+            SleepEx(0, TRUE);
+            if((*it)->close_pipe())
+            {
+                delete *it;
+                it = ps.erase(it);
+            }
+            else ++it;
+        }
+    }
+    for_each(ps.begin(), ps.end(), [plsnr](named_pipe_connection *p) { SleepEx(0, TRUE); if(p) delete p; });
+
+    if(hPipeEvent && hPipeEvent != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(hPipeEvent);
+        hPipeEvent = NULL;
+    }
+    if(opt_verbose) time_header_out(*pflog) << "named_pipe_listener::~named_pipe_listener() exit" << endl;
 }
 
 void named_pipe_listener::print_state(void) const

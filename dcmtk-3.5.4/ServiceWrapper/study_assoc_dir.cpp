@@ -29,7 +29,7 @@ void study_assoc_dir::add_file(np_conn_assoc_dir *p_assoc_dir, const char *hash,
 {
     if(p_assoc_dir && hash && unique_filename && p_notify_file)
     {
-        compress_queue.push_back(JOB_TUPLE(p_notify_file, p_assoc_dir->get_path(), hash, unique_filename));
+        compress_queue.push_back(JOB_TUPLE(p_notify_file, p_assoc_dir->get_path(), hash, unique_filename, p_assoc_dir));
         associations.insert(p_assoc_dir);
         refresh_last_access();
     }

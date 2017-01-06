@@ -8,10 +8,10 @@ namespace handle_context
     class study_assoc_dir;
     typedef std::map<std::string, study_assoc_dir*> STUDY_MAP;
     typedef std::pair<std::string, study_assoc_dir*> STUDY_PAIR;
-    // <notify_file, notify_path, hash, unique_filename>
-    typedef std::tuple<std::string, std::string, std::string, std::string> JOB_TUPLE; 
-    typedef std::list< JOB_TUPLE > JOB_LIST;
     class np_conn_assoc_dir;
+    // <notify_file, notify_path, hash, unique_filename, np_conn_assoc_dir*>
+    typedef std::tuple<std::string, std::string, std::string, std::string, np_conn_assoc_dir*> JOB_TUPLE; 
+    typedef std::list< JOB_TUPLE > JOB_LIST;
 
     class study_assoc_dir : public base_dir
     {
@@ -48,7 +48,8 @@ namespace handle_context
     class np_conn_assoc_dir : public named_pipe_connection
     {
     private:
-        std::string calling, called, remote, port, transfer_syntax, auto_publish;
+        std::string calling, called, remote, transfer_syntax, auto_publish;
+        int port;
         DWORD pid;
         bool disconn_release;
         std::map<std::string, study_assoc_dir*> studies;
@@ -63,6 +64,7 @@ namespace handle_context
         virtual void print_state() const;
         virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size);
         const char* close_description() const;
+        void fill_association(NOTIFY_FILE_CONTEXT *pnfc) const;
     };
 
     class handle_proc : public base_dir

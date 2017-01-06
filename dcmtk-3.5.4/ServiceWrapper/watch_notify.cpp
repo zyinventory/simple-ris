@@ -6,8 +6,7 @@ using namespace handle_context;
 static char buff[FILE_BUF_SIZE];
 static const string debug_mode_header("DebugMode");
 static HANDLE_PROC_LIST proc_list;
-static HANDLE_DIR_MAP handle_dir_map;
-
+/*
 static bool select_handle_dir_by_association_path(const handle_compress *pnf, const string &association_id, const string &path, ostream &flog)
 {
     if(pnf == NULL) return false;
@@ -26,61 +25,6 @@ static bool select_handle_dir_by_association_path(const handle_compress *pnf, co
     return false;
 }
 
-static void write_association_complete_text_file(const string &meta_notify_file_txt, const char *msg, DWORD gle, ostream &flog)
-{
-    ofstream ofstxt(meta_notify_file_txt); // ignore this transfer
-    if(ofstxt.fail())
-    {
-        DWORD gle2 = GetLastError();
-        char buff2[1024];
-        sprintf_s(buff2, "write_association_complete_text_file() create complete text %s", meta_notify_file_txt.c_str());
-        displayErrorToCerr(buff2, gle2, &flog);
-    }
-    else
-    {
-        if(gle)
-            displayErrorToCerr(msg, gle, &ofstxt);
-        else
-            ofstxt << msg << endl;
-        ofstxt.close();
-    }
-}
-
-static DWORD disable_remained_meta_notify_file(const char *pattern, ostream &flog)
-{
-    struct _finddata_t wfd;
-    string filter(pattern);
-    intptr_t hSearch = _findfirst(filter.c_str(), &wfd);
-    if(hSearch == -1)
-    {
-        errno_t en = errno;
-        if(en == ENOENT) return 0;
-        else
-        {
-            strerror_s(buff, en);
-            if(opt_verbose) time_header_out(flog) << "disable_remained_meta_notify_file() " << filter << " failed: " << buff << endl;
-            return -1;
-        }
-    }
-
-    string::size_type pos = filter.rfind('*');
-    filter.erase(pos);
-    do {
-        string node(wfd.name);
-        if (node.compare(".") == 0 || node.compare("..") == 0) 
-			continue; // skip . .. DICOMDIR
-        if((wfd.attrib & _A_SUBDIR) == 0)
-        {
-            node.insert(node.begin(), filter.cbegin(), filter.cend());
-            pos = node.rfind('.');
-            node.erase(pos).append(".txt");
-            if(0 != _access(node.c_str(), 0))
-                write_association_complete_text_file(node, "discard", 0, flog);
-        }
-	} while(_findnext(hSearch, &wfd) == 0);
-	_findclose(hSearch);
-    return 0;
-}
 
 static void compress_complete(const string &assoc_id, const string &study_uid, bool compress_ok,
     named_pipe_server &nps, NOTIFY_FILE_CONTEXT &nfc, ostream &flog)
@@ -136,7 +80,6 @@ static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named
 {
     if(phdir && phdir->get_id().length())
     {
-        /*
         for(HANDLE_MAP::iterator it = map_handle_context.begin(); it != map_handle_context.end(); ++it)
         {
             handle_compress *phcompr = it->second;
@@ -147,7 +90,6 @@ static bool close_handle_dir(handle_dir *phdir, handle_dir *pclz_base_dir, named
         {
             if(phdir->get_id().compare(it->assoc.id) == 0) return false;
         }
-        */
         if(phdir->is_association_disconnect() || phdir->is_time_out())
         {
             if(opt_verbose)
@@ -190,6 +132,62 @@ static bool handle_less(const BASE_HANDLE_PAIR &p1, const BASE_HANDLE_PAIR &p2)
         // else (p1 and p2 length > 0) || (p1 and p2 length == 0), compare last_access
     }
     return p1.second->get_last_access() < p2.second->get_last_access();
+}
+*/
+static void write_association_complete_text_file(const string &meta_notify_file_txt, const char *msg, DWORD gle, ostream &flog)
+{
+    ofstream ofstxt(meta_notify_file_txt); // ignore this transfer
+    if(ofstxt.fail())
+    {
+        DWORD gle2 = GetLastError();
+        char buff2[1024];
+        sprintf_s(buff2, "write_association_complete_text_file() create complete text %s", meta_notify_file_txt.c_str());
+        displayErrorToCerr(buff2, gle2, &flog);
+    }
+    else
+    {
+        if(gle)
+            displayErrorToCerr(msg, gle, &ofstxt);
+        else
+            ofstxt << msg << endl;
+        ofstxt.close();
+    }
+}
+
+static DWORD disable_remained_meta_notify_file(const char *pattern, ostream &flog)
+{
+    struct _finddata_t wfd;
+    string filter(pattern);
+    intptr_t hSearch = _findfirst(filter.c_str(), &wfd);
+    if(hSearch == -1)
+    {
+        errno_t en = errno;
+        if(en == ENOENT) return 0;
+        else
+        {
+            strerror_s(buff, en);
+            if(opt_verbose) time_header_out(flog) << "disable_remained_meta_notify_file() " << filter << " failed: " << buff << endl;
+            return -1;
+        }
+    }
+
+    string::size_type pos = filter.rfind('*');
+    filter.erase(pos);
+    do {
+        string node(wfd.name);
+        if (node.compare(".") == 0 || node.compare("..") == 0) 
+			continue; // skip . .. DICOMDIR
+        if((wfd.attrib & _A_SUBDIR) == 0)
+        {
+            node.insert(node.begin(), filter.cbegin(), filter.cend());
+            pos = node.rfind('.');
+            node.erase(pos).append(".txt");
+            if(0 != _access(node.c_str(), 0))
+                write_association_complete_text_file(node, "discard", 0, flog);
+        }
+	} while(_findnext(hSearch, &wfd) == 0);
+	_findclose(hSearch);
+    return 0;
 }
 
 static named_pipe_connection* WINAPI create_qr_pipe_connection(named_pipe_listener *pnps) { return new np_conn_assoc_dir(pnps, assoc_timeout); }
@@ -399,7 +397,8 @@ int watch_notify(string &cmd, ofstream &flog)
             if(job_tuple == NULL) break; // no job in queue
 
             NOTIFY_FILE_CONTEXT *pnfc = new NOTIFY_FILE_CONTEXT;
-            if(process_notify_file(job_tuple, pnfc))
+            memset(pnfc, 0, sizeof(NOTIFY_FILE_CONTEXT));
+            if(process_notify(job_tuple, pnfc, flog))
             {
                 const char *unique_filename = pnfc->file.unique_filename;
                 HANDLE_PROC_LIST::iterator ite = find_if(proc_list.begin(), proc_list.end(),
@@ -526,11 +525,7 @@ int watch_notify(string &cmd, ofstream &flog)
     }
     
     // print association state
-    for(HANDLE_DIR_MAP::iterator it = handle_dir_map.begin(); it != handle_dir_map.end(); ++it)
-    {
-        handle_dir *pha = it->second;
-        if(debug_mode && pha) pha->print_state();
-        delete it->second;
-    }
+    delete phqr;
+    delete phjob;
     return gle;
 }

@@ -280,8 +280,118 @@ void save_notify_context_to_ostream(const NOTIFY_FILE_CONTEXT &cnc, bool compres
     output << NOTIFY_LEVEL_SERIES << " 00200011 " << dec << cnc.series.number << endl;
 }
 
-bool process_notify_file(const JOB_TUPLE* pt, NOTIFY_FILE_CONTEXT *pnfc)
+static bool process_notify_file(std::istream &ifs, unsigned int seq, NOTIFY_FILE_CONTEXT *pclc, ostream &flog)
 {
-    // todo: implemention
+    memset(pclc, 0, sizeof(NOTIFY_FILE_CONTEXT));
+
+    if(seq >= NOTIFY_FILE_SEQ_START)
+    {
+        pclc->file_seq = seq;
+        ifs >> pclc->file.filename;
+        if(opt_verbose) time_header_out(flog) << NOTIFY_FILE_TAG << " " << hex << uppercase << setw(8) << setfill('0') << seq 
+            << " " << pclc->file.filename << endl;
+    }
+    else
+    {
+        time_header_out(flog) << "process_notify_file() seq is error: " 
+            << NOTIFY_FILE_TAG << " " << hex << uppercase << setw(8) << setfill('0') << seq 
+            << " " << pclc->file.filename << endl;
+        return false;
+    }
+
+    char *cmd = new char[1024];
+    do{
+        ifs.getline(cmd, 1024);
+        if(ifs.gcount() && strlen(cmd))
+        {
+            istringstream linestrm(cmd);
+            string type;
+            linestrm >> type;
+            if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_INSTANCE))
+                cmd_instance(type, linestrm, *pclc, flog);
+            else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_PATIENT))
+                cmd_patient(type, linestrm, *pclc, flog);
+            else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_STUDY))
+                cmd_study(type, linestrm, *pclc, flog);
+            else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_LEVEL_SERIES))
+                cmd_series(type, linestrm, *pclc, flog);
+            else if(STRING_PRE4_TO_INT(type) == CHAR4_TO_INT(NOTIFY_FILE_TAG))
+                ; // ignore it
+            else 
+                time_header_out(flog) << "handle_dir::process_notify_file() can't recognize line: " << linestrm.str() << endl;
+        }
+    } while(ifs.good());
+    if(strcmp(pclc->file.charset, "ISO_IR 192") == 0)
+    {
+        char pn[128];
+        if(UTF8ToGBK(pclc->patient.patientsName, pn, sizeof(pn)))
+            strcpy_s(pclc->patient.patientsName, pn);
+        else
+            time_header_out(flog) << __FUNCSIG__" convert from utf-8 fail: " << pclc->patient.patientsName << endl;
+    }
+    if(cmd) delete[] cmd;
     return true;
+}
+
+DWORD process_notify(const JOB_TUPLE* pt, NOTIFY_FILE_CONTEXT *pnfc, std::ostream &flog)
+{
+    if(get<4>(*pt)) get<4>(*pt)->fill_association(pnfc);
+
+    DWORD gle = 0, tag;
+    string cmd, filepath(GetPacsTemp());
+    filepath.append("\\pacs\\").append(get<1>(*pt)).append("\\state\\").append(get<0>(*pt));
+    if(opt_verbose) time_header_out(flog) << "process_notify(): " << filepath << endl;
+
+    ifstream ifs(filepath, ios_base::in, _SH_DENYWR);
+    if(ifs.fail())
+    {
+        gle = GetLastError();
+        if(gle != ERROR_SHARING_VIOLATION || opt_verbose)
+        {
+            string msg("process_notify() open file failed: ");
+            msg.append(filepath);
+            return displayErrorToCerr(msg.c_str(), gle, &flog);
+        }
+        else return gle;
+    }
+
+    ifs >> cmd >> hex >> tag;
+    
+    if(cmd.compare(NOTIFY_FILE_TAG) == 0) // receive a file
+    {
+        if(process_notify_file(ifs, tag, pnfc, flog))
+        {
+            strcpy_s(pnfc->src_notify_filename, get<0>(*pt).c_str());
+            NotifyFileContextStorePath(pnfc->file);
+            if(opt_verbose) time_header_out(flog) << "process_notify(" << get<1>(*pt) << "\\" << get<0>(*pt) << ") read OK." << endl;
+#ifdef _DEBUG
+            time_header_out(cerr) << "process_notify(" << get<1>(*pt) << "\\" << get<0>(*pt) << ") read OK." << endl;
+#endif
+        }
+        else time_header_out(flog) << "process_notify() can't process " << get<1>(*pt) << "\\" << get<0>(*pt) << ", ignore." << endl;
+    }
+    else if(cmd.compare(NOTIFY_STORE_TAG) == 0)
+    {
+        if(get<4>(*pt)) get<4>(*pt)->fill_association(pnfc);
+    }
+    else if(cmd.compare(NOTIFY_ACKN_ITEM) == 0)
+    {
+        if(tag == NOTIFY_COMPRESS_OK || tag == NOTIFY_COMPRESS_FAIL)
+        {
+            string src_notify_file;
+            ifs >> src_notify_file;
+            if(opt_verbose) time_header_out(flog) << "process_notify() recieve compress complete notify " << get<0>(*pt) << "(" << src_notify_file << ")." << endl;
+        }
+        else if(tag == NOTIFY_ALL_COMPRESS_OK)
+        {
+            if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify() recieve all compress complete notify " << get<0>(*pt) << endl;
+        }
+        else time_header_out(flog) << "handle_dir::process_notify() ignore ack file " << get<0>(*pt) << endl
+            << cmd << " " << hex << uppercase << tag << " ..." << endl;
+    }
+    else time_header_out(flog) << "handle_dir::process_notify() ignore " << get<0>(*pt) << endl;
+
+    if(ifs.is_open()) ifs.close();
+
+    return gle;
 }
