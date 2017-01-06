@@ -224,7 +224,9 @@ handle_compress* handle_compress::make_handle_compress(NOTIFY_FILE_CONTEXT *pnfc
         ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), pnfc->file.hash, pnfc->file.studyUID);
         strcpy_s(cmd + ctn, sizeof(cmd) - ctn, pnfc->file.unique_filename);
         PrepareFileDir(cmd + mkdir_pos);
-        return new handle_compress(cmd, "move", pnfc, &flog);
+        string path(GetPacsTemp());
+        path.append("\\pacs\\").append(pnfc->assoc.path);
+        return new handle_compress(pnfc->file.unique_filename, path, pnfc->src_notify_filename, cmd, "move", pnfc, &flog);
     }
     else // compress
     {
@@ -251,7 +253,9 @@ handle_compress* handle_compress::make_handle_compress(NOTIFY_FILE_CONTEXT *pnfc
         int ctn = mkdir_pos;
         ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), pnfc->file.hash, pnfc->file.studyUID);
         strcpy_s(cmd + ctn, sizeof(cmd) - ctn, pnfc->file.unique_filename);
-        return new handle_compress(cmd, "dcmcjpeg", pnfc, &flog);
+        string path(GetPacsTemp());
+        path.append("\\pacs\\").append(pnfc->assoc.path);
+        return new handle_compress(pnfc->file.unique_filename, path, pnfc->src_notify_filename, cmd, "dcmcjpeg", pnfc, &flog);
     }
 }
 

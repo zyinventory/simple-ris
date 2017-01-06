@@ -401,10 +401,9 @@ int watch_notify(string &cmd, ofstream &flog)
             NOTIFY_FILE_CONTEXT *pnfc = new NOTIFY_FILE_CONTEXT;
             if(process_notify_file(job_tuple, pnfc))
             {
-                const char *instance_uid = pnfc->file.instanceUID;
-                // todo: handle_proc->get_id() return instance uid?
+                const char *unique_filename = pnfc->file.unique_filename;
                 HANDLE_PROC_LIST::iterator ite = find_if(proc_list.begin(), proc_list.end(),
-                    [instance_uid](const handle_proc *p) { return (p->get_id().compare(instance_uid) == 0); });
+                    [unique_filename](const handle_proc *p) { return (p->get_id().compare(unique_filename) == 0); });
 
                 if(ite == proc_list.end()) // no same instance is in compressing
                 {

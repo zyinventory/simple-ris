@@ -100,11 +100,12 @@ namespace handle_context
         NOTIFY_FILE_CONTEXT *notify_ctx;
         
     protected:
-        handle_compress(const std::string &cmd, const std::string &exec_prog_name, NOTIFY_FILE_CONTEXT *pnfc, std::ostream *plog)
-            : handle_proc(pnfc->assoc.id, pnfc->assoc.path, pnfc->src_notify_filename, cmd, exec_prog_name, plog), notify_ctx(pnfc) { };
+        handle_compress(const std::string &id, const std::string &path, const std::string &notify, const std::string &cmd, const std::string &exec_prog_name, NOTIFY_FILE_CONTEXT *pnfc, std::ostream *plog)
+            : handle_proc(id, path, notify, cmd, exec_prog_name, plog), notify_ctx(pnfc) { };
 
     public:
         static handle_compress* make_handle_compress(NOTIFY_FILE_CONTEXT *pnfc, std::ostream &flog);
+        virtual ~handle_compress() { if(notify_ctx) delete notify_ctx; };
         void print_state() const;
         NOTIFY_FILE_CONTEXT* get_notify_context() { return notify_ctx; };
     };
