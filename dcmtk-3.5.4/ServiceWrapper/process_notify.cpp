@@ -333,13 +333,14 @@ static bool process_notify_file(std::istream &ifs, unsigned int seq, NOTIFY_FILE
     return true;
 }
 
-DWORD process_notify(const JOB_TUPLE* pt, NOTIFY_FILE_CONTEXT *pnfc, std::ostream &flog)
+DWORD process_notify(const compress_job* pt, NOTIFY_FILE_CONTEXT *pnfc, std::ostream &flog)
 {
-    if(get<4>(*pt)) get<4>(*pt)->fill_association(pnfc);
+    // todo: find association
+    //if(get<4>(*pt)) get<4>(*pt)->fill_association(pnfc);
 
     DWORD gle = 0, tag;
     string cmd, filepath(GetPacsTemp());
-    filepath.append("\\pacs\\").append(get<1>(*pt)).append("\\state\\").append(get<0>(*pt));
+    filepath.append("\\pacs\\").append(pt->get_path()).append("\\state\\").append(pt->get_notify_filename());
     if(opt_verbose) time_header_out(flog) << "process_notify(): " << filepath << endl;
 
     ifstream ifs(filepath, ios_base::in, _SH_DENYWR);
@@ -361,18 +362,19 @@ DWORD process_notify(const JOB_TUPLE* pt, NOTIFY_FILE_CONTEXT *pnfc, std::ostrea
     {
         if(process_notify_file(ifs, tag, pnfc, flog))
         {
-            strcpy_s(pnfc->src_notify_filename, get<0>(*pt).c_str());
+            strcpy_s(pnfc->src_notify_filename, pt->get_notify_filename().c_str());
             NotifyFileContextStorePath(pnfc->file);
-            if(opt_verbose) time_header_out(flog) << "process_notify(" << get<1>(*pt) << "\\" << get<0>(*pt) << ") read OK." << endl;
+            if(opt_verbose) time_header_out(flog) << "process_notify(" << pt->get_path() << "\\" << pt->get_notify_filename() << ") read OK." << endl;
 #ifdef _DEBUG
-            time_header_out(cerr) << "process_notify(" << get<1>(*pt) << "\\" << get<0>(*pt) << ") read OK." << endl;
+            time_header_out(cerr) << "process_notify(" << pt->get_path() << "\\" << pt->get_notify_filename() << ") read OK." << endl;
 #endif
         }
-        else time_header_out(flog) << "process_notify() can't process " << get<1>(*pt) << "\\" << get<0>(*pt) << ", ignore." << endl;
+        else time_header_out(flog) << "process_notify() can't process " << pt->get_path() << "\\" << pt->get_notify_filename() << ", ignore." << endl;
     }
     else if(cmd.compare(NOTIFY_STORE_TAG) == 0)
     {
-        if(get<4>(*pt)) get<4>(*pt)->fill_association(pnfc);
+        // todo: find association
+        //if(get<4>(*pt)) get<4>(*pt)->fill_association(pnfc);
     }
     else if(cmd.compare(NOTIFY_ACKN_ITEM) == 0)
     {
@@ -380,16 +382,16 @@ DWORD process_notify(const JOB_TUPLE* pt, NOTIFY_FILE_CONTEXT *pnfc, std::ostrea
         {
             string src_notify_file;
             ifs >> src_notify_file;
-            if(opt_verbose) time_header_out(flog) << "process_notify() recieve compress complete notify " << get<0>(*pt) << "(" << src_notify_file << ")." << endl;
+            if(opt_verbose) time_header_out(flog) << "process_notify() recieve compress complete notify " << pt->get_notify_filename() << "(" << src_notify_file << ")." << endl;
         }
         else if(tag == NOTIFY_ALL_COMPRESS_OK)
         {
-            if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify() recieve all compress complete notify " << get<0>(*pt) << endl;
+            if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify() recieve all compress complete notify " << pt->get_notify_filename() << endl;
         }
-        else time_header_out(flog) << "handle_dir::process_notify() ignore ack file " << get<0>(*pt) << endl
+        else time_header_out(flog) << "handle_dir::process_notify() ignore ack file " << pt->get_notify_filename() << endl
             << cmd << " " << hex << uppercase << tag << " ..." << endl;
     }
-    else time_header_out(flog) << "handle_dir::process_notify() ignore " << get<0>(*pt) << endl;
+    else time_header_out(flog) << "handle_dir::process_notify() ignore " << pt->get_notify_filename() << endl;
 
     if(ifs.is_open()) ifs.close();
 

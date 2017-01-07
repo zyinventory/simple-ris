@@ -378,7 +378,7 @@ int watch_notify(string &cmd, ofstream &flog)
 
         // find first tuple in compress queue
 		DWORD dw = WAIT_OBJECT_0;
-        const JOB_TUPLE *job_tuple = NULL;
+        const compress_job *job_tuple = NULL;
         string current_notify_filename_base;
         do
         {
@@ -468,12 +468,12 @@ int watch_notify(string &cmd, ofstream &flog)
                     time_header_out(flog) << "watch_notify() skip exist compress unique name "
                         << pnfc->file.unique_filename << " src notify: " << pnfc->src_notify_filename << endl;
                     if(pnfc) delete pnfc;
-                    current_notify_filename_base = get<0>(*job_tuple);
+                    current_notify_filename_base = job_tuple->get_notify_filename();
                 }
             }
             else // process notify file fail
             {
-                time_header_out(flog) << "watch_notify() process notify file fail: " << get<0>(*job_tuple) << endl;
+                time_header_out(flog) << "watch_notify() process notify file fail: " << job_tuple->get_notify_filename() << endl;
                 if(pnfc) delete pnfc;
                 pStudy->pop_front_tuple();
             }

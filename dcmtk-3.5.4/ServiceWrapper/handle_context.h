@@ -8,17 +8,43 @@ namespace handle_context
     class study_assoc_dir;
     typedef std::map<std::string, study_assoc_dir*> STUDY_MAP;
     typedef std::pair<std::string, study_assoc_dir*> STUDY_PAIR;
+        
+    class compress_job
+    {
+    private:
+        std::string assoc_id, path, notify_filename, hash, unique_filename, instance_filename;
+
+    public:
+        compress_job(const std::string &assoc_id, const std::string &path, const std::string &notify_filename,
+            const std::string &hash, const std::string &unique_filename, const std::string &instance_filename)
+            : unique_filename(unique_filename), path(path), notify_filename(notify_filename), hash(hash), assoc_id(assoc_id) {};
+        compress_job(const compress_job &r) { *this = r; };
+        compress_job& operator=(const compress_job& r)
+        {
+            assoc_id = r.assoc_id;
+            path = r.path;
+            notify_filename = r.notify_filename;
+            hash = r.hash;
+            unique_filename = r.unique_filename;
+            instance_filename = r.instance_filename;
+            return *this;
+        };
+        const std::string& get_assoc_id() const { return assoc_id; };
+        const std::string& get_path() const { return path; };
+        const std::string& get_notify_filename() const { return notify_filename; };
+        const std::string& get_hash() const { return hash; };
+        const std::string& get_unique_filename() const { return unique_filename; };
+        const std::string& get_instance_filename() const { return instance_filename; };
+    };
+
     class np_conn_assoc_dir;
-    // <notify_file, notify_path, hash, unique_filename, np_conn_assoc_dir*>
-    typedef std::tuple<std::string, std::string, std::string, std::string, np_conn_assoc_dir*> JOB_TUPLE; 
-    typedef std::list< JOB_TUPLE > JOB_LIST;
 
     class study_assoc_dir : public base_dir
     {
     private:
         static std::string empty_notify_filename;
         static STUDY_MAP studies_map;
-        JOB_LIST compress_queue;
+        std::list<compress_job> compress_queue;
         std::set<np_conn_assoc_dir*> associations;
 
         study_assoc_dir(const char *study_uid, const char *path, const char *meta_notify_file, int timeout, std::ostream *plog)
@@ -31,18 +57,9 @@ namespace handle_context
         void add_file(np_conn_assoc_dir *p_assoc_dir, const char *hash, const char *unique_filename, const char *p_notify_file, const char *p_instance_file);
         const std::string& get_first_greater_notify_filename(const std::string &base) const;
         bool find_notify_filename(const std::string &base) const { return get_first_tuple_equal(base) != NULL; };
-        const JOB_TUPLE* get_first_tuple() const { return compress_queue.size() ? &compress_queue.front() : NULL; };
-        const JOB_TUPLE* get_first_tuple_equal(const std::string &base) const;
+        const compress_job* get_first_tuple() const { return compress_queue.size() ? &compress_queue.front() : NULL; };
+        const compress_job* get_first_tuple_equal(const std::string &base) const;
         void pop_front_tuple() { compress_queue.pop_front(); };
-    };
-
-    class np_conn_study_dir : public named_pipe_connection
-    {   // compress proc collector, pick up job from study_assoc_dir
-    private:
-
-    public:
-        np_conn_study_dir(const char *study_uid, const char *path, const char *meta_notify_file, int timeout, std::ostream *plog)
-            : named_pipe_connection(study_uid, path, meta_notify_file, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, timeout, plog) { };
     };
 
     class np_conn_assoc_dir : public named_pipe_connection
