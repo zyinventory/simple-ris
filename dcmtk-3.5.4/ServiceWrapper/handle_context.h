@@ -5,10 +5,6 @@
 
 namespace handle_context
 {
-    class study_assoc_dir;
-    typedef std::map<std::string, study_assoc_dir*> STUDY_MAP;
-    typedef std::pair<std::string, study_assoc_dir*> STUDY_PAIR;
-        
     class compress_job
     {
     private:
@@ -38,6 +34,9 @@ namespace handle_context
     };
 
     class np_conn_assoc_dir;
+    class study_assoc_dir;
+    typedef std::map<std::string, study_assoc_dir*> STUDY_MAP;
+    typedef std::pair<std::string, study_assoc_dir*> STUDY_PAIR;
 
     class study_assoc_dir : public base_dir
     {

@@ -5,7 +5,7 @@
 #include <list>
 #include <map>
 #include <iterator>
-#include <tuple>
+#include <functional>
 #include <array>
 #include "dcmtk/dcmdata/notify_context.h"
 extern int opt_verbose;
@@ -61,6 +61,7 @@ namespace handle_context
         size_t remove_pipe(named_pipe_connection *pnpc);
         named_pipe_connection* find_connections_read(LPOVERLAPPED lpo) { return map_connections_read.count(lpo) ? map_connections_read[lpo] : NULL; };
         named_pipe_connection* find_connections_write(LPOVERLAPPED lpo) { return map_connections_write.count(lpo) ? map_connections_write[lpo] : NULL; };
+        named_pipe_connection* find_connections(std::function<bool(const named_pipe_connection&)> pred);
         virtual void print_state(void) const;
         virtual HANDLE get_handle() const { return hPipeEvent; };
         HANDLE get_current_pipe_handle() const { return hPipe; };

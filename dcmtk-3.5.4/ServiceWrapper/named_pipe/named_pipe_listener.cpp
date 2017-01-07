@@ -177,11 +177,7 @@ DWORD named_pipe_listener::pipe_client_connect_incoming()
 
 size_t named_pipe_listener::remove_pipe(named_pipe_connection *pnpc)
 {
-    if(pnpc == NULL)
-    {
-        time_header_out(*pflog) << __FUNCSIG__ " connection ptr is NULL." << endl;
-        return 0;
-    }
+    if(pnpc == NULL) return 0;
     CONN_MAP::size_type removed = map_connections_read.erase(pnpc->get_overlap_read());
     removed += map_connections_write.erase(pnpc->get_overlap_write());
     if(opt_verbose && removed) time_header_out(*pflog) << "named_pipe_listener::remove_pipe() remove "
@@ -217,6 +213,16 @@ void named_pipe_listener::detect_timeout_connection()
     set<named_pipe_connection*> ps;
     transform(map_connections_read.begin(), map_connections_read.end(), inserter(ps, ps.begin()), [](const CONN_PAIR &p) { return p.second; });
     for_each(ps.begin(), ps.end(), [](named_pipe_connection *p) { if(p && p->is_time_out()) p->close_pipe(); });
+}
+
+named_pipe_connection* named_pipe_listener::find_connections(std::function<bool(const named_pipe_connection&)> pred)
+{
+    for(CONN_MAP::const_iterator it = map_connections_read.cbegin(); it != map_connections_read.cend(); ++it)
+    {
+        if(it->second == NULL) continue;
+        if(pred(*it->second)) return it->second;
+    }
+    return NULL;
 }
 
 ostream* handle_context::find_err_log_all()
