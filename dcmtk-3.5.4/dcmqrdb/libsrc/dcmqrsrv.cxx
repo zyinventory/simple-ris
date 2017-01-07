@@ -462,6 +462,7 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                     if(p) ++p;
                     else p = filename;
                     assoc_file_start = p;
+                    assoc_path = assoc_context.storageArea; assoc_path.append(1, '\\').append(assoc_context.associationId);
                 }
                 else
                     time_header_out(cerr) << "DcmQueryRetrieveSCP::storeSCP() can't create sequence file name " << filename << ", missing command:" << endl << content << endl;
@@ -472,9 +473,8 @@ OFCondition DcmQueryRetrieveSCP::storeSCP(T_ASC_Association * assoc, T_DIMSE_C_S
                 sprintf_s(filename, "%s\\pacs\\store_notify\\%s_" NOTIFY_ACKN_TAG ".dfc", GetPacsTemp(), assoc_context.associationId);
                 const char *xfer = config_->getXferName(assoc_context.calledAPTitle);
                 if(xfer == NULL) xfer = "KEEP";
-                int content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s\\%s %d %s %s %s %s %d %s %s %s\n",
-                    NOTIFY_PROC_STOR_START, assoc_context.storageArea, assoc_context.associationId, 
-                    _getpid(), assoc_context.associationId,
+                int content_used = sprintf_s(content, NOTIFY_ACKN_ITEM " %08X %s %d %s %s %s %s %d %s %s %s\n",
+                    NOTIFY_PROC_STOR_START, assoc_path.c_str(), _getpid(), assoc_context.associationId,
                     assoc_context.callingAPTitle, assoc_context.remoteHostName, assoc_context.calledAPTitle,
                     assoc_context.port, xfer, config_->getAutoPublish(assoc_context.calledAPTitle), assoc_context.localHostName);
                 FILE *fplog = NULL;

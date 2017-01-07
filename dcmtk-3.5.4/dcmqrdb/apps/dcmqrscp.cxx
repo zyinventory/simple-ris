@@ -186,9 +186,16 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
             handle_context::named_pipe_connection::regist_alone_connection(pnpc);
             if(pscp->getAssocFileStart().length())
             {
-                OFString msg(NOTIFY_STORE_TAG"_BEG ");
-                msg.append(current_assoc_id).append(1, ' ').append(meta_notify_filename);
-                pnpc->queue_message(msg);
+                const ASSOCIATION_CONTEXT assoc_context = pscp->getAssocContext();
+                const char *xfer = assoc_context.pConfig->getXferName(assoc_context.calledAPTitle);
+                if(xfer == NULL) xfer = "KEEP";
+                ostringstream strm;
+                strm << NOTIFY_STORE_TAG"_BEG " << assoc_context.associationId << " " << pscp->getAssocPath() // assoc_id assoc_path
+                    << " " << pscp->getAssocFileStart() << " " << _getpid() // notify_file pid
+                    << " " << assoc_context.callingAPTitle << " " << assoc_context.remoteHostName // callingAE remoteHostName
+                    << " " << assoc_context.calledAPTitle << " " << assoc_context.port // calledAE port
+                    << " " << xfer << " " << assoc_context.pConfig->getAutoPublish(assoc_context.calledAPTitle); // xfer auto_publish
+                pnpc->queue_message(strm.str());
             }
         }
     }
@@ -199,8 +206,10 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
         char *p = strrchr(fn_only_start, '\\');
         if(p) ++p;
         else p = fn_only_start;
+        // FILE assoc_id hash study_uid unique_filename notify_filename instance_filename
         msg.append(1, ' ').append(pscp->getAssociationId()).append(1, ' ').append(nfc.hash)
-            .append(1, ' ').append(nfc.studyUID).append(1, ' ').append(nfc.unique_filename).append(1, ' ').append(p);
+            .append(1, ' ').append(nfc.studyUID).append(1, ' ').append(nfc.unique_filename).append(1, ' ')
+            .append(p).append(1, ' ').append(instanceName);
         pnpc->queue_message(msg);
     }
     DWORD gle = 0;

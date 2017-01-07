@@ -25,10 +25,12 @@ study_assoc_dir* study_assoc_dir::create_instance(const char *study_uid, const c
     return p;
 }
 
-void study_assoc_dir::add_file(np_conn_assoc_dir *p_assoc_dir, const char *hash, const char *unique_filename, const char *p_notify_file)
+void study_assoc_dir::add_file(np_conn_assoc_dir *p_assoc_dir, const char *hash, const char *unique_filename, const char *p_notify_file, const char *p_instance_file)
 {
-    if(p_assoc_dir && hash && unique_filename && p_notify_file)
+    if(p_assoc_dir && hash && unique_filename && p_notify_file && p_instance_file)
     {
+        // todo: add instance_file to JOB_TUPLE
+        JOB_TUPLE t(p_notify_file, p_assoc_dir->get_path(), hash, unique_filename, p_assoc_dir);
         compress_queue.push_back(JOB_TUPLE(p_notify_file, p_assoc_dir->get_path(), hash, unique_filename, p_assoc_dir));
         associations.insert(p_assoc_dir);
         refresh_last_access();
@@ -39,6 +41,8 @@ void study_assoc_dir::add_file(np_conn_assoc_dir *p_assoc_dir, const char *hash,
         else if(hash == NULL) time_header_out(*pflog) << "study_assoc_dir::add_file() param error: hash is NULL." << endl;
         else if(unique_filename == NULL) time_header_out(*pflog) << "study_assoc_dir::add_file() param error: unique_filename is NULL." << endl;
         else if(p_notify_file == NULL) time_header_out(*pflog) << "study_assoc_dir::add_file() param error: p_notify_file is NULL." << endl;
+        else if(p_instance_file == NULL) time_header_out(*pflog) << "study_assoc_dir::add_file() param error: p_instance_file is NULL." << endl;
+        else time_header_out(*pflog) << "study_assoc_dir::add_file() param error." << endl;
     }
 }
 

@@ -28,7 +28,7 @@ namespace handle_context
         static study_assoc_dir* create_instance(const char *study_uid, const char *path, const char *meta_notify_file, std::ostream *pflog);
         static study_assoc_dir* find_first_job_in_studies(const std::string &base);
         virtual void print_state() const;
-        void add_file(np_conn_assoc_dir *p_assoc_dir, const char *hash, const char *unique_filename, const char *p_notify_file);
+        void add_file(np_conn_assoc_dir *p_assoc_dir, const char *hash, const char *unique_filename, const char *p_notify_file, const char *p_instance_file);
         const std::string& get_first_greater_notify_filename(const std::string &base) const;
         bool find_notify_filename(const std::string &base) const { return get_first_tuple_equal(base) != NULL; };
         const JOB_TUPLE* get_first_tuple() const { return compress_queue.size() ? &compress_queue.front() : NULL; };
@@ -55,7 +55,7 @@ namespace handle_context
         std::map<std::string, study_assoc_dir*> studies;
 
         DWORD process_file_incoming(char *assoc_id);
-        DWORD establish_conn_dir(char *assoc_id);
+        DWORD establish_conn_dir(const char *assoc_id);
         DWORD release_conn_dir(char *assoc_id);
 
     public:

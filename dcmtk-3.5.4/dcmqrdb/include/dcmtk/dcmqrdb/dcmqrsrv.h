@@ -136,13 +136,14 @@ public:
   STORE_PROCESSING getStoreResult() { return storeResult; };
 
   const ASSOCIATION_CONTEXT& getAssocContext() const { return assoc_context; };
+  const OFString& getAssocPath() const { return assoc_path; };
   const OFString& getAssocFileStart() const { return assoc_file_start; };
   const OFString& getAssocFileEnd() const { return assoc_file_end; };
 
 private:
 
   ASSOCIATION_CONTEXT assoc_context;
-  OFString assoc_file_start, assoc_file_end;
+  OFString assoc_path, assoc_file_start, assoc_file_end;
 
   HANDLE hAssociationMutex;
 

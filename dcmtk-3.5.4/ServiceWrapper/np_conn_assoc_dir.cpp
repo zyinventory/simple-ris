@@ -83,48 +83,27 @@ DWORD np_conn_assoc_dir::process_message(char *ptr_data_buffer, size_t cbBytesRe
     return 0;
 }
 
-DWORD np_conn_assoc_dir::establish_conn_dir(char *p_assoc_id)
+// STOR_BEG | assoc_id assoc_path notify_file pid callingAE remoteHostName calledAE port xfer auto_publish
+DWORD np_conn_assoc_dir::establish_conn_dir(const char *p_assoc_id)
 {
-    char *notify_file = strchr(p_assoc_id, ' ');
-    if(notify_file == NULL)
-    {
-        time_header_out(*pflog) << "np_conn_assoc_dir::release_conn_dir() receive an unknown message: no notify file." << endl;
-        return ERROR_INVALID_DATA;
-    }
-    else *notify_file++ = '\0';
-
-    string mnf(GetPacsTemp());
-    mnf.append("\\pacs\\"NOTIFY_BASE"\\").append(notify_file);
-#ifdef _DEBUG
-    time_header_out(cerr) << "np_conn_assoc_dir::process_meta_notify_file() process meta notify: " << mnf << endl;
-#endif
-    ifstream ntff(mnf, ios_base::in, _SH_DENYWR);
-    if(ntff.fail())
-    {
-        DWORD gle = GetLastError();
-        string msg("np_conn_assoc_dir::process_meta_notify_file() open file ");
-        msg.append(mnf);
-        displayErrorToCerr(msg.c_str(), gle, pflog);
-        return ERROR_INVALID_ACCESS;
-    }
-    string cmd, assoc_id, work_path;
-    DWORD tag, gle = 0;
-    ntff >> cmd >> hex >> tag >> work_path >> dec >> pid >> assoc_id >> calling >> remote >> called >> port >> transfer_syntax >> auto_publish;
-    if(ntff.is_open()) ntff.close();
+    string assoc_id, store_path, notify_file;
+    istringstream istrm(p_assoc_id);
+    istrm >> assoc_id >> store_path >> notify_file >> dec >> pid >> calling >> remote >> called >> port >> transfer_syntax >> auto_publish;
 
     if(assoc_id.compare(p_assoc_id) == 0)
     {
-        set_path(work_path);
+        set_path(store_path);
         set_id(assoc_id);
-        set_meta_notify_filename(mnf);
+        set_meta_notify_filename(notify_file);
 #ifdef _DEBUG
-        time_header_out(cerr) << cmd << " " << hex << tag << " " << work_path << " " << dec << pid << " " << assoc_id << " " << calling << " " << remote << " " << called << " " << port << endl;
+        time_header_out(cerr) << "np_conn_assoc_dir::establish_conn_dir() receive: " << p_assoc_id << endl;
 #endif
         return 0;
     }
     else return displayErrorToCerr("np_conn_assoc_dir::establish_conn_dir() assoc id match", ERROR_INVALID_DATA, pflog);
 }
 
+// STOR_END | assoc_id RELEASE notify_filename
 DWORD np_conn_assoc_dir::release_conn_dir(char *p_assoc_id)
 {
 #ifdef _DEBUG
@@ -150,6 +129,7 @@ DWORD np_conn_assoc_dir::release_conn_dir(char *p_assoc_id)
     return 0;
 }
 
+// FILE | assoc_id hash study_uid unique_filename notify_filename instance_filename
 DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
 {
 #ifdef _DEBUG
@@ -181,13 +161,21 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
     }
     else *unique_filename++ = '\0';
 
-    char *notify_file = strchr(unique_filename, ' ');
-    if(notify_file == NULL)
+    char *notify_filename = strchr(unique_filename, ' ');
+    if(notify_filename == NULL)
     {
         time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no notify file." << endl;
         return ERROR_INVALID_DATA;
     }
-    else *notify_file++ = '\0';
+    else *notify_filename++ = '\0';
+
+    char *instance_filename = strchr(notify_filename, ' ');
+    if(instance_filename == NULL)
+    {
+        time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no instance file." << endl;
+        return ERROR_INVALID_DATA;
+    }
+    else *instance_filename++ = '\0';
 
     if(get_listener())
     {   // server connection shall establish assoc <--> study many to many relationship
@@ -204,12 +192,12 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
             strcpy_s(study_path + used, sizeof(study_path) - used, study_uid);
             if(MkdirRecursive(study_path))
             {
-                pstudy = study_assoc_dir::create_instance(study_uid, orders_study_name, notify_file, pflog);
+                pstudy = study_assoc_dir::create_instance(study_uid, orders_study_name, notify_filename, pflog);
                 studies[study_uid] = pstudy;
             }
             else time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() can't create dir " << study_path << endl;
         }
-        if(pstudy) pstudy->add_file(this, hash, unique_filename, notify_file);
+        if(pstudy) pstudy->add_file(this, hash, unique_filename, notify_filename, instance_filename);
     }
 
     return 0;
