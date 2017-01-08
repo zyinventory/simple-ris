@@ -202,15 +202,14 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
 
     if(pnpc && pscp)
     {
-        string msg(NOTIFY_FILE_TAG);
+        ostringstream msg;
         char *p = strrchr(fn_only_start, '\\');
         if(p) ++p;
         else p = fn_only_start;
-        // FILE assoc_id hash study_uid unique_filename notify_filename instance_filename
-        msg.append(1, ' ').append(pscp->getAssociationId()).append(1, ' ').append(nfc.hash)
-            .append(1, ' ').append(nfc.studyUID).append(1, ' ').append(nfc.unique_filename).append(1, ' ')
-            .append(p).append(1, ' ').append(instanceName);
-        pnpc->queue_message(msg);
+        // FILE assoc_id hash study_uid unique_filename notify_filename instance_filename number
+        msg << NOTIFY_FILE_TAG << " " << pscp->getAssociationId() << " " << nfc.hash << " " << nfc.studyUID << " "
+            << nfc.unique_filename << " " <<  p << " " << instanceName << " " << dec << nfc.number;
+        pnpc->queue_message(msg.str());
     }
     DWORD gle = 0;
     do {

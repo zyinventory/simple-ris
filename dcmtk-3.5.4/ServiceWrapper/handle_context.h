@@ -8,12 +8,15 @@ namespace handle_context
     class compress_job
     {
     private:
-        std::string assoc_id, path, notify_filename, hash, unique_filename, instance_filename;
-
+        std::string assoc_id, path, notify_filename, hash, unique_filename, instance_filename, expected_xfer, study_uid;
+        long long rec_file_size;
+        unsigned int seq;
     public:
-        compress_job(const std::string &assoc_id, const std::string &path, const std::string &notify_filename,
-            const std::string &hash, const std::string &unique_filename, const std::string &instance_filename)
-            : unique_filename(unique_filename), path(path), notify_filename(notify_filename), hash(hash), assoc_id(assoc_id) {};
+        compress_job() : rec_file_size(0LL), seq(0) {};
+        compress_job(const std::string &assoc_id, const std::string &path, const std::string &notify_filename, const std::string &hash,
+            const std::string &unique_filename, const std::string &instance_filename, const std::string &xfer, const std::string &study_uid, unsigned int seq)
+            : unique_filename(unique_filename), path(path), notify_filename(notify_filename), hash(hash), study_uid(study_uid),
+            assoc_id(assoc_id), instance_filename(instance_filename), expected_xfer(xfer), rec_file_size(0LL), seq(seq) {};
         compress_job(const compress_job &r) { *this = r; };
         compress_job& operator=(const compress_job& r)
         {
@@ -23,6 +26,10 @@ namespace handle_context
             hash = r.hash;
             unique_filename = r.unique_filename;
             instance_filename = r.instance_filename;
+            expected_xfer = r.expected_xfer;
+            rec_file_size = r.rec_file_size;
+            study_uid = r.study_uid;
+            seq = r.seq;
             return *this;
         };
         const std::string& get_assoc_id() const { return assoc_id; };
@@ -31,10 +38,22 @@ namespace handle_context
         const std::string& get_hash() const { return hash; };
         const std::string& get_unique_filename() const { return unique_filename; };
         const std::string& get_instance_filename() const { return instance_filename; };
+        const std::string& get_expected_xfer() const { return expected_xfer; };
+        const std::string& get_study_uid() const { return study_uid; };
+        unsigned int get_seq() const { return seq; };
+        void set_rec_file_size(long long sz) { rec_file_size = sz; };
+        void clear()
+        {
+            assoc_id.clear(); path.clear(); notify_filename.clear(); hash.clear();
+            unique_filename.clear(); instance_filename.clear(); expected_xfer.clear();
+            rec_file_size = 0LL;
+        };
     };
 
     class np_conn_assoc_dir;
     class study_assoc_dir;
+    typedef std::map<std::string, std::shared_ptr<named_pipe_connection> > STR_SHARED_CONN_MAP;
+    typedef std::pair<std::string, std::shared_ptr<named_pipe_connection> > STR_SHARED_CONN_PAIR;
     typedef std::map<std::string, study_assoc_dir*> STUDY_MAP;
     typedef std::pair<std::string, study_assoc_dir*> STUDY_PAIR;
 
@@ -44,7 +63,7 @@ namespace handle_context
         static std::string empty_notify_filename;
         static STUDY_MAP studies_map;
         std::list<compress_job> compress_queue;
-        std::set<np_conn_assoc_dir*> associations;
+        STR_SHARED_CONN_MAP associations;
 
         study_assoc_dir(const char *study_uid, const char *path, const char *meta_notify_file, int timeout, std::ostream *plog)
             : base_dir(study_uid, path, meta_notify_file, timeout, plog) { };
@@ -53,7 +72,7 @@ namespace handle_context
         static study_assoc_dir* create_instance(const char *study_uid, const char *path, const char *meta_notify_file, std::ostream *pflog);
         static study_assoc_dir* find_first_job_in_studies(const std::string &base);
         virtual void print_state() const;
-        void add_file(np_conn_assoc_dir *p_assoc_dir, const char *hash, const char *unique_filename, const char *p_notify_file, const char *p_instance_file);
+        void add_file(np_conn_assoc_dir *p_assoc_dir, const std::string &hash, const std::string &unique_filename, const std::string &p_notify_file, const std::string &p_instance_file, unsigned int seq);
         const std::string& get_first_greater_notify_filename(const std::string &base) const;
         bool find_notify_filename(const std::string &base) const { return get_first_tuple_equal(base) != NULL; };
         const compress_job* get_first_tuple() const { return compress_queue.size() ? &compress_queue.front() : NULL; };
@@ -64,7 +83,7 @@ namespace handle_context
     class np_conn_assoc_dir : public named_pipe_connection
     {
     private:
-        std::string calling, called, remote, transfer_syntax, auto_publish;
+        std::string calling, called, remote, expected_syntax, auto_publish;
         int port;
         DWORD pid;
         bool disconn_release;
@@ -77,10 +96,10 @@ namespace handle_context
     public:
         np_conn_assoc_dir(named_pipe_listener *pnps, int timeout) : named_pipe_connection(pnps, timeout), pid(0), disconn_release(false) { };
         virtual ~np_conn_assoc_dir();
+        const std::string& get_expected_syntax() const { return expected_syntax; };
         virtual void print_state() const;
         virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size);
         const char* close_description() const;
-        void fill_association(NOTIFY_FILE_CONTEXT *pnfc) const;
     };
 
     class handle_proc : public base_dir
@@ -115,19 +134,18 @@ namespace handle_context
     class handle_compress : public handle_proc
     {
     private:
-        NOTIFY_FILE_CONTEXT *notify_ctx;
+        compress_job compr_job;
         
     protected:
-        handle_compress(const std::string &id, const std::string &path, const std::string &notify, const std::string &cmd, const std::string &exec_prog_name, NOTIFY_FILE_CONTEXT *pnfc, std::ostream *plog)
-            : handle_proc(id, path, notify, cmd, exec_prog_name, plog), notify_ctx(pnfc) { };
+        handle_compress(const std::string &id, const std::string &path, const std::string &notify, const std::string &cmd,
+            const std::string &exec_prog_name, const compress_job &job, std::ostream *plog)
+            : handle_proc(id, path, notify, cmd, exec_prog_name, plog), compr_job(job) { };
 
     public:
-        static handle_compress* make_handle_compress(NOTIFY_FILE_CONTEXT *pnfc, std::ostream &flog);
-        virtual ~handle_compress() { if(notify_ctx) delete notify_ctx; };
+        static handle_compress* make_handle_compress(const std::string &study_uid, const compress_job &job, std::ostream &flog);
+        virtual ~handle_compress() {  };
         void print_state() const;
-        NOTIFY_FILE_CONTEXT* get_notify_context() { return notify_ctx; };
     };
-
 }
 
 #endif

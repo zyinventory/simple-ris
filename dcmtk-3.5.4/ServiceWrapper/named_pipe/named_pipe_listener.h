@@ -51,6 +51,7 @@ namespace handle_context
             return (it == servers.end() ? NULL : it->second);
         };
         static std::ostream* find_err_log();
+        static void CALLBACK remove_closed_connection(ULONG_PTR dwParam);
         named_pipe_listener(const char *pipe_path, DWORD write_size, DWORD read_size, LPPIPE_CONNECT_CALLBACK conn_callback, std::ostream *plog)
             : base_path(pipe_path, plog), hPipeEvent(NULL), hPipe(NULL), write_buff_size(write_size), read_buff_size(read_size), connect_callback(conn_callback)
             { memset(&olPipeConnectOnly, 0, sizeof(OVERLAPPED)); };
@@ -139,6 +140,7 @@ namespace handle_context
         size_t get_bytes_queued() const { return bytes_queued; };
         size_t get_write_buff_size() const { return write_buff_size; };
         size_t get_read_buff_size() const { return read_buff_size; };
+        HANDLE get_event_handle() const { return hEvent; };
         bool is_write_queue_empty() const { return (bytes_queued == 0 && message_write_buffer.size() == 0); };
         bool close_pipe();
         bool is_dead() const { return !(reading || bytes_queued || hPipeInst); };

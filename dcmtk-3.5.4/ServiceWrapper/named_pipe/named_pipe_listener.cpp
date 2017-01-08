@@ -37,35 +37,32 @@ named_pipe_listener::~named_pipe_listener(void)
         if(p.second)
         {
             *plog << "closing map_connections_read[" << p.second->get_id() << "]..." << endl;
-            if(!p.second->close_pipe()) SleepEx(0, TRUE);
+            p.second->close_pipe();
         }
     });
     for_each(map_connections_write.begin(), map_connections_write.end(), [plog](const SHARED_CONN_PAIR &p) {
         if(p.second)
         {
             *plog << "closing map_connections_write[" << p.second->get_id() << "]..." << endl;
-            if(!p.second->close_pipe()) SleepEx(0, TRUE);
+            p.second->close_pipe();
         }
     });
 
-    for(int i = 0; i < 1000 && (map_connections_read.size() || map_connections_write.size()); ++i)
+    for(int i = 0; i < 100 && (map_connections_read.size() || map_connections_write.size()); ++i) SleepEx(10, TRUE);
+
+    SHARED_CONN_MAP::iterator it = map_connections_read.begin();
+    while(it != map_connections_read.end())
     {
-        SleepEx(0, TRUE);
-        SHARED_CONN_MAP::iterator it = map_connections_read.begin();
-        while(it != map_connections_read.end())
-        {
-            SleepEx(0, TRUE);
-            if(it->second == NULL || it->second->close_pipe()) it = map_connections_read.erase(it);
-            else ++it;
-        }
-        SleepEx(0, TRUE);
-        it = map_connections_write.begin();
-        while(it != map_connections_write.end())
-        {
-            SleepEx(0, TRUE);
-            if(it->second == NULL || it->second->close_pipe()) it = map_connections_write.erase(it);
-            else ++it;
-        }
+        time_header_out(*pflog) << "~named_pipe_listener() mandatory remove map_connections_read[" << it->second << "]" << endl;
+        if(it->second) it->second->print_state();
+        it = map_connections_read.erase(it);
+    }
+    it = map_connections_write.begin();
+    while(it != map_connections_write.end())
+    {
+        time_header_out(*pflog) << "~named_pipe_listener() mandatory remove map_connections_write[" << it->second << "]" << endl;
+        if(it->second) it->second->print_state();
+        it = map_connections_write.erase(it);
     }
 
     servers.erase(hPipeEvent);
@@ -74,7 +71,7 @@ named_pipe_listener::~named_pipe_listener(void)
         CloseHandle(hPipeEvent);
         hPipeEvent = NULL;
     }
-    if(opt_verbose) time_header_out(*pflog) << "named_pipe_listener::~named_pipe_listener() exit" << endl;
+    if(opt_verbose) time_header_out(*pflog) << "~named_pipe_listener() exit" << endl;
 }
 
 void named_pipe_listener::print_state(void) const
@@ -196,6 +193,27 @@ shared_ptr<named_pipe_connection> named_pipe_listener::find_connections(std::fun
         if(pred(it->second)) return it->second;
     }
     return NULL;
+}
+
+void CALLBACK named_pipe_listener::remove_closed_connection(ULONG_PTR wParam)
+{
+    if(wParam == NULL) return;
+    named_pipe_connection *pnpc = reinterpret_cast<named_pipe_connection*>(wParam);
+    if(pnpc->is_dead())
+    {
+        if(pnpc->get_event_handle())
+        {   // server connection
+            named_pipe_listener *pnps = pnpc->get_listener();
+            if(pnps)
+            {
+                shared_ptr<named_pipe_connection> sp = pnps->find_connections_read(pnpc->get_overlap_read());
+                if(sp == NULL) sp = pnps->find_connections_write(pnpc->get_overlap_write());
+                if(sp) pnps->remove_pipe(sp);
+            }
+            // error
+        }
+        else delete pnpc; // client connection
+    }
 }
 
 ostream* handle_context::find_err_log_all()

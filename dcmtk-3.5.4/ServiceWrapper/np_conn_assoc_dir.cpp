@@ -47,7 +47,7 @@ void np_conn_assoc_dir::print_state() const
         << "\tcalling: " << calling << endl
         << "\tremote: " << remote << endl
         << "\tcalled: " << called << endl
-        << "\ttransfer_syntax: " << transfer_syntax << endl
+        << "\texpected_syntax: " << expected_syntax << endl
         << "\tauto_publish: " << auto_publish << endl
         << "\tport: " << dec << port << endl
         << "\tis_disconn: " << is_disconn() << endl
@@ -88,7 +88,7 @@ DWORD np_conn_assoc_dir::establish_conn_dir(const char *p_assoc_id)
 {
     string assoc_id, store_path, notify_file;
     istringstream istrm(p_assoc_id);
-    istrm >> assoc_id >> store_path >> notify_file >> dec >> pid >> calling >> remote >> called >> port >> transfer_syntax >> auto_publish;
+    istrm >> assoc_id >> store_path >> notify_file >> dec >> pid >> calling >> remote >> called >> port >> expected_syntax >> auto_publish;
 
     if(strncmp(assoc_id.c_str(), p_assoc_id, assoc_id.length()) == 0)
     {
@@ -137,83 +137,30 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
 #endif
     if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive file notify: " << p_assoc_id << endl;
 
-    char *hash = strchr(p_assoc_id, ' ');
-    if(hash == NULL)
-    {
-        time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no hash." << endl;
-        return ERROR_INVALID_DATA;
-    }
-    else *hash++ = '\0';
+    string assoc_id, hash, study_uid, unique_filename, notify_filename, instance_filename;
+    unsigned int seq;
+    istringstream istrm(p_assoc_id);
+    istrm >> assoc_id >> hash >> study_uid >> unique_filename >> notify_filename >> instance_filename >> dec >> seq;
 
-    char *study_uid = strchr(hash, ' ');
-    if(study_uid == NULL)
-    {
-        time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no study uid." << endl;
-        return ERROR_INVALID_DATA;
-    }
-    else *study_uid++ = '\0';
-
-    char *unique_filename = strchr(study_uid, ' ');
-    if(unique_filename == NULL)
-    {
-        time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no unique file name." << endl;
-        return ERROR_INVALID_DATA;
-    }
-    else *unique_filename++ = '\0';
-
-    char *notify_filename = strchr(unique_filename, ' ');
-    if(notify_filename == NULL)
-    {
-        time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no notify file." << endl;
-        return ERROR_INVALID_DATA;
-    }
-    else *notify_filename++ = '\0';
-
-    char *instance_filename = strchr(notify_filename, ' ');
-    if(instance_filename == NULL)
-    {
-        time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() receive an unknown file notify: no instance file." << endl;
-        return ERROR_INVALID_DATA;
-    }
-    else *instance_filename++ = '\0';
-
-    if(get_listener())
+    if(get_event_handle())
     {   // server connection shall establish assoc <--> study many to many relationship
         study_assoc_dir* pstudy = NULL;
         STUDY_MAP::iterator it = studies.find(study_uid);
         if(it != studies.end()) pstudy = it->second;
-        if(pstudy = NULL)
+        if(pstudy == NULL)
         {
             char study_path[MAX_PATH];
             int used = sprintf_s(study_path, "%s\\orders_study\\", GetPacsTemp());
             char *orders_study_name = study_path + used;
             used += in_process_sequence_dll(study_path + used, sizeof(study_path) - used, "");
             study_path[used++] = '_';
-            strcpy_s(study_path + used, sizeof(study_path) - used, study_uid);
+            strcpy_s(study_path + used, sizeof(study_path) - used, study_uid.c_str());
             if(MkdirRecursive(study_path))
-            {
-                pstudy = study_assoc_dir::create_instance(study_uid, orders_study_name, notify_filename, pflog);
-                studies[study_uid] = pstudy;
-            }
+                pstudy = study_assoc_dir::create_instance(study_uid.c_str(), orders_study_name, notify_filename.c_str(), pflog);
             else time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() can't create dir " << study_path << endl;
         }
-        if(pstudy) pstudy->add_file(this, hash, unique_filename, notify_filename, instance_filename);
+        if(pstudy) pstudy->add_file(this, hash.c_str(), unique_filename.c_str(), notify_filename.c_str(), instance_filename.c_str(), seq);
     }
 
     return 0;
-}
-
-void np_conn_assoc_dir::fill_association(NOTIFY_FILE_CONTEXT *pnfc) const
-{
-    strncpy_s(pnfc->src_notify_filename, get_meta_notify_filename().c_str(), _TRUNCATE);
-    pnfc->assoc.port = port;
-    strncpy_s(pnfc->assoc.id, get_id().c_str(), _TRUNCATE);
-    strncpy_s(pnfc->assoc.store_assoc_id, get_id().c_str(), _TRUNCATE);
-    strncpy_s(pnfc->assoc.path, get_path().c_str(), _TRUNCATE);
-    strncpy_s(pnfc->assoc.calledAE, called.c_str(), _TRUNCATE);
-    strncpy_s(pnfc->assoc.callingAE, calling.c_str(), _TRUNCATE);
-    strncpy_s(pnfc->assoc.callingAddr, remote.c_str(), _TRUNCATE);
-    strncpy_s(pnfc->assoc.calledAE, called.c_str(), _TRUNCATE);
-    strncpy_s(pnfc->assoc.expected_xfer, transfer_syntax.c_str(), _TRUNCATE);
-    strncpy_s(pnfc->assoc.auto_publish, auto_publish.c_str(), _TRUNCATE);
 }

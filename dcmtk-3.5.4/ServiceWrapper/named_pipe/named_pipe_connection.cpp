@@ -134,6 +134,7 @@ bool named_pipe_connection::close_pipe()
             }
             hPipeInst = NULL;
             callback_pipe_closed();
+            if(hEvent) QueueUserAPC(named_pipe_listener::remove_closed_connection, GetCurrentThread(), reinterpret_cast<ULONG_PTR>(this));
         }
         return true;
     }
@@ -148,7 +149,8 @@ void named_pipe_connection::print_state(void) const
         << "\twrite_buff_size: " << write_buff_size << endl
         << "\tread_buff_size: " << read_buff_size << endl
         << "\tclosing: " << closing << endl
-        << "\treading: " << reading << endl;
+        << "\treading: " << reading << endl
+        << "\tbytes_queued: " << bytes_queued << endl;
     base_dir::print_state();
 }
 

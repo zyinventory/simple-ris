@@ -282,8 +282,6 @@ void save_notify_context_to_ostream(const NOTIFY_FILE_CONTEXT &cnc, bool compres
 
 static bool process_notify_file(std::istream &ifs, unsigned int seq, NOTIFY_FILE_CONTEXT *pclc, ostream &flog)
 {
-    memset(pclc, 0, sizeof(NOTIFY_FILE_CONTEXT));
-
     if(seq >= NOTIFY_FILE_SEQ_START)
     {
         pclc->file_seq = seq;
