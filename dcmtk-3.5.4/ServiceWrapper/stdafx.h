@@ -42,7 +42,7 @@
 #include <functional>
 #include <array>
 #include <algorithm>
-#include <functional>
+#include <memory>
 
 #define FILE_BUF_SIZE 1024
 #include "commonlib.h"

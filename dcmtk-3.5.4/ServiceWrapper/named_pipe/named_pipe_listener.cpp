@@ -33,45 +33,42 @@ named_pipe_listener::~named_pipe_listener(void)
     if(hPipe && hPipe != INVALID_HANDLE_VALUE) CloseHandle(hPipe);
     hPipe = NULL;
     ostream *plog = get_err_stream();
-    set<named_pipe_connection*> ps;
-    for_each(map_connections_read.begin(), map_connections_read.end(), [plog, &ps](const CONN_PAIR &p) {
+    for_each(map_connections_read.begin(), map_connections_read.end(), [plog](const SHARED_CONN_PAIR &p) {
         if(p.second)
         {
-            *plog << "map_connections_read : " << p.second->get_handle() << endl;
-            ps.insert(p.second);
+            *plog << "closing map_connections_read[" << p.second->get_handle() << "]..." << endl;
+            p.second->close_pipe();
+            SleepEx(0, TRUE);
         }
     });
-    for_each(map_connections_write.begin(), map_connections_write.end(), [plog, &ps](const CONN_PAIR &p) {
+    for_each(map_connections_write.begin(), map_connections_write.end(), [plog](const SHARED_CONN_PAIR &p) {
         if(p.second)
         {
-            *plog << "map_connections_write: " << p.second->get_handle() << endl;
-            ps.insert(p.second);
+            *plog << "closing map_connections_write[" << p.second->get_handle() << "]..." << endl;
+            p.second->close_pipe();
+            SleepEx(0, TRUE);
         }
     });
-    time_header_out(*pflog) << "named_pipe_listener::~named_pipe_listener() start closing " << ps.size() << " connections..." << endl;
-    named_pipe_listener *plsnr = this;
-    for_each(ps.begin(), ps.end(), [plsnr](named_pipe_connection *p) {
-        plsnr->remove_pipe(p);
-        p->print_state();
-        p->close_pipe();
-        SleepEx(0, TRUE);
-    });
-    for(int i = 0; i < 1000 && ps.size(); ++i)
+
+    for(int i = 0; i < 1000 && (map_connections_read.size() || map_connections_write.size()); ++i)
     {
         SleepEx(0, TRUE);
-        set<named_pipe_connection*>::iterator it = ps.begin();
-        while(it != ps.end())
+        SHARED_CONN_MAP::iterator it = map_connections_read.begin();
+        while(it != map_connections_read.end())
         {
             SleepEx(0, TRUE);
-            if((*it)->close_pipe())
-            {
-                delete *it;
-                it = ps.erase(it);
-            }
+            if(it->second == NULL || it->second->close_pipe()) it = map_connections_read.erase(it);
+            else ++it;
+        }
+        SleepEx(0, TRUE);
+        it = map_connections_write.begin();
+        while(it != map_connections_write.end())
+        {
+            SleepEx(0, TRUE);
+            if(it->second == NULL || it->second->close_pipe()) it = map_connections_write.erase(it);
             else ++it;
         }
     }
-    for_each(ps.begin(), ps.end(), [plsnr](named_pipe_connection *p) { SleepEx(0, TRUE); if(p) delete p; });
 
     if(hPipeEvent && hPipeEvent != INVALID_HANDLE_VALUE)
     {
@@ -139,12 +136,12 @@ DWORD named_pipe_listener::start_listening()
 DWORD named_pipe_listener::pipe_client_connect_incoming()
 {
     DWORD gle = 0, cbRet = 0;
-    named_pipe_connection *pnpc;
+    shared_ptr<named_pipe_connection> pnpc;
     if(GetOverlappedResult(hPipe, &olPipeConnectOnly, &cbRet, TRUE))
     {
         if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" async operation complete" << endl;
         // bind hPipe to named pipe instance
-        pnpc = connect_callback(this);
+        pnpc.reset(connect_callback(this));
         map_connections_read[pnpc->get_overlap_read()] = pnpc;
         map_connections_write[pnpc->get_overlap_write()] = pnpc;
         if(opt_verbose) time_header_out(*pflog) << "named_pipe_listener::pipe_client_connect_incoming() add "
@@ -169,34 +166,19 @@ DWORD named_pipe_listener::pipe_client_connect_incoming()
         if(pnpc->close_pipe())
         {
             remove_pipe(pnpc);
-            delete pnpc;
         }
     }
     return 0;
 }
 
-size_t named_pipe_listener::remove_pipe(named_pipe_connection *pnpc)
+size_t named_pipe_listener::remove_pipe(const shared_ptr<named_pipe_connection> &pnpc)
 {
     if(pnpc == NULL) return 0;
-    CONN_MAP::size_type removed = map_connections_read.erase(pnpc->get_overlap_read());
+    SHARED_CONN_MAP::size_type removed = map_connections_read.erase(pnpc->get_overlap_read());
     removed += map_connections_write.erase(pnpc->get_overlap_write());
     if(opt_verbose && removed) time_header_out(*pflog) << "named_pipe_listener::remove_pipe() remove "
         << pnpc->get_overlap_read() << ", " << pnpc->get_overlap_write() << endl;
     return removed;
-}
-
-const named_pipe_connection* named_pipe_listener::find_and_remove_dead_connection()
-{
-    CONN_MAP::iterator it = find_if(map_connections_read.begin(), map_connections_read.end(),
-        [](const CONN_PAIR &p) { return (p.second && p.second->close_pipe()); });
-    if(it != map_connections_read.end())
-    {
-        named_pipe_connection *p = it->second;
-        map_connections_write.erase(p->get_overlap_write());
-        map_connections_read.erase(it);
-        return p;
-    }
-    return NULL;
 }
 
 std::ostream* named_pipe_listener::find_err_log()
@@ -208,19 +190,26 @@ std::ostream* named_pipe_listener::find_err_log()
     return NULL;
 }
 
-void named_pipe_listener::detect_timeout_connection()
+shared_ptr<named_pipe_connection> named_pipe_listener::find_connections_read(LPOVERLAPPED lpo)
 {
-    set<named_pipe_connection*> ps;
-    transform(map_connections_read.begin(), map_connections_read.end(), inserter(ps, ps.begin()), [](const CONN_PAIR &p) { return p.second; });
-    for_each(ps.begin(), ps.end(), [](named_pipe_connection *p) { if(p && p->is_time_out()) p->close_pipe(); });
+    SHARED_CONN_MAP::iterator it = map_connections_read.find(lpo);
+    if(it == map_connections_read.end()) return NULL;
+    else return map_connections_read[lpo];
 }
 
-named_pipe_connection* named_pipe_listener::find_connections(std::function<bool(const named_pipe_connection&)> pred)
+shared_ptr<named_pipe_connection> named_pipe_listener::find_connections_write(LPOVERLAPPED lpo)
 {
-    for(CONN_MAP::const_iterator it = map_connections_read.cbegin(); it != map_connections_read.cend(); ++it)
+    SHARED_CONN_MAP::iterator it = map_connections_write.find(lpo);
+    if(it == map_connections_write.end()) return NULL;
+    else return map_connections_write[lpo];
+}
+
+shared_ptr<named_pipe_connection> named_pipe_listener::find_connections(std::function<bool(const shared_ptr<named_pipe_connection>&)> pred)
+{
+    for(SHARED_CONN_MAP::const_iterator it = map_connections_read.cbegin(); it != map_connections_read.cend(); ++it)
     {
         if(it->second == NULL) continue;
-        if(pred(*it->second)) return it->second;
+        if(pred(it->second)) return it->second;
     }
     return NULL;
 }
@@ -234,31 +223,33 @@ ostream* handle_context::find_err_log_all()
     return &cerr;
 }
 
-static named_pipe_connection* find_named_pipe_connection(LPOVERLAPPED lpOverLap, named_pipe_listener **ppnps, bool is_write)
+static shared_ptr<named_pipe_connection> find_server_named_pipe_connection(LPOVERLAPPED lpOverLap, named_pipe_listener **ppnps, bool is_write)
 {
-    ostream* perrlog = find_err_log_all();
+    ostream* perrlog = NULL;
     if(lpOverLap == NULL)
     {
+        if(perrlog == NULL) perrlog = find_err_log_all();
         time_header_out(*perrlog) << __FUNCSIG__ " lpOverLap is NULL." << endl;
         return NULL;
     }
 
-    if(lpOverLap->hEvent == NULL)
-        return named_pipe_connection::find_alone_connection(lpOverLap, is_write);
+    if(lpOverLap->hEvent == NULL) return NULL; // client named_pipe_connection
 
     named_pipe_listener *pnps = named_pipe_listener::find_named_pipe_listener(lpOverLap->hEvent);
     if(pnps == NULL)
     {
+        if(perrlog == NULL) perrlog = find_err_log_all();
         time_header_out(*perrlog) << __FUNCSIG__ " can't find named_pipe_listener from lpOverLap " << lpOverLap << " -> " << lpOverLap->hEvent << endl;
         return NULL;
     }
-    named_pipe_connection *npc = is_write ? pnps->find_connections_write(lpOverLap) : pnps->find_connections_read(lpOverLap);
+    if(ppnps) *ppnps = pnps;
+    shared_ptr<named_pipe_connection> npc = is_write ? pnps->find_connections_write(lpOverLap) : pnps->find_connections_read(lpOverLap);
     if(npc == NULL)
     {
+        if(perrlog == NULL) perrlog = find_err_log_all();
         time_header_out(*perrlog) << __FUNCSIG__ " can't find named_pipe_connection from lpOverLap " << (is_write ? "write " : "read ") << lpOverLap << endl;
         return NULL;
     }
-    if(ppnps) *ppnps = pnps;
     return npc;
 }
 
@@ -266,23 +257,33 @@ void CALLBACK handle_context::read_pipe_complete(DWORD dwErr, DWORD cbBytesRead,
 {
     ostream* perrlog = NULL;
     named_pipe_listener *pnps = NULL;
-    named_pipe_connection *pnpc = NULL;
+    if(lpOverLap == NULL) return;
+
     if(lpOverLap->hEvent)
-        pnpc = find_named_pipe_connection(lpOverLap, &pnps, false);
-    else
-        pnpc = named_pipe_connection::find_alone_connection(lpOverLap, false);
-
-    if(pnpc == NULL)
     {
-        perrlog = find_err_log_all();
-        time_header_out(*perrlog) << __FUNCSIG__ " find named_pipe_connection(read) failed: " << lpOverLap << endl;
-        return;
+        shared_ptr<named_pipe_connection> pnpc(find_server_named_pipe_connection(lpOverLap, &pnps, false));
+        if(pnpc == NULL)
+        {
+            if(perrlog == NULL) perrlog = find_err_log_all();
+            time_header_out(*perrlog) << __FUNCSIG__ " find named_pipe_connection(read) failed: " << lpOverLap << endl;
+            return;
+        }
+        else perrlog = pnpc->get_err_stream();
+
+        if(pnpc->read_pipe_complete(dwErr, cbBytesRead, lpOverLap)) pnpc->close_pipe();
     }
-    else perrlog = pnpc->get_err_stream();
-
-    if(pnpc->read_pipe_complete(dwErr, cbBytesRead, lpOverLap))
+    else
     {
-        pnpc->close_pipe();
+        named_pipe_connection *pnpc = named_pipe_connection::find_alone_connection(lpOverLap, false);
+        if(pnpc == NULL)
+        {
+            if(perrlog == NULL) perrlog = find_err_log_all();
+            time_header_out(*perrlog) << __FUNCSIG__ " find named_pipe_connection(read) failed: " << lpOverLap << endl;
+            return;
+        }
+        else perrlog = pnpc->get_err_stream();
+
+        if(pnpc->read_pipe_complete(dwErr, cbBytesRead, lpOverLap)) pnpc->close_pipe();
     }
 }
 
@@ -290,22 +291,32 @@ void CALLBACK handle_context::write_pipe_complete(DWORD dwErr, DWORD cbBytesWrit
 {
     ostream* perrlog = NULL;
     named_pipe_listener *pnps = NULL;
-    named_pipe_connection *pnpc = NULL;
-    if(lpOverLap->hEvent)
-        pnpc = find_named_pipe_connection(lpOverLap, &pnps, true);
-    else
-        pnpc = named_pipe_connection::find_alone_connection(lpOverLap, true);
-    
-    if(pnpc == NULL)
-    {
-        perrlog = find_err_log_all();
-        time_header_out(*perrlog) << __FUNCSIG__ " find named_pipe_connection(write) failed: " << lpOverLap << endl;
-        return;
-    }
-    else perrlog = pnpc->get_err_stream();
+    if(lpOverLap == NULL) return;
 
-    if(pnpc->write_pipe_complete(dwErr, cbBytesWrite, lpOverLap))
+    if(lpOverLap->hEvent)
     {
-        pnpc->close_pipe();
+        shared_ptr<named_pipe_connection> pnpc(find_server_named_pipe_connection(lpOverLap, &pnps, true));
+        if(pnpc == NULL)
+        {
+            if(perrlog == NULL) perrlog = find_err_log_all();
+            time_header_out(*perrlog) << __FUNCSIG__ " find named_pipe_connection(write) failed: " << lpOverLap << endl;
+            return;
+        }
+        else perrlog = pnpc->get_err_stream();
+
+        if(pnpc->write_pipe_complete(dwErr, cbBytesWrite, lpOverLap)) pnpc->close_pipe();
+    }
+    else
+    {
+        named_pipe_connection *pnpc = named_pipe_connection::find_alone_connection(lpOverLap, true);
+        if(pnpc == NULL)
+        {
+            if(perrlog == NULL) perrlog = find_err_log_all();
+            time_header_out(*perrlog) << __FUNCSIG__ " find named_pipe_connection(write) failed: " << lpOverLap << endl;
+            return;
+        }
+        else perrlog = pnpc->get_err_stream();
+
+        if(pnpc->write_pipe_complete(dwErr, cbBytesWrite, lpOverLap)) pnpc->close_pipe();
     }
 }

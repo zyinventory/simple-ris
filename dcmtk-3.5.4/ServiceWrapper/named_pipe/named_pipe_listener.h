@@ -6,6 +6,7 @@
 #include <map>
 #include <iterator>
 #include <functional>
+#include <memory>
 #include <array>
 #include "dcmtk/dcmdata/notify_context.h"
 extern int opt_verbose;
@@ -29,8 +30,8 @@ namespace handle_context
 
     typedef std::map<HANDLE, named_pipe_listener*> LISTENER_MAP;
     typedef std::pair<HANDLE, named_pipe_listener*> LISTENER_PAIR;
-    typedef std::map<LPOVERLAPPED, named_pipe_connection*> CONN_MAP;
-    typedef std::pair<LPOVERLAPPED, named_pipe_connection*> CONN_PAIR;
+    typedef std::map<LPOVERLAPPED, std::shared_ptr<named_pipe_connection> > SHARED_CONN_MAP;
+    typedef std::pair<LPOVERLAPPED, std::shared_ptr<named_pipe_connection> > SHARED_CONN_PAIR;
     
     class named_pipe_listener : public base_path
     {
@@ -41,7 +42,7 @@ namespace handle_context
         size_t write_buff_size, read_buff_size;
         OVERLAPPED olPipeConnectOnly;
         LPPIPE_CONNECT_CALLBACK connect_callback;
-        CONN_MAP map_connections_read, map_connections_write;
+        SHARED_CONN_MAP map_connections_read, map_connections_write;
 
     public:
         static named_pipe_listener* find_named_pipe_listener(HANDLE h){ return servers.count(h) ? servers[h] : NULL; };
@@ -58,21 +59,22 @@ namespace handle_context
         size_t get_read_buff_size() const { return read_buff_size; };
         DWORD start_listening();
         DWORD pipe_client_connect_incoming();
-        size_t remove_pipe(named_pipe_connection *pnpc);
-        named_pipe_connection* find_connections_read(LPOVERLAPPED lpo) { return map_connections_read.count(lpo) ? map_connections_read[lpo] : NULL; };
-        named_pipe_connection* find_connections_write(LPOVERLAPPED lpo) { return map_connections_write.count(lpo) ? map_connections_write[lpo] : NULL; };
-        named_pipe_connection* find_connections(std::function<bool(const named_pipe_connection&)> pred);
+        size_t remove_pipe(const std::shared_ptr<named_pipe_connection> &pnpc);
+        std::shared_ptr<named_pipe_connection> find_connections_read(LPOVERLAPPED lpo);
+        std::shared_ptr<named_pipe_connection> find_connections_write(LPOVERLAPPED lpo);
+        std::shared_ptr<named_pipe_connection> find_connections(std::function<bool(const std::shared_ptr<named_pipe_connection>&)> pred);
         virtual void print_state(void) const;
         virtual HANDLE get_handle() const { return hPipeEvent; };
         HANDLE get_current_pipe_handle() const { return hPipe; };
-        void detect_timeout_connection();
-        const named_pipe_connection* find_and_remove_dead_connection();
     };
+
+    typedef std::map<LPOVERLAPPED, named_pipe_connection*> ALONE_CONN_MAP;
+    typedef std::pair<LPOVERLAPPED, named_pipe_connection*> ALONE_CONN_PAIR;
 
     class named_pipe_connection : public base_dir
     {
     private:
-        static CONN_MAP map_alone_connections_read, map_alone_connections_write;
+        static ALONE_CONN_MAP map_alone_connections_read, map_alone_connections_write;
 	    OVERLAPPED oOverlap_read, oOverlap_write;
         named_pipe_listener *p_listener;
 	    HANDLE hPipeInst;

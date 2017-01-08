@@ -11,7 +11,7 @@
 using namespace std;
 using namespace handle_context;
 
-CONN_MAP named_pipe_connection::map_alone_connections_read, named_pipe_connection::map_alone_connections_write;
+ALONE_CONN_MAP named_pipe_connection::map_alone_connections_read, named_pipe_connection::map_alone_connections_write;
 
 void named_pipe_connection::regist_alone_connection(named_pipe_connection *pnpc)
 {
@@ -30,46 +30,20 @@ named_pipe_connection* named_pipe_connection::find_alone_connection(LPOVERLAPPED
     else
         return map_alone_connections_read.count(pol) ? map_alone_connections_read[pol] : NULL;
 }
-/*
-const named_pipe_connection* named_pipe_connection::find_and_remove_dead_alone_connection()
-{
-    CONN_MAP::iterator it = find_if(map_alone_connections_read.begin(), map_alone_connections_read.end(),
-        [](const CONN_PAIR &p) { return (p.second && p.second->close_pipe()); });
-    if(it != map_alone_connections_read.end())
-    {
-        named_pipe_connection *p = it->second;
-        map_alone_connections_write.erase(p->get_overlap_write());
-        map_alone_connections_read.erase(it);
-        return p;
-    }
-    return NULL;
-}
 
-void named_pipe_connection::close_timeout_alone_connection()
-{
-    for(CONN_MAP::const_iterator it = map_alone_connections_read.cbegin(); it != map_alone_connections_read.end(); ++it)
-    {
-        if(it->second && it->second->is_time_out()) it->second->close_pipe();
-    }
-}
-*/
 size_t named_pipe_connection::remove_connection(named_pipe_connection *pnpc)
 {
     if(pnpc == NULL) return 0;
-    if(pnpc->p_listener) return pnpc->p_listener->remove_pipe(pnpc);
-    else
-    {
-        CONN_MAP::size_type removed = map_alone_connections_read.erase(pnpc->get_overlap_read());
-        removed += map_alone_connections_write.erase(pnpc->get_overlap_write());
-        if(removed) time_header_out(*find_err_log_all()) << "named_pipe_listener::remove_alone_connection() remove "
-            << pnpc->get_overlap_read() << ", " << pnpc->get_overlap_write() << endl;
-        return removed;
-    }
+    SHARED_CONN_MAP::size_type removed = map_alone_connections_read.erase(pnpc->get_overlap_read());
+    removed += map_alone_connections_write.erase(pnpc->get_overlap_write());
+    if(removed) time_header_out(*find_err_log_all()) << "named_pipe_listener::remove_alone_connection() remove "
+        << pnpc->get_overlap_read() << ", " << pnpc->get_overlap_write() << endl;
+    return removed;
 }
 
 std::ostream* named_pipe_connection::find_err_log_from_alone()
 {
-    for(CONN_MAP::const_iterator it = map_alone_connections_read.cbegin(); it != map_alone_connections_read.end(); ++it)
+    for(ALONE_CONN_MAP::const_iterator it = map_alone_connections_read.cbegin(); it != map_alone_connections_read.end(); ++it)
     {
         if(it->second) return it->second->get_err_stream();
     }
