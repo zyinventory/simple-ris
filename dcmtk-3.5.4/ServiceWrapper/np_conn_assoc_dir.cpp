@@ -90,7 +90,7 @@ DWORD np_conn_assoc_dir::establish_conn_dir(const char *p_assoc_id)
     istringstream istrm(p_assoc_id);
     istrm >> assoc_id >> store_path >> notify_file >> dec >> pid >> calling >> remote >> called >> port >> transfer_syntax >> auto_publish;
 
-    if(assoc_id.compare(p_assoc_id) == 0)
+    if(strncmp(assoc_id.c_str(), p_assoc_id, assoc_id.length()) == 0)
     {
         set_path(store_path);
         set_id(assoc_id);

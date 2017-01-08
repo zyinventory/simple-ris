@@ -52,17 +52,21 @@ std::ostream* named_pipe_connection::find_err_log_from_alone()
 
 named_pipe_connection::~named_pipe_connection()
 {
+    for(int i = 0; i < 100 && !close_pipe(); ++i) SleepEx(0, TRUE);
+    if(hEvent && !close_pipe()) DisconnectNamedPipe(hPipeInst);
+    SleepEx(0, TRUE);
+    if(hPipeInst && hPipeInst != INVALID_HANDLE_VALUE) CloseHandle(hPipeInst);
+    SleepEx(0, TRUE);
+    hPipeInst = NULL;
     if(ptr_write_buff) delete ptr_write_buff;
     if(ptr_read_buff) delete ptr_read_buff;
-    if(!close_pipe()) SleepEx(0, TRUE);
-    if(hPipeInst && hPipeInst != INVALID_HANDLE_VALUE) CloseHandle(hPipeInst);
-    hPipeInst = NULL;
+    if(opt_verbose) time_header_out(*pflog) << "~named_pipe_connection(" << get_id() << ") ok." << endl;
 }
 
 DWORD named_pipe_connection::start_working()
 {
     // server connection
-    if(p_listener)
+    if(hEvent)
     {
         callback_pipe_connected();
         return read_message();
@@ -98,7 +102,7 @@ bool named_pipe_connection::close_pipe()
 {
     if(!closing)
     {
-        if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__ " try CancelIo(" << hPipeInst << ")" << endl;
+        if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__ " try CancelIo(" << get_id() << ")" << endl;
         closing = true;
         if(hPipeInst && hPipeInst != INVALID_HANDLE_VALUE) CancelIo(hPipeInst);
     }
@@ -110,24 +114,27 @@ bool named_pipe_connection::close_pipe()
     }
     else
     {
-        if(p_listener) // is server side?
+        if(hPipeInst)
         {
+            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__ " CancelIo OK, DisconnectNamedPipe and CloseHandle " << get_id() << endl;
+            if(hEvent) // is server side?
+            {
+                if(hPipeInst && hPipeInst != INVALID_HANDLE_VALUE)
+                {
+                    if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__ " DisconnectNamedPipe(" << get_id() << ")." << endl;
+                    if (! DisconnectNamedPipe(hPipeInst))
+                        displayErrorToCerr(__FUNCSIG__ " DisconnectNamedPipe()", GetLastError(), pflog);
+                }
+            }
+        
             if(hPipeInst && hPipeInst != INVALID_HANDLE_VALUE)
             {
-                if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__ " DisconnectNamedPipe(" << hPipeInst << ")." << endl;
-                if (! DisconnectNamedPipe(hPipeInst))
-                    displayErrorToCerr(__FUNCSIG__ " DisconnectNamedPipe()", GetLastError(), pflog);
+                if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__ " CloseHandle(" << get_id() << ")." << endl;
+                CloseHandle(hPipeInst);
             }
-            else time_header_out(*pflog) << __FUNCSIG__ " hPipeInst is invalid." << endl;
+            hPipeInst = NULL;
+            callback_pipe_closed();
         }
-        
-        if(hPipeInst && hPipeInst != INVALID_HANDLE_VALUE)
-        {
-            if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__ " CloseHandle(" << hPipeInst << ")." << endl;
-            CloseHandle(hPipeInst);
-        }
-        hPipeInst = NULL;
-        callback_pipe_closed();
         return true;
     }
 }

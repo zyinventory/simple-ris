@@ -29,24 +29,22 @@ named_pipe_listener& named_pipe_listener::operator=(const named_pipe_listener &r
 
 named_pipe_listener::~named_pipe_listener(void)
 {
-    if(opt_verbose) time_header_out(*pflog) << "named_pipe_listener::~named_pipe_listener()" << endl;
+    if(opt_verbose) time_header_out(*pflog) << "named_pipe_listener::~named_pipe_listener(" << get_path() << ")" << endl;
     if(hPipe && hPipe != INVALID_HANDLE_VALUE) CloseHandle(hPipe);
     hPipe = NULL;
     ostream *plog = get_err_stream();
     for_each(map_connections_read.begin(), map_connections_read.end(), [plog](const SHARED_CONN_PAIR &p) {
         if(p.second)
         {
-            *plog << "closing map_connections_read[" << p.second->get_handle() << "]..." << endl;
-            p.second->close_pipe();
-            SleepEx(0, TRUE);
+            *plog << "closing map_connections_read[" << p.second->get_id() << "]..." << endl;
+            if(!p.second->close_pipe()) SleepEx(0, TRUE);
         }
     });
     for_each(map_connections_write.begin(), map_connections_write.end(), [plog](const SHARED_CONN_PAIR &p) {
         if(p.second)
         {
-            *plog << "closing map_connections_write[" << p.second->get_handle() << "]..." << endl;
-            p.second->close_pipe();
-            SleepEx(0, TRUE);
+            *plog << "closing map_connections_write[" << p.second->get_id() << "]..." << endl;
+            if(!p.second->close_pipe()) SleepEx(0, TRUE);
         }
     });
 
@@ -70,6 +68,7 @@ named_pipe_listener::~named_pipe_listener(void)
         }
     }
 
+    servers.erase(hPipeEvent);
     if(hPipeEvent && hPipeEvent != INVALID_HANDLE_VALUE)
     {
         CloseHandle(hPipeEvent);
@@ -163,10 +162,9 @@ DWORD named_pipe_listener::pipe_client_connect_incoming()
     if(gle)
     {
         displayErrorToCerr(__FUNCSIG__ " pnpc->start_working()", gle, pflog);
-        if(pnpc->close_pipe())
-        {
-            remove_pipe(pnpc);
-        }
+        pnpc->close_pipe();
+        SleepEx(0, TRUE);
+        remove_pipe(pnpc);
     }
     return 0;
 }
@@ -188,20 +186,6 @@ std::ostream* named_pipe_listener::find_err_log()
         if(it->second) return it->second->get_err_stream();
     }
     return NULL;
-}
-
-shared_ptr<named_pipe_connection> named_pipe_listener::find_connections_read(LPOVERLAPPED lpo)
-{
-    SHARED_CONN_MAP::iterator it = map_connections_read.find(lpo);
-    if(it == map_connections_read.end()) return NULL;
-    else return map_connections_read[lpo];
-}
-
-shared_ptr<named_pipe_connection> named_pipe_listener::find_connections_write(LPOVERLAPPED lpo)
-{
-    SHARED_CONN_MAP::iterator it = map_connections_write.find(lpo);
-    if(it == map_connections_write.end()) return NULL;
-    else return map_connections_write[lpo];
 }
 
 shared_ptr<named_pipe_connection> named_pipe_listener::find_connections(std::function<bool(const shared_ptr<named_pipe_connection>&)> pred)
@@ -232,8 +216,12 @@ static shared_ptr<named_pipe_connection> find_server_named_pipe_connection(LPOVE
         time_header_out(*perrlog) << __FUNCSIG__ " lpOverLap is NULL." << endl;
         return NULL;
     }
-
-    if(lpOverLap->hEvent == NULL) return NULL; // client named_pipe_connection
+    if(lpOverLap->hEvent == NULL)
+    {
+        if(perrlog == NULL) perrlog = find_err_log_all();
+        time_header_out(*perrlog) << __FUNCSIG__ " lpOverLap->hEvent is NULL, client named_pipe_connection." << endl;
+        return NULL; // client named_pipe_connection
+    }
 
     named_pipe_listener *pnps = named_pipe_listener::find_named_pipe_listener(lpOverLap->hEvent);
     if(pnps == NULL)

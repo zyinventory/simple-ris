@@ -524,7 +524,6 @@ int watch_notify(string &cmd, ofstream &flog)
         hSema = NULL;
     }
     
-    // print association state
     delete phqr;
     delete phjob;
     return gle;

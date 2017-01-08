@@ -45,7 +45,11 @@ namespace handle_context
         SHARED_CONN_MAP map_connections_read, map_connections_write;
 
     public:
-        static named_pipe_listener* find_named_pipe_listener(HANDLE h){ return servers.count(h) ? servers[h] : NULL; };
+        static named_pipe_listener* find_named_pipe_listener(HANDLE h)
+        {
+            LISTENER_MAP::iterator it = servers.find(h);
+            return (it == servers.end() ? NULL : it->second);
+        };
         static std::ostream* find_err_log();
         named_pipe_listener(const char *pipe_path, DWORD write_size, DWORD read_size, LPPIPE_CONNECT_CALLBACK conn_callback, std::ostream *plog)
             : base_path(pipe_path, plog), hPipeEvent(NULL), hPipe(NULL), write_buff_size(write_size), read_buff_size(read_size), connect_callback(conn_callback)
@@ -60,8 +64,16 @@ namespace handle_context
         DWORD start_listening();
         DWORD pipe_client_connect_incoming();
         size_t remove_pipe(const std::shared_ptr<named_pipe_connection> &pnpc);
-        std::shared_ptr<named_pipe_connection> find_connections_read(LPOVERLAPPED lpo);
-        std::shared_ptr<named_pipe_connection> find_connections_write(LPOVERLAPPED lpo);
+        std::shared_ptr<named_pipe_connection> find_connections_read(LPOVERLAPPED lpo)
+        {
+            SHARED_CONN_MAP::iterator it = map_connections_read.find(lpo);
+            return (it == map_connections_read.end() ? NULL : it->second);
+        };
+        std::shared_ptr<named_pipe_connection> find_connections_write(LPOVERLAPPED lpo)
+        {
+            SHARED_CONN_MAP::iterator it = map_connections_write.find(lpo);
+            return (it == map_connections_write.end() ? NULL : it->second);
+        };
         std::shared_ptr<named_pipe_connection> find_connections(std::function<bool(const std::shared_ptr<named_pipe_connection>&)> pred);
         virtual void print_state(void) const;
         virtual HANDLE get_handle() const { return hPipeEvent; };
@@ -76,8 +88,7 @@ namespace handle_context
     private:
         static ALONE_CONN_MAP map_alone_connections_read, map_alone_connections_write;
 	    OVERLAPPED oOverlap_read, oOverlap_write;
-        named_pipe_listener *p_listener;
-	    HANDLE hPipeInst;
+	    HANDLE hEvent, hPipeInst;
         size_t bytes_queued, write_buff_size, read_buff_size;
         bool closing, reading;
         char *ptr_write_buff, *ptr_read_buff;
@@ -95,22 +106,25 @@ namespace handle_context
         //static const named_pipe_connection* find_and_remove_dead_alone_connection();
         //static void close_timeout_alone_connection();
         static std::ostream* find_err_log_from_alone();
+        // client connection constructor
         named_pipe_connection(const char *assoc_id, const char *path, const char *meta_notify_file, size_t wbuff_size, size_t rbuff_size, int timeout, std::ostream *plog)
             : base_dir(assoc_id, path, meta_notify_file, timeout, plog), hPipeInst(NULL), write_buff_size(wbuff_size), read_buff_size(rbuff_size),
-            closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), p_listener(NULL)
+            closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), hEvent(NULL)
         {
             memset(&oOverlap_read, 0, sizeof(oOverlap_read));
             memset(&oOverlap_write, 0, sizeof(oOverlap_write));
             ptr_read_buff = new char[read_buff_size + 1];
         };
+        // server connection constructor
         named_pipe_connection(named_pipe_listener *pnps, int timeout) : base_dir("", pnps->get_path().c_str(), "", timeout, pnps->get_err_stream()),
-            closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), p_listener(pnps),
+            closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), hEvent(pnps),
             write_buff_size(pnps->get_write_buff_size()), read_buff_size(pnps->get_read_buff_size()), hPipeInst(pnps->get_current_pipe_handle())
         {
             memset(&oOverlap_read, 0, sizeof(oOverlap_read));
             memset(&oOverlap_write, 0, sizeof(oOverlap_write));
-            oOverlap_read.hEvent = pnps->get_handle();
-            oOverlap_write.hEvent = pnps->get_handle();
+            hEvent = pnps->get_handle();
+            oOverlap_read.hEvent = hEvent;
+            oOverlap_write.hEvent = hEvent;
             ptr_read_buff = new char[read_buff_size + 1];
         };
         virtual ~named_pipe_connection();
@@ -129,7 +143,7 @@ namespace handle_context
         bool close_pipe();
         bool is_dead() const { return !(reading || bytes_queued || hPipeInst); };
         bool is_disconn() const { return hPipeInst == NULL; };
-        named_pipe_listener* get_listener() const { return p_listener; };
+        named_pipe_listener* get_listener() const { return named_pipe_listener::find_named_pipe_listener(hEvent); };
         
         DWORD queue_message(const std::string &msg);
         DWORD read_pipe_complete(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap);
