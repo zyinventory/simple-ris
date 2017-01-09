@@ -214,25 +214,25 @@ bool handle_proc::make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, con
     else return false;
 }
 
-handle_compress* handle_compress::make_handle_compress(const string &study_uid, const compress_job &job, ostream &flog)
+handle_compress* handle_compress::make_handle_compress(const string &study_uid, const shared_ptr<compress_job> &job, ostream &flog)
 {
     char cmd[1024];
-    if(strcmp("KEEP", job.get_expected_xfer().c_str()) == 0)
+    if(strcmp("KEEP", job->get_expected_xfer().c_str()) == 0)
     {
-        int mkdir_pos = sprintf_s(cmd, "cmd.exe /c move /y %s ", job.get_instance_filename().c_str());
+        int mkdir_pos = sprintf_s(cmd, "cmd.exe /c move /y %s ", job->get_instance_filename().c_str());
         int ctn = mkdir_pos;
-        ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), job.get_hash().c_str(), study_uid.c_str());
-        strcpy_s(cmd + ctn, sizeof(cmd) - ctn, job.get_unique_filename().c_str());
+        ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), job->get_hash().c_str(), study_uid.c_str());
+        strcpy_s(cmd + ctn, sizeof(cmd) - ctn, job->get_unique_filename().c_str());
         PrepareFileDir(cmd + mkdir_pos);
         string path(GetPacsTemp());
-        path.append("\\pacs\\").append(job.get_path().c_str());
-        return new handle_compress(job.get_unique_filename(), path, job.get_notify_filename(), cmd, "move", job, &flog);
+        path.append("\\pacs\\").append(job->get_path().c_str());
+        return new handle_compress(job->get_unique_filename(), path, job->get_notify_filename(), cmd, "move", job, &flog);
     }
     else // compress
     {
         const char *verbose_flag = opt_verbose ? "-v" : "";
         const char *codec = ""; // JpegLess14SV1
-        if(strcmp("Jp2kLossLess", job.get_expected_xfer().c_str()) == 0) codec = "--encode-jpeg2k-lossless";
+        if(strcmp("Jp2kLossLess", job->get_expected_xfer().c_str()) == 0) codec = "--encode-jpeg2k-lossless";
 
 #ifdef _DEBUG
         int mkdir_pos = 0;
@@ -242,28 +242,28 @@ handle_compress* handle_compress::make_handle_compress(const string &study_uid, 
         {
             ++p;
             mkdir_pos = p - cmd;
-            mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s %s --uid-never %s ", verbose_flag, codec, job.get_instance_filename().c_str());
+            mkdir_pos += sprintf_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmcjpeg.exe %s %s --uid-never %s ", verbose_flag, codec, job->get_instance_filename().c_str());
         }
         else
-            mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never %s ", GetPacsBase(), verbose_flag, codec, job.get_instance_filename().c_str());
+            mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never %s ", GetPacsBase(), verbose_flag, codec, job->get_instance_filename().c_str());
 #else
         char cmd[1024];
 	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never -ds %s ", GetPacsBase(), verbose_flag, codec, job.get_instance_filename().c_str());
 #endif
         int ctn = mkdir_pos;
-        ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), job.get_hash().c_str(), study_uid.c_str());
-        strcpy_s(cmd + ctn, sizeof(cmd) - ctn, job.get_unique_filename().c_str());
+        ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), job->get_hash().c_str(), study_uid.c_str());
+        strcpy_s(cmd + ctn, sizeof(cmd) - ctn, job->get_unique_filename().c_str());
         string path(GetPacsTemp());
-        path.append("\\pacs\\").append(job.get_path().c_str());
-        return new handle_compress(job.get_unique_filename(), path, job.get_notify_filename().c_str(), cmd, "dcmcjpeg", job, &flog);
+        path.append("\\pacs\\").append(job->get_path().c_str());
+        return new handle_compress(job->get_unique_filename(), path, job->get_notify_filename().c_str(), cmd, "dcmcjpeg", job, &flog);
     }
 }
 
 void handle_compress::print_state() const
 {
-    *pflog << "handle_compress::print_state() " << compr_job.get_unique_filename() << endl
-        << "\tcompr_job.notify_filename: " << compr_job.get_notify_filename() << endl
-        << "\tcompr_job.seq: " << dec << compr_job.get_seq() << endl
-        << "\tcompr_job.studyUID: " << compr_job.get_study_uid() << endl;
+    *pflog << "handle_compress::print_state() " << compr_job->get_unique_filename() << endl
+        << "\tcompr_job.notify_filename: " << compr_job->get_notify_filename() << endl
+        << "\tcompr_job.seq: " << dec << compr_job->get_seq() << endl
+        << "\tcompr_job.studyUID: " << compr_job->get_study_uid() << endl;
     handle_proc::print_state();
 }

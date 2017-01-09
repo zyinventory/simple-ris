@@ -62,22 +62,22 @@ namespace handle_context
     private:
         static std::string empty_notify_filename;
         static STUDY_MAP studies_map;
-        std::list<compress_job> compress_queue;
+        std::list<std::shared_ptr<compress_job> > compress_queue;
         STR_SHARED_CONN_MAP associations;
 
         study_assoc_dir(const char *study_uid, const char *path, const char *meta_notify_file, int timeout, std::ostream *plog)
             : base_dir(study_uid, path, meta_notify_file, timeout, plog) { };
+        std::list<std::shared_ptr<compress_job> >::const_iterator get_first_greater_notify_filename(const std::string &base) const {
+            return std::find_if(compress_queue.cbegin(), compress_queue.cend(), [&base](const std::shared_ptr<compress_job> &job) {
+                return job->get_notify_filename().compare(base) > 0; }); };
 
     public:
         static study_assoc_dir* create_instance(const char *study_uid, const char *path, const char *meta_notify_file, std::ostream *pflog);
-        static study_assoc_dir* find_first_job_in_studies(const std::string &base);
+        static std::pair<study_assoc_dir*, std::list<std::shared_ptr<compress_job> >::const_iterator> find_first_job_in_studies(const std::string &base);
         virtual void print_state() const;
+        std::list<std::shared_ptr<compress_job> >::const_iterator get_compress_queue_cend() const { return compress_queue.cend(); };
         void add_file(np_conn_assoc_dir *p_assoc_dir, const std::string &hash, const std::string &unique_filename, const std::string &p_notify_file, const std::string &p_instance_file, unsigned int seq);
-        const std::string& get_first_greater_notify_filename(const std::string &base) const;
-        bool find_notify_filename(const std::string &base) const { return get_first_tuple_equal(base) != NULL; };
-        const compress_job* get_first_tuple() const { return compress_queue.size() ? &compress_queue.front() : NULL; };
-        const compress_job* get_first_tuple_equal(const std::string &base) const;
-        void pop_front_tuple() { compress_queue.pop_front(); };
+        void erase(std::list<std::shared_ptr<compress_job> >::const_iterator it) { compress_queue.erase(it); };
     };
 
     class np_conn_assoc_dir : public named_pipe_connection
@@ -133,15 +133,15 @@ namespace handle_context
     class handle_compress : public handle_proc
     {
     private:
-        compress_job compr_job;
+        std::shared_ptr<compress_job> compr_job;
         
     protected:
         handle_compress(const std::string &id, const std::string &path, const std::string &notify, const std::string &cmd,
-            const std::string &exec_prog_name, const compress_job &job, std::ostream *plog)
+            const std::string &exec_prog_name, const std::shared_ptr<compress_job> &job, std::ostream *plog)
             : handle_proc(id, path, notify, cmd, exec_prog_name, plog), compr_job(job) { };
 
     public:
-        static handle_compress* make_handle_compress(const std::string &study_uid, const compress_job &job, std::ostream &flog);
+        static handle_compress* make_handle_compress(const std::string &study_uid, const std::shared_ptr<compress_job> &job, std::ostream &flog);
         virtual ~handle_compress() {  };
         void print_state() const;
     };

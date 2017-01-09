@@ -376,66 +376,60 @@ int watch_notify(string &cmd, ofstream &flog)
 
         // find first tuple in compress queue
 		DWORD dw = WAIT_OBJECT_0;
-        compress_job job;
+        shared_ptr<compress_job> job;
         string current_notify_filename_base;
         do
         {
-            job.clear();
-            study_assoc_dir* pStudy = NULL;
-            // todo: proc_list.size() or study_assoc_dir::compress_job_size()?
-            if(proc_list.size() - 2 < WORKER_CORE_NUM) // exclude dcmqrscp and job_loader
-            {
+            job = NULL;
+            pair<study_assoc_dir*, list<shared_ptr<compress_job> >::const_iterator> pStudy(static_cast<study_assoc_dir*>(NULL), list<shared_ptr<compress_job> >::const_iterator());
+            if(proc_list.size() < WORKER_CORE_NUM) // some core idle
                 pStudy = study_assoc_dir::find_first_job_in_studies(current_notify_filename_base);
-                if(pStudy)
-                {
-                    if(current_notify_filename_base.length()) job = *pStudy->get_first_tuple_equal(current_notify_filename_base);
-                    else job = *pStudy->get_first_tuple();
-                }
-            }
-            if(job.get_assoc_id().length() == 0) break; // no job in queue
+            if(pStudy.first == NULL || pStudy.second == pStudy.first->get_compress_queue_cend()) break; // no job in queue
+            job = *pStudy.second;
+            if(job == NULL || job->get_assoc_id().length() == 0) { pStudy.first->erase(pStudy.second); break; } // wrong job
 
-            const string &unique_filename = job.get_unique_filename();
+            const string &unique_filename = job->get_unique_filename();
             HANDLE_PROC_LIST::iterator ite = find_if(proc_list.begin(), proc_list.end(),
-                [&unique_filename](const handle_proc *p) { return (p->get_id().compare(unique_filename) == 0); });
+                [&unique_filename](const handle_compress *p) { return (p->get_id().compare(unique_filename) == 0); });
 
             if(ite == proc_list.end()) // no same instance is in compressing
             {
+                pStudy.first->erase(pStudy.second);
+
                 string received_instance_file_path(GetPacsTemp());
-                received_instance_file_path.append("\\pacs\\").append(job.get_path()).append(1, '\\').append(job.get_instance_filename());
+                received_instance_file_path.append("\\pacs\\").append(job->get_path()).append(1, '\\').append(job->get_instance_filename());
                 struct _stat64 fs;
                 if(_stat64(received_instance_file_path.c_str(), &fs))
                 {
                     strerror_s(buff, errno);
                     time_header_out(flog) << __FUNCSIG__" _stat64(" << received_instance_file_path << ") fail: " << buff << endl;
                     fs.st_size = 0LL;
-                    pStudy->pop_front_tuple();
                     continue;
                 }
 
 			    dw = WaitForSingleObject(hSema, 0);
                 if(dw == WAIT_OBJECT_0)
                 {
-                    pStudy->pop_front_tuple();
-                    job.set_rec_file_size(fs.st_size);
-                    handle_compress* compr_ptr = handle_compress::make_handle_compress(pStudy->get_id(), job, flog);
+                    job->set_rec_file_size(fs.st_size);
+                    handle_compress* compr_ptr = handle_compress::make_handle_compress(pStudy.first->get_id(), job, flog);
                     if(compr_ptr)
                     {
 						compr_ptr->set_priority(BELOW_NORMAL_PRIORITY_CLASS);
                         if(compr_ptr->start_process(false))
                         {   // failed
-                            time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << job.get_path() << " " << job.get_instance_filename() << " " << job.get_unique_filename() << endl;
+                            time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << job->get_path() << " " << job->get_instance_filename() << " " << job->get_unique_filename() << endl;
                             delete compr_ptr;
                             ReleaseSemaphore(hSema, 1, NULL);
                         }
                         else// succeed
                         {
-                            time_header_out(flog) << "watch_notify() handle_compress::start_process() OK: " << job.get_path() << " " << job.get_instance_filename() << " " << job.get_unique_filename() << endl;
+                            time_header_out(flog) << "watch_notify() handle_compress::start_process() OK: " << job->get_path() << " " << job->get_instance_filename() << " " << job->get_unique_filename() << endl;
                             proc_list.push_back(compr_ptr);
                         }
                     }
                     else
                     {
-                        time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << job.get_path() << " " << job.get_instance_filename() << endl;
+                        time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << job->get_path() << " " << job->get_instance_filename() << endl;
                         ReleaseSemaphore(hSema, 1, NULL);
                     }
                 }
@@ -455,10 +449,10 @@ int watch_notify(string &cmd, ofstream &flog)
             else // the same instance is in compressing
             {
                 time_header_out(flog) << "watch_notify() skip exist compress unique name "
-                    << job.get_unique_filename() << " src notify: " << job.get_notify_filename() << endl;
-                current_notify_filename_base = job.get_notify_filename();
+                    << job->get_unique_filename() << " src notify: " << job->get_notify_filename() << endl;
+                current_notify_filename_base = job->get_notify_filename();
             }
-        } while(job.get_assoc_id().length());
+        } while(job);
 
         // do idle work
         if(wr == WAIT_TIMEOUT)
