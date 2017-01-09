@@ -129,7 +129,6 @@ namespace handle_context
         const PROCESS_INFORMATION& get_procinfo() const { return procinfo; };
         int start_process(bool out_redirect);
     };
-    typedef std::list<handle_proc*> HANDLE_PROC_LIST;
 
     class handle_compress : public handle_proc
     {
@@ -146,6 +145,7 @@ namespace handle_context
         virtual ~handle_compress() {  };
         void print_state() const;
     };
+    typedef std::list<handle_compress*> HANDLE_PROC_LIST;
 }
 
 #endif

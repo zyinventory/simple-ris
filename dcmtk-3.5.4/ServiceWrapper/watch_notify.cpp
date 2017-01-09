@@ -223,8 +223,8 @@ int watch_notify(string &cmd, ofstream &flog)
 
     // start dcmqrscp.exe parent proc
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
-    handle_proc *phqr = new handle_proc("dcmqrscp", buff, "", cmd, "dcmqrscp", &flog);
-    gle = phqr->start_process(true);
+    handle_proc proc_qr("dcmqrscp", buff, "", cmd, "dcmqrscp", &flog);
+    gle = proc_qr.start_process(true);
     if(gle)
     {
         displayErrorToCerr("watch_notify() handle_proc::create_process(dcmqrscp) at beginning", gle, &flog);
@@ -249,8 +249,8 @@ int watch_notify(string &cmd, ofstream &flog)
 #endif
     cmd = buff;
     sprintf_s(buff, "%s\\pacs", GetPacsBase());
-    handle_proc *phjob = new handle_proc("jobloader", buff, "", cmd, "jobloader", &flog);
-    gle = phjob->start_process(false);
+    handle_proc proc_job("jobloader", buff, "", cmd, "jobloader", &flog);
+    gle = proc_job.start_process(false);
     if(gle)
     {
         displayErrorToCerr("watch_notify() handle_proc::create_process(jobloader) at beginning", gle, &flog);
@@ -264,11 +264,9 @@ int watch_notify(string &cmd, ofstream &flog)
         if(debug_flag) debug_mode = true;
     }
 #ifdef _DEBUG
-    WaitForInputIdle(phqr->get_handle(), INFINITE);
-    WaitForInputIdle(phjob->get_handle(), INFINITE);
+    WaitForInputIdle(proc_qr.get_handle(), INFINITE);
+    WaitForInputIdle(proc_job.get_handle(), INFINITE);
 #endif
-    proc_list.push_back(phqr);
-    proc_list.push_back(phjob);
 
     HANDLE hSema = CreateSemaphore(NULL, WORKER_CORE_NUM, WORKER_CORE_NUM, "Global\\semaphore_compress_process");
     if(hSema == NULL)
@@ -289,12 +287,14 @@ int watch_notify(string &cmd, ofstream &flog)
     size_t file_in_compress_queue = 0;
     while(GetSignalInterruptValue() == 0)
     {
-        size_t hsize = 2 + proc_list.size();
+        size_t hsize = 4 + proc_list.size();
         if(pha) delete[] pha;
         pha = new HANDLE[hsize];
-        pha[0] = dirnps.get_handle(); // map_handle_context[named pipe listening handle] == NULL
+        pha[0] = dirnps.get_handle();
         pha[1] = qrnps.get_handle();
-        transform(proc_list.rbegin(), proc_list.rend(), &pha[2], [](const handle_proc *p) { return p->get_handle(); });
+        transform(proc_list.rbegin(), proc_list.rend(), &pha[2], [](const handle_compress *p) { return p->get_handle(); });
+        pha[proc_list.size() + 2] = proc_qr.get_handle();
+        pha[proc_list.size() + 3] = proc_job.get_handle();
 
         DWORD wr = WAIT_IO_COMPLETION;
 		do {
@@ -315,56 +315,54 @@ int watch_notify(string &cmd, ofstream &flog)
             }
             */
         }
-        else if(wr >= WAIT_OBJECT_0 && wr < WAIT_OBJECT_0 + min(hsize, MAXIMUM_WAIT_OBJECTS))
+        else if(wr >= WAIT_OBJECT_0 + 2 && wr < WAIT_OBJECT_0 + hsize - 2)
         {
             HANDLE waited = pha[wr - WAIT_OBJECT_0];
-            
-            if(waited == qrnps.get_handle()) // pipe client(dcmmkdir) connect incoming
+            ReleaseSemaphore(hSema, 1, NULL);
+            HANDLE_PROC_LIST::iterator it_proc = find_if(proc_list.begin(), proc_list.end(), [waited](const handle_compress *p) { return waited == p->get_handle(); });
+            if(it_proc != proc_list.end())
             {
-                gle = qrnps.pipe_client_connect_incoming();
-                if(gle)
-                {
-                    displayErrorToCerr("watch_notify() qrnps.pipe_client_connect_incoming()", gle, &flog);
-                    break;
-                }
-            }
-            else if(waited == dirnps.get_handle()) // pipe client(dcmmkdir) connect incoming
-            {
-                gle = dirnps.pipe_client_connect_incoming();
-                if(gle)
-                {
-                    displayErrorToCerr("watch_notify() dirnps.pipe_client_connect_incoming()", gle, &flog);
-                    break;
-                }
+                handle_proc *phcompr = *it_proc;
+                proc_list.erase(it_proc);
+                time_header_out(flog) << "watch_notify() handle_compress exit: " << phcompr->get_id() << " " << phcompr->get_path() << endl;
+                //compress_complete(phcompr->get_id(), nfc.file.studyUID, true, nps, nfc, flog);
+                phcompr->print_state();
+                delete phcompr;
             }
             else
             {
-                ReleaseSemaphore(hSema, 1, NULL);
-                HANDLE_PROC_LIST::iterator it_proc = find_if(proc_list.begin(), proc_list.end(), [waited](const handle_proc *p) { return waited == p->get_handle(); });
-                if(it_proc != proc_list.end())
-                {
-                    handle_proc *phcompr = *it_proc;
-                    proc_list.erase(it_proc);
-                    if(phcompr == phqr || phcompr == phjob)
-                    {
-                        time_header_out(flog) << "watch_notify() " << phcompr->get_exec_name() << " exit: " << waited << endl;
-                        break; // break main loop
-                    }
-                    else
-                    {
-                        time_header_out(flog) << "watch_notify() handle_compress exit: " << phcompr->get_id() << " " << phcompr->get_path() << endl;
-                        //compress_complete(phcompr->get_id(), nfc.file.studyUID, true, nps, nfc, flog);
-                        phcompr->print_state();
-                        delete phcompr;
-                    }
-                }
-                else
-                {
-                    time_header_out(flog) << "watch_notify() miss handle " << waited << endl;
-                    for(int i = 0; i < hsize; ++i) flog << pha[i] << ' '; flog << endl;
-                    break; // break main loop
-                }
+                time_header_out(flog) << "watch_notify() miss handle " << waited << endl;
+                for(int i = 0; i < hsize; ++i) flog << pha[i] << ' '; flog << endl;
+                break; // break main loop
             }
+        }
+        else if(wr == WAIT_OBJECT_0)
+        {
+            gle = dirnps.pipe_client_connect_incoming();
+            if(gle)
+            {
+                displayErrorToCerr("watch_notify() dirnps.pipe_client_connect_incoming()", gle, &flog);
+                break;
+            }
+        }
+        else if(wr == WAIT_OBJECT_0 + 1)
+        {
+            gle = qrnps.pipe_client_connect_incoming();
+            if(gle)
+            {
+                displayErrorToCerr("watch_notify() qrnps.pipe_client_connect_incoming()", gle, &flog);
+                break;
+            }
+        }
+        else if(wr == WAIT_OBJECT_0 + hsize - 2)
+        {
+            time_header_out(flog) << "watch_notify() dcmqrscp.exe fail." << endl;
+            break;
+        }
+        else if(wr == WAIT_OBJECT_0 + hsize - 1)
+        {
+            time_header_out(flog) << "watch_notify() job_loader.exe fail." << endl;
+            break;
         }
         else
         {
@@ -507,7 +505,5 @@ int watch_notify(string &cmd, ofstream &flog)
         hSema = NULL;
     }
     
-    delete phqr;
-    delete phjob;
     return gle;
 }
