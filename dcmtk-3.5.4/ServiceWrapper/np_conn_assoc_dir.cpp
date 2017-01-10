@@ -144,13 +144,12 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
 
     if(get_event_handle())
     {   // server connection shall establish assoc <--> study many to many relationship
-        study_assoc_dir* pstudy = NULL;
-        STUDY_MAP::iterator it = studies.find(study_uid);
-        if(it != studies.end()) pstudy = it->second;
+        study_assoc_dir* pstudy = study_assoc_dir::find(study_uid);
         if(pstudy == NULL)
         {
             char study_path[MAX_PATH];
             int used = sprintf_s(study_path, "%s\\orders_study\\", GetPacsTemp());
+            if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() create study: " << study_path << endl;
             char *orders_study_name = study_path + used;
             used += in_process_sequence_dll(study_path + used, sizeof(study_path) - used, "");
             study_path[used++] = '_';

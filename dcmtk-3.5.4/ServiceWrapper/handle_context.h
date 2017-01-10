@@ -11,12 +11,15 @@ namespace handle_context
         std::string assoc_id, path, notify_filename, hash, unique_filename, instance_filename, expected_xfer, study_uid;
         long long rec_file_size;
         unsigned int seq;
+        std::ostream *pflog;
+
     public:
-        compress_job() : rec_file_size(0LL), seq(0) {};
+        compress_job() : rec_file_size(0LL), seq(0), pflog(&std::cerr) {};
         compress_job(const std::string &assoc_id, const std::string &path, const std::string &notify_filename, const std::string &hash,
-            const std::string &unique_filename, const std::string &instance_filename, const std::string &xfer, const std::string &study_uid, unsigned int seq)
+            const std::string &unique_filename, const std::string &instance_filename, const std::string &xfer, const std::string &study_uid,
+            unsigned int seq, std::ostream *pflog)
             : unique_filename(unique_filename), path(path), notify_filename(notify_filename), hash(hash), study_uid(study_uid),
-            assoc_id(assoc_id), instance_filename(instance_filename), expected_xfer(xfer), rec_file_size(0LL), seq(seq) {};
+            assoc_id(assoc_id), instance_filename(instance_filename), expected_xfer(xfer), rec_file_size(0LL), seq(seq), pflog(pflog) {};
         compress_job(const compress_job &r) { *this = r; };
         compress_job& operator=(const compress_job& r)
         {
@@ -30,6 +33,7 @@ namespace handle_context
             rec_file_size = r.rec_file_size;
             study_uid = r.study_uid;
             seq = r.seq;
+            pflog = r.pflog;
             return *this;
         };
         const std::string& get_assoc_id() const { return assoc_id; };
@@ -44,9 +48,19 @@ namespace handle_context
         void set_rec_file_size(long long sz) { rec_file_size = sz; };
         void clear()
         {
-            assoc_id.clear(); path.clear(); notify_filename.clear(); hash.clear();
+            assoc_id.clear(); path.clear(); notify_filename.clear(); hash.clear(); study_uid.clear();
             unique_filename.clear(); instance_filename.clear(); expected_xfer.clear();
             rec_file_size = 0LL;
+            seq = 0;
+        };
+        virtual ~compress_job()
+        {
+            time_header_out(*pflog) << "~compress_job:" << std::endl << "\tstudy_uid: " << study_uid << std::endl
+                << "\thash: " << hash << std::endl << "\tunique_filename: " << unique_filename << std::endl
+                << "\tinstance_filename: " << instance_filename << std::endl << "\tassoc_id: " << assoc_id << std::endl
+                << "\tpath: " << path << std::endl << "\tnotify_filename: " << notify_filename << std::endl
+                << "\texpected_xfer: " << expected_xfer << std::endl << "\tseq: " << seq << std::endl
+                << "\trec_file_size: " << rec_file_size << std::endl;
         };
     };
 
@@ -73,11 +87,12 @@ namespace handle_context
 
     public:
         static study_assoc_dir* create_instance(const char *study_uid, const char *path, const char *meta_notify_file, std::ostream *pflog);
+        static study_assoc_dir* find(const std::string &study_uid);
         static std::pair<study_assoc_dir*, std::list<std::shared_ptr<compress_job> >::const_iterator> find_first_job_in_studies(const std::string &base);
         virtual void print_state() const;
         std::list<std::shared_ptr<compress_job> >::const_iterator get_compress_queue_cend() const { return compress_queue.cend(); };
         void add_file(np_conn_assoc_dir *p_assoc_dir, const std::string &hash, const std::string &unique_filename, const std::string &p_notify_file, const std::string &p_instance_file, unsigned int seq);
-        void erase(std::list<std::shared_ptr<compress_job> >::const_iterator it) { compress_queue.erase(it); };
+        void erase(std::list<std::shared_ptr<compress_job> >::const_iterator it);
     };
 
     class np_conn_assoc_dir : public named_pipe_connection
@@ -87,7 +102,7 @@ namespace handle_context
         int port;
         DWORD pid;
         bool disconn_release;
-        std::map<std::string, study_assoc_dir*> studies;
+        //std::map<std::string, study_assoc_dir*> studies;
 
         DWORD process_file_incoming(char *assoc_id);
         DWORD establish_conn_dir(const char *assoc_id);

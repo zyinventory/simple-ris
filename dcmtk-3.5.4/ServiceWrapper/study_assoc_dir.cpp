@@ -25,13 +25,20 @@ study_assoc_dir* study_assoc_dir::create_instance(const char *study_uid, const c
     return p;
 }
 
+study_assoc_dir* study_assoc_dir::find(const string &study_uid)
+{
+    STUDY_MAP::iterator it = studies_map.find(study_uid);
+    if(it != studies_map.end()) return it->second;
+    else return NULL;
+}
+
 void study_assoc_dir::add_file(np_conn_assoc_dir *p_assoc_dir, const string &hash, const string &unique_filename, const string &p_notify_file, const string &p_instance_file, unsigned int seq)
 {
     if(p_assoc_dir && hash.length() && unique_filename.length() && p_notify_file.length() && p_instance_file.length())
     {
-        // todo: add instance_file to JOB_TUPLE
-        compress_queue.push_back(shared_ptr<compress_job>(new compress_job(
-            p_assoc_dir->get_id(), p_assoc_dir->get_path(), p_notify_file, hash, unique_filename, p_instance_file, p_assoc_dir->get_expected_syntax(), get_id(), seq)));
+        time_header_out(*pflog) << "study_assoc_dir::add_file() append compress_job: " << p_assoc_dir->get_id() << " " << unique_filename << endl;
+        compress_queue.push_back(shared_ptr<compress_job>(new compress_job(p_assoc_dir->get_id(), p_assoc_dir->get_path(),
+            p_notify_file, hash, unique_filename, p_instance_file, p_assoc_dir->get_expected_syntax(), get_id(), seq, pflog)));
         named_pipe_listener *p = p_assoc_dir->get_listener();
         if(p)
         {
@@ -48,6 +55,12 @@ void study_assoc_dir::add_file(np_conn_assoc_dir *p_assoc_dir, const string &has
         else if(p_instance_file.length() == 0) time_header_out(*pflog) << "study_assoc_dir::add_file() param error: p_instance_file is NULL." << endl;
         else time_header_out(*pflog) << "study_assoc_dir::add_file() param error." << endl;
     }
+}
+
+void study_assoc_dir::erase(std::list<std::shared_ptr<compress_job> >::const_iterator it)
+{
+    if(opt_verbose) time_header_out(*pflog) << "study_assoc_dir::erase(" << (*it)->get_unique_filename() << ")" << endl;
+    compress_queue.erase(it);
 }
 
 pair<study_assoc_dir*, list<shared_ptr<compress_job> >::const_iterator> study_assoc_dir::find_first_job_in_studies(const string &base)
