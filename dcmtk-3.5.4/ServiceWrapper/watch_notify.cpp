@@ -381,7 +381,7 @@ int watch_notify(string &cmd, ofstream &flog)
         do
         {
             job = NULL;
-            pair<study_assoc_dir*, list<shared_ptr<compress_job> >::const_iterator> pStudy(static_cast<study_assoc_dir*>(NULL), list<shared_ptr<compress_job> >::const_iterator());
+            STUDY_POS_PAIR pStudy;
             if(proc_list.size() < WORKER_CORE_NUM) // some core idle
                 pStudy = study_assoc_dir::find_first_job_in_studies(current_notify_filename_base);
             if(pStudy.first == NULL || pStudy.second == pStudy.first->get_compress_queue_cend()) break; // no job in queue

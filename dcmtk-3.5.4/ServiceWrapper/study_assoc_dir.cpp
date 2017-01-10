@@ -18,14 +18,14 @@ void study_assoc_dir::print_state() const
     base_dir::print_state();
 }
 
-study_assoc_dir* study_assoc_dir::create_instance(const char *study_uid, const char *path, const char *meta_notify_file, ostream *pflog)
+shared_ptr<study_assoc_dir> study_assoc_dir::create_instance(const char *study_uid, const char *path, const char *meta_notify_file, ostream *pflog)
 {
-    study_assoc_dir *p = new study_assoc_dir(study_uid, path, meta_notify_file, assoc_timeout, pflog);
+    shared_ptr<study_assoc_dir> p(new study_assoc_dir(study_uid, path, meta_notify_file, assoc_timeout, pflog));
     studies_map[study_uid] = p;
     return p;
 }
 
-study_assoc_dir* study_assoc_dir::find(const string &study_uid)
+shared_ptr<study_assoc_dir> study_assoc_dir::find(const string &study_uid)
 {
     STUDY_MAP::iterator it = studies_map.find(study_uid);
     if(it != studies_map.end()) return it->second;
@@ -39,10 +39,10 @@ void study_assoc_dir::add_file(np_conn_assoc_dir *p_assoc_dir, const string &has
         time_header_out(*pflog) << "study_assoc_dir::add_file() append compress_job: " << p_assoc_dir->get_id() << " " << unique_filename << endl;
         compress_queue.push_back(shared_ptr<compress_job>(new compress_job(p_assoc_dir->get_id(), p_assoc_dir->get_path(),
             p_notify_file, hash, unique_filename, p_instance_file, p_assoc_dir->get_expected_syntax(), get_id(), seq, pflog)));
-        named_pipe_listener *p = p_assoc_dir->get_listener();
+        shared_ptr<np_conn_assoc_dir> p = p_assoc_dir->get_shared_ptr_assoc_conn();
         if(p)
         {
-            associations[p_assoc_dir->get_id()] = p->find_connections_read(p_assoc_dir->get_overlap_read());
+            associations[p_assoc_dir->get_id()] = p;
             refresh_last_access();
         }
     }
@@ -63,10 +63,10 @@ void study_assoc_dir::erase(std::list<std::shared_ptr<compress_job> >::const_ite
     compress_queue.erase(it);
 }
 
-pair<study_assoc_dir*, list<shared_ptr<compress_job> >::const_iterator> study_assoc_dir::find_first_job_in_studies(const string &base)
+STUDY_POS_PAIR study_assoc_dir::find_first_job_in_studies(const string &base)
 {
     set<string> notify_files;
-    study_assoc_dir* ps = NULL;
+    shared_ptr<study_assoc_dir> ps;
     list<shared_ptr<compress_job> >::const_iterator ps_pos;
     for(STUDY_MAP::const_iterator it = studies_map.cbegin(); it != studies_map.cend(); ++it)
     {
@@ -80,5 +80,5 @@ pair<study_assoc_dir*, list<shared_ptr<compress_job> >::const_iterator> study_as
             }
         }
     }
-    return pair<study_assoc_dir*, list<shared_ptr<compress_job> >::const_iterator>(ps, ps_pos);
+    return STUDY_POS_PAIR(ps, ps_pos);
 }

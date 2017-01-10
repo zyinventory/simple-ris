@@ -30,9 +30,10 @@ namespace handle_context
 
     typedef std::map<HANDLE, named_pipe_listener*> LISTENER_MAP;
     typedef std::pair<HANDLE, named_pipe_listener*> LISTENER_PAIR;
-    typedef std::map<LPOVERLAPPED, std::shared_ptr<named_pipe_connection> > SHARED_CONN_MAP;
-    typedef std::pair<LPOVERLAPPED, std::shared_ptr<named_pipe_connection> > SHARED_CONN_PAIR;
-    
+    typedef const OVERLAPPED *LPCOVERLAPPED;
+    typedef std::map<LPCOVERLAPPED, std::shared_ptr<named_pipe_connection> > SHARED_CONN_MAP;
+    typedef std::pair<LPCOVERLAPPED, std::shared_ptr<named_pipe_connection> > SHARED_CONN_PAIR;
+
     class named_pipe_listener : public base_path
     {
     private:
@@ -65,14 +66,14 @@ namespace handle_context
         DWORD start_listening();
         DWORD pipe_client_connect_incoming();
         size_t remove_pipe(const std::shared_ptr<named_pipe_connection> &pnpc);
-        std::shared_ptr<named_pipe_connection> find_connections_read(LPOVERLAPPED lpo)
+        std::shared_ptr<named_pipe_connection> find_connections_read(LPCOVERLAPPED lpo) const
         {
-            SHARED_CONN_MAP::iterator it = map_connections_read.find(lpo);
+            SHARED_CONN_MAP::const_iterator it = map_connections_read.find(lpo);
             return (it == map_connections_read.end() ? NULL : it->second);
         };
-        std::shared_ptr<named_pipe_connection> find_connections_write(LPOVERLAPPED lpo)
+        std::shared_ptr<named_pipe_connection> find_connections_write(LPCOVERLAPPED lpo) const
         {
-            SHARED_CONN_MAP::iterator it = map_connections_write.find(lpo);
+            SHARED_CONN_MAP::const_iterator it = map_connections_write.find(lpo);
             return (it == map_connections_write.end() ? NULL : it->second);
         };
         std::shared_ptr<named_pipe_connection> find_connections(std::function<bool(const std::shared_ptr<named_pipe_connection>&)> pred);
@@ -99,6 +100,14 @@ namespace handle_context
         DWORD read_message();
         DWORD write_message(size_t num, const void *ptr_data);
         DWORD write_message_pack();
+
+    protected:
+        std::shared_ptr<named_pipe_connection> get_shared_ptr_server_conn() const
+        {
+            named_pipe_listener *p = get_listener();
+            if(p) return p->find_connections_read(&oOverlap_read);
+            else return NULL;
+        };
 
     public:
         static void regist_alone_connection(named_pipe_connection*);
@@ -146,7 +155,7 @@ namespace handle_context
         bool is_dead() const { return !(reading || bytes_queued || hPipeInst); };
         bool is_disconn() const { return hPipeInst == NULL; };
         named_pipe_listener* get_listener() const { return named_pipe_listener::find_named_pipe_listener(hEvent); };
-        
+
         DWORD queue_message(const std::string &msg);
         DWORD read_pipe_complete(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap);
         DWORD write_pipe_complete(DWORD dwErr, DWORD cbBytesWrite, LPOVERLAPPED lpOverLap);

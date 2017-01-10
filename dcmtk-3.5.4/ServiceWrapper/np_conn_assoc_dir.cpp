@@ -16,6 +16,8 @@ const char* np_conn_assoc_dir::close_description() const
 
 np_conn_assoc_dir::~np_conn_assoc_dir()
 {
+    time_header_out(*pflog) << "~np_conn_assoc_dir(" << get_id() << ")." << endl;
+    print_state();
     if(get_meta_notify_filename().length())
     {
         char newname[MAX_PATH];
@@ -144,7 +146,7 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
 
     if(get_event_handle())
     {   // server connection shall establish assoc <--> study many to many relationship
-        study_assoc_dir* pstudy = study_assoc_dir::find(study_uid);
+        shared_ptr<study_assoc_dir> pstudy = study_assoc_dir::find(study_uid);
         if(pstudy == NULL)
         {
             char study_path[MAX_PATH];

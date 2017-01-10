@@ -66,10 +66,11 @@ namespace handle_context
 
     class np_conn_assoc_dir;
     class study_assoc_dir;
-    typedef std::map<std::string, std::shared_ptr<named_pipe_connection> > STR_SHARED_CONN_MAP;
-    typedef std::pair<std::string, std::shared_ptr<named_pipe_connection> > STR_SHARED_CONN_PAIR;
-    typedef std::map<std::string, study_assoc_dir*> STUDY_MAP;
-    typedef std::pair<std::string, study_assoc_dir*> STUDY_PAIR;
+    typedef std::map<std::string, std::shared_ptr<np_conn_assoc_dir> > STR_SHARED_CONN_MAP;
+    typedef std::pair<std::string, std::shared_ptr<np_conn_assoc_dir> > STR_SHARED_CONN_PAIR;
+    typedef std::map<std::string, std::shared_ptr<study_assoc_dir> > STUDY_MAP;
+    typedef std::pair<std::string, std::shared_ptr<study_assoc_dir> > STUDY_PAIR;
+    typedef std::pair<std::shared_ptr<study_assoc_dir>, std::list<std::shared_ptr<compress_job> >::const_iterator> STUDY_POS_PAIR;
 
     class study_assoc_dir : public base_dir
     {
@@ -86,9 +87,9 @@ namespace handle_context
                 return job->get_notify_filename().compare(base) > 0; }); };
 
     public:
-        static study_assoc_dir* create_instance(const char *study_uid, const char *path, const char *meta_notify_file, std::ostream *pflog);
-        static study_assoc_dir* find(const std::string &study_uid);
-        static std::pair<study_assoc_dir*, std::list<std::shared_ptr<compress_job> >::const_iterator> find_first_job_in_studies(const std::string &base);
+        static std::shared_ptr<study_assoc_dir> create_instance(const char *study_uid, const char *path, const char *meta_notify_file, std::ostream *pflog);
+        static std::shared_ptr<study_assoc_dir> find(const std::string &study_uid);
+        static STUDY_POS_PAIR find_first_job_in_studies(const std::string &base);
         virtual void print_state() const;
         std::list<std::shared_ptr<compress_job> >::const_iterator get_compress_queue_cend() const { return compress_queue.cend(); };
         void add_file(np_conn_assoc_dir *p_assoc_dir, const std::string &hash, const std::string &unique_filename, const std::string &p_notify_file, const std::string &p_instance_file, unsigned int seq);
@@ -102,7 +103,8 @@ namespace handle_context
         int port;
         DWORD pid;
         bool disconn_release;
-        //std::map<std::string, study_assoc_dir*> studies;
+        // todo: bidirection relationship, client shall broadcast disconnecting after remove_pipe()
+        std::map<std::string, std::shared_ptr<study_assoc_dir> > studies;
 
         DWORD process_file_incoming(char *assoc_id);
         DWORD establish_conn_dir(const char *assoc_id);
@@ -115,6 +117,12 @@ namespace handle_context
         virtual void print_state() const;
         virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size);
         const char* close_description() const;
+        std::shared_ptr<np_conn_assoc_dir> get_shared_ptr_assoc_conn() const
+        {
+            std::shared_ptr<named_pipe_connection> sp = get_shared_ptr_server_conn();
+            if(sp) return std::shared_ptr<np_conn_assoc_dir>(sp, dynamic_cast<np_conn_assoc_dir*>(sp.get()));
+            else return NULL;
+        };
     };
 
     class handle_proc : public base_dir
