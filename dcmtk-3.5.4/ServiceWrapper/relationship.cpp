@@ -47,7 +47,7 @@ bool relationship::add_file(const shared_ptr<file_notify> &sp_job)
 {
     if(sp_job && sp_job->get_notify_filename().length())
     {
-        job_map[sp_job->get_notify_filename()] = sp_job;
+        file_queue[sp_job->get_notify_filename()] = sp_job;
         return true;
     }
     else return false;

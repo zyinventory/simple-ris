@@ -36,7 +36,8 @@ namespace handle_context
         virtual ~file_notify();
     };
 
-    typedef std::map<std::string, std::shared_ptr<file_notify> > FILE_NOTIFY_MAP;
+    typedef std::map<std::string, std::shared_ptr<file_notify> > FILE_QUEUE; // <notify_filename, std::shared_ptr<file_notify> >
+    typedef std::pair<std::string, std::shared_ptr<file_notify> > FILE_QUEUE_PAIR;
     class np_conn_assoc_dir;
     class study_dir;
 
@@ -45,7 +46,7 @@ namespace handle_context
     private:
         std::shared_ptr<np_conn_assoc_dir> sp_assoc;
         std::shared_ptr<study_dir> sp_study;
-        FILE_NOTIFY_MAP job_map;
+        FILE_QUEUE file_queue;
 
     public:
         relationship(std::shared_ptr<np_conn_assoc_dir> sp_assoc, std::shared_ptr<study_dir> sp_study) : sp_assoc(sp_assoc), sp_study(sp_study) { };
@@ -55,8 +56,6 @@ namespace handle_context
 
     typedef std::map<std::string, std::shared_ptr<relationship> > RELATION_MAP;
     typedef std::pair<std::string, std::shared_ptr<relationship> > RELATION_PAIR;
-    typedef std::map<std::string, std::shared_ptr<file_notify> > FILE_QUEUE; // <notify_filename, std::shared_ptr<file_notify> >
-    typedef std::pair<std::string, std::shared_ptr<file_notify> > FILE_QUEUE_PAIR;
 
     class np_conn_assoc_dir : public named_pipe_connection
     {
