@@ -80,8 +80,9 @@ STUDY_POS_PAIR study_dir::find_first_job_in_studies(const string &base)
     {
         if(it->second)
         {
-            FILE_QUEUE::const_iterator pos = it->second->get_first_greater_notify_filename(base);
-            if(pos != it->second->file_queue.cend())
+            FILE_QUEUE::const_iterator pos = it->second->get_first_notify_filename_greater(base);
+            if(pos != it->second->file_queue.cend() && 
+                (ps == NULL || pos->second->get_notify_filename().compare(ps_pos->second->get_notify_filename()) < 0))
             {
                 ps = it->second;
                 ps_pos = pos;

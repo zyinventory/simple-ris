@@ -100,7 +100,7 @@ namespace handle_context
 
         study_dir(const char *study_uid, const char *path, const char *meta_notify_file, int timeout, std::ostream *plog)
             : base_dir(study_uid, path, meta_notify_file, timeout, plog) { };
-        FILE_QUEUE::const_iterator get_first_greater_notify_filename(const std::string &base) const {
+        FILE_QUEUE::const_iterator get_first_notify_filename_greater(const std::string &base) const {
             return std::find_if(file_queue.cbegin(), file_queue.cend(), [&base](const FILE_QUEUE_PAIR &p) {
                 return (p.second && p.second->get_notify_filename().compare(base) > 0); }); };
 
