@@ -5,7 +5,7 @@
 
 namespace handle_context
 {
-    class compress_job
+    class file_notify
     {
     private:
         std::string assoc_id, path, notify_filename, hash, unique_filename, instance_filename, expected_xfer, study_uid;
@@ -14,14 +14,14 @@ namespace handle_context
         std::ostream *pflog;
 
     public:
-        compress_job() : rec_file_size(0LL), seq(0), pflog(&std::cerr) {};
-        compress_job(const std::string &assoc_id, const std::string &path, const std::string &notify_filename, const std::string &hash,
+        file_notify() : rec_file_size(0LL), seq(0), pflog(&std::cerr) {};
+        file_notify(const std::string &assoc_id, const std::string &path, const std::string &notify_filename, const std::string &hash,
             const std::string &unique_filename, const std::string &instance_filename, const std::string &xfer, const std::string &study_uid,
             unsigned int seq, std::ostream *pflog)
             : unique_filename(unique_filename), path(path), notify_filename(notify_filename), hash(hash), study_uid(study_uid),
             assoc_id(assoc_id), instance_filename(instance_filename), expected_xfer(xfer), rec_file_size(0LL), seq(seq), pflog(pflog) {};
-        compress_job(const compress_job &r) { *this = r; };
-        compress_job& operator=(const compress_job& r)
+        file_notify(const file_notify &r) { *this = r; };
+        file_notify& operator=(const file_notify& r)
         {
             assoc_id = r.assoc_id;
             path = r.path;
@@ -53,9 +53,9 @@ namespace handle_context
             rec_file_size = 0LL;
             seq = 0;
         };
-        virtual ~compress_job()
+        virtual ~file_notify()
         {
-            time_header_out(*pflog) << "~compress_job:" << std::endl << "\tstudy_uid: " << study_uid << std::endl
+            time_header_out(*pflog) << "~file_notify:" << std::endl << "\tstudy_uid: " << study_uid << std::endl
                 << "\thash: " << hash << std::endl << "\tunique_filename: " << unique_filename << std::endl
                 << "\tinstance_filename: " << instance_filename << std::endl << "\tassoc_id: " << assoc_id << std::endl
                 << "\tpath: " << path << std::endl << "\tnotify_filename: " << notify_filename << std::endl
@@ -65,35 +65,55 @@ namespace handle_context
     };
 
     class np_conn_assoc_dir;
-    class study_assoc_dir;
+    class np_conn_study_dir;
     typedef std::map<std::string, std::shared_ptr<np_conn_assoc_dir> > STR_SHARED_CONN_MAP;
     typedef std::pair<std::string, std::shared_ptr<np_conn_assoc_dir> > STR_SHARED_CONN_PAIR;
-    typedef std::map<std::string, std::shared_ptr<study_assoc_dir> > STUDY_MAP;
-    typedef std::pair<std::string, std::shared_ptr<study_assoc_dir> > STUDY_PAIR;
-    typedef std::pair<std::shared_ptr<study_assoc_dir>, std::list<std::shared_ptr<compress_job> >::const_iterator> STUDY_POS_PAIR;
+    typedef std::map<std::string, std::shared_ptr<np_conn_study_dir> > STUDY_MAP;
+    typedef std::pair<std::string, std::shared_ptr<np_conn_study_dir> > STUDY_PAIR;
+    typedef std::pair<std::shared_ptr<np_conn_study_dir>, std::list<std::shared_ptr<file_notify> >::const_iterator> STUDY_POS_PAIR;
 
-    class study_assoc_dir : public base_dir
+    class relationship
+    {
+    private:
+        std::shared_ptr<np_conn_assoc_dir> sp_assoc;
+        std::shared_ptr<np_conn_study_dir> sp_study;
+        std::map<std::string, std::shared_ptr<file_notify> > job_map;
+
+    public:
+        relationship(std::shared_ptr<np_conn_assoc_dir> sp_assoc, std::shared_ptr<np_conn_study_dir> sp_study) : sp_assoc(sp_assoc), sp_study(sp_study) { };
+        bool add_file(const std::shared_ptr<file_notify> &sp_job)
+        {
+            if(sp_job && sp_job->get_notify_filename().length())
+            {
+                job_map[sp_job->get_notify_filename()] = sp_job;
+                return true;
+            }
+            else return false;
+        };
+    };
+
+    class np_conn_study_dir : public base_dir
     {
     private:
         static std::string empty_notify_filename;
         static STUDY_MAP studies_map;
-        std::list<std::shared_ptr<compress_job> > compress_queue;
+        std::list<std::shared_ptr<file_notify> > compress_queue;
         STR_SHARED_CONN_MAP associations;
 
-        study_assoc_dir(const char *study_uid, const char *path, const char *meta_notify_file, int timeout, std::ostream *plog)
+        np_conn_study_dir(const char *study_uid, const char *path, const char *meta_notify_file, int timeout, std::ostream *plog)
             : base_dir(study_uid, path, meta_notify_file, timeout, plog) { };
-        std::list<std::shared_ptr<compress_job> >::const_iterator get_first_greater_notify_filename(const std::string &base) const {
-            return std::find_if(compress_queue.cbegin(), compress_queue.cend(), [&base](const std::shared_ptr<compress_job> &job) {
+        std::list<std::shared_ptr<file_notify> >::const_iterator get_first_greater_notify_filename(const std::string &base) const {
+            return std::find_if(compress_queue.cbegin(), compress_queue.cend(), [&base](const std::shared_ptr<file_notify> &job) {
                 return job->get_notify_filename().compare(base) > 0; }); };
 
     public:
-        static std::shared_ptr<study_assoc_dir> create_instance(const char *study_uid, const char *path, const char *meta_notify_file, std::ostream *pflog);
-        static std::shared_ptr<study_assoc_dir> find(const std::string &study_uid);
+        static std::shared_ptr<np_conn_study_dir> create_instance(const char *study_uid, const char *path, const char *meta_notify_file, std::ostream *pflog);
+        static std::shared_ptr<np_conn_study_dir> find(const std::string &study_uid);
         static STUDY_POS_PAIR find_first_job_in_studies(const std::string &base);
         virtual void print_state() const;
-        std::list<std::shared_ptr<compress_job> >::const_iterator get_compress_queue_cend() const { return compress_queue.cend(); };
+        std::list<std::shared_ptr<file_notify> >::const_iterator get_compress_queue_cend() const { return compress_queue.cend(); };
         void add_file(np_conn_assoc_dir *p_assoc_dir, const std::string &hash, const std::string &unique_filename, const std::string &p_notify_file, const std::string &p_instance_file, unsigned int seq);
-        void erase(std::list<std::shared_ptr<compress_job> >::const_iterator it);
+        void erase(std::list<std::shared_ptr<file_notify> >::const_iterator it);
     };
 
     class np_conn_assoc_dir : public named_pipe_connection
@@ -104,7 +124,7 @@ namespace handle_context
         DWORD pid;
         bool disconn_release;
         // todo: bidirection relationship, client shall broadcast disconnecting after remove_pipe()
-        std::map<std::string, std::shared_ptr<study_assoc_dir> > studies;
+        STUDY_MAP studies;
 
         DWORD process_file_incoming(char *assoc_id);
         DWORD establish_conn_dir(const char *assoc_id);
@@ -156,15 +176,15 @@ namespace handle_context
     class handle_compress : public handle_proc
     {
     private:
-        std::shared_ptr<compress_job> compr_job;
+        std::shared_ptr<file_notify> compr_job;
         
     protected:
         handle_compress(const std::string &id, const std::string &path, const std::string &notify, const std::string &cmd,
-            const std::string &exec_prog_name, const std::shared_ptr<compress_job> &job, std::ostream *plog)
+            const std::string &exec_prog_name, const std::shared_ptr<file_notify> &job, std::ostream *plog)
             : handle_proc(id, path, notify, cmd, exec_prog_name, plog), compr_job(job) { };
 
     public:
-        static handle_compress* make_handle_compress(const std::string &study_uid, const std::shared_ptr<compress_job> &job, std::ostream &flog);
+        static handle_compress* make_handle_compress(const std::string &study_uid, const std::shared_ptr<file_notify> &job, std::ostream &flog);
         virtual ~handle_compress() {  };
         void print_state() const;
     };

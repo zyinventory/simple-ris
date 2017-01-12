@@ -376,14 +376,14 @@ int watch_notify(string &cmd, ofstream &flog)
 
         // find first tuple in compress queue
 		DWORD dw = WAIT_OBJECT_0;
-        shared_ptr<compress_job> job;
+        shared_ptr<file_notify> job;
         string current_notify_filename_base;
         do
         {
             job = NULL;
             STUDY_POS_PAIR pStudy;
             if(proc_list.size() < WORKER_CORE_NUM) // some core idle
-                pStudy = study_assoc_dir::find_first_job_in_studies(current_notify_filename_base);
+                pStudy = np_conn_study_dir::find_first_job_in_studies(current_notify_filename_base);
             if(pStudy.first == NULL || pStudy.second == pStudy.first->get_compress_queue_cend()) break; // no job in queue
             job = *pStudy.second;
             if(job == NULL || job->get_assoc_id().length() == 0) { pStudy.first->erase(pStudy.second); break; } // wrong job

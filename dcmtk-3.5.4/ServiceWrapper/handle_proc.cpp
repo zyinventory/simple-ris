@@ -214,7 +214,7 @@ bool handle_proc::make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, con
     else return false;
 }
 
-handle_compress* handle_compress::make_handle_compress(const string &study_uid, const shared_ptr<compress_job> &job, ostream &flog)
+handle_compress* handle_compress::make_handle_compress(const string &study_uid, const shared_ptr<file_notify> &job, ostream &flog)
 {
     char cmd[1024];
     if(strcmp("KEEP", job->get_expected_xfer().c_str()) == 0)
@@ -262,8 +262,8 @@ handle_compress* handle_compress::make_handle_compress(const string &study_uid, 
 void handle_compress::print_state() const
 {
     *pflog << "handle_compress::print_state() " << compr_job->get_unique_filename() << endl
-        << "\tcompr_job.notify_filename: " << compr_job->get_notify_filename() << endl
-        << "\tcompr_job.seq: " << dec << compr_job->get_seq() << endl
-        << "\tcompr_job.studyUID: " << compr_job->get_study_uid() << endl;
+        << "\tfile_notify.notify_filename: " << compr_job->get_notify_filename() << endl
+        << "\tfile_notify.seq: " << dec << compr_job->get_seq() << endl
+        << "\tfile_notify.studyUID: " << compr_job->get_study_uid() << endl;
     handle_proc::print_state();
 }

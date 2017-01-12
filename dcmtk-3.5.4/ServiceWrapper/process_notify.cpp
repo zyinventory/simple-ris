@@ -331,7 +331,7 @@ static bool process_notify_file(std::istream &ifs, unsigned int seq, NOTIFY_FILE
     return true;
 }
 
-DWORD process_notify(const compress_job* pt, NOTIFY_FILE_CONTEXT *pnfc, std::ostream &flog)
+DWORD process_notify(const file_notify* pt, NOTIFY_FILE_CONTEXT *pnfc, std::ostream &flog)
 {
     // todo: find association
     //if(get<4>(*pt)) get<4>(*pt)->fill_association(pnfc);

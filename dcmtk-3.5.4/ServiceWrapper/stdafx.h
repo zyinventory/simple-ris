@@ -54,7 +54,7 @@
 #include "handle_context2.h"
 
 int watch_notify(std::string &cmd, std::ofstream &flog);
-DWORD process_notify(const handle_context::compress_job* pt, handle_context::NOTIFY_FILE_CONTEXT *pnfc, std::ostream &flog);
+DWORD process_notify(const handle_context::file_notify* pt, handle_context::NOTIFY_FILE_CONTEXT *pnfc, std::ostream &flog);
 int cmd_instance(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);
 int cmd_patient(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);
 int cmd_study(const std::string &type, std::istringstream &cmdstrm, handle_context::NOTIFY_FILE_CONTEXT &lc, std::ostream &flog);
