@@ -141,12 +141,18 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
 
     string assoc_id, hash, study_uid, unique_filename, notify_filename, instance_filename;
     unsigned int seq;
+    shared_ptr<np_conn_assoc_dir> pa(get_shared_ptr_assoc_conn());
+    if(pa == NULL)
+    {
+        time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() assoc " << get_id() << "->get_shared_ptr_assoc_conn() failed." << endl;
+        return ERROR_NOT_FOUND;
+    }
     istringstream istrm(p_assoc_id);
     istrm >> assoc_id >> hash >> study_uid >> unique_filename >> notify_filename >> instance_filename >> dec >> seq;
 
     if(get_event_handle())
     {   // server connection shall establish assoc <--> study many to many relationship
-        shared_ptr<np_conn_study_dir> pstudy = np_conn_study_dir::find(study_uid);
+        shared_ptr<study_dir> pstudy = study_dir::find(study_uid);
         if(pstudy == NULL)
         {
             char study_path[MAX_PATH];
@@ -158,8 +164,8 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
             if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() try to create study: " << study_path << endl;
             if(MkdirRecursive(study_path))
             {
-                pstudy = np_conn_study_dir::create_instance(study_uid.c_str(), orders_study_name, notify_filename.c_str(), pflog);
-                studies[study_uid] = pstudy; // one assoc -> many study
+                pstudy = study_dir::create_instance(study_uid.c_str(), orders_study_name, notify_filename.c_str(), pflog);
+                relations[study_uid] = shared_ptr<relationship>(new relationship(pa, pstudy));
             }
             else time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() can't create dir " << study_path << endl;
         }

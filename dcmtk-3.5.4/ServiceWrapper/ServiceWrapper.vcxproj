@@ -123,7 +123,8 @@
     <ClCompile Include="named_pipe\named_pipe_connection.cpp" />
     <ClCompile Include="named_pipe\named_pipe_listener.cpp" />
     <ClCompile Include="np_conn_assoc_dir.cpp" />
-    <ClCompile Include="study_assoc_dir.cpp" />
+    <ClCompile Include="relationship.cpp" />
+    <ClCompile Include="study_dir.cpp" />
     <ClCompile Include="process_notify.cpp" />
     <ClCompile Include="ServiceWrapper.cpp" />
     <ClCompile Include="stdafx.cpp">

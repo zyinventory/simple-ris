@@ -60,7 +60,10 @@
     <ClCompile Include="handle_proc.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="study_assoc_dir.cpp">
+    <ClCompile Include="relationship.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="study_dir.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
