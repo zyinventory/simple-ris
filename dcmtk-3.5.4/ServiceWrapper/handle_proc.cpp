@@ -214,7 +214,7 @@ bool handle_proc::make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, con
     else return false;
 }
 
-handle_compress* handle_compress::make_handle_compress(const string &study_uid, const shared_ptr<file_notify> &job, ostream &flog)
+handle_compress* handle_compress::make_handle_compress(const string &study_uid, const shared_ptr<relationship> &r, const shared_ptr<file_notify> &job, ostream &flog)
 {
     char cmd[1024];
     if(strcmp("KEEP", job->get_expected_xfer().c_str()) == 0)
@@ -226,7 +226,7 @@ handle_compress* handle_compress::make_handle_compress(const string &study_uid, 
         PrepareFileDir(cmd + mkdir_pos);
         string path(GetPacsTemp());
         path.append("\\pacs\\").append(job->get_path().c_str());
-        return new handle_compress(job->get_unique_filename(), path, job->get_notify_filename(), cmd, "move", job, &flog);
+        return new handle_compress(job->get_unique_filename(), path, job->get_notify_filename(), cmd, "move", r, job, &flog);
     }
     else // compress
     {
@@ -255,7 +255,7 @@ handle_compress* handle_compress::make_handle_compress(const string &study_uid, 
         strcpy_s(cmd + ctn, sizeof(cmd) - ctn, job->get_unique_filename().c_str());
         string path(GetPacsTemp());
         path.append("\\pacs\\").append(job->get_path().c_str());
-        return new handle_compress(job->get_unique_filename(), path, job->get_notify_filename().c_str(), cmd, "dcmcjpeg", job, &flog);
+        return new handle_compress(job->get_unique_filename(), path, job->get_notify_filename(), cmd, "dcmcjpeg", r, job, &flog);
     }
 }
 

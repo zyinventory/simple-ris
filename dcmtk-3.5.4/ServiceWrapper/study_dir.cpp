@@ -30,22 +30,36 @@ shared_ptr<study_dir> study_dir::find(const string &study_uid)
     else return NULL;
 }
 
-STUDY_POS_PAIR study_dir::find_first_job_in_studies(const string &base)
+RELA_POS_PAIR study_dir::get_first_file_notify_greater(const std::string &base) const
 {
-    shared_ptr<study_dir> ps;
-    FILE_QUEUE::const_iterator ps_pos;
+    shared_ptr<relationship> sp_r;
+    FILE_QUEUE::const_iterator it_pos;
+    for(RELATION_MAP::const_iterator it_r = relations.cbegin(); it_r != relations.cend(); ++it_r)
+    {
+        if(it_r->second == NULL) continue;
+        FILE_QUEUE::const_iterator pos = it_r->second->get_first_notify_filename_greater(base);
+        if(pos != it_r->second->get_file_queue_cend() && (sp_r == NULL || pos->first.compare(it_pos->first) < 0))
+        {
+            sp_r = it_r->second;
+            it_pos = pos;
+        }
+    }
+    return RELA_POS_PAIR(sp_r, it_pos);
+}
+
+RELA_POS_PAIR study_dir::find_first_job_in_studies(const string &base)
+{
+    RELA_POS_PAIR p_pos;
     for(STUDY_MAP::const_iterator it = studies_map.cbegin(); it != studies_map.cend(); ++it)
     {
         if(it->second)
         {
-            FILE_QUEUE::const_iterator pos = it->second->get_first_notify_filename_greater(base);
-            if(pos != it->second->file_queue.cend() && 
-                (ps == NULL || pos->second->get_notify_filename().compare(ps_pos->second->get_notify_filename()) < 0))
+            RELA_POS_PAIR p_new(it->second->get_first_file_notify_greater(base));
+            if(p_new.first && (p_pos.first == NULL || p_new.second->first.compare(p_pos.second->first) < 0))
             {
-                ps = it->second;
-                ps_pos = pos;
+                p_pos = p_new;
             }
         }
     }
-    return STUDY_POS_PAIR(ps, ps_pos);
+    return p_pos;
 }

@@ -100,7 +100,7 @@ namespace handle_context
     };
 
     typedef std::map<std::string, std::shared_ptr<study_dir> > STUDY_MAP;
-    typedef std::pair<std::shared_ptr<study_dir>, FILE_QUEUE::const_iterator> STUDY_POS_PAIR;
+    typedef std::pair<std::shared_ptr<relationship>, FILE_QUEUE::const_iterator> RELA_POS_PAIR;
 
     class study_dir : public base_dir
     {
@@ -117,7 +117,7 @@ namespace handle_context
     public:
         static std::shared_ptr<study_dir> create_instance(const char *study_uid, const char *path, const char *meta_notify_file, std::ostream *pflog);
         static std::shared_ptr<study_dir> find(const std::string &study_uid);
-        static STUDY_POS_PAIR find_first_job_in_studies(const std::string &base);
+        static RELA_POS_PAIR find_first_job_in_studies(const std::string &base);
         virtual void print_state() const;
         void insert_relation(const std::shared_ptr<relationship>& r) { relations[r->get_assoc_id()] = r; };
         std::shared_ptr<relationship> find_relationship_by_assoc_id(const std::string &assoc_id) const
@@ -126,9 +126,9 @@ namespace handle_context
             if(it != relations.cend()) return it->second;
             else return NULL;
         };
+        RELA_POS_PAIR get_first_file_notify_greater(const std::string &base) const;
 
         // dummy method
-        FILE_QUEUE::const_iterator get_first_notify_filename_greater(const std::string &base) const { return file_queue.cend(); };
         FILE_QUEUE::const_iterator get_file_queue_cend() const { return file_queue.cend(); };
         void erase(FILE_QUEUE::const_iterator it) { };
     };
@@ -164,15 +164,16 @@ namespace handle_context
     class handle_compress : public handle_proc
     {
     private:
+        std::shared_ptr<relationship> relation;
         std::shared_ptr<file_notify> compr_job;
         
     protected:
-        handle_compress(const std::string &id, const std::string &path, const std::string &notify, const std::string &cmd,
-            const std::string &exec_prog_name, const std::shared_ptr<file_notify> &job, std::ostream *plog)
-            : handle_proc(id, path, notify, cmd, exec_prog_name, plog), compr_job(job) { };
+        handle_compress(const std::string &id, const std::string &path, const std::string &notify, const std::string &cmd, const std::string &exec_prog_name,
+            const std::shared_ptr<relationship> &relation, const std::shared_ptr<file_notify> &job, std::ostream *plog)
+            : handle_proc(id, path, notify, cmd, exec_prog_name, plog), relation(relation), compr_job(job) { };
 
     public:
-        static handle_compress* make_handle_compress(const std::string &study_uid, const std::shared_ptr<file_notify> &job, std::ostream &flog);
+        static handle_compress* make_handle_compress(const std::string &study_uid, const std::shared_ptr<relationship> &r, const std::shared_ptr<file_notify> &job, std::ostream &flog);
         virtual ~handle_compress() {  };
         void print_state() const;
     };

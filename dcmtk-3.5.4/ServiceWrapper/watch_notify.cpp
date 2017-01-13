@@ -327,6 +327,7 @@ int watch_notify(string &cmd, ofstream &flog)
                 time_header_out(flog) << "watch_notify() handle_compress exit: " << phcompr->get_id() << " " << phcompr->get_path() << endl;
                 //compress_complete(phcompr->get_id(), nfc.file.studyUID, true, nps, nfc, flog);
                 phcompr->print_state();
+                // todo: remove file_notify from assoc and study
                 delete phcompr;
             }
             else
@@ -376,28 +377,31 @@ int watch_notify(string &cmd, ofstream &flog)
 
         // find first tuple in compress queue
 		DWORD dw = WAIT_OBJECT_0;
-        shared_ptr<file_notify> job;
+        shared_ptr<relationship> new_rela;
+        shared_ptr<file_notify> new_file_notify;
         string current_notify_filename_base;
         do
         {
-            job = NULL;
-            STUDY_POS_PAIR pStudy;
+            new_rela = NULL;
+            new_file_notify = NULL;
+            RELA_POS_PAIR pr;
             if(proc_list.size() < WORKER_CORE_NUM) // some core idle
-                pStudy = study_dir::find_first_job_in_studies(current_notify_filename_base);
-            if(pStudy.first == NULL || pStudy.second == pStudy.first->get_file_queue_cend()) break; // no job in queue
-            job = pStudy.second->second;
-            if(job == NULL || job->get_assoc_id().length() == 0) { pStudy.first->erase(pStudy.second); break; } // wrong job
+                pr = study_dir::find_first_job_in_studies(current_notify_filename_base);
+            if(pr.first == NULL || pr.second == pr.first->get_file_queue_cend()) break; // no file_notify in queue
+            new_rela = pr.first;
+            new_file_notify = pr.second->second;
+            if(new_file_notify == NULL) { pr.first->erase(pr.second); break; } // wrong file_notify
 
-            const string &unique_filename = job->get_unique_filename();
+            const string &unique_filename = new_file_notify->get_unique_filename();
             HANDLE_PROC_LIST::iterator ite = find_if(proc_list.begin(), proc_list.end(),
                 [&unique_filename](const handle_compress *p) { return (p->get_id().compare(unique_filename) == 0); });
 
             if(ite == proc_list.end()) // no same instance is in compressing
             {
-                pStudy.first->erase(pStudy.second);
+                pr.first->erase(pr.second);
 
                 string received_instance_file_path(GetPacsTemp());
-                received_instance_file_path.append("\\pacs\\").append(job->get_path()).append(1, '\\').append(job->get_instance_filename());
+                received_instance_file_path.append("\\pacs\\").append(new_file_notify->get_path()).append(1, '\\').append(new_file_notify->get_instance_filename());
                 struct _stat64 fs;
                 if(_stat64(received_instance_file_path.c_str(), &fs))
                 {
@@ -410,26 +414,26 @@ int watch_notify(string &cmd, ofstream &flog)
 			    dw = WaitForSingleObject(hSema, 0);
                 if(dw == WAIT_OBJECT_0)
                 {
-                    job->set_rec_file_size(fs.st_size);
-                    handle_compress* compr_ptr = handle_compress::make_handle_compress(pStudy.first->get_id(), job, flog);
+                    new_file_notify->set_rec_file_size(fs.st_size);
+                    handle_compress* compr_ptr = handle_compress::make_handle_compress(pr.first->get_study_uid(), new_rela, new_file_notify, flog);
                     if(compr_ptr)
                     {
 						compr_ptr->set_priority(BELOW_NORMAL_PRIORITY_CLASS);
                         if(compr_ptr->start_process(false))
                         {   // failed
-                            time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << job->get_path() << " " << job->get_instance_filename() << " " << job->get_unique_filename() << endl;
+                            time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << new_file_notify->get_path() << " " << new_file_notify->get_instance_filename() << " " << new_file_notify->get_unique_filename() << endl;
                             delete compr_ptr;
                             ReleaseSemaphore(hSema, 1, NULL);
                         }
                         else// succeed
                         {
-                            time_header_out(flog) << "watch_notify() handle_compress::start_process() OK: " << job->get_path() << " " << job->get_instance_filename() << " " << job->get_unique_filename() << endl;
+                            time_header_out(flog) << "watch_notify() handle_compress::start_process() OK: " << new_file_notify->get_path() << " " << new_file_notify->get_instance_filename() << " " << new_file_notify->get_unique_filename() << endl;
                             proc_list.push_back(compr_ptr);
                         }
                     }
                     else
                     {
-                        time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << job->get_path() << " " << job->get_instance_filename() << endl;
+                        time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << new_file_notify->get_path() << " " << new_file_notify->get_instance_filename() << endl;
                         ReleaseSemaphore(hSema, 1, NULL);
                     }
                 }
@@ -449,10 +453,10 @@ int watch_notify(string &cmd, ofstream &flog)
             else // the same instance is in compressing
             {
                 time_header_out(flog) << "watch_notify() skip exist compress unique name "
-                    << job->get_unique_filename() << " src notify: " << job->get_notify_filename() << endl;
-                current_notify_filename_base = job->get_notify_filename();
+                    << new_file_notify->get_unique_filename() << " src notify: " << new_file_notify->get_notify_filename() << endl;
+                current_notify_filename_base = new_file_notify->get_notify_filename();
             }
-        } while(job);
+        } while(new_file_notify);
 
         // do idle work
         if(wr == WAIT_TIMEOUT)
