@@ -108,7 +108,6 @@ namespace handle_context
         static std::string empty_notify_filename;
         static STUDY_MAP studies_map;
 
-        FILE_QUEUE file_queue;
         RELATION_MAP relations;
 
         study_dir(const char *study_uid, const char *path, const char *meta_notify_file, int timeout, std::ostream *plog)
@@ -127,10 +126,6 @@ namespace handle_context
             else return NULL;
         };
         RELA_POS_PAIR get_first_file_notify_greater(const std::string &base) const;
-
-        // dummy method
-        FILE_QUEUE::const_iterator get_file_queue_cend() const { return file_queue.cend(); };
-        void erase(FILE_QUEUE::const_iterator it) { };
     };
 
     class handle_proc : public base_dir
