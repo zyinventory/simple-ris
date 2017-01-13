@@ -151,7 +151,7 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
     istrm >> assoc_id >> hash >> study_uid >> unique_filename >> notify_filename >> instance_filename >> dec >> seq;
 
     if(get_event_handle())
-    {   // server connection shall establish assoc <--> study many to many relationship
+    {   // create study_dir if not exist
         shared_ptr<study_dir> pstudy = study_dir::find(study_uid);
         if(pstudy == NULL)
         {
@@ -163,14 +163,46 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
             strcpy_s(study_path + used, sizeof(study_path) - used, study_uid.c_str());
             if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() try to create study: " << study_path << endl;
             if(MkdirRecursive(study_path))
-            {
                 pstudy = study_dir::create_instance(study_uid.c_str(), orders_study_name, notify_filename.c_str(), pflog);
-                relations[study_uid] = shared_ptr<relationship>(new relationship(pa, pstudy));
-            }
             else time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() can't create dir " << study_path << endl;
         }
-        if(pstudy) pstudy->add_file(this, hash.c_str(), unique_filename.c_str(), notify_filename.c_str(), instance_filename.c_str(), seq);
+        if(pa && pstudy)
+        {
+            // find relationship in assoc and study, if not exist, create it.
+            shared_ptr<relationship> sp_ar(pa->find_relationship_by_study_uid(study_uid));
+            shared_ptr<relationship> sp_sr(pstudy->find_relationship_by_assoc_id(assoc_id));
+            if(sp_ar == NULL)
+            {
+                if(sp_sr == NULL)
+                {
+                    sp_sr.reset(new relationship(pa, pstudy, pflog));
+                    pstudy->insert_relation(sp_sr);
+                }
+                sp_ar = sp_sr;
+                relations[study_uid] = sp_ar;
+            }
+            else
+            {
+                if(sp_sr == NULL)
+                {
+                    sp_sr = sp_ar;
+                    pstudy->insert_relation(sp_sr);
+                }
+                else
+                {
+                    if(sp_ar.get() != sp_sr.get())
+                        time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() sp_ar and sp_sr match failed." << endl;
+                    //else OK, sp_ar == sp_sr
+                }
+            }
+            shared_ptr<file_notify> sp_f(sp_sr->find_file_notify(notify_filename));
+            if(sp_f == NULL)
+            {
+                sp_f.reset(new file_notify(pstudy->get_id(), get_id(), get_path(), get_meta_notify_filename(),
+                    expected_syntax, auto_publish, hash, unique_filename, instance_filename, seq, pflog));
+                sp_sr->add_file_notify(sp_f);
+            }
+        }
     }
-
     return 0;
 }
