@@ -209,9 +209,9 @@ void CALLBACK named_pipe_listener::remove_closed_connection(ULONG_PTR wParam)
                 shared_ptr<named_pipe_connection> sp = pnps->find_connections_read(pnpc->get_overlap_read());
                 if(sp == NULL) sp = pnps->find_connections_write(pnpc->get_overlap_write());
                 if(sp) pnps->remove_pipe(sp);
-                // todo: disconnect relationship(assoc -> study), study shall get "assoc's remains ref"
+                time_header_out(*pnps->get_err_stream()) << "named_pipe_listener::remove_closed_connection(" << sp->get_id() << ")." << endl;
             }
-            // error
+            else time_header_out(*pnps->get_err_stream()) << "named_pipe_listener::remove_closed_connection(" << pnpc->get_id() << ") error: can't find named_pipe_listener." << endl;
         }
         else delete pnpc; // client connection
     }

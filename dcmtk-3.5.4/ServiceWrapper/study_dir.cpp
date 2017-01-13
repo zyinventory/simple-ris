@@ -9,11 +9,22 @@ STUDY_MAP study_dir::studies_map;
 void study_dir::print_state() const
 {
     *pflog << "study_dir::print_state() id: " << get_id() << endl
-        << "\tassociations:" << endl;
-    for(RELATION_MAP::const_iterator it = relations.cbegin(); it != relations.cend(); ++it)
-        *pflog << "\t\t" << (it->second == NULL ? "NULL" : it->second->get_id()) << endl;
-    *pflog << "\tcompress_queue:" << endl;
+        << "\trelations:" << endl;
+    for_each(relations.cbegin(), relations.cend(), [](const RELATION_PAIR &p) { if(p.second) p.second->print_state(); });
     base_dir::print_state();
+}
+
+void study_dir::remove_all_relations()
+{
+    time_header_out(*pflog) << "study_dir::remove_all_relations(" << get_id() << ")..." << endl;
+    RELATION_MAP::const_iterator it = relations.cbegin();
+    while(it != relations.cend()) it = relations.erase(it);
+}
+
+study_dir::~study_dir()
+{
+    time_header_out(*pflog) << "study_dir::~study_dir(" << get_id() << ")..." << endl;
+    remove_all_relations();
 }
 
 shared_ptr<study_dir> study_dir::create_instance(const char *study_uid, const char *path, const char *meta_notify_file, ostream *pflog)
@@ -62,4 +73,15 @@ RELA_POS_PAIR study_dir::find_first_job_in_studies(const string &base)
         }
     }
     return p_pos;
+}
+
+void study_dir::remove_all_study(ostream *pflog)
+{
+    time_header_out(*pflog) << "study_dir::remove_all_study()..." << endl;
+    STUDY_MAP::const_iterator it = studies_map.cbegin();
+    while(it != studies_map.cend())
+    {
+        if(it->second) it->second->remove_all_relations();
+        it = studies_map.erase(it);
+    }
 }

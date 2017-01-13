@@ -5,8 +5,8 @@ using namespace handle_context;
 
 file_notify& file_notify::operator=(const file_notify& r)
 {
+    base_path::operator=(r);
     assoc_id = r.assoc_id;
-    path = r.path;
     notify_filename = r.notify_filename;
     hash = r.hash;
     unique_filename = r.unique_filename;
@@ -15,26 +15,37 @@ file_notify& file_notify::operator=(const file_notify& r)
     rec_file_size = r.rec_file_size;
     study_uid = r.study_uid;
     seq = r.seq;
-    pflog = r.pflog;
     return *this;
 }
 
 void file_notify::clear()
 {
-    assoc_id.clear(); path.clear(); notify_filename.clear(); hash.clear(); study_uid.clear();
-    unique_filename.clear(); instance_filename.clear(); expected_xfer.clear();
+    set_path("");
+    assoc_id.clear(); notify_filename.clear(); hash.clear(); study_uid.clear();
+    unique_filename.clear(); instance_filename.clear(); expected_xfer.clear(); auto_publish.clear();
     rec_file_size = 0LL;
     seq = 0;
 }
 
+void file_notify::print_state() const
+{
+    *pflog << "file_notify::print_state() notify_filename: " << notify_filename << endl
+        << "\tstudy_uid: " << study_uid << endl
+        << "\tassoc_id: " << assoc_id << endl
+        << "\texpected_xfer: " << expected_xfer << endl
+        << "\tauto_publish: " << auto_publish << endl
+        << "\tseq: " << seq << endl
+        << "\tinstance_filename: " << instance_filename << endl
+        << "\thash: " << hash << endl
+        << "\tunique_filename: " << unique_filename << endl
+        << "\trec_file_size: " << rec_file_size << endl;
+    base_path::print_state();
+}
+
 file_notify::~file_notify()
 {
-    time_header_out(*pflog) << "~file_notify:" << std::endl << "\tstudy_uid: " << study_uid << std::endl
-        << "\thash: " << hash << std::endl << "\tunique_filename: " << unique_filename << std::endl
-        << "\tinstance_filename: " << instance_filename << std::endl << "\tassoc_id: " << assoc_id << std::endl
-        << "\tpath: " << path << std::endl << "\tnotify_filename: " << notify_filename << std::endl
-        << "\texpected_xfer: " << expected_xfer << std::endl << "\tseq: " << seq << std::endl
-        << "\trec_file_size: " << rec_file_size << std::endl;
+    if(opt_verbose) time_header_out(*pflog) << "~file_notify():" << endl;
+    if(opt_verbose) print_state();
 }
 
 string relationship::get_assoc_id() const { return sp_assoc ? sp_assoc->get_id() : ""; }
@@ -70,6 +81,20 @@ FILE_QUEUE::const_iterator relationship::get_first_notify_filename_greater(const
 
 void relationship::erase(const string &notify_filename)
 {
-    if(opt_verbose) time_header_out(*pflog) << "relationship::::erase(" << notify_filename << ")" << endl;
+    if(opt_verbose) time_header_out(*pflog) << "relationship::erase(" << notify_filename << ")" << endl;
     file_queue.erase(notify_filename);
+}
+
+void relationship::print_state() const
+{
+    time_header_out(*pflog) << "relationship::print_state():" << endl
+        << "\t" << sp_assoc->get_id() << " <-> " << sp_study->get_id() << endl
+        << "\trelations:" << endl;
+    for_each(file_queue.cbegin(), file_queue.cend(), [](const FILE_QUEUE_PAIR &p) { if(p.second) p.second->print_state(); });
+}
+
+relationship::~relationship()
+{
+    if(opt_verbose) time_header_out(*pflog) << "relationship::~relationship():" << endl;
+    if(opt_verbose) print_state();
 }

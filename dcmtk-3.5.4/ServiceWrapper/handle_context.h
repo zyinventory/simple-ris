@@ -5,25 +5,23 @@
 
 namespace handle_context
 {
-    class file_notify
+    class file_notify : public base_path
     {
     private:
-        std::string study_uid, assoc_id, path, notify_filename, hash, unique_filename, instance_filename, expected_xfer, auto_publish;
+        std::string study_uid, assoc_id, notify_filename, hash, unique_filename, instance_filename, expected_xfer, auto_publish;
         long long rec_file_size;
         unsigned int seq;
-        std::ostream *pflog;
 
     public:
-        file_notify() : rec_file_size(0LL), seq(0), pflog(&std::cerr) {};
+        file_notify() : base_path("", &std::cerr), rec_file_size(0LL), seq(0) {};
         file_notify(const std::string &study_uid, const std::string &assoc_id, const std::string &path, const std::string &notify_filename, const std::string &xfer, const std::string &auto_publish,
             const std::string &hash, const std::string &unique_filename, const std::string &instance_filename, unsigned int seq, std::ostream *pflog)
-            : study_uid(study_uid), assoc_id(assoc_id), path(path), notify_filename(notify_filename), expected_xfer(xfer), auto_publish(auto_publish),
-            instance_filename(instance_filename), hash(hash), unique_filename(unique_filename), seq(seq),
-            rec_file_size(0LL), pflog(pflog) {};
-        file_notify(const file_notify &r) { *this = r; };
+            : base_path(path, pflog), study_uid(study_uid), assoc_id(assoc_id), notify_filename(notify_filename), expected_xfer(xfer), auto_publish(auto_publish),
+            instance_filename(instance_filename), hash(hash), unique_filename(unique_filename), seq(seq), rec_file_size(0LL) {};
+        file_notify(const file_notify &r) : base_path(r), study_uid(r.study_uid), assoc_id(r.assoc_id), notify_filename(r.notify_filename), expected_xfer(r.expected_xfer), auto_publish(r.auto_publish),
+            instance_filename(r.instance_filename), hash(r.hash), unique_filename(r.unique_filename), seq(r.seq), rec_file_size(r.rec_file_size) { };
         file_notify& operator=(const file_notify& r);
         const std::string& get_assoc_id() const { return assoc_id; };
-        const std::string& get_path() const { return path; };
         const std::string& get_notify_filename() const { return notify_filename; };
         const std::string& get_hash() const { return hash; };
         const std::string& get_unique_filename() const { return unique_filename; };
@@ -34,6 +32,7 @@ namespace handle_context
         void set_rec_file_size(long long sz) { rec_file_size = sz; };
         void clear();
         virtual ~file_notify();
+        virtual void print_state() const;
     };
 
     typedef std::map<std::string, std::shared_ptr<file_notify> > FILE_QUEUE; // <notify_filename, std::shared_ptr<file_notify> >
@@ -52,6 +51,7 @@ namespace handle_context
     public:
         relationship(std::shared_ptr<np_conn_assoc_dir> sp_assoc, std::shared_ptr<study_dir> sp_study, std::ostream *pflog)
             : sp_assoc(sp_assoc), sp_study(sp_study), pflog(pflog) { };
+        virtual ~relationship();
         std::string get_assoc_id() const;
         std::string get_study_uid() const;
         std::string get_id() const;
@@ -60,6 +60,7 @@ namespace handle_context
         FILE_QUEUE::const_iterator get_first_notify_filename_greater(const std::string &base) const;
         FILE_QUEUE::const_iterator get_file_queue_cend() const { return file_queue.cend(); };
         void erase(const std::string &notify_filename);
+        void print_state() const;
     };
 
     typedef std::map<std::string, std::shared_ptr<relationship> > RELATION_MAP;
@@ -73,6 +74,7 @@ namespace handle_context
         DWORD pid;
         bool disconn_release;
         RELATION_MAP relations;
+        std::list<std::string> dead_relations;
 
         DWORD process_file_incoming(char *assoc_id);
         DWORD establish_conn_dir(const char *assoc_id);
@@ -82,6 +84,7 @@ namespace handle_context
         np_conn_assoc_dir(named_pipe_listener *pnps, int timeout) : named_pipe_connection(pnps, timeout), pid(0), disconn_release(false) { };
         virtual ~np_conn_assoc_dir();
         const std::string& get_expected_syntax() const { return expected_syntax; };
+        virtual void callback_pipe_closed();
         virtual void print_state() const;
         virtual DWORD process_message(char *ptr_data_buffer, size_t cbBytesRead, size_t data_buffer_size);
         const char* close_description() const;
@@ -100,6 +103,7 @@ namespace handle_context
     };
 
     typedef std::map<std::string, std::shared_ptr<study_dir> > STUDY_MAP;
+    typedef std::pair<std::string, std::shared_ptr<study_dir> > STUDY_PAIR;
     typedef std::pair<std::shared_ptr<relationship>, FILE_QUEUE::const_iterator> RELA_POS_PAIR;
 
     class study_dir : public base_dir
@@ -117,8 +121,12 @@ namespace handle_context
         static std::shared_ptr<study_dir> create_instance(const char *study_uid, const char *path, const char *meta_notify_file, std::ostream *pflog);
         static std::shared_ptr<study_dir> find(const std::string &study_uid);
         static RELA_POS_PAIR find_first_job_in_studies(const std::string &base);
+        static void print_all_state() { std::for_each(studies_map.cbegin(), studies_map.cend(), [](const STUDY_PAIR &p) { if(p.second) p.second->print_state(); }); };
+        static void remove_all_study(std::ostream *pflog);
+        virtual ~study_dir();
         virtual void print_state() const;
         void insert_relation(const std::shared_ptr<relationship>& r) { relations[r->get_assoc_id()] = r; };
+        void remove_all_relations();
         std::shared_ptr<relationship> find_relationship_by_assoc_id(const std::string &assoc_id) const
         {
             RELATION_MAP::const_iterator it = relations.find(assoc_id);

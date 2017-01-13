@@ -503,5 +503,6 @@ int watch_notify(string &cmd, ofstream &flog)
         hSema = NULL;
     }
     
+    study_dir::remove_all_study(&flog);
     return gle;
 }

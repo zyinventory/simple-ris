@@ -43,6 +43,18 @@ np_conn_assoc_dir::~np_conn_assoc_dir()
     }
 }
 
+void np_conn_assoc_dir::callback_pipe_closed()
+{
+    if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::callback_pipe_closed()" << endl;
+    RELATION_MAP::const_iterator it = relations.cbegin();
+    while(it != relations.cend())
+    {
+        dead_relations.push_back(it->second->get_study_uid());
+        it = relations.erase(it);
+    }
+    named_pipe_connection::callback_pipe_closed();
+}
+
 void np_conn_assoc_dir::print_state() const
 {
     *pflog << "np_conn_assoc_dir::print_state() id: " << get_id() << endl
@@ -53,7 +65,14 @@ void np_conn_assoc_dir::print_state() const
         << "\tauto_publish: " << auto_publish << endl
         << "\tport: " << dec << port << endl
         << "\tis_disconn: " << is_disconn() << endl
-        << "\tdisconn_release: " << disconn_release << endl;
+        << "\tdisconn_release: " << disconn_release << endl
+        << "\trelations: " << relations.size() << endl;
+    for(list<string>::const_iterator it = dead_relations.cbegin(); it != dead_relations.cend(); ++it)
+        *pflog << "\t\t*" << *it << endl;
+    for(RELATION_MAP::const_iterator it = relations.cbegin(); it != relations.cend(); ++it)
+    {
+        if(it->second) it->second->print_state();
+    }
     named_pipe_connection::print_state();
 }
 
@@ -198,7 +217,7 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
             shared_ptr<file_notify> sp_f(sp_sr->find_file_notify(notify_filename));
             if(sp_f == NULL)
             {
-                sp_f.reset(new file_notify(pstudy->get_id(), get_id(), get_path(), get_meta_notify_filename(),
+                sp_f.reset(new file_notify(pstudy->get_id(), get_id(), get_path(), notify_filename,
                     expected_syntax, auto_publish, hash, unique_filename, instance_filename, seq, pflog));
                 sp_sr->add_file_notify(sp_f);
             }

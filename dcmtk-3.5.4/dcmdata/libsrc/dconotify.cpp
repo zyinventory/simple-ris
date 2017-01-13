@@ -66,6 +66,7 @@ void DatasetNotifyWriter::datasetToNotify(const char* instanceFileName, const ch
         }
     }
     strmbuf << NOTIFY_FILE_TAG << " " << hex << setw(8) << setfill('0') << uppercase << instances << endl;
+    pnfc->number = instances - NOTIFY_FILE_SEQ_START;
     ++instances;
     OFString sw = strmbuf.str();
 
