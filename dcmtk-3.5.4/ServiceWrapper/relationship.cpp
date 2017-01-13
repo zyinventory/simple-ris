@@ -68,8 +68,8 @@ FILE_QUEUE::const_iterator relationship::get_first_notify_filename_greater(const
         return (p.second && p.second->get_notify_filename().compare(base) > 0); });
 }
 
-void relationship::erase(FILE_QUEUE::const_iterator it)
+void relationship::erase(const string &notify_filename)
 {
-    if(opt_verbose) time_header_out(*pflog) << "relationship::::erase(" << it->second->get_unique_filename() << ")" << endl;
-    file_queue.erase(it);
+    if(opt_verbose) time_header_out(*pflog) << "relationship::::erase(" << notify_filename << ")" << endl;
+    file_queue.erase(notify_filename);
 }

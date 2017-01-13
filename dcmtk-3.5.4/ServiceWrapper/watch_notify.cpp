@@ -390,7 +390,7 @@ int watch_notify(string &cmd, ofstream &flog)
             if(pr.first == NULL || pr.second == pr.first->get_file_queue_cend()) break; // no file_notify in queue
             new_rela = pr.first;
             new_file_notify = pr.second->second;
-            if(new_file_notify == NULL) { pr.first->erase(pr.second); break; } // wrong file_notify
+            if(new_file_notify == NULL) { pr.first->erase(pr.second->first); break; } // wrong file_notify
 
             const string &unique_filename = new_file_notify->get_unique_filename();
             HANDLE_PROC_LIST::iterator ite = find_if(proc_list.begin(), proc_list.end(),
@@ -398,7 +398,7 @@ int watch_notify(string &cmd, ofstream &flog)
 
             if(ite == proc_list.end()) // no same instance is in compressing
             {
-                pr.first->erase(pr.second);
+                pr.first->erase(pr.second->first);
 
                 string received_instance_file_path(GetPacsTemp());
                 received_instance_file_path.append("\\pacs\\").append(new_file_notify->get_path()).append(1, '\\').append(new_file_notify->get_instance_filename());

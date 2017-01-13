@@ -59,7 +59,7 @@ namespace handle_context
         std::shared_ptr<file_notify> find_file_notify(const std::string &notify_filename) const;
         FILE_QUEUE::const_iterator get_first_notify_filename_greater(const std::string &base) const;
         FILE_QUEUE::const_iterator get_file_queue_cend() const { return file_queue.cend(); };
-        void erase(FILE_QUEUE::const_iterator it);
+        void erase(const std::string &notify_filename);
     };
 
     typedef std::map<std::string, std::shared_ptr<relationship> > RELATION_MAP;
@@ -174,7 +174,7 @@ namespace handle_context
 
     public:
         static handle_compress* make_handle_compress(const std::string &study_uid, const std::shared_ptr<relationship> &r, const std::shared_ptr<file_notify> &job, std::ostream &flog);
-        virtual ~handle_compress() {  };
+        virtual ~handle_compress() { relation->erase(compr_job->get_notify_filename()); };
         void print_state() const;
     };
     typedef std::list<handle_compress*> HANDLE_PROC_LIST;
