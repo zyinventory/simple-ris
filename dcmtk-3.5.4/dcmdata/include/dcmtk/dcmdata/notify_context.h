@@ -128,7 +128,7 @@ namespace handle_context
         {
             if(timeout)
             {
-                time_t diff = 0LL, last_access = get_last_access();
+                time_t diff = 0LL;
                 time(&diff);
                 diff -= last_access;
                 if(diff > timeout) return true;

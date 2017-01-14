@@ -50,10 +50,19 @@ file_notify::~file_notify()
 
 string relationship::get_assoc_id() const { return sp_assoc ? sp_assoc->get_id() : ""; }
 string relationship::get_study_uid() const { return sp_study ? sp_study->get_id() : ""; }
-string relationship::get_id() const
+relationship::relationship(shared_ptr<np_conn_assoc_dir> sp_assoc, shared_ptr<study_dir> sp_study, int time_out_diff, ostream *pflog)
+    : base_dir("", "-", "-", time_out_diff, pflog), sp_assoc(sp_assoc), sp_study(sp_study), assoc_disconn(false)
 {
-    std::string id;
-    return id.append(sp_assoc ? sp_assoc->get_id() : "").append(1, ':').append(sp_study ? sp_study->get_id() : "");
+    std::string id, empty_str;
+    id.append(sp_assoc ? sp_assoc->get_id() : empty_str).append("<->").append(sp_study ? sp_study->get_id() : empty_str);
+    set_id(id);
+}
+
+bool relationship::is_timeout_or_close()
+{
+    if(assoc_disconn) return true;
+    assoc_disconn = (sp_assoc->is_disconn() || is_time_out());
+    return assoc_disconn;
 }
 
 bool relationship::add_file_notify(const shared_ptr<file_notify> &sp_job)
@@ -61,6 +70,8 @@ bool relationship::add_file_notify(const shared_ptr<file_notify> &sp_job)
     if(sp_job && sp_job->get_notify_filename().length())
     {
         file_queue[sp_job->get_notify_filename()] = sp_job;
+        refresh_last_access();
+        assoc_disconn = false;
         return true;
     }
     else return false;
@@ -87,10 +98,11 @@ void relationship::erase(const string &notify_filename)
 
 void relationship::print_state() const
 {
-    time_header_out(*pflog) << "relationship::print_state():" << endl
-        << "\t" << sp_assoc->get_id() << " <-> " << sp_study->get_id() << endl
-        << "\trelations:" << endl;
+    time_header_out(*pflog) << "relationship::print_state(): " << get_id() << endl
+        << "\tfile_queue:" << endl;
     for_each(file_queue.cbegin(), file_queue.cend(), [](const FILE_QUEUE_PAIR &p) { if(p.second) p.second->print_state(); });
+    *pflog << "\tindex_queue:" << endl;
+    for_each(index_queue.cbegin(), index_queue.cend(), [](const FILE_QUEUE_PAIR &p) { if(p.second) p.second->print_state(); });
 }
 
 relationship::~relationship()

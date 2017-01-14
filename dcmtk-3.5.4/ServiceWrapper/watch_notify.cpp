@@ -306,14 +306,7 @@ int watch_notify(string &cmd, ofstream &flog)
 
         if(wr == WAIT_TIMEOUT || wr == WAIT_IO_COMPLETION)
         {
-            /*
-            const named_pipe_connection *p_dead = qrnps.find_and_remove_dead_connection();
-            if(p_dead)
-            {
-                p_dead->print_state();
-                delete p_dead;
-            }
-            */
+            study_dir::cleanup(&flog);
         }
         else if(wr >= WAIT_OBJECT_0 + 2 && wr < WAIT_OBJECT_0 + hsize - 2)
         {
@@ -325,9 +318,7 @@ int watch_notify(string &cmd, ofstream &flog)
                 handle_proc *phcompr = *it_proc;
                 proc_list.erase(it_proc);
                 time_header_out(flog) << "watch_notify() handle_compress exit: " << phcompr->get_id() << " " << phcompr->get_path() << endl;
-                //compress_complete(phcompr->get_id(), nfc.file.studyUID, true, nps, nfc, flog);
                 phcompr->print_state();
-                // todo: remove file_notify from assoc and study
                 delete phcompr;
             }
             else
@@ -390,7 +381,7 @@ int watch_notify(string &cmd, ofstream &flog)
             if(pr.first == NULL || pr.second == pr.first->get_file_queue_cend()) break; // no file_notify in queue
             new_rela = pr.first;
             new_file_notify = pr.second->second;
-            if(new_file_notify == NULL) { pr.first->erase(pr.second->first); break; } // wrong file_notify
+            if(new_file_notify == NULL) { pr.first->erase(pr.second->first); continue; } // wrong file_notify, erase it, next loop
 
             const string &unique_filename = new_file_notify->get_unique_filename();
             HANDLE_PROC_LIST::iterator ite = find_if(proc_list.begin(), proc_list.end(),

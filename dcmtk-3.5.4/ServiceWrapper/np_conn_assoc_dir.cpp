@@ -43,16 +43,51 @@ np_conn_assoc_dir::~np_conn_assoc_dir()
     }
 }
 
+size_t np_conn_assoc_dir::disconnect_timeout_relation(const string &study_uid)
+{
+    RELATION_MAP::const_iterator it = relations.find(study_uid);
+    if(it != relations.cend())
+    {
+        if(it->second == NULL) it = relations.erase(it);
+        else if(it->second->is_timeout_or_close())
+        {
+            dead_relations.push_back(it->second->get_id());
+            it = relations.erase(it);
+        }
+        //else do nothing
+    }
+    return relations.size();
+}
+
 void np_conn_assoc_dir::callback_pipe_closed()
 {
     if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::callback_pipe_closed()" << endl;
     RELATION_MAP::const_iterator it = relations.cbegin();
     while(it != relations.cend())
     {
-        dead_relations.push_back(it->second->get_study_uid());
+        dead_relations.push_back(it->second->get_id());
         it = relations.erase(it);
     }
     named_pipe_connection::callback_pipe_closed();
+}
+
+shared_ptr<np_conn_assoc_dir> np_conn_assoc_dir::get_shared_ptr_assoc_conn() const
+{
+    shared_ptr<named_pipe_connection> sp = get_shared_ptr_server_conn();
+    if(sp)
+    {
+        np_conn_assoc_dir* passoc = dynamic_cast<np_conn_assoc_dir*>(sp.get());
+        if(passoc && passoc == this) return shared_ptr<np_conn_assoc_dir>(sp, passoc);
+        else return NULL;
+    }
+    else return NULL;
+}
+
+shared_ptr<relationship> np_conn_assoc_dir::find_relationship_by_study_uid(const string &study_uid) const
+{
+    RELATION_MAP::const_iterator it = relations.find(study_uid);
+    if(it != relations.cend()) return it->second;
+    else return NULL;
 }
 
 void np_conn_assoc_dir::print_state() const
@@ -182,7 +217,7 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
             strcpy_s(study_path + used, sizeof(study_path) - used, study_uid.c_str());
             if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() try to create study: " << study_path << endl;
             if(MkdirRecursive(study_path))
-                pstudy = study_dir::create_instance(study_uid.c_str(), orders_study_name, notify_filename.c_str(), pflog);
+                pstudy = study_dir::create_instance(study_uid, orders_study_name, notify_filename, pflog);
             else time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() can't create dir " << study_path << endl;
         }
         if(pa && pstudy)
@@ -194,7 +229,7 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
             {
                 if(sp_sr == NULL)
                 {
-                    sp_sr.reset(new relationship(pa, pstudy, pflog));
+                    sp_sr.reset(new relationship(pa, pstudy, 10 * 1000, pflog)); // 10 seconds timeout
                     pstudy->insert_relation(sp_sr);
                 }
                 sp_ar = sp_sr;

@@ -3,7 +3,6 @@
 using namespace std;
 using namespace handle_context;
 
-string study_dir::empty_notify_filename;
 STUDY_MAP study_dir::studies_map;
 
 void study_dir::print_state() const
@@ -12,6 +11,13 @@ void study_dir::print_state() const
         << "\trelations:" << endl;
     for_each(relations.cbegin(), relations.cend(), [](const RELATION_PAIR &p) { if(p.second) p.second->print_state(); });
     base_dir::print_state();
+}
+
+shared_ptr<relationship> study_dir::find_relationship_by_assoc_id(const string &assoc_id) const
+{
+    RELATION_MAP::const_iterator it = relations.find(assoc_id);
+    if(it != relations.cend()) return it->second;
+    else return NULL;
 }
 
 void study_dir::remove_all_relations()
@@ -27,7 +33,7 @@ study_dir::~study_dir()
     remove_all_relations();
 }
 
-shared_ptr<study_dir> study_dir::create_instance(const char *study_uid, const char *path, const char *meta_notify_file, ostream *pflog)
+shared_ptr<study_dir> study_dir::create_instance(const std::string &study_uid, const std::string &path, const std::string &meta_notify_file, ostream *pflog)
 {
     shared_ptr<study_dir> p(new study_dir(study_uid, path, meta_notify_file, assoc_timeout, pflog));
     studies_map[study_uid] = p;
@@ -84,4 +90,39 @@ void study_dir::remove_all_study(ostream *pflog)
         if(it->second) it->second->remove_all_relations();
         it = studies_map.erase(it);
     }
+}
+
+void study_dir::cleanup(std::ostream *pflog)
+{
+    // begin disconnect all timeout assoc
+    STUDY_MAP::const_iterator its = studies_map.cbegin();
+    while(its != studies_map.cend())
+    {
+        if(its->second == NULL) { its = studies_map.erase(its); continue; }
+        shared_ptr<study_dir> ps(its->second);
+        
+        bool all_relations_disconn = true;
+        RELATION_MAP::iterator itr = ps->relations.begin();
+        while(itr != ps->relations.end())
+        {
+            if(itr->second == NULL) { itr = ps->relations.erase(itr); continue; }
+            shared_ptr<relationship> pr(itr->second);
+            std::shared_ptr<np_conn_assoc_dir> sp_assoc = pr->get_sp_assoc();
+            if(sp_assoc == NULL) { itr = ps->relations.erase(itr); continue; }
+
+            bool is_timeout = pr->is_timeout_or_close();
+            if(is_timeout) sp_assoc->disconnect_timeout_relation(its->first);
+            all_relations_disconn &= is_timeout;
+            ++itr; //next relation
+        }
+        if(all_relations_disconn)
+        {
+            if(ps->get_file_queue_count() == 0)
+            {
+
+            }
+        }
+        ++its; //next study
+    }
+    // end disconnect all timeout assoc
 }
