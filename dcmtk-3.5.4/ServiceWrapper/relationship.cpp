@@ -46,6 +46,7 @@ file_notify::~file_notify()
 {
     if(opt_verbose) time_header_out(*pflog) << "~file_notify():" << endl;
     if(opt_verbose) print_state();
+    *pflog << "~file_notify() OK" << endl;
 }
 
 string relationship::get_assoc_id() const { return sp_assoc ? sp_assoc->get_id() : ""; }
@@ -103,10 +104,15 @@ void relationship::print_state() const
     for_each(file_queue.cbegin(), file_queue.cend(), [](const FILE_QUEUE_PAIR &p) { if(p.second) p.second->print_state(); });
     *pflog << "\tindex_queue:" << endl;
     for_each(index_queue.cbegin(), index_queue.cend(), [](const FILE_QUEUE_PAIR &p) { if(p.second) p.second->print_state(); });
+    *pflog << "relationship::print_state() OK." << endl;
 }
 
 relationship::~relationship()
 {
-    if(opt_verbose) time_header_out(*pflog) << "relationship::~relationship():" << endl;
-    if(opt_verbose) print_state();
+    if(opt_verbose)
+    {
+        time_header_out(*pflog) << "~relationship():" << endl;
+        print_state();
+        *pflog << "~relationship() OK." << endl;
+    }
 }
