@@ -22,9 +22,13 @@ shared_ptr<relationship> study_dir::find_relationship_by_assoc_id(const string &
 
 void study_dir::remove_all_relations()
 {
-    time_header_out(*pflog) << "study_dir::remove_all_relations(" << get_id() << ")..." << endl;
     RELATION_MAP::const_iterator it = relations.cbegin();
-    while(it != relations.cend()) it = relations.erase(it);
+    if(it != relations.cend())
+    {
+        if(opt_verbose) time_header_out(*pflog) << "study_dir::remove_all_relations(" << get_id() << ")..." << endl;
+        while(it != relations.cend()) it = relations.erase(it);
+        if(opt_verbose) time_header_out(*pflog) << "study_dir::remove_all_relations() OK." << endl;
+    }
 }
 
 study_dir::~study_dir()
@@ -35,7 +39,7 @@ study_dir::~study_dir()
 
 shared_ptr<study_dir> study_dir::create_instance(const std::string &study_uid, const std::string &path, const std::string &meta_notify_file, ostream *pflog)
 {
-    shared_ptr<study_dir> p(new study_dir(study_uid, path, meta_notify_file, assoc_timeout, pflog));
+    shared_ptr<study_dir> p(new study_dir(study_uid, path, meta_notify_file, store_timeout, pflog));
     studies_map[study_uid] = p;
     return p;
 }
@@ -117,9 +121,10 @@ void study_dir::cleanup(std::ostream *pflog)
         }
         if(all_relations_disconn)
         {
-            if(ps->get_file_queue_count() == 0)
+            if(ps->is_time_out() && ps->get_file_queue_count() == 0)
             {
-
+                //todo: clear index_queue before ps->remove_all_relations
+                ps->remove_all_relations();
             }
         }
         ++its; //next study

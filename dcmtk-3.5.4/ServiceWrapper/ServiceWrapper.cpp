@@ -9,7 +9,7 @@
 using namespace std;
 
 static int argcSV;
-static char buff[FILE_BUF_SIZE], **argvSV;
+static char static_buff[FILE_BUF_SIZE], **argvSV;
 static bool startXCS = false, xcsFound = false;
 static ofstream flog;
 
@@ -174,26 +174,26 @@ static int realMain(int argc, char **argv)
     
     if(LoadSettings("..\\etc\\settings.ini", flog, opt_verbose != 0))
     {
-        if(GetSetting("StoreTimeout", buff, sizeof(buff)))
+        if(GetSetting("StoreTimeout", static_buff, sizeof(static_buff)))
         {
-            int timeout = atoi(buff);
+            int timeout = atoi(static_buff);
             if(timeout) store_timeout = timeout;
         }
-        if(GetSetting("AssocTimeout", buff, sizeof(buff)))
+        if(GetSetting("AssocTimeout", static_buff, sizeof(static_buff)))
         {
-            int timeout = atoi(buff);
+            int timeout = atoi(static_buff);
             if(timeout) assoc_timeout = timeout;
         }
-        if(GetSetting("LoopWait", buff, sizeof(buff)))
+        if(GetSetting("LoopWait", static_buff, sizeof(static_buff)))
         {
-            int timeout = atoi(buff);
+            int timeout = atoi(static_buff);
             if(timeout && timeout >= 10 && timeout <=1000) loop_wait = timeout;
         }
     }
-    if(GetSetting("ACSETimeout", buff, sizeof(buff))) cmd.append(" -ta ").append(buff); // default -ta is 30
-    sprintf_s(buff, " -td %d ", assoc_timeout);
-    cmd.append(buff);
-    if(GetSetting("AdditionalQRConfig", buff, sizeof(buff))) cmd.append(" ").append(buff);
+    if(GetSetting("ACSETimeout", static_buff, sizeof(static_buff))) cmd.append(" -ta ").append(static_buff); // default -ta is 30
+    sprintf_s(static_buff, " -td %d ", assoc_timeout);
+    cmd.append(static_buff);
+    if(GetSetting("AdditionalQRConfig", static_buff, sizeof(static_buff))) cmd.append(" ").append(static_buff);
     return watch_notify(cmd, flog);
 }
 
@@ -237,16 +237,16 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	if(ChangeToBasePacsSub(GetPacsBase(), NULL, 0)) return -3;
 
-	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", buff, sizeof(buff));
-	if(PrepareFileDir(buff))
+	GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service.txt", static_buff, sizeof(static_buff));
+	if(PrepareFileDir(static_buff))
     {
-        flog.open(buff);
+        flog.open(static_buff);
         if(flog.fail())
         {
-            cerr << "ServiceWrapper open " << buff << " failed" << endl;
+            cerr << "ServiceWrapper open " << static_buff << " failed" << endl;
             return -4;
         }
-        current_log_path = buff;
+        current_log_path = static_buff;
     }
 	else
 		return -4;

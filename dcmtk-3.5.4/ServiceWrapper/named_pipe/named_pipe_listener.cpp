@@ -171,8 +171,8 @@ size_t named_pipe_listener::remove_pipe(const shared_ptr<named_pipe_connection> 
     if(pnpc == NULL) return 0;
     SHARED_CONN_MAP::size_type removed = map_connections_read.erase(pnpc->get_overlap_read());
     removed += map_connections_write.erase(pnpc->get_overlap_write());
-    if(opt_verbose && removed) time_header_out(*pflog) << "named_pipe_listener::remove_pipe(" << pnpc->get_id() << ") "
-        << pnpc->get_overlap_read() << ", " << pnpc->get_overlap_write() << endl;
+    if(opt_verbose && removed) time_header_out(*pflog) << "named_pipe_listener::remove_pipe(" << pnpc->get_id() << ")."
+        << removed << " : " << pnpc->get_overlap_read() << ", " << pnpc->get_overlap_write() << endl;
     return removed;
 }
 

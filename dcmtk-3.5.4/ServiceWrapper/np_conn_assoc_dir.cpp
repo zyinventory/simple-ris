@@ -20,8 +20,8 @@ np_conn_assoc_dir::~np_conn_assoc_dir()
     print_state();
     if(get_meta_notify_filename().length())
     {
-        char newname[MAX_PATH];
-        strcpy_s(newname, get_meta_notify_filename().c_str());
+        char newname[MAX_PATH]; 
+        strncpy_s(newname, get_meta_notify_filename().c_str(), _TRUNCATE);
         char *p = strrchr(newname, '.');
         if(p)
         {
@@ -30,9 +30,10 @@ np_conn_assoc_dir::~np_conn_assoc_dir()
             ofstream ofs_txt(newname);
             if(ofs_txt.fail())
             {
-                char msg[1024];
-                strerror_s(msg, errno);
-                time_header_out(*pflog) << __FUNCSIG__" create complete file " << newname << " failed: " << msg << endl;
+                errno_t en = errno;
+                ostream &ostrm = time_header_out(*pflog) << __FUNCSIG__" create complete file " << newname << " failed: ";
+                strerror_s(newname, en);
+                ostrm << newname << endl;
             }
             else
             {
@@ -51,7 +52,11 @@ size_t np_conn_assoc_dir::disconnect_timeout_relation(const string &study_uid)
         if(it->second == NULL) it = relations.erase(it);
         else if(it->second->is_timeout_or_close())
         {
-            dead_relations.push_back(it->second->get_id());
+            if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::disconnect_timeout_relation() move " << it->second->get_id() << " to dead_relations." << endl;
+            char buff[FILE_BUF_SIZE];
+            strncpy_s(buff, it->second->get_id().c_str(), _TRUNCATE);
+            in_process_sequence_dll(buff + it->second->get_id().length(), sizeof(buff) - it->second->get_id().length(), " ");
+            dead_relations.push_back(buff);
             it = relations.erase(it);
         }
         //else do nothing
@@ -65,7 +70,16 @@ void np_conn_assoc_dir::callback_pipe_closed()
     RELATION_MAP::const_iterator it = relations.cbegin();
     while(it != relations.cend())
     {
-        dead_relations.push_back(it->second->get_id());
+        if(it->second)
+        {
+            if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::callback_pipe_closed() move " << it->second->get_id() << " to dead_relations." << endl;
+            char buff[FILE_BUF_SIZE];
+            strncpy_s(buff, it->second->get_id().c_str(), _TRUNCATE);
+            in_process_sequence_dll(buff + it->second->get_id().length(), sizeof(buff) - it->second->get_id().length(), " ");
+            dead_relations.push_back(buff);
+            it = relations.erase(it);
+        }
+        else if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::callback_pipe_closed() erase NULL relationship." << endl;
         it = relations.erase(it);
     }
     named_pipe_connection::callback_pipe_closed();
@@ -229,11 +243,13 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
             {
                 if(sp_sr == NULL)
                 {
-                    sp_sr.reset(new relationship(pa, pstudy, 10 * 1000, pflog)); // 10 seconds timeout
+                    sp_sr.reset(new relationship(pa, pstudy, 10, pflog)); // 10 seconds timeout
                     pstudy->insert_relation(sp_sr);
+                    if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() create new relationship(" << sp_sr->get_id() << ")." << endl;
                 }
                 sp_ar = sp_sr;
                 relations[study_uid] = sp_ar;
+                if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() pick up relationship(" << sp_sr->get_id() << ") from study_dir." << endl;
             }
             else
             {
@@ -241,6 +257,7 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
                 {
                     sp_sr = sp_ar;
                     pstudy->insert_relation(sp_sr);
+                    if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() pick up relationship(" << sp_sr->get_id() << ") from np_conn_assoc_dir." << endl;
                 }
                 else
                 {
