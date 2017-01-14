@@ -5,27 +5,27 @@
 
 namespace handle_context
 {
-    class file_notify : public base_path
+    class file_notify : public base_dir
     {
     private:
-        std::string study_uid, assoc_id, notify_filename, hash, unique_filename, instance_filename, expected_xfer, auto_publish;
+        std::string study_uid, assoc_id, hash, unique_filename, expected_xfer, auto_publish;
         long long rec_file_size;
         unsigned int seq;
 
     public:
-        file_notify() : base_path("", &std::cerr), rec_file_size(0LL), seq(0) {};
+        file_notify() : base_dir("", "", "", 0, &std::cerr), rec_file_size(0LL), seq(0) {};
         file_notify(const std::string &study_uid, const std::string &assoc_id, const std::string &path, const std::string &notify_filename, const std::string &xfer, const std::string &auto_publish,
             const std::string &hash, const std::string &unique_filename, const std::string &instance_filename, unsigned int seq, std::ostream *pflog)
-            : base_path(path, pflog), study_uid(study_uid), assoc_id(assoc_id), notify_filename(notify_filename), expected_xfer(xfer), auto_publish(auto_publish),
-            instance_filename(instance_filename), hash(hash), unique_filename(unique_filename), seq(seq), rec_file_size(0LL) {};
-        file_notify(const file_notify &r) : base_path(r), study_uid(r.study_uid), assoc_id(r.assoc_id), notify_filename(r.notify_filename), expected_xfer(r.expected_xfer), auto_publish(r.auto_publish),
-            instance_filename(r.instance_filename), hash(r.hash), unique_filename(r.unique_filename), seq(r.seq), rec_file_size(r.rec_file_size) { };
+            : base_dir(instance_filename, path, notify_filename, 0, pflog), study_uid(study_uid), assoc_id(assoc_id), expected_xfer(xfer), auto_publish(auto_publish),
+            hash(hash), unique_filename(unique_filename), seq(seq), rec_file_size(0LL) {};
+        file_notify(const file_notify &r) : base_dir(r), study_uid(r.study_uid), assoc_id(r.assoc_id), expected_xfer(r.expected_xfer), auto_publish(r.auto_publish),
+            hash(r.hash), unique_filename(r.unique_filename), seq(r.seq), rec_file_size(r.rec_file_size) { };
         file_notify& operator=(const file_notify& r);
+
+        const std::string& get_instance_filename() const { return get_id(); };
         const std::string& get_assoc_id() const { return assoc_id; };
-        const std::string& get_notify_filename() const { return notify_filename; };
         const std::string& get_hash() const { return hash; };
         const std::string& get_unique_filename() const { return unique_filename; };
-        const std::string& get_instance_filename() const { return instance_filename; };
         const std::string& get_expected_xfer() const { return expected_xfer; };
         const std::string& get_study_uid() const { return study_uid; };
         unsigned int get_seq() const { return seq; };
@@ -171,6 +171,14 @@ namespace handle_context
         void print_state() const;
     };
     typedef std::list<handle_compress*> HANDLE_PROC_LIST;
+
+    class np_conn_proc_dcmmkdir : public named_pipe_connection, public handle_proc
+    {
+    public:
+        np_conn_proc_dcmmkdir(const std::string &study_uid, const std::string &cwd, const std::string &notify_file, const std::string &cmd,
+            named_pipe_listener *pnps, int timeout) : named_pipe_connection(pnps, timeout),
+            handle_proc(study_uid, cwd, notify_file, cmd, "dcmmkdir", pnps->get_err_stream()) { };
+    };
 }
 
 #endif

@@ -5,12 +5,10 @@ using namespace handle_context;
 
 file_notify& file_notify::operator=(const file_notify& r)
 {
-    base_path::operator=(r);
+    base_dir::operator=(r);
     assoc_id = r.assoc_id;
-    notify_filename = r.notify_filename;
     hash = r.hash;
     unique_filename = r.unique_filename;
-    instance_filename = r.instance_filename;
     expected_xfer = r.expected_xfer;
     rec_file_size = r.rec_file_size;
     study_uid = r.study_uid;
@@ -20,26 +18,27 @@ file_notify& file_notify::operator=(const file_notify& r)
 
 void file_notify::clear()
 {
+    set_id("");
     set_path("");
-    assoc_id.clear(); notify_filename.clear(); hash.clear(); study_uid.clear();
-    unique_filename.clear(); instance_filename.clear(); expected_xfer.clear(); auto_publish.clear();
+    set_notify_filename("");
+    assoc_id.clear(); hash.clear(); study_uid.clear();
+    unique_filename.clear(); expected_xfer.clear(); auto_publish.clear();
     rec_file_size = 0LL;
     seq = 0;
 }
 
 void file_notify::print_state() const
 {
-    *pflog << "file_notify::print_state() notify_filename: " << notify_filename << endl
+    *pflog << "file_notify::print_state() instance_filename: " << get_id() << endl
         << "\tstudy_uid: " << study_uid << endl
         << "\tassoc_id: " << assoc_id << endl
         << "\texpected_xfer: " << expected_xfer << endl
         << "\tauto_publish: " << auto_publish << endl
         << "\tseq: " << seq << endl
-        << "\tinstance_filename: " << instance_filename << endl
         << "\thash: " << hash << endl
         << "\tunique_filename: " << unique_filename << endl
         << "\trec_file_size: " << rec_file_size << endl;
-    base_path::print_state();
+    base_dir::print_state();
 }
 
 file_notify::~file_notify()

@@ -193,8 +193,8 @@ static DWORD disable_remained_meta_notify_file(const char *pattern, ostream &flo
 static named_pipe_connection* WINAPI create_qr_pipe_connection(named_pipe_listener *pnps) { return new np_conn_assoc_dir(pnps, assoc_timeout); }
 
 static named_pipe_connection* WINAPI create_mkdir_pipe_connection(named_pipe_listener *pnps)
-{   // todo: bind study_uid and others
-    return new named_pipe_connection("", "", "", PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, assoc_timeout, pnps->get_err_stream());
+{   // todo: find from dcmmkdir_listener.connections, instead of creating new instance.
+    return new np_conn_proc_dcmmkdir("", "", "", "", pnps, store_timeout);
 }
 
 int watch_notify(string &cmd, ofstream &flog)

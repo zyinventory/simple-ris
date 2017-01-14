@@ -42,10 +42,10 @@ handle_dir::~handle_dir()
         });
     }
 
-    if(get_meta_notify_filename().length())
+    if(get_notify_filename().length())
     {
         char newname[MAX_PATH];
-        strcpy_s(newname, get_meta_notify_filename().c_str());
+        strcpy_s(newname, get_notify_filename().c_str());
         char *p = strrchr(newname, '.');
         if(p)
         {

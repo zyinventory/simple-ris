@@ -18,10 +18,10 @@ np_conn_assoc_dir::~np_conn_assoc_dir()
 {
     time_header_out(*pflog) << "~np_conn_assoc_dir(" << get_id() << ")." << endl;
     print_state();
-    if(get_meta_notify_filename().length())
+    if(get_notify_filename().length())
     {
         char newname[MAX_PATH]; 
-        strncpy_s(newname, get_meta_notify_filename().c_str(), _TRUNCATE);
+        strncpy_s(newname, get_notify_filename().c_str(), _TRUNCATE);
         char *p = strrchr(newname, '.');
         if(p)
         {
@@ -164,7 +164,7 @@ DWORD np_conn_assoc_dir::establish_conn_dir(const char *p_assoc_id)
     {
         set_path(store_path);
         set_id(assoc_id);
-        set_meta_notify_filename(notify_file);
+        set_notify_filename(notify_file);
 #ifdef _DEBUG
         time_header_out(cerr) << "np_conn_assoc_dir::establish_conn_dir() receive: " << p_assoc_id << endl;
 #endif
