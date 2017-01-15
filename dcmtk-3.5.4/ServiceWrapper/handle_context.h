@@ -170,7 +170,7 @@ namespace handle_context
         virtual ~handle_compress() { relation->add_file_to_index_queue(compr_job); };
         void print_state() const;
     };
-    typedef std::list<handle_compress*> HANDLE_PROC_LIST;
+    typedef std::list<handle_compress*> PROC_COMPR_LIST;
 
     class np_conn_proc_dcmmkdir : public named_pipe_connection, public handle_proc
     {

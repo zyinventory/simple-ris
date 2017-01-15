@@ -5,7 +5,7 @@ using namespace handle_context;
 
 static char buff[FILE_BUF_SIZE];
 static const string debug_mode_header("DebugMode");
-static HANDLE_PROC_LIST proc_list;
+static PROC_COMPR_LIST proc_list;
 /*
 static bool select_handle_dir_by_association_path(const handle_compress *pnf, const string &association_id, const string &path, ostream &flog)
 {
@@ -312,7 +312,7 @@ int watch_notify(string &cmd, ofstream &flog)
         {
             HANDLE waited = pha[wr - WAIT_OBJECT_0];
             ReleaseSemaphore(hSema, 1, NULL);
-            HANDLE_PROC_LIST::iterator it_proc = find_if(proc_list.begin(), proc_list.end(), [waited](const handle_compress *p) { return waited == p->get_handle(); });
+            PROC_COMPR_LIST::iterator it_proc = find_if(proc_list.begin(), proc_list.end(), [waited](const handle_compress *p) { return waited == p->get_handle(); });
             if(it_proc != proc_list.end())
             {
                 handle_proc *phcompr = *it_proc;
@@ -384,7 +384,7 @@ int watch_notify(string &cmd, ofstream &flog)
             if(new_file_notify == NULL) { pr.first->erase(pr.second->first); continue; } // wrong file_notify, erase it, next loop
 
             const string &unique_filename = new_file_notify->get_unique_filename();
-            HANDLE_PROC_LIST::iterator ite = find_if(proc_list.begin(), proc_list.end(),
+            PROC_COMPR_LIST::iterator ite = find_if(proc_list.begin(), proc_list.end(),
                 [&unique_filename](const handle_compress *p) { return (p->get_id().compare(unique_filename) == 0); });
 
             if(ite == proc_list.end()) // no same instance is in compressing
