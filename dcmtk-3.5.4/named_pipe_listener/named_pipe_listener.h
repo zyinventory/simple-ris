@@ -1,4 +1,7 @@
 #pragma once
+#ifndef _NAMED_PIPE_LISTENER_CLASS_
+#define _NAMED_PIPE_LISTENER_CLASS_
+
 #ifndef _ATL_STATIC_REGISTRY
 #include <string>
 #include <iostream>
@@ -20,6 +23,73 @@ namespace handle_context
 {
     const char COMMAND_CLOSE_PIPE[] = "close_pipe", COMMAND_ASSOC_BEGIN[] = "STOR_BEG", COMMAND_ASSOC_END[] = "STOR_END",
         STORE_RESULT_RELEASE[] = "RELEASE", STORE_RESULT_ABORT[] = "ABORT";
+
+    class base_path
+    {
+    private:
+        std::string path;
+
+    protected:
+        std::ostream *pflog;
+        base_path(const std::string p, std::ostream *plog) : path(p), pflog(plog) { if(pflog == NULL) pflog = &std::cerr; };
+        void set_path(const std::string& new_path) { path = new_path; };
+
+    public:
+        base_path(const base_path &r) : path(r.path), pflog(r.pflog) {};
+        base_path& operator=(const base_path &r) { path = r.path; pflog = r.pflog; return *this; };
+        virtual void print_state() const { *pflog << "base_path::print_state() path: " << path << std::endl; };
+        virtual HANDLE get_handle() const { return NULL; };
+        const std::string& get_path() const { return path; };
+        std::ostream* get_err_stream() const { return pflog; };
+    };
+
+    class base_dir : public base_path
+    {
+    private:
+        std::string id, notify_filename;
+        time_t last_access;
+        int timeout;
+
+    protected:
+        base_dir(const std::string &assoc_id, const std::string &path, const std::string &filename, int time_out_diff, std::ostream *plog)
+            : base_path(path, plog), id(assoc_id), notify_filename(filename), timeout(time_out_diff) { time(&last_access); };
+        void set_id(const std::string &new_id) { id = new_id; };
+        void set_notify_filename(const std::string &new_notify) { notify_filename = new_notify; };
+
+    public:
+        base_dir(const base_dir& r) : base_path(r), id(r.id), notify_filename(r.notify_filename),  last_access(r.last_access) {};
+        base_dir& operator=(const base_dir &r)
+        {
+            base_path::operator=(r);
+            id = r.id;
+            notify_filename = r.notify_filename;
+            last_access = r.last_access;
+            return *this;
+        };
+        void print_state() const
+        {
+            *pflog << "base_dir::print_state() id: " << id << std::endl
+                << "\tnotify_filename: " << notify_filename << std::endl
+                << "\tlast_access: " << ctime(&last_access); // ctime() shall term with LF
+            base_path::print_state();
+        };
+        const std::string& get_id() const { return id; };
+        const std::string& get_notify_filename() const { return notify_filename; };
+        int get_timeout() const { return timeout; };
+        time_t get_last_access() const { return last_access; };
+        time_t refresh_last_access() { return time(&last_access); };
+        virtual bool is_time_out() const
+        {
+            if(timeout)
+            {
+                time_t diff = 0LL;
+                time(&diff);
+                diff -= last_access;
+                if(diff > timeout) return true;
+            }
+            return false;
+        };
+    };
 
     class named_pipe_listener;
     class named_pipe_connection;
@@ -161,3 +231,5 @@ namespace handle_context
         DWORD write_pipe_complete(DWORD dwErr, DWORD cbBytesWrite, LPOVERLAPPED lpOverLap);
     };
 }
+
+#endif //_NAMED_PIPE_LISTENER_CLASS_

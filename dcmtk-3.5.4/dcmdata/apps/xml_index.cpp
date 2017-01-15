@@ -1,18 +1,14 @@
-#include <io.h>
-#include <time.h>
 #include <sys/stat.h>
-#include <string>
-#include <iterator>
-#include <algorithm>
+#include <io.h> // for _access_s
 #include <sstream>
 #include <fstream>
-
-#include <windows.h>
+#include "named_pipe_listener.h"
+// atlbase.h shall define _ATL_STATIC_REGISTRY, must include named_pipe_listener.h before atlbase.h
 #include <atlbase.h>
 #include "commonlib.h"
 #include "../include/dcmtk/dcmdata/xml_index.h"
 
-extern bool opt_verbose;
+extern int opt_verbose;
 
 /*
 instance state : [backup state]_[include state]

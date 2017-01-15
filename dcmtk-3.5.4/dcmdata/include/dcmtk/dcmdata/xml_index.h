@@ -3,11 +3,7 @@
 #ifndef _XML_INDEX_CLASS_
 #define _XML_INDEX_CLASS_
 
-#include "notify_context.h"
-#include <list>
-#include <map>
-#include <iterator>
-#include <algorithm>
+#include "named_pipe_listener.h"
 #import <msxml3.dll>
 
 namespace handle_context

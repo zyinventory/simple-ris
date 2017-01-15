@@ -78,9 +78,9 @@
 #include <numeric>
 #include <process.h>
 #include "commonlib.h"
-#include "../include/dcmtk/dcmdata/xml_index.h"
+#include "dcmtk/dcmdata/xml_index.h"
 
-bool opt_verbose = false;
+int opt_verbose = 0;
 
 #ifdef WITH_ZLIB
 #include <zlib.h>         /* for zlibVersion() */
@@ -495,7 +495,7 @@ int main(int argc, char *argv[])
 		if (cmd.findOption("--verbose"))
         {
 			ddir.enableVerboseMode();
-            opt_verbose = true;
+            opt_verbose = 1;
         }
 		if (cmd.findOption("--quiet"))
 		{
