@@ -4,13 +4,15 @@ using namespace std;
 using namespace handle_context;
 
 STUDY_MAP study_dir::studies_map;
+named_pipe_listener *study_dir::pnps;
 
 void study_dir::print_state() const
 {
-    *pflog << "study_dir::print_state() id: " << get_id() << endl
+    *get_err_stream() << "study_dir::print_state() id: " << get_id() << endl
         << "\trelations:" << endl;
     for_each(relations.cbegin(), relations.cend(), [](const RELATION_PAIR &p) { if(p.second) p.second->print_state(); });
-    base_dir::print_state();
+    named_pipe_connection::print_state();
+    handle_proc::print_state();
 }
 
 shared_ptr<relationship> study_dir::find_relationship_by_assoc_id(const string &assoc_id) const
@@ -25,23 +27,66 @@ void study_dir::remove_all_relations()
     RELATION_MAP::const_iterator it = relations.cbegin();
     if(it != relations.cend())
     {
-        if(opt_verbose) time_header_out(*pflog) << "study_dir::remove_all_relations(" << get_id() << ")..." << endl;
+        if(opt_verbose) time_header_out(*get_err_stream()) << "study_dir::remove_all_relations(" << get_id() << ")..." << endl;
         while(it != relations.cend()) it = relations.erase(it);
-        if(opt_verbose) time_header_out(*pflog) << "study_dir::remove_all_relations() OK." << endl;
+        if(opt_verbose) time_header_out(*get_err_stream()) << "study_dir::remove_all_relations() OK." << endl;
     }
 }
 
 study_dir::~study_dir()
 {
-    time_header_out(*pflog) << "study_dir::~study_dir(" << get_id() << ")..." << endl;
+    time_header_out(*get_err_stream()) << "study_dir::~study_dir(" << get_id() << ")..." << endl;
     remove_all_relations();
 }
 
-shared_ptr<study_dir> study_dir::create_instance(const std::string &study_uid, const std::string &path, const std::string &meta_notify_file, ostream *pflog)
+// path is orders_study dir's full path
+study_dir::study_dir(int timeout, const string &study_uid, const std::string &hash, const string &orders_study_path, const string &first_notify_file_in_study)
+    : named_pipe_connection(pnps, timeout), handle_proc(study_uid, "", orders_study_path, "", "dcmmkdir", pnps->get_err_stream())
 {
-    shared_ptr<study_dir> p(new study_dir(study_uid, path, meta_notify_file, store_timeout, pflog));
-    studies_map[study_uid] = p;
-    return p;
+    named_pipe_connection::set_id(study_uid);
+    //named_pipe_connection.path is \\\\.\\pipe\\dcmtk_mkdir, from pnps->get_path()
+    named_pipe_connection::set_notify_filename(first_notify_file_in_study);
+
+    string archdir(GetPacsBase());
+    archdir.append("\\pacs\\archdir\\v0000000\\").append(hash);
+    handle_proc::set_path(archdir);
+    //handle_proc.notify_filename = orders_study_path, relative path
+#ifdef _DEBUG
+    int mkdir_pos = 0;
+    char cmd[1024] = __FILE__;
+    char *p = strrchr(cmd, '\\');
+    if(p)
+    {
+        ++p;
+        strcpy_s(p, sizeof(cmd) - (p - cmd), "..\\Debug\\dcmmkdir.exe --general-purpose-dvd +I +A +X -Xs 64 ");
+        mkdir_pos = strlen(cmd);
+    }
+    else
+        mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd +I +A +X -Xs 64 ", GetPacsBase());
+#else
+    char cmd[1024];
+	int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmmkdir.exe --general-purpose-dvd +I +A +X -Xs 64 ", GetPacsBase());
+#endif
+    sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s +id %s +D %s.dir -pn dcmtk_mkdir #", 
+        opt_verbose ? "-v" : "", study_uid.c_str(), study_uid.c_str());
+    handle_proc::set_exec_cmd(cmd);
+}
+
+shared_ptr<study_dir> study_dir::create_instance(const string &study_uid, const std::string &hash, const string &orders_study_path, const string &first_notify_file_in_study)
+{
+    shared_ptr<study_dir> p(new study_dir(store_timeout, study_uid, hash, orders_study_path, first_notify_file_in_study));
+    string archdir_and_study_uid(p->get_archdir_path());
+    archdir_and_study_uid.append(1, '\\').append(study_uid);
+    if(MkdirRecursive(archdir_and_study_uid.c_str()))
+    {
+        studies_map[study_uid] = p;
+        return p;
+    }
+    else
+    {
+        time_header_out(*pnps->get_err_stream()) << "study_dir::create_instance() create dir " << archdir_and_study_uid << " failed." << endl;
+        return NULL;
+    }
 }
 
 shared_ptr<study_dir> study_dir::find(const string &study_uid)

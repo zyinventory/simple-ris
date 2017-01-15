@@ -194,7 +194,7 @@ static named_pipe_connection* WINAPI create_qr_pipe_connection(named_pipe_listen
 
 static named_pipe_connection* WINAPI create_mkdir_pipe_connection(named_pipe_listener *pnps)
 {   // todo: find from dcmmkdir_listener.connections, instead of creating new instance.
-    return new np_conn_proc_dcmmkdir("", "", "", "", pnps, store_timeout);
+    return NULL;
 }
 
 int watch_notify(string &cmd, ofstream &flog)
@@ -220,6 +220,7 @@ int watch_notify(string &cmd, ofstream &flog)
         displayErrorToCerr("dcmtk_mkdir.start_listening()", gle, &flog);
         return gle;
     }
+    study_dir::set_named_pipe_listener_ptr(&dirnps);
 
     // start dcmqrscp.exe parent proc
     sprintf_s(buff, "%s\\pacs", GetPacsBase());

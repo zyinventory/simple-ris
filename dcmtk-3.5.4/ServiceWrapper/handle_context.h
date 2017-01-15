@@ -83,7 +83,8 @@ namespace handle_context
         DWORD release_conn_dir(char *assoc_id);
 
     public:
-        np_conn_assoc_dir(named_pipe_listener *pnps, int timeout) : named_pipe_connection(pnps, timeout), pid(0), disconn_release(false) { };
+        np_conn_assoc_dir(named_pipe_listener *pnps, int timeout) // path is named_pipe path, \\\\.\\pipe\\dcmtk_qr
+            : named_pipe_connection(pnps, timeout), pid(0), disconn_release(false) { };
         virtual ~np_conn_assoc_dir();
         const std::string& get_expected_syntax() const { return expected_syntax; };
         virtual void callback_pipe_closed();
@@ -95,37 +96,6 @@ namespace handle_context
         std::shared_ptr<relationship> find_relationship_by_study_uid(const std::string &study_uid) const;
     };
 
-    typedef std::map<std::string, std::shared_ptr<study_dir> > STUDY_MAP;
-    typedef std::pair<std::string, std::shared_ptr<study_dir> > STUDY_PAIR;
-    typedef std::pair<std::shared_ptr<relationship>, FILE_QUEUE::const_iterator> RELA_POS_PAIR;
-
-    class study_dir : public base_dir
-    {
-    private:
-        static STUDY_MAP studies_map;
-
-        RELATION_MAP relations;
-
-        study_dir(const std::string &study_uid, const std::string &path, const std::string &meta_notify_file, int timeout, std::ostream *plog)
-            : base_dir(study_uid, path, meta_notify_file, timeout, plog) { };
-
-    public:
-        static std::shared_ptr<study_dir> create_instance(const std::string &study_uid, const std::string &path, const std::string &meta_notify_file, std::ostream *pflog);
-        static std::shared_ptr<study_dir> find(const std::string &study_uid);
-        static RELA_POS_PAIR find_first_job_in_studies(const std::string &base);
-        static void print_all_state() { std::for_each(studies_map.cbegin(), studies_map.cend(), [](const STUDY_PAIR &p) { if(p.second) p.second->print_state(); }); };
-        static void remove_all_study(std::ostream *pflog);
-        static void cleanup(std::ostream *pflog);
-        virtual ~study_dir();
-        virtual void print_state() const;
-        size_t get_file_queue_count() const { return std::accumulate(relations.cbegin(), relations.cend(), 0,
-            [](size_t accu, const RELATION_PAIR &p) { return accu + (p.second ? p.second->get_files_count() : 0); }); };
-        void insert_relation(const std::shared_ptr<relationship>& r) { relations[r->get_assoc_id()] = r; };
-        void remove_all_relations();
-        std::shared_ptr<relationship> find_relationship_by_assoc_id(const std::string &assoc_id) const;
-        RELA_POS_PAIR get_first_file_notify_greater(const std::string &base) const;
-    };
-
     class handle_proc : public base_dir
     {
     private:
@@ -133,6 +103,8 @@ namespace handle_context
         std::string exec_cmd, exec_name, log_path;
         PROCESS_INFORMATION procinfo;
 		DWORD priority;
+    protected:
+        void set_exec_cmd(const char *cmd) { exec_cmd = cmd; };
     public:
         handle_proc(const std::string &assoc_id, const std::string &cwd, const std::string &notify_file, const std::string &cmd, const std::string &exec_prog_name, std::ostream *plog) 
             : base_dir(assoc_id, cwd, notify_file, 0, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name), priority(NORMAL_PRIORITY_CLASS)
@@ -172,12 +144,42 @@ namespace handle_context
     };
     typedef std::list<handle_compress*> PROC_COMPR_LIST;
 
-    class np_conn_proc_dcmmkdir : public named_pipe_connection, public handle_proc
+    typedef std::map<std::string, std::shared_ptr<study_dir> > STUDY_MAP;
+    typedef std::pair<std::string, std::shared_ptr<study_dir> > STUDY_PAIR;
+    typedef std::pair<std::shared_ptr<relationship>, FILE_QUEUE::const_iterator> RELA_POS_PAIR;
+
+    class study_dir : public named_pipe_connection, public handle_proc
     {
+    private:
+        static STUDY_MAP studies_map;
+        static named_pipe_listener *pnps;
+
+        RELATION_MAP relations;
+
+        study_dir(int timeout, const std::string &study_uid, const std::string &hash, const std::string &orders_study_path, const std::string &first_notify_file_in_study);
+
     public:
-        np_conn_proc_dcmmkdir(const std::string &study_uid, const std::string &cwd, const std::string &notify_file, const std::string &cmd,
-            named_pipe_listener *pnps, int timeout) : named_pipe_connection(pnps, timeout),
-            handle_proc(study_uid, cwd, notify_file, cmd, "dcmmkdir", pnps->get_err_stream()) { };
+        static void set_named_pipe_listener_ptr(named_pipe_listener *p) { pnps = p; };
+        static std::shared_ptr<study_dir> create_instance(const std::string &study_uid, const std::string &hash, const std::string &orders_study_path, const std::string &first_notify_file_in_study);
+        static std::shared_ptr<study_dir> find(const std::string &study_uid);
+        static RELA_POS_PAIR find_first_job_in_studies(const std::string &base);
+        static void remove_all_study(std::ostream *pflog);
+        static void cleanup(std::ostream *pflog);
+        virtual ~study_dir();
+        virtual void print_state() const;
+        const std::string& get_id() const { return named_pipe_connection::get_id(); };
+        const std::string& get_notify_filename() const { return named_pipe_connection::get_notify_filename(); };
+        const std::string& get_archdir_path() const { return handle_proc::get_path(); };
+        const std::string& get_orders_study_path() const { return handle_proc::get_notify_filename(); }; //relative path
+        std::ostream* get_err_stream() const { return named_pipe_connection::get_err_stream(); };
+        virtual bool is_time_out() const { return named_pipe_connection::is_time_out(); };
+
+        size_t get_file_queue_count() const { return std::accumulate(relations.cbegin(), relations.cend(), 0,
+            [](size_t accu, const RELATION_PAIR &p) { return accu + (p.second ? p.second->get_files_count() : 0); }); };
+        void insert_relation(const std::shared_ptr<relationship>& r) { relations[r->get_assoc_id()] = r; };
+        void remove_all_relations();
+        std::shared_ptr<relationship> find_relationship_by_assoc_id(const std::string &assoc_id) const;
+        RELA_POS_PAIR get_first_file_notify_greater(const std::string &base) const;
     };
 }
 
