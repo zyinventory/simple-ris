@@ -1,12 +1,8 @@
-#include "stdafx.h"
-
-#ifndef _ATL_STATIC_REGISTRY // defined in ServiceWrapper
 #include <windows.h>
 #include <iterator>
 #include <sstream>
 #include "named_pipe_listener.h"
 #include <commonlib.h>
-#endif
 
 using namespace std;
 using namespace handle_context;

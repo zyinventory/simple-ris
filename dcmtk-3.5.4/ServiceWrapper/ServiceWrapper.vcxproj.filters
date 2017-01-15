@@ -48,12 +48,6 @@
     <ClCompile Include="named_pipe.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="named_pipe\named_pipe_connection.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="named_pipe\named_pipe_listener.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="np_conn_assoc_dir.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -78,9 +72,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="..\dcmdata\include\dcmtk\dcmdata\notify_context.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="named_pipe\named_pipe_listener.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="handle_context2.h">

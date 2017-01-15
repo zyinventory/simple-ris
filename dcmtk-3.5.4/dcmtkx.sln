@@ -86,6 +86,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmqridx", "dcmqrdb\apps\dc
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dcmqrscp", "dcmqrdb\apps\dcmqrscp.vcxproj", "{4EB5CA3D-49CA-4565-BFA3-22F7C28E0380}"
 	ProjectSection(ProjectDependencies) = postProject
+		{1F75A94F-A16D-4F7C-BFC7-FF3234354F3F} = {1F75A94F-A16D-4F7C-BFC7-FF3234354F3F}
 		{2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205} = {2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205}
 	EndProjectSection
 EndProject
@@ -155,6 +156,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "commonlib", "commonlib\commonlib.vcxproj", "{2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ServiceWrapper", "ServiceWrapper\ServiceWrapper.vcxproj", "{E36F8B21-73DF-4CE8-B8B3-2557C18F9EDE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{1F75A94F-A16D-4F7C-BFC7-FF3234354F3F} = {1F75A94F-A16D-4F7C-BFC7-FF3234354F3F}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mergedir", "mergedir\mergedir.vcxproj", "{D352DA0A-0D71-491D-9363-3276B443B168}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -218,6 +222,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jobloader", "jobloader\jobl
 	ProjectSection(ProjectDependencies) = postProject
 		{2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205} = {2DDD40CC-6CE9-483A-9B9C-73AAD0DC8205}
 	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "named_pipe_listener", "named_pipe_listener\named_pipe_listener.vcxproj", "{1F75A94F-A16D-4F7C-BFC7-FF3234354F3F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -843,6 +849,14 @@ Global
 		{EA969475-5C81-4BB6-971B-2262857A6606}.Release|Win32.Build.0 = Release|Win32
 		{EA969475-5C81-4BB6-971B-2262857A6606}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
 		{EA969475-5C81-4BB6-971B-2262857A6606}.RelWithDebInfo|Win32.Build.0 = Release|Win32
+		{1F75A94F-A16D-4F7C-BFC7-FF3234354F3F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{1F75A94F-A16D-4F7C-BFC7-FF3234354F3F}.Debug|Win32.Build.0 = Debug|Win32
+		{1F75A94F-A16D-4F7C-BFC7-FF3234354F3F}.MinSizeRel|Win32.ActiveCfg = Release|Win32
+		{1F75A94F-A16D-4F7C-BFC7-FF3234354F3F}.MinSizeRel|Win32.Build.0 = Release|Win32
+		{1F75A94F-A16D-4F7C-BFC7-FF3234354F3F}.Release|Win32.ActiveCfg = Release|Win32
+		{1F75A94F-A16D-4F7C-BFC7-FF3234354F3F}.Release|Win32.Build.0 = Release|Win32
+		{1F75A94F-A16D-4F7C-BFC7-FF3234354F3F}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
+		{1F75A94F-A16D-4F7C-BFC7-FF3234354F3F}.RelWithDebInfo|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

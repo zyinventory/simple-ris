@@ -248,7 +248,7 @@ handle_compress* handle_compress::make_handle_compress(const string &study_uid, 
             mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never %s ", GetPacsBase(), verbose_flag, codec, job->get_instance_filename().c_str());
 #else
         char cmd[1024];
-	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never -ds %s ", GetPacsBase(), verbose_flag, codec, job.get_instance_filename().c_str());
+	    int mkdir_pos = sprintf_s(cmd, "%s\\bin\\dcmcjpeg.exe %s %s --uid-never -ds %s ", GetPacsBase(), verbose_flag, codec, job->get_instance_filename().c_str());
 #endif
         int ctn = mkdir_pos;
         ctn += sprintf_s(cmd + mkdir_pos, sizeof(cmd) - mkdir_pos, "%s\\pacs\\archdir\\v0000000\\%s\\%s\\", GetPacsBase(), job->get_hash().c_str(), study_uid.c_str());

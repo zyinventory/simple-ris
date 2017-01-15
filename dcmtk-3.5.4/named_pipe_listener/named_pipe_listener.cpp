@@ -1,13 +1,9 @@
-#include "stdafx.h"
-
-#ifndef _ATL_STATIC_REGISTRY // defined in ServiceWrapper
 #include <windows.h>
 #include <set>
 #include <algorithm>
 #include "named_pipe_listener.h"
 #include <commonlib.h>
 extern int opt_verbose;
-#endif
 
 using namespace std;
 using namespace handle_context;

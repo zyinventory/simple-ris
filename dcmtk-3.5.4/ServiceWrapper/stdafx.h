@@ -49,7 +49,7 @@
 #include "commonlib.h"
 #include "../dcmdata/include/dcmtk/dcmdata/dconotify.h"
 #include "../dcmdata/include/dcmtk/dcmdata/notify_context.h"
-#include "named_pipe/named_pipe_listener.h"
+#include "named_pipe_listener.h"
 
 #include "handle_context.h"
 #include "handle_context2.h"
