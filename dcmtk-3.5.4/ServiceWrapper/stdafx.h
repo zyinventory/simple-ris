@@ -47,8 +47,7 @@
 
 #define FILE_BUF_SIZE 1024
 #include "commonlib.h"
-#include "../dcmdata/include/dcmtk/dcmdata/dconotify.h"
-#include "../dcmdata/include/dcmtk/dcmdata/notify_context.h"
+#include "dcmtk/dcmdata/notify_context.h"
 #include "named_pipe_listener.h"
 
 #include "handle_context.h"

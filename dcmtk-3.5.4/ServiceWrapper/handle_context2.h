@@ -54,6 +54,7 @@ namespace handle_context
     };
     
     class named_pipe_server;
+    typedef std::list<NOTIFY_FILE_CONTEXT> NOTIFY_LIST;
 
     class handle_dir : public base_dir // handle_dir is association
     {

@@ -3,6 +3,8 @@
 #define _NAMED_PIPE_LISTENER_CLASS_
 
 #ifndef _ATL_STATIC_REGISTRY
+#include <Windows.h>
+#include <time.h>
 #include <string>
 #include <iostream>
 #include <list>

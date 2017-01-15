@@ -71,9 +71,6 @@
     <ClInclude Include="handle_context.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="..\dcmdata\include\dcmtk\dcmdata\notify_context.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="handle_context2.h">
       <Filter>头文件</Filter>
     </ClInclude>
