@@ -158,7 +158,6 @@ namespace handle_context
     private:
         static STUDY_MAP studies_map;
         static named_pipe_listener *pnps;
-        static std::shared_ptr<study_dir> half_conn_study;
 
         RELATION_MAP relations;
 
@@ -168,8 +167,6 @@ namespace handle_context
         static void set_named_pipe_listener_ptr(named_pipe_listener *p) { pnps = p; };
         static std::shared_ptr<study_dir> create_instance(const std::string &study_uid, const std::string &hash, const std::string &orders_study_path, const std::string &first_notify_file_in_study);
         static std::shared_ptr<study_dir> find(const std::string &study_uid);
-        static DWORD find_first_study_to_start_process();
-        static std::shared_ptr<study_dir>& get_half_conn_study() { return half_conn_study; };
         static RELA_POS_PAIR find_first_job_in_studies(const std::string &base);
         static void remove_all_study(std::ostream *pflog);
         static void cleanup(std::ostream *pflog);

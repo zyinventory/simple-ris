@@ -95,7 +95,7 @@ namespace handle_context
 
     class named_pipe_listener;
     class named_pipe_connection;
-    typedef named_pipe_connection* (WINAPI *LPPIPE_CONNECT_CALLBACK)(named_pipe_listener*);
+    typedef std::shared_ptr<named_pipe_connection> (WINAPI *LPPIPE_CONNECT_CALLBACK)(named_pipe_listener*, ULONG);
     void CALLBACK read_pipe_complete(DWORD dwErr, DWORD cbBytesRead, LPOVERLAPPED lpOverLap);
     void CALLBACK write_pipe_complete(DWORD dwErr, DWORD cbBytesWrite, LPOVERLAPPED lpOverLap);
     std::ostream* find_err_log_all();
@@ -114,7 +114,7 @@ namespace handle_context
         HANDLE hPipeEvent, hPipe; // hPipe will change per listening
         size_t write_buff_size, read_buff_size;
         OVERLAPPED olPipeConnectOnly;
-        LPPIPE_CONNECT_CALLBACK connect_callback;
+        LPPIPE_CONNECT_CALLBACK callback_bind_connection;
         SHARED_CONN_MAP map_connections_read, map_connections_write;
 
     public:
@@ -126,11 +126,11 @@ namespace handle_context
         static std::ostream* find_err_log();
         static void CALLBACK remove_closed_connection(ULONG_PTR dwParam);
         named_pipe_listener(const char *pipe_path, DWORD write_size, DWORD read_size, LPPIPE_CONNECT_CALLBACK conn_callback, std::ostream *plog)
-            : base_path(pipe_path, plog), hPipeEvent(NULL), hPipe(NULL), write_buff_size(write_size), read_buff_size(read_size), connect_callback(conn_callback)
+            : base_path(pipe_path, plog), hPipeEvent(NULL), hPipe(NULL), write_buff_size(write_size), read_buff_size(read_size), callback_bind_connection(conn_callback)
             { memset(&olPipeConnectOnly, 0, sizeof(OVERLAPPED)); };
         named_pipe_listener(const named_pipe_listener &r) : base_path(r), hPipeEvent(r.hPipeEvent), hPipe(r.hPipe),
             write_buff_size(r.write_buff_size), read_buff_size(r.read_buff_size), olPipeConnectOnly(r.olPipeConnectOnly),
-            connect_callback(r.connect_callback){};
+            callback_bind_connection(r.callback_bind_connection){};
         named_pipe_listener& operator=(const named_pipe_listener &r);
         virtual ~named_pipe_listener(void);
         size_t get_write_buff_size() const { return write_buff_size; };
@@ -199,12 +199,11 @@ namespace handle_context
         };
         // server connection constructor
         named_pipe_connection(named_pipe_listener *pnps, int timeout) : base_dir("", pnps->get_path().c_str(), "", timeout, pnps->get_err_stream()),
-            closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), hEvent(pnps),
+            closing(false), reading(false), ptr_write_buff(NULL), ptr_read_buff(NULL), bytes_queued(0), hEvent(pnps->get_handle()),
             write_buff_size(pnps->get_write_buff_size()), read_buff_size(pnps->get_read_buff_size()), hPipeInst(pnps->get_current_pipe_handle())
         {
             memset(&oOverlap_read, 0, sizeof(oOverlap_read));
             memset(&oOverlap_write, 0, sizeof(oOverlap_write));
-            hEvent = pnps->get_handle();
             oOverlap_read.hEvent = hEvent;
             oOverlap_write.hEvent = hEvent;
             ptr_read_buff = new char[read_buff_size + 1];

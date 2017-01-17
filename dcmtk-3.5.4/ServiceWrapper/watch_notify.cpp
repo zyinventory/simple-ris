@@ -221,11 +221,12 @@ static bool switch_log(ofstream &flog)
     return true;
 }
 
-static named_pipe_connection* WINAPI create_qr_pipe_connection(named_pipe_listener *pnps) { return new np_conn_assoc_dir(pnps, assoc_timeout); }
+static shared_ptr<named_pipe_connection> WINAPI create_qr_pipe_connection(named_pipe_listener *pnps, ULONG clientProcId)
+{ return shared_ptr<named_pipe_connection>(new np_conn_assoc_dir(pnps, assoc_timeout)); }
 
-static named_pipe_connection* WINAPI create_mkdir_pipe_connection(named_pipe_listener *pnps)
-{   // todo: find from dcmmkdir_listener.connections, instead of creating new instance.
-    return NULL;
+static shared_ptr<named_pipe_connection> WINAPI bind_mkdir_pipe_connection(named_pipe_listener *pnps, ULONG clientProcId)
+{   //todo: find dcmmkdir connection by clientProcId
+    return shared_ptr<named_pipe_connection>();
 }
 
 int watch_notify(string &cmd, ofstream &flog)
@@ -244,7 +245,7 @@ int watch_notify(string &cmd, ofstream &flog)
         return gle;
     }
     // listen on named pipe dcmtk_mkdir
-    named_pipe_listener dirnps("\\\\.\\pipe\\dcmtk_mkdir", PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, create_mkdir_pipe_connection, &flog);
+    named_pipe_listener dirnps("\\\\.\\pipe\\dcmtk_mkdir", PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, bind_mkdir_pipe_connection, &flog);
     gle = dirnps.start_listening();
     if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
     {
@@ -399,8 +400,6 @@ int watch_notify(string &cmd, ofstream &flog)
         }
 
         relationship::find_first_file_notify_to_start_process(hSema, proc_list, flog);
-
-        study_dir::find_first_study_to_start_process();
 
         // do idle work
         if(wr == WAIT_TIMEOUT)

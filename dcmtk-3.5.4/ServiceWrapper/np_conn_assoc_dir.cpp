@@ -220,6 +220,7 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
 
     if(get_event_handle())
     {   // create study_dir if not exist
+        bool create_new_study = false;
         shared_ptr<study_dir> pstudy = study_dir::find(study_uid);
         if(pstudy == NULL)
         {
@@ -231,7 +232,10 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
             strcpy_s(study_path + used, sizeof(study_path) - used, study_uid.c_str());
             if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() try to create study: " << study_path << endl;
             if(MkdirRecursive(study_path))
+            {
                 pstudy = study_dir::create_instance(study_uid, hash, orders_study_name, notify_filename);
+                create_new_study = true;
+            }
             else time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() create dir " << study_path << " failed." << endl;
         }
         if(pa && pstudy)
@@ -274,6 +278,7 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
                 sp_sr->add_file_notify(sp_f);
             }
         }
+        if(create_new_study && pstudy)  pstudy->start_process(true);
     }
     return 0;
 }

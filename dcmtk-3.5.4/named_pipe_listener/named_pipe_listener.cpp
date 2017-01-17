@@ -19,7 +19,7 @@ named_pipe_listener& named_pipe_listener::operator=(const named_pipe_listener &r
     write_buff_size = r.write_buff_size;
     read_buff_size = r.read_buff_size;
     olPipeConnectOnly = r.olPipeConnectOnly;
-    connect_callback = r.connect_callback;
+    callback_bind_connection = r.callback_bind_connection;
     return *this;
 }
 
@@ -132,12 +132,24 @@ DWORD named_pipe_listener::pipe_client_connect_incoming()
     if(GetOverlappedResult(hPipe, &olPipeConnectOnly, &cbRet, TRUE))
     {
         if(opt_verbose) time_header_out(*pflog) << __FUNCSIG__" async operation complete" << endl;
+        ULONG clientProcId = 0;
+        GetNamedPipeClientProcessId(hPipe, &clientProcId);
         // bind hPipe to named pipe instance
-        pnpc.reset(connect_callback(this));
-        map_connections_read[pnpc->get_overlap_read()] = pnpc;
-        map_connections_write[pnpc->get_overlap_write()] = pnpc;
-        if(opt_verbose) time_header_out(*pflog) << "named_pipe_listener::pipe_client_connect_incoming() add "
-            << pnpc->get_overlap_read() << ", " << pnpc->get_overlap_write() << endl;
+        pnpc = callback_bind_connection(this, clientProcId);
+        if(pnpc)
+        {
+            map_connections_read[pnpc->get_overlap_read()] = pnpc;
+            map_connections_write[pnpc->get_overlap_write()] = pnpc;
+            if(opt_verbose) time_header_out(*pflog) << "named_pipe_listener::pipe_client_connect_incoming() add "
+                << pnpc->get_overlap_read() << ", " << pnpc->get_overlap_write() << endl;
+        }
+        else
+        {
+            gle = displayErrorToCerr(__FUNCSIG__ " connect_callback()", E_POINTER, pflog);
+            // discard this corrupt named pipe instance
+            DisconnectNamedPipe(hPipe);
+            CloseHandle(hPipe);
+        }
     }
     else
     {
@@ -147,17 +159,19 @@ DWORD named_pipe_listener::pipe_client_connect_incoming()
         CloseHandle(hPipe);
     }
 
-    gle = start_listening(); // start a new listening named pipe, new hPipe is created
-    if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
-        return displayErrorToCerr(__FUNCSIG__ " start_listening()", gle, pflog);
+    DWORD gle2 = start_listening(); // start a new listening named pipe, new hPipe is created
+    if(gle2 != ERROR_IO_PENDING && gle2 != ERROR_PIPE_CONNECTED)
+        return displayErrorToCerr(__FUNCSIG__ " start_listening()", gle2, pflog);
 
-    gle = pnpc->start_working();
-    if(gle)
+    if(gle == 0) // bind conn ok
     {
-        displayErrorToCerr(__FUNCSIG__ " pnpc->start_working()", gle, pflog);
-        pnpc->close_pipe();
-        SleepEx(0, TRUE);
-        remove_pipe(pnpc);
+        gle = pnpc->start_working();
+        if(gle)
+        {
+            displayErrorToCerr(__FUNCSIG__ " pnpc->start_working()", gle, pflog);
+            pnpc->close_pipe();
+            remove_pipe(pnpc);
+        }
     }
     return 0;
 }

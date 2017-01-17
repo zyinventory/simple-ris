@@ -172,7 +172,7 @@ DWORD handle_proc::start_process(bool out_redirect)
     {
         DWORD gle = GetLastError();
         if(logFile != INVALID_HANDLE_VALUE) CloseHandle(logFile);
-        return displayErrorToCerr(__FUNCSIG__, gle, &*pflog);
+        return displayErrorToCerr(__FUNCSIG__" CreateProcess() failed", gle, &*pflog);
     }
 }
 
