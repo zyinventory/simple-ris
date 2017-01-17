@@ -243,7 +243,7 @@ DWORD np_conn_assoc_dir::process_file_incoming(char *p_assoc_id)
             {
                 if(sp_sr == NULL)
                 {
-                    sp_sr.reset(new relationship(pa, pstudy, 10, pflog)); // 10 seconds timeout
+                    sp_sr.reset(new relationship(pa, pstudy, store_timeout, pflog));
                     pstudy->insert_relation(sp_sr);
                     if(opt_verbose) time_header_out(*pflog) << "np_conn_assoc_dir::process_file_incoming() create new relationship(" << sp_sr->get_id() << ")." << endl;
                 }

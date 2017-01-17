@@ -5,6 +5,7 @@ using namespace handle_context;
 
 STUDY_MAP study_dir::studies_map;
 named_pipe_listener *study_dir::pnps;
+shared_ptr<study_dir> study_dir::half_conn_study;
 
 void study_dir::print_state() const
 {
@@ -39,7 +40,6 @@ study_dir::~study_dir()
     remove_all_relations();
 }
 
-// path is orders_study dir's full path
 study_dir::study_dir(int timeout, const string &study_uid, const std::string &hash, const string &orders_study_path, const string &first_notify_file_in_study)
     : named_pipe_connection(pnps, timeout), handle_proc(study_uid, "", orders_study_path, "", "dcmmkdir", pnps->get_err_stream())
 {
@@ -94,6 +94,25 @@ shared_ptr<study_dir> study_dir::find(const string &study_uid)
     STUDY_MAP::iterator it = studies_map.find(study_uid);
     if(it != studies_map.end()) return it->second;
     else return NULL;
+}
+
+DWORD study_dir::find_first_study_to_start_process()
+{
+    if(half_conn_study != NULL) return 0;
+    STUDY_MAP::const_iterator it = studies_map.cbegin();
+    while(it != studies_map.cend())
+    {
+        if(it->second)
+        {
+            if(!it->second->is_starting_process() &&
+                (half_conn_study == NULL || it->second->get_notify_filename().compare(half_conn_study->get_notify_filename()) < 0))
+                half_conn_study = it->second;
+            ++it;
+        }
+        else it = studies_map.erase(it);
+    }
+    if(half_conn_study != NULL) return half_conn_study->start_process(true);
+    else return 0;
 }
 
 RELA_POS_PAIR study_dir::get_first_file_notify_greater(const std::string &base) const

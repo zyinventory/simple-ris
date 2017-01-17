@@ -39,6 +39,8 @@ namespace handle_context
     typedef std::pair<std::string, std::shared_ptr<file_notify> > FILE_QUEUE_PAIR;
     class np_conn_assoc_dir;
     class study_dir;
+    class handle_compress;
+    typedef std::list<handle_compress*> PROC_COMPR_LIST;
 
     class relationship : public base_dir
     {
@@ -49,6 +51,7 @@ namespace handle_context
         FILE_QUEUE file_queue, index_queue;
 
     public:
+        static void find_first_file_notify_to_start_process(HANDLE hSema, PROC_COMPR_LIST &proc_list, std::ostream &flog);
         relationship(std::shared_ptr<np_conn_assoc_dir> sp_assoc, std::shared_ptr<study_dir> sp_study, int time_out_diff, std::ostream *pflog);
         virtual ~relationship();
         std::string get_assoc_id() const;
@@ -103,14 +106,16 @@ namespace handle_context
         std::string exec_cmd, exec_name, log_path;
         PROCESS_INFORMATION procinfo;
 		DWORD priority;
+        bool starting_process;
     protected:
         void set_exec_cmd(const char *cmd) { exec_cmd = cmd; };
+        void close_proc();
     public:
         handle_proc(const std::string &assoc_id, const std::string &cwd, const std::string &notify_file, const std::string &cmd, const std::string &exec_prog_name, std::ostream *plog) 
-            : base_dir(assoc_id, cwd, notify_file, 0, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name), priority(NORMAL_PRIORITY_CLASS)
-            { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
+            : base_dir(assoc_id, cwd, notify_file, 0, plog), hlog(NULL), exec_cmd(cmd), exec_name(exec_prog_name),
+            priority(NORMAL_PRIORITY_CLASS), starting_process(false) { memset(&procinfo, 0, sizeof(PROCESS_INFORMATION)); };
         handle_proc(const handle_proc& o) : base_dir(o), hlog(o.hlog), exec_cmd(o.exec_cmd), exec_name(o.exec_name),
-			log_path(o.log_path), procinfo(o.procinfo), priority(o.priority) {};
+			log_path(o.log_path), procinfo(o.procinfo), priority(o.priority), starting_process(false) {};
         
         static bool make_proc_ris_integration(const NOTIFY_FILE_CONTEXT *pnfc, const std::string &prog_path, std::ostream &flog);
 
@@ -123,7 +128,8 @@ namespace handle_context
         const std::string& get_exec_name() const { return exec_name; };
         const std::string& get_log_path() const { return log_path; };
         const PROCESS_INFORMATION& get_procinfo() const { return procinfo; };
-        int start_process(bool out_redirect);
+        const bool is_starting_process() const { return starting_process; };
+        DWORD start_process(bool out_redirect);
     };
 
     class handle_compress : public handle_proc
@@ -142,7 +148,6 @@ namespace handle_context
         virtual ~handle_compress() { relation->add_file_to_index_queue(compr_job); };
         void print_state() const;
     };
-    typedef std::list<handle_compress*> PROC_COMPR_LIST;
 
     typedef std::map<std::string, std::shared_ptr<study_dir> > STUDY_MAP;
     typedef std::pair<std::string, std::shared_ptr<study_dir> > STUDY_PAIR;
@@ -153,6 +158,7 @@ namespace handle_context
     private:
         static STUDY_MAP studies_map;
         static named_pipe_listener *pnps;
+        static std::shared_ptr<study_dir> half_conn_study;
 
         RELATION_MAP relations;
 
@@ -162,6 +168,8 @@ namespace handle_context
         static void set_named_pipe_listener_ptr(named_pipe_listener *p) { pnps = p; };
         static std::shared_ptr<study_dir> create_instance(const std::string &study_uid, const std::string &hash, const std::string &orders_study_path, const std::string &first_notify_file_in_study);
         static std::shared_ptr<study_dir> find(const std::string &study_uid);
+        static DWORD find_first_study_to_start_process();
+        static std::shared_ptr<study_dir>& get_half_conn_study() { return half_conn_study; };
         static RELA_POS_PAIR find_first_job_in_studies(const std::string &base);
         static void remove_all_study(std::ostream *pflog);
         static void cleanup(std::ostream *pflog);

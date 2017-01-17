@@ -190,6 +190,37 @@ static DWORD disable_remained_meta_notify_file(const char *pattern, ostream &flo
     return 0;
 }
 
+static bool switch_log(ofstream &flog)
+{
+    GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service_n.txt", buff, sizeof(buff));
+    if(flog.tellp() > 10 * 1024 * 1024 || strncmp(buff, current_log_path.c_str(), 20)) // 20 == strlen("pacs_log\\YYYY\\MM\\DD\\")
+    {
+	    if(PrepareFileDir(buff))
+        {
+            if(flog.is_open())
+            {
+                time_header_out(flog) << "to be continued" << endl;
+                flog.close();
+            }
+            flog.open(buff);
+            if(flog.fail())
+            {
+                cerr << "watch_notify() switch log " << buff << " failed" << endl;
+                return false;
+            }
+            time_header_out(flog) << "continuation of " << current_log_path << endl;
+            current_log_path = buff;
+        }
+	    else
+        {
+            DWORD gle = GetLastError();
+            cerr << "watch_notify() switch log failed, PrepareFileDir(" << buff << ") failed" << endl;
+		    return false;
+        }
+    }
+    return true;
+}
+
 static named_pipe_connection* WINAPI create_qr_pipe_connection(named_pipe_listener *pnps) { return new np_conn_assoc_dir(pnps, assoc_timeout); }
 
 static named_pipe_connection* WINAPI create_mkdir_pipe_connection(named_pipe_listener *pnps)
@@ -307,7 +338,7 @@ int watch_notify(string &cmd, ofstream &flog)
 
         if(wr == WAIT_TIMEOUT || wr == WAIT_IO_COMPLETION)
         {
-            study_dir::cleanup(&flog);
+            // see following idle work
         }
         else if(wr >= WAIT_OBJECT_0 + 2 && wr < WAIT_OBJECT_0 + hsize - 2)
         {
@@ -367,118 +398,15 @@ int watch_notify(string &cmd, ofstream &flog)
 			break; // break main loop
         }
 
-        // find first tuple in compress queue
-		DWORD dw = WAIT_OBJECT_0;
-        shared_ptr<relationship> new_rela;
-        shared_ptr<file_notify> new_file_notify;
-        string current_notify_filename_base;
-        do
-        {
-            new_rela = NULL;
-            new_file_notify = NULL;
-            RELA_POS_PAIR pr;
-            if(proc_list.size() < WORKER_CORE_NUM) // some core idle
-                pr = study_dir::find_first_job_in_studies(current_notify_filename_base);
-            if(pr.first == NULL || pr.second == pr.first->get_file_queue_cend()) break; // no file_notify in queue
-            new_rela = pr.first;
-            new_file_notify = pr.second->second;
-            if(new_file_notify == NULL) { pr.first->erase(pr.second->first); continue; } // wrong file_notify, erase it, next loop
+        relationship::find_first_file_notify_to_start_process(hSema, proc_list, flog);
 
-            const string &unique_filename = new_file_notify->get_unique_filename();
-            PROC_COMPR_LIST::iterator ite = find_if(proc_list.begin(), proc_list.end(),
-                [&unique_filename](const handle_compress *p) { return (p->get_id().compare(unique_filename) == 0); });
-
-            if(ite == proc_list.end()) // no same instance is in compressing
-            {
-                pr.first->erase(pr.second->first);
-
-                string received_instance_file_path(GetPacsTemp());
-                received_instance_file_path.append("\\pacs\\").append(new_file_notify->get_path()).append(1, '\\').append(new_file_notify->get_instance_filename());
-                struct _stat64 fs;
-                if(_stat64(received_instance_file_path.c_str(), &fs))
-                {
-                    strerror_s(buff, errno);
-                    time_header_out(flog) << __FUNCSIG__" _stat64(" << received_instance_file_path << ") fail: " << buff << endl;
-                    fs.st_size = 0LL;
-                    continue;
-                }
-
-			    dw = WaitForSingleObject(hSema, 0);
-                if(dw == WAIT_OBJECT_0)
-                {
-                    new_file_notify->set_rec_file_size(fs.st_size);
-                    handle_compress* compr_ptr = handle_compress::make_handle_compress(pr.first->get_study_uid(), new_rela, new_file_notify, flog);
-                    if(compr_ptr)
-                    {
-						compr_ptr->set_priority(BELOW_NORMAL_PRIORITY_CLASS);
-                        if(compr_ptr->start_process(false))
-                        {   // failed
-                            time_header_out(flog) << "watch_notify() handle_compress::start_process() failed: " << new_file_notify->get_path() << " " << new_file_notify->get_instance_filename() << " " << new_file_notify->get_unique_filename() << endl;
-                            delete compr_ptr;
-                            ReleaseSemaphore(hSema, 1, NULL);
-                        }
-                        else// succeed
-                        {
-                            time_header_out(flog) << "watch_notify() handle_compress::start_process() OK: " << new_file_notify->get_path() << " " << new_file_notify->get_instance_filename() << " " << new_file_notify->get_unique_filename() << endl;
-                            proc_list.push_back(compr_ptr);
-                        }
-                    }
-                    else
-                    {
-                        time_header_out(flog) << "watch_notify() handle_compress::make_handle_compress() failed: " << new_file_notify->get_path() << " " << new_file_notify->get_instance_filename() << endl;
-                        ReleaseSemaphore(hSema, 1, NULL);
-                    }
-                }
-			    else if(dw == WAIT_FAILED)
-                {
-                    displayErrorToCerr("watch_notify() WaitForSingleObject(hSema)", GetLastError(), &flog);
-                    break; // break to main loop
-                }
-#ifdef _DEBUG
-			    else if(dw == WAIT_TIMEOUT)
-                {
-				    time_header_out(flog) << "watch_notify() WaitForSingleObject(hSema) WAIT_TIMEOUT" << endl;
-                    break; // break to main loop
-                }
-#endif
-            }
-            else // the same instance is in compressing
-            {
-                time_header_out(flog) << "watch_notify() skip exist compress unique name "
-                    << new_file_notify->get_unique_filename() << " src notify: " << new_file_notify->get_notify_filename() << endl;
-                current_notify_filename_base = new_file_notify->get_notify_filename();
-            }
-        } while(new_file_notify);
+        study_dir::find_first_study_to_start_process();
 
         // do idle work
         if(wr == WAIT_TIMEOUT)
         {
-            //switch log file
-            GenerateTime("pacs_log\\%Y\\%m\\%d\\%H%M%S_service_n.txt", buff, sizeof(buff));
-            if(flog.tellp() > 10 * 1024 * 1024 || strncmp(buff, current_log_path.c_str(), 20)) // 20 == strlen("pacs_log\\YYYY\\MM\\DD\\")
-            {
-	            if(PrepareFileDir(buff))
-                {
-                    if(flog.is_open())
-                    {
-                        time_header_out(flog) << "to be continued" << endl;
-                        flog.close();
-                    }
-                    flog.open(buff);
-                    if(flog.fail())
-                    {
-                        cerr << "watch_notify() switch log " << buff << " failed" << endl;
-                        break; // while(GetSignalInterruptValue() == 0)
-                    }
-                    time_header_out(flog) << "continuation of " << current_log_path << endl;
-                    current_log_path = buff;
-                }
-	            else
-                {
-                    cerr << "watch_notify() switch log failed, PrepareFileDir(" << buff << ") failed" << endl;
-		            break; // while(GetSignalInterruptValue() == 0)
-                }
-            }
+            if(!switch_log(flog)) break; // while(GetSignalInterruptValue() == 0);
+            study_dir::cleanup(&flog);
 		}
     } // end while(GetSignalInterruptValue() == 0)
 

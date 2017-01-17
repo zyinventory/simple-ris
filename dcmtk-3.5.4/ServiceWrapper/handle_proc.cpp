@@ -78,7 +78,7 @@ void handle_proc::print_state() const
     base_dir::print_state();
 }
 
-handle_proc::~handle_proc()
+void handle_proc::close_proc()
 {
     if(strcmp(exec_name.c_str(), "dcmcjpeg") || opt_verbose) time_header_out(*pflog) << "handle_proc destory " << exec_name << ": "
         << hex << setw(8) << setfill('0') << uppercase << procinfo.hThread << ", " << procinfo.hProcess << endl;
@@ -100,7 +100,12 @@ handle_proc::~handle_proc()
     }
 }
 
-int handle_proc::start_process(bool out_redirect)
+handle_proc::~handle_proc()
+{
+    close_proc();
+}
+
+DWORD handle_proc::start_process(bool out_redirect)
 {
     STARTUPINFO sinfo;
 	memset(&sinfo, 0, sizeof(STARTUPINFO));
@@ -159,6 +164,7 @@ int handle_proc::start_process(bool out_redirect)
                 DUPLICATE_CLOSE_SOURCE)) // logFile will be closed whether DuplicateHandle() successfully or not.
                 hlog = NULL;
         }
+        starting_process = true;
         if(opt_verbose) time_header_out(*pflog) << "handle_proc::start_process(" << exec_cmd << ") OK" << endl;
 		return 0;
 	}
