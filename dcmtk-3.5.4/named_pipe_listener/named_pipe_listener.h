@@ -7,9 +7,12 @@
 #include <time.h>
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <list>
+#include <set>
 #include <map>
 #include <iterator>
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <array>
@@ -174,6 +177,7 @@ namespace handle_context
         DWORD write_message_pack();
 
     protected:
+        void set_handle(HANDLE hPipe) { hPipeInst = hPipe; };
         std::shared_ptr<named_pipe_connection> get_shared_ptr_server_conn() const
         {
             named_pipe_listener *p = get_listener();

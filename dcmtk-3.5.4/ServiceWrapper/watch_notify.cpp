@@ -224,11 +224,6 @@ static bool switch_log(ofstream &flog)
 static shared_ptr<named_pipe_connection> WINAPI create_qr_pipe_connection(named_pipe_listener *pnps, ULONG clientProcId)
 { return shared_ptr<named_pipe_connection>(new np_conn_assoc_dir(pnps, assoc_timeout)); }
 
-static shared_ptr<named_pipe_connection> WINAPI bind_mkdir_pipe_connection(named_pipe_listener *pnps, ULONG clientProcId)
-{   //todo: find dcmmkdir connection by clientProcId
-    return shared_ptr<named_pipe_connection>();
-}
-
 int watch_notify(string &cmd, ofstream &flog)
 {
     sprintf_s(buff, "%s\\pacs\\"NOTIFY_BASE"\\*.dfc", GetPacsTemp());
@@ -245,7 +240,7 @@ int watch_notify(string &cmd, ofstream &flog)
         return gle;
     }
     // listen on named pipe dcmtk_mkdir
-    named_pipe_listener dirnps("\\\\.\\pipe\\dcmtk_mkdir", PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, bind_mkdir_pipe_connection, &flog);
+    named_pipe_listener dirnps("\\\\.\\pipe\\dcmtk_mkdir", PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, study_dir::bind_study_by_client_proc_id, &flog);
     gle = dirnps.start_listening();
     if(gle != ERROR_IO_PENDING && gle != ERROR_PIPE_CONNECTED)
     {

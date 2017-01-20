@@ -1,6 +1,4 @@
 #include <windows.h>
-#include <set>
-#include <algorithm>
 #include "named_pipe_listener.h"
 #include <commonlib.h>
 extern int opt_verbose;
@@ -138,6 +136,8 @@ DWORD named_pipe_listener::pipe_client_connect_incoming()
         pnpc = callback_bind_connection(this, clientProcId);
         if(pnpc)
         {
+            if(opt_verbose) time_header_out(*pflog) << "named_pipe_listener::pipe_client_connect_incoming() callback_bind_connection("
+                << hex << uppercase << hPipe << ", " << dec << clientProcId << ") OK." << endl;
             map_connections_read[pnpc->get_overlap_read()] = pnpc;
             map_connections_write[pnpc->get_overlap_write()] = pnpc;
             if(opt_verbose) time_header_out(*pflog) << "named_pipe_listener::pipe_client_connect_incoming() add "
@@ -145,7 +145,9 @@ DWORD named_pipe_listener::pipe_client_connect_incoming()
         }
         else
         {
-            gle = displayErrorToCerr(__FUNCSIG__ " connect_callback()", E_POINTER, pflog);
+            ostringstream msg;
+            msg << __FUNCSIG__ " callback_bind_connection(" << hex << uppercase << hPipe << ", " << dec << clientProcId << ")";
+            gle = displayErrorToCerr(msg.str().c_str(), E_POINTER, pflog);
             // discard this corrupt named pipe instance
             DisconnectNamedPipe(hPipe);
             CloseHandle(hPipe);

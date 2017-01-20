@@ -4,7 +4,7 @@ using namespace std;
 using namespace handle_context;
 
 STUDY_MAP study_dir::studies_map;
-named_pipe_listener *study_dir::pnps;
+named_pipe_listener *study_dir::p_listener_study;
 
 void study_dir::print_state() const
 {
@@ -40,7 +40,7 @@ study_dir::~study_dir()
 }
 
 study_dir::study_dir(int timeout, const string &study_uid, const std::string &hash, const string &orders_study_path, const string &first_notify_file_in_study)
-    : named_pipe_connection(pnps, timeout), handle_proc(study_uid, "", orders_study_path, "", "dcmmkdir", pnps->get_err_stream())
+    : named_pipe_connection(p_listener_study, timeout), handle_proc(study_uid, "", orders_study_path, "", "dcmmkdir", p_listener_study->get_err_stream())
 {
     named_pipe_connection::set_id(study_uid);
     //named_pipe_connection.path is \\\\.\\pipe\\dcmtk_mkdir, from pnps->get_path()
@@ -83,7 +83,7 @@ shared_ptr<study_dir> study_dir::create_instance(const string &study_uid, const 
     }
     else
     {
-        time_header_out(*pnps->get_err_stream()) << "study_dir::create_instance() create dir " << archdir_and_study_uid << " failed." << endl;
+        time_header_out(*p_listener_study->get_err_stream()) << "study_dir::create_instance() create dir " << archdir_and_study_uid << " failed." << endl;
         return NULL;
     }
 }
@@ -95,7 +95,20 @@ shared_ptr<study_dir> study_dir::find(const string &study_uid)
     else return NULL;
 }
 
-RELA_POS_PAIR study_dir::get_first_file_notify_greater(const std::string &base) const
+shared_ptr<named_pipe_connection> WINAPI study_dir::bind_study_by_client_proc_id(named_pipe_listener *pnps, ULONG clientProcId)
+{
+    STUDY_MAP::const_iterator it = find_if(studies_map.cbegin(), studies_map.cend(), [clientProcId](const STUDY_PAIR &p) {
+        return (p.second && clientProcId == p.second->get_procinfo().dwProcessId);
+    });
+    if(it != studies_map.cend() && it->second)
+    {
+        it->second->set_handle(pnps->get_current_pipe_handle());
+        return it->second;
+    }
+    else return NULL;
+}
+
+RELA_POS_PAIR study_dir::get_first_file_notify_greater(const string &base) const
 {
     shared_ptr<relationship> sp_r;
     FILE_QUEUE::const_iterator it_pos;

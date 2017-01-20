@@ -1,6 +1,4 @@
 #include <windows.h>
-#include <iterator>
-#include <sstream>
 #include "named_pipe_listener.h"
 #include <commonlib.h>
 

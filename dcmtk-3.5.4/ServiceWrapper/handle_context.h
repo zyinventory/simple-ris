@@ -157,19 +157,21 @@ namespace handle_context
     {
     private:
         static STUDY_MAP studies_map;
-        static named_pipe_listener *pnps;
+        static named_pipe_listener *p_listener_study;
 
         RELATION_MAP relations;
 
         study_dir(int timeout, const std::string &study_uid, const std::string &hash, const std::string &orders_study_path, const std::string &first_notify_file_in_study);
 
     public:
-        static void set_named_pipe_listener_ptr(named_pipe_listener *p) { pnps = p; };
+        static void set_named_pipe_listener_ptr(named_pipe_listener *p) { p_listener_study = p; };
         static std::shared_ptr<study_dir> create_instance(const std::string &study_uid, const std::string &hash, const std::string &orders_study_path, const std::string &first_notify_file_in_study);
         static std::shared_ptr<study_dir> find(const std::string &study_uid);
+        static std::shared_ptr<named_pipe_connection> WINAPI bind_study_by_client_proc_id(named_pipe_listener *pnps, ULONG clientProcId);
         static RELA_POS_PAIR find_first_job_in_studies(const std::string &base);
         static void remove_all_study(std::ostream *pflog);
         static void cleanup(std::ostream *pflog);
+
         virtual ~study_dir();
         virtual void print_state() const;
         const std::string& get_id() const { return named_pipe_connection::get_id(); };
