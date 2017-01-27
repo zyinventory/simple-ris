@@ -394,7 +394,7 @@ int watch_notify(string &cmd, ofstream &flog)
 			break; // break main loop
         }
 
-        relationship::find_first_file_notify_to_start_process(hSema, proc_list, flog);
+        handle_compress::find_first_file_notify_to_start_process(hSema, proc_list, flog);
 
         // do idle work
         if(wr == WAIT_TIMEOUT)

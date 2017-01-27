@@ -318,7 +318,7 @@ void CALLBACK handle_context::write_pipe_complete(DWORD dwErr, DWORD cbBytesWrit
         if(pnpc == NULL)
         {
             if(perrlog == NULL) perrlog = find_err_log_all();
-            time_header_out(*perrlog) << __FUNCSIG__ " find named_pipe_connection(write) failed: " << lpOverLap << endl;
+            time_header_out(*perrlog) << __FUNCSIG__ " find server named_pipe_connection(write) failed: " << lpOverLap << endl;
             return;
         }
         else perrlog = pnpc->get_err_stream();
@@ -331,7 +331,7 @@ void CALLBACK handle_context::write_pipe_complete(DWORD dwErr, DWORD cbBytesWrit
         if(pnpc == NULL)
         {
             if(perrlog == NULL) perrlog = find_err_log_all();
-            time_header_out(*perrlog) << __FUNCSIG__ " find named_pipe_connection(write) failed: " << lpOverLap << endl;
+            time_header_out(*perrlog) << __FUNCSIG__ " find alone named_pipe_connection(write) failed: " << lpOverLap << endl;
             return;
         }
         else perrlog = pnpc->get_err_stream();

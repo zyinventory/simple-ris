@@ -80,6 +80,8 @@
 #include "commonlib.h"
 #include "dcmtk/dcmdata/xml_index.h"
 
+using namespace handle_context;
+
 int opt_verbose = 0;
 
 #ifdef WITH_ZLIB
@@ -194,7 +196,7 @@ static size_t normalize_charsets(const char *charset, set<string> &charsets)
     return charsets.size();
 }
 
-static handle_context::NOTIFY_FILE_CONTEXT nfc;
+static NOTIFY_FILE_CONTEXT nfc;
 static char association_buff[1024];
 
 static void fallback_b32_patientsname(const char *patientsName)
@@ -843,8 +845,8 @@ int main(int argc, char *argv[])
 
 	if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: begin to add files" << endl;
 
-    handle_context::xml_index xi(&CERR);
-    handle_context::xml_index::singleton_ptr = &xi;
+    xml_index xi(&CERR);
+    xml_index::singleton_ptr = &xi;
 
 	// If scu split study into series and one association per series,
 	// dcmmkdir must collect csv files as fileNameList, otherwise xml index will be incorrect.
@@ -861,18 +863,16 @@ int main(int argc, char *argv[])
 			OFList<OFString> badFiles;
 			unsigned int goodFiles = 0;
             bool publish_jdf = false;
-            OFString study_end_time;
+            OFString lock_filename;
             if(readPipe)
             {
                 fnbuf[0] = '\0';
                 char *dir = NULL, *pfn = NULL;
-                // at first pull loop, last_file_name is empty, report dcmmkdir's pid
-                sprintf_s(last_file_name, "dcmmkdir pid %d", clientId);
                 while(true)
                 {
                     DWORD cbRead = 0, cbWritten = 0, cbToWrite = 0, gle = 0;
 
-                    cbToWrite = sprintf_s(fnbuf, "%s|%s", opt_directory, last_file_name);
+                    cbToWrite = sprintf_s(fnbuf, "bind %d %s", clientId, opt_directory); // fnbuf: <client_pid> <study_uid>
                     // pull loop: write last_file_name, indicate that dcmmkdir is ready to read next file.
                     if(!WriteFile(hPipe, fnbuf, cbToWrite, &cbWritten, NULL))
                     {
@@ -909,22 +909,22 @@ int main(int argc, char *argv[])
                     fnbuf[cbRead] = '\0';
                     time_header_out(CERR) << "dcmmkdir ReadFile(): " << fnbuf << endl;
                     
-                    if(strncmp("close ", fnbuf, 6) == 0)  // server close pipe
+                    if(strncmp(COMMAND_CLOSE_PIPE, fnbuf, sizeof(COMMAND_CLOSE_PIPE) - 1) == 0)  // server close pipe
                     {
-                        const char *study_end = strchr(fnbuf + 6, ' ');
-                        if(study_end)
+                        const char *p_lock_filename = strchr(fnbuf, ' ');
+                        if(p_lock_filename)
                         {
-                            ++study_end;
-                            study_end_time = study_end;
+                            ++p_lock_filename;
+                            lock_filename = p_lock_filename; // lock file is orders_study/<lock_filename>.txt
                         }
-                        time_header_out(CERR) << "dcmmkdir : server close named pipe, study end at " << study_end_time << endl;
-
-                        publish_jdf = (strncmp("close study ", fnbuf, 12) == 0);
+                        time_header_out(CERR) << "dcmmkdir : server close named pipe, study end at " << lock_filename << endl;
                         DisconnectNamedPipe(hPipe);
                         break;  // while(true)
                     }
 
                     memset(&nfc, 0, sizeof(nfc));
+
+                    //todo: command per file, is assoc info necessary?
 
                     // fnbuf: <study uid>|<unique filename>|<file size receive><LF><assoc_text>
                     char *assoc_text = strchr(fnbuf, '\n');
@@ -1083,7 +1083,7 @@ int main(int argc, char *argv[])
                     }
                 }
 			    string unlock_file_name(GetPacsBase());
-                unlock_file_name.append("\\orders_study\\").append(study_end_time).append(".txt");
+                unlock_file_name.append("\\orders_study\\").append(lock_filename).append(".txt");
                 ofstream ofs_complete(unlock_file_name, ios_base::out | ios_base::app);
                 if(ofs_complete.fail())
                 {

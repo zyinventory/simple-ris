@@ -39,8 +39,6 @@ namespace handle_context
     typedef std::pair<std::string, std::shared_ptr<file_notify> > FILE_QUEUE_PAIR;
     class np_conn_assoc_dir;
     class study_dir;
-    class handle_compress;
-    typedef std::list<handle_compress*> PROC_COMPR_LIST;
 
     class relationship : public base_dir
     {
@@ -51,7 +49,6 @@ namespace handle_context
         FILE_QUEUE file_queue, index_queue;
 
     public:
-        static void find_first_file_notify_to_start_process(HANDLE hSema, PROC_COMPR_LIST &proc_list, std::ostream &flog);
         relationship(std::shared_ptr<np_conn_assoc_dir> sp_assoc, std::shared_ptr<study_dir> sp_study, int time_out_diff, std::ostream *pflog);
         virtual ~relationship();
         std::string get_assoc_id() const;
@@ -132,9 +129,14 @@ namespace handle_context
         DWORD start_process(bool out_redirect);
     };
 
+    class handle_compress;
+    typedef std::list<handle_compress*> PROC_COMPR_LIST;
+
     class handle_compress : public handle_proc
     {
     private:
+        static handle_compress* make_handle_compress(const std::string &study_uid, const std::shared_ptr<relationship> &r, const std::shared_ptr<file_notify> &job, std::ostream &flog);
+
         std::shared_ptr<relationship> relation;
         std::shared_ptr<file_notify> compr_job;
         
@@ -144,7 +146,7 @@ namespace handle_context
             : handle_proc(id, path, notify, cmd, exec_prog_name, plog), relation(relation), compr_job(job) { };
 
     public:
-        static handle_compress* make_handle_compress(const std::string &study_uid, const std::shared_ptr<relationship> &r, const std::shared_ptr<file_notify> &job, std::ostream &flog);
+        static void find_first_file_notify_to_start_process(HANDLE hSema, PROC_COMPR_LIST &proc_list, std::ostream &flog);
         virtual ~handle_compress() { relation->add_file_to_index_queue(compr_job); };
         void print_state() const;
     };
