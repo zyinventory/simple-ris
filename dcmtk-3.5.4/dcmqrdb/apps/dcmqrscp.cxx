@@ -149,7 +149,7 @@ static DcmQueryRetrieveSCP *pscp = NULL;
 static OFString current_assoc_id;
 static DatasetNotifyWriter *pDSWriter = NULL;
 
-static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
+static OFCondition triggerReceiveEvent(const char *fn, const char *unique_filename, DcmDataset *pds)
 {
     handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION nfc;
     char notifyFileName[MAX_PATH];
@@ -165,9 +165,10 @@ static OFCondition triggerReceiveEvent(const char *fn, DcmDataset *pds)
 
     if(pDSWriter == NULL) pDSWriter = new DatasetNotifyWriter();
     memset(&nfc, 0, sizeof(handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION));
-    pDSWriter->datasetToNotify(instanceName.c_str(), notifyFileName, &pds, &nfc, true);
+    
+    pDSWriter->datasetToNotify(unique_filename ? unique_filename : instanceName.c_str(), notifyFileName, &pds, &nfc, true);
     if(opt_verbose) time_header_out(cerr) << notifyFileName << " write OK" << endl;
-    NotifyFileContextStorePath(nfc, '\\');
+    NotifyFileContextStorePath(&nfc, '\\');
 
     if(current_assoc_id.length() == 0)
     {
@@ -234,6 +235,8 @@ main(int argc, char *argv[])
 #else
     DcmQueryRetrieveOptions options;
 #endif
+    options.fn_store_path_ = NotifyFileContextStorePath;
+    options.fn_prepare_file_dir_ = PrepareFileDir;
 
 #ifdef HAVE_GUSI_H
     /* needed for Macintosh */
@@ -726,7 +729,7 @@ main(int argc, char *argv[])
     }
 
     ChangeToBasePacsSub(GetPacsBase(), NULL, 0);
-	
+
 	if (options.forkedChild_)
 	{
 		// child process

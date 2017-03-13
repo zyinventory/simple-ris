@@ -84,8 +84,8 @@ DcmQueryRetrieveOptions::DcmQueryRetrieveOptions()
 , verbose_(0)
 , writeTransferSyntax_(EXS_Unknown)
 , blockMode_(DIMSE_BLOCKING)
-, dimse_timeout_(0)
-, acse_timeout_(30)
+, dimse_timeout_(0), acse_timeout_(30)
+, fn_store_path_(NULL), fn_prepare_file_dir_(NULL)
 {
 }
 

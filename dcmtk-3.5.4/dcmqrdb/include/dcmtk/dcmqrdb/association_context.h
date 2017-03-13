@@ -4,7 +4,7 @@
 class DcmQueryRetrieveStoreContext;
 class DcmQueryRetrieveConfig;
 
-typedef OFCondition(*IndexCallback)(const char*, DcmDataset*);
+typedef OFCondition(*IndexCallback)(const char*, const char*, DcmDataset*);
 
 typedef struct {
     const DcmQueryRetrieveConfig *pConfig;

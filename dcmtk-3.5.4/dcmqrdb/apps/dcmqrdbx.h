@@ -61,7 +61,7 @@ class DcmQueryRetrieveXmlDatabaseHandle: public DcmQueryRetrieveDatabaseHandle
 private:
     int debugLevel;
     OFBool doCheckFindIdentifier, doCheckMoveIdentifier;
-    char storageArea[DUL_LEN_NODE+1];
+    char storageArea[DUL_LEN_NODE+1], saveDirectly;
     DB_LEVEL rootLevel, lowestLevel; // highest and lowest legal level for a query in the current model
     DB_LEVEL queryLevel;             // queryLevel belongs to [rootLevel, lowestLevel]
     
@@ -83,10 +83,11 @@ private:
     static OFCondition testFindRequestList(DcmDataset *findRequestIdentifiers,
         DB_LEVEL queryLevel, DB_LEVEL infLevel, DB_LEVEL lowestLevel);
 public:
-    DcmQueryRetrieveXmlDatabaseHandle(const char *storage, long maxStudiesPerStorageArea,
+    DcmQueryRetrieveXmlDatabaseHandle(const char *storage, char saveDirectly, long maxStudiesPerStorageArea,
         long maxBytesPerStudy, OFCondition& result);
     
     const char *getStorageArea() const { return storageArea; };
+    char getSaveDirectly() const { return saveDirectly; };
     bool addRequiredStoragePresentationContexts(T_ASC_Parameters *params) const;
     OFCondition storeRequest(const char *SOPClassUID, const char *SOPInstanceUID, const char *imageFileName,
         DcmQueryRetrieveDatabaseStatus  *status, OFBool isNew = OFTrue, DcmQueryRetrieveStoreContext *psc = NULL);
@@ -136,6 +137,7 @@ public:
     {
         return new DcmQueryRetrieveXmlDatabaseHandle(
             config_->getStorageArea(calledAETitle),
+            config_->getSaveDirectly(calledAETitle),
             config_->getMaxStudies(calledAETitle),
             config_->getMaxBytesPerStudy(calledAETitle), result);
     };

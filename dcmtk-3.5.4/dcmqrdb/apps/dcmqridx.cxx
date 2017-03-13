@@ -157,7 +157,7 @@ int main (int argc, char *argv[])
 
 
     OFCondition cond;
-    DcmQueryRetrieveIndexDatabaseHandle hdl(opt_storageArea, DB_UpperMaxStudies, DB_UpperMaxBytesPerStudy, cond);
+    DcmQueryRetrieveIndexDatabaseHandle hdl(opt_storageArea, 'N', DB_UpperMaxStudies, DB_UpperMaxBytesPerStudy, cond);
     if (cond.good())
     {
         hdl.setDebugLevel(opt_debug ? 3 : 0);

@@ -177,41 +177,23 @@ void DcmQueryRetrieveStoreContext::callbackHandler(
         }
 
         if (!options_.ignoreStoreData_ && rsp->DimseStatus == STATUS_Success) {
+            char fnbuf[MAX_PATH];
+            const char *unique_fn = NULL;
+            if(dbHandle.getSaveDirectly() != 'N' && options_.fn_store_path_)
+            {
+                ostringstream strm;
+                handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION nfc;
+                memset(&nfc, 0, sizeof(handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION));
+                dcmff->getDataset()->briefToStream(strm, &nfc, NOTIFY_LEVEL_INSTANCE);
+                options_.fn_store_path_(&nfc, '\\');
+                sprintf(fnbuf, "archdir\\v0000000\\%s\\%s\\%s", nfc.hash, nfc.studyUID, nfc.unique_filename);
+                if(options_.fn_prepare_file_dir_(fnbuf)) unique_fn = fnbuf;
+            }
             if ((imageDataSet)&&(*imageDataSet)) {
-                // padding 
-                size_t padding_width = pac->pConfig->getPaddingWidth(pac->calledAPTitle);
-                if(padding_width)
-                {
-                    DcmElement *pElement = NULL;
-                    OFCondition cond = (*imageDataSet)->findAndGetElement(DCM_PatientID, pElement);
-                    if(cond.good())
-                    {
-                        DcmLongString *pPatientIDElement = dynamic_cast<DcmLongString*>(pElement);
-                        if(pPatientIDElement)
-                        {
-                            char *pid = NULL;
-                            cond = pPatientIDElement->getString(pid);
-                            if(cond.good() && pid)
-                            {
-                                size_t pid_len = strlen(pid);
-                                if(padding_width > pid_len)
-                                {
-                                    size_t pad_cnt = padding_width - pid_len;
-                                    char padding_pid[65];
-                                    char padding_char = pac->pConfig->getPaddingChar(pac->calledAPTitle);
-                                    for(size_t i = 0; i < pad_cnt; ++i)
-                                        padding_pid[i] = padding_char;
-                                    strcpy_s(padding_pid + pad_cnt, sizeof(padding_pid) - pad_cnt, pid);
-                                    pPatientIDElement->putString(padding_pid);
-                                }
-                            }
-                        }
-                    }
-                }
-                writeToFile(dcmff, fileName, rsp);
+                writeToFile(dcmff, unique_fn ? unique_fn : fileName, rsp);
             }
             if (rsp->DimseStatus == STATUS_Success) {
-                saveImageToDB(req, fileName, rsp, stDetail);
+                saveImageToDB(req, unique_fn, rsp, stDetail);
             }
         }
 

@@ -656,7 +656,7 @@ int main(int argc, char *argv[])
     }
 
     OFCondition result;
-    DcmQueryRetrieveIndexDatabaseHandle dbhandle(dbfolder, PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);    
+    DcmQueryRetrieveIndexDatabaseHandle dbhandle(dbfolder, 'N', PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);    
     if (result.bad())
     {
       CERR << "Unable to access database '" << dbfolder << "'" << endl;

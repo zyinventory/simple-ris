@@ -361,7 +361,7 @@ DWORD process_notify(const file_notify* pt, NOTIFY_FILE_CONTEXT *pnfc, std::ostr
         if(process_notify_file(ifs, tag, pnfc, flog))
         {
             strcpy_s(pnfc->src_notify_filename, pt->get_notify_filename().c_str());
-            NotifyFileContextStorePath(pnfc->file);
+            NotifyFileContextStorePath(&pnfc->file);
             if(opt_verbose) time_header_out(flog) << "process_notify(" << pt->get_path() << "\\" << pt->get_notify_filename() << ") read OK." << endl;
 #ifdef _DEBUG
             time_header_out(cerr) << "process_notify(" << pt->get_path() << "\\" << pt->get_notify_filename() << ") read OK." << endl;

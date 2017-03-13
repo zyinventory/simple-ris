@@ -503,17 +503,7 @@ int DcmQueryRetrieveConfig::readAETable(FILE *cnffp, int *lineno)
 	  CNF_Config.AEEntries[noOfAEEntries - 1].AutoPublish = parsevalues(&lineptr);
       CNF_Config.AEEntries[noOfAEEntries - 1].XferName = parsevalues(&lineptr);
       CNF_Config.AEEntries[noOfAEEntries - 1].StorageArea = parsevalues(&lineptr);
-
-      const char *paddingWidthStr = parsevalues(&lineptr);
-      CNF_Config.AEEntries[noOfAEEntries - 1].PaddingWidth = atoi(paddingWidthStr);
-      delete paddingWidthStr;
-
-      const char *paddingCharStr = parsevalues(&lineptr);
-      char paddingChar = '0';
-      if(paddingCharStr) paddingChar = paddingCharStr[0];
-      CNF_Config.AEEntries[noOfAEEntries - 1].PaddingChar = paddingChar;
-      delete paddingCharStr;
-
+      CNF_Config.AEEntries[noOfAEEntries - 1].SaveDirectly = parsevalues(&lineptr);
       CNF_Config.AEEntries[noOfAEEntries - 1].Access = parsevalues(&lineptr);
       CNF_Config.AEEntries[noOfAEEntries - 1].StorageQuota = parseQuota(&lineptr);
       CNF_Config.AEEntries[noOfAEEntries - 1].Peers = parsePeers(&lineptr, &CNF_Config.AEEntries[noOfAEEntries - 1].noOfPeers);
@@ -902,26 +892,16 @@ const char *DcmQueryRetrieveConfig::getStorageArea(const char *AETitle) const
    return(NULL);        /* AETitle not found */
 }
 
-size_t DcmQueryRetrieveConfig::getPaddingWidth(const char *AETitle) const
+char DcmQueryRetrieveConfig::getSaveDirectly(const char *AETitle) const
 {
-   int  i;
-
-   for(i = 0; i < CNF_Config.noOfAEEntries; i++) {
+   for(int i = 0; i < CNF_Config.noOfAEEntries; i++) {
       if (!strcmp(AETitle, CNF_Config.AEEntries[i].ApplicationTitle))
-          return(CNF_Config.AEEntries[i].PaddingWidth);
+      {
+          const char *p = CNF_Config.AEEntries[i].SaveDirectly;
+          return (p ? *p : 'N');
+      }
    }
-   return 0;        /* AETitle not found */
-}
-
-char DcmQueryRetrieveConfig::getPaddingChar(const char *AETitle) const
-{
-   int  i;
-
-   for(i = 0; i < CNF_Config.noOfAEEntries; i++) {
-      if (!strcmp(AETitle, CNF_Config.AEEntries[i].ApplicationTitle))
-          return(CNF_Config.AEEntries[i].PaddingChar);
-   }
-   return '0';        /* AETitle not found */
+   return 'N';        /* AETitle not found */
 }
 
 const char *DcmQueryRetrieveConfig::getAccess(const char *AETitle) const

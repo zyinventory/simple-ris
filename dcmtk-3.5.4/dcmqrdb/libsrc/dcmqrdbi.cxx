@@ -3190,7 +3190,7 @@ void DcmQueryRetrieveIndexDatabaseHandle::printIndexFile (char *storeArea)
     StudyDescRecord     *pStudyDesc;
 
     OFCondition result;
-    DcmQueryRetrieveIndexDatabaseHandle handle(storeArea, -1, -1, result);
+    DcmQueryRetrieveIndexDatabaseHandle handle(storeArea, 'N', -1, -1, result);
     if (result.bad()) return;
 
     pStudyDesc = (StudyDescRecord *)malloc (SIZEOF_STUDYDESC) ;
@@ -3253,6 +3253,11 @@ const char *DcmQueryRetrieveIndexDatabaseHandle::getStorageArea() const
   return handle->storageArea;
 }
 
+char DcmQueryRetrieveIndexDatabaseHandle::getSaveDirectly() const
+{
+    return handle->saveDirectly;
+}
+
 const char *DcmQueryRetrieveIndexDatabaseHandle::getIndexFilename() const
 {
   return handle->indexFilename;
@@ -3296,6 +3301,7 @@ void DcmQueryRetrieveIndexDatabaseHandle::setIdentifierChecking(OFBool checkFind
 
 DcmQueryRetrieveIndexDatabaseHandle::DcmQueryRetrieveIndexDatabaseHandle(
     const char *storageArea,
+    char saveDirectly,
     long maxStudiesPerStorageArea,
     long maxBytesPerStudy,
     OFCondition& result)
@@ -3329,6 +3335,7 @@ DcmQueryRetrieveIndexDatabaseHandle::DcmQueryRetrieveIndexDatabaseHandle(
 
     if (handle) {
         sprintf (handle -> storageArea,"%s", storageArea);
+        handle->saveDirectly = saveDirectly;
         sprintf (handle -> indexFilename,"%s%c%s", storageArea, PATH_SEPARATOR, DBINDEXFILE);
 
         /* create index file if it does not already exist */
@@ -3499,6 +3506,7 @@ DcmQueryRetrieveDatabaseHandle *DcmQueryRetrieveIndexDatabaseHandleFactory::crea
 {
   return new DcmQueryRetrieveIndexDatabaseHandle(
     config_->getStorageArea(calledAETitle),
+    config_->getSaveDirectly(calledAETitle),
     config_->getMaxStudies(calledAETitle),
     config_->getMaxBytesPerStudy(calledAETitle), result);
 }

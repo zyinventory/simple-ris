@@ -326,7 +326,7 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
     if(modality) strcpy_s(nfc.series.modality, modality);
     dataset->findAndGetSint32(DCM_SeriesNumber, nfc.series.number);
 
-    NotifyFileContextStorePath(nfc.file);
+    NotifyFileContextStorePath(&nfc.file);
 }
 
 static bool com_init = false;

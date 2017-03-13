@@ -44,6 +44,9 @@
 #include "dcmtk/ofstd/ofconapp.h"
 #include "dcmtk/dcmnet/dimse.h"
 
+typedef const char*(__cdecl *FN_NOTIFY_FILE_CONTEXT_STOREPATH)(handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION*, char);
+typedef bool (__cdecl *FN_PREPARE_FILE_DIR)(const char*);
+
 /// invalid peer for move operation
 extern const OFCondition APP_INVALIDPEER;
 
@@ -174,7 +177,9 @@ public:
   /// timeout for ACSE operations
   int acse_timeout_;
   
-};            		
+  FN_NOTIFY_FILE_CONTEXT_STOREPATH fn_store_path_;
+  FN_PREPARE_FILE_DIR fn_prepare_file_dir_;
+};
 
 
 #endif

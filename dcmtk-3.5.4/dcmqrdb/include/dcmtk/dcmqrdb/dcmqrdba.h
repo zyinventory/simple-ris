@@ -214,6 +214,7 @@ public:
   virtual void setIdentifierChecking(OFBool checkFind, OFBool checkMove) = 0;
 
   virtual const char *getStorageArea() const = 0;
+  virtual char getSaveDirectly() const = 0;
 
   virtual bool addRequiredStoragePresentationContexts(T_ASC_Parameters *params) const { return false; };
 };

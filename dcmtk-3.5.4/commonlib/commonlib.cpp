@@ -11,15 +11,15 @@ COMMONLIB_API size_t in_process_sequence_dll(char *buff, size_t buff_size, const
     return in_process_sequence(buff, buff_size, prefix);
 }
 
-COMMONLIB_API const char* NotifyFileContextStorePath(handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION &nfc, char sp)
+COMMONLIB_API const char* NotifyFileContextStorePath(handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION *pnfc, char sp)
 {
-    HashStr(nfc.studyUID, nfc.unique_filename, sizeof(nfc.unique_filename));
-    nfc.unique_filename[8] = sp;
-    SeriesInstancePath(nfc.seriesUID, nfc.instanceUID, nfc.unique_filename + 9, sizeof(nfc.unique_filename) - 9, sp);
-    sprintf_s(nfc.hash, "%c%c%c%c%c%c%c%c%c%c%c",
-        nfc.unique_filename[0], nfc.unique_filename[1], sp, nfc.unique_filename[2], nfc.unique_filename[3], sp, 
-        nfc.unique_filename[4], nfc.unique_filename[5], sp, nfc.unique_filename[6], nfc.unique_filename[7]);
-    return nfc.unique_filename;
+    HashStr(pnfc->studyUID, pnfc->unique_filename, sizeof(pnfc->unique_filename));
+    pnfc->unique_filename[8] = sp;
+    SeriesInstancePath(pnfc->seriesUID, pnfc->instanceUID, pnfc->unique_filename + 9, sizeof(pnfc->unique_filename) - 9, sp);
+    sprintf_s(pnfc->hash, "%c%c%c%c%c%c%c%c%c%c%c",
+        pnfc->unique_filename[0], pnfc->unique_filename[1], sp, pnfc->unique_filename[2], pnfc->unique_filename[3], sp, 
+        pnfc->unique_filename[4], pnfc->unique_filename[5], sp, pnfc->unique_filename[6], pnfc->unique_filename[7]);
+    return pnfc->unique_filename;
 }
 
 COMMONLIB_API errno_t setEnvParentPID()

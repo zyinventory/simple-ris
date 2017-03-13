@@ -114,6 +114,7 @@ public:
    */
   DcmQueryRetrieveIndexDatabaseHandle(
     const char *storageArea,
+    char saveDirectly,
     long maxStudiesPerStorageArea,
     long maxBytesPerStudy,
     OFCondition& result);
@@ -331,6 +332,9 @@ public:
 
   /// return name of storage area
   const char *getStorageArea() const;
+
+  /// return save directly option, Y or N
+  char getSaveDirectly() const;
 
   /// return path to index file
   const char *getIndexFilename() const;

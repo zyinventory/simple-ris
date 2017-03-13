@@ -517,7 +517,7 @@ static OFCondition storeSCP(
     }
     else
     {
-      dbhandle = new DcmQueryRetrieveIndexDatabaseHandle(dbfolder, PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, cond);
+      dbhandle = new DcmQueryRetrieveIndexDatabaseHandle(dbfolder, 'N', PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, cond);
       if (cond.bad())
       {
         CERR << "Unable to access database '" << dbfolder << "'" << endl;
@@ -1204,7 +1204,7 @@ int main(int argc, char *argv[])
     }
 
     OFCondition cond2 = EC_Normal;
-    DcmQueryRetrieveIndexDatabaseHandle *dbhandle = new DcmQueryRetrieveIndexDatabaseHandle(dbfolder, PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, cond2);
+    DcmQueryRetrieveIndexDatabaseHandle *dbhandle = new DcmQueryRetrieveIndexDatabaseHandle(dbfolder, 'N', PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, cond2);
     delete dbhandle;
 
     if (cond2.bad())

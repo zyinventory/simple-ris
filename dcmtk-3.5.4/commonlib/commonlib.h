@@ -207,7 +207,7 @@ namespace handle_context
 {
     typedef struct _tag_NOTIFY_FILE_CONTEXT_FILE_SECTION NOTIFY_FILE_CONTEXT_FILE_SECTION;
 };
-COMMONLIB_API const char* NotifyFileContextStorePath(handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION &nfc, char sp = '\\');
+COMMONLIB_API const char* NotifyFileContextStorePath(handle_context::NOTIFY_FILE_CONTEXT_FILE_SECTION *pnfc, char sp = '\\');
 
 // common_public.cpp
 #ifndef GetSignalInterruptValue

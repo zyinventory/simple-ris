@@ -80,11 +80,8 @@ struct DcmQueryRetrieveConfigAEEntry
     /// name of storage area  
     const char *StorageArea;
     
-    /// patient id padding width  
-    size_t PaddingWidth;
-    
-    /// patient id padding char  
-    char PaddingChar;
+    /// save instance directly to archdir
+    const char *SaveDirectly;
 
     /// access type (read-only, read/write)
     const char *Access;        
@@ -195,9 +192,8 @@ public:
    */
   const char *getStorageArea(const char *AETitle) const;
 
-  /* patient id padding */
-  size_t getPaddingWidth(const char *AETitle) const;
-  char getPaddingChar(const char *AETitle) const;
+  /* save instance directly to archdir */
+  char getSaveDirectly(const char *AETitle) const;
 
   /*
    *  get Number of Maximal Studies

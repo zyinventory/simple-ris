@@ -1043,6 +1043,7 @@ OFBool DcmQueryRetrieveTelnetInitiator::TI_attachDB(TI_DBEntry *db)
         /* Create a database handle */
         db->dbHandle = new DcmQueryRetrieveIndexDatabaseHandle(
             config.getStorageArea(db->title), 
+            config.getSaveDirectly(db->title),
             config.getMaxStudies(db->title),
             config.getMaxBytesPerStudy(db->title), dbcond);
         if (dbcond.bad()) {

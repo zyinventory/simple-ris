@@ -669,7 +669,7 @@ OFCondition DVInterface::savePState(OFBool replaceSOPInstanceUID)
     OFCondition result=EC_Normal;
     char imageFileName[MAXPATHLEN+1];
 
-    DcmQueryRetrieveIndexDatabaseHandle dbhandle(getDatabaseFolder(), PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
+    DcmQueryRetrieveIndexDatabaseHandle dbhandle(getDatabaseFolder(), 'N', PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
     if (result.bad())
     {
         writeLogMessage(DVPSM_error, "DCMPSTAT", "Save presentation state to database failed: could not lock index file.");
@@ -806,7 +806,7 @@ OFCondition DVInterface::saveStructuredReport()
     char filename[MAXPATHLEN+1];
     OFCondition result = EC_Normal;
 
-    DcmQueryRetrieveIndexDatabaseHandle dbhandle(getDatabaseFolder(), PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
+    DcmQueryRetrieveIndexDatabaseHandle dbhandle(getDatabaseFolder(), 'N', PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
     if (result.bad())
     {
         writeLogMessage(DVPSM_error, "DCMPSTAT", "Save structured report to database failed: could not lock index file.");
@@ -1238,7 +1238,7 @@ OFCondition DVInterface::lockDatabase()
     if (pHandle) return EC_Normal; // may be called multiple times
 
     OFCondition result;
-    pHandle = new DcmQueryRetrieveIndexDatabaseHandle(getDatabaseFolder(), PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
+    pHandle = new DcmQueryRetrieveIndexDatabaseHandle(getDatabaseFolder(), 'N', PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
     if (result.good())
     {
         lockingMode = OFFalse;
@@ -2722,7 +2722,7 @@ OFCondition DVInterface::saveDICOMImage(
   char imageFileName[MAXPATHLEN+1];
 
   OFCondition result = EC_Normal;
-  DcmQueryRetrieveIndexDatabaseHandle handle(getDatabaseFolder(), PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
+  DcmQueryRetrieveIndexDatabaseHandle handle(getDatabaseFolder(), 'N', PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
   if (result.bad())
   {
     writeLogMessage(DVPSM_error, "DCMPSTAT", "Save image to database failed: could not lock index file.");
@@ -2886,7 +2886,7 @@ OFCondition DVInterface::saveHardcopyGrayscaleImage(
   char imageFileName[MAXPATHLEN+1];
 
   OFCondition result=EC_Normal;
-  DcmQueryRetrieveIndexDatabaseHandle handle(getDatabaseFolder(), PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
+  DcmQueryRetrieveIndexDatabaseHandle handle(getDatabaseFolder(), 'N', PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
   if (result.bad())
   {
     writeLogMessage(DVPSM_error, "DCMPSTAT", "Save hardcopy grayscale image to database failed: could not lock index file.");
@@ -2943,7 +2943,7 @@ OFCondition DVInterface::saveFileFormatToDB(DcmFileFormat &fileformat)
   char imageFileName[MAXPATHLEN+1];
 
   OFCondition result=EC_Normal;
-  DcmQueryRetrieveIndexDatabaseHandle handle(getDatabaseFolder(), PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
+  DcmQueryRetrieveIndexDatabaseHandle handle(getDatabaseFolder(), 'N', PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
   if (result.bad())
   {
     writeLogMessage(DVPSM_error, "DCMPSTAT", "Save fileformat to database failed: could not lock index file.");
@@ -3127,7 +3127,7 @@ OFCondition DVInterface::saveStoredPrint(OFBool writeRequestedImageSize)
   DcmQueryRetrieveDatabaseStatus dbStatus(STATUS_Success);
   char imageFileName[MAXPATHLEN+1];
   OFCondition result=EC_Normal;
-  DcmQueryRetrieveIndexDatabaseHandle handle(getDatabaseFolder(), PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
+  DcmQueryRetrieveIndexDatabaseHandle handle(getDatabaseFolder(), 'N', PSTAT_MAXSTUDYCOUNT, PSTAT_STUDYSIZE, result);
   if (result.bad())
   {
     writeLogMessage(DVPSM_error, "DCMPSTAT", "Save stored print to database failed: could not lock index file.");

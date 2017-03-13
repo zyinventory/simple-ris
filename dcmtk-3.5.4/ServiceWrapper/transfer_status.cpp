@@ -284,7 +284,7 @@ DWORD handle_dir::process_notify(const std::string &filename, NOTIFY_LIST &compr
         {
             this->fill_association_section(pnfc->assoc);
             strcpy_s(pnfc->src_notify_filename, filename.c_str());
-            NotifyFileContextStorePath(pnfc->file);
+            NotifyFileContextStorePath(&pnfc->file);
             if(opt_verbose) time_header_out(flog) << "handle_dir::process_notify(" << filename << ") " << get_id() << " read OK." << endl;
 #ifdef _DEBUG
             time_header_out(cerr) << "handle_dir::process_notify(" << filename << ") " << get_id() << " read OK." << endl;

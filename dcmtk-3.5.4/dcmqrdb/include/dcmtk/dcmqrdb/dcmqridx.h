@@ -236,6 +236,7 @@ struct DB_Private_Handle
     DB_LEVEL queryLevel ;
     char indexFilename[DBC_MAXSTRING+1] ;
     char storageArea[DUL_LEN_NODE+1] ;
+    char saveDirectly;
     long maxBytesPerStudy ;
     long maxStudiesAllowed ;
     int idxCounter ;

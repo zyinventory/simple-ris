@@ -178,10 +178,10 @@ StudyDataFilter::StudyDataFilter(const char *date)
     }
 }
 
-DcmQueryRetrieveXmlDatabaseHandle::DcmQueryRetrieveXmlDatabaseHandle(const char *storage, long maxStudiesPerStorageArea,
+DcmQueryRetrieveXmlDatabaseHandle::DcmQueryRetrieveXmlDatabaseHandle(const char *storage, char paramSaveDirectly, long maxStudiesPerStorageArea,
         long maxBytesPerStudy, OFCondition& result) : DcmQueryRetrieveDatabaseHandle(), req(NULL),
         doCheckFindIdentifier(OFFalse), doCheckMoveIdentifier(OFFalse), debugLevel(0), remains(0),
-        rootLevel(PATIENT_LEVEL), lowestLevel(IMAGE_LEVEL), queryLevel(STUDY_LEVEL)
+        rootLevel(PATIENT_LEVEL), lowestLevel(IMAGE_LEVEL), queryLevel(STUDY_LEVEL), saveDirectly(paramSaveDirectly)
 {
     strcpy_s(storageArea, storage);
     HRESULT hr = pXmlDom.CreateInstance(__uuidof(MSXML2::DOMDocument30), NULL, CLSCTX_INPROC_SERVER);
@@ -583,7 +583,7 @@ OFCondition DcmQueryRetrieveXmlDatabaseHandle::storeRequest(const char *SOPClass
     DcmQueryRetrieveDatabaseStatus *status, OFBool isNew, DcmQueryRetrieveStoreContext *psc)
 {
     if(psc && psc->pac)
-        return psc->pac->cbToDcmQueryRetrieveStoreContext(psc->getFileName(), psc->getDataset());
+        return psc->pac->cbToDcmQueryRetrieveStoreContext(psc->getFileName(), imageFileName, psc->getDataset());
     else
         return EC_IllegalParameter;
 }
