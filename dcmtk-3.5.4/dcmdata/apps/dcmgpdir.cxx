@@ -103,7 +103,7 @@ int opt_verbose = 0;
 static char rcsid[] = "$dcmtk: " OFFIS_CONSOLE_APPLICATION " v"
 OFFIS_DCMTK_VERSION " " OFFIS_DCMTK_RELEASEDATE " $";
 
-static char timeBuffer[32], fnbuf[1024], last_file_name[MAX_PATH] = "";
+static char timeBuffer[32], fnbuf[4096], last_file_name[MAX_PATH] = "";
 //GE CT Impl Class UID
 static OFString GE_ImplementationClassUID("1.2.840.113619.6.286"), GE_MediaStorageSOPInstanceUID("1.2.840.113619.6.286.%Y%m%d.%H%M%S.");
 
@@ -843,7 +843,7 @@ int main(int argc, char *argv[])
 	else
 		result = ddir.createNewDicomDir(opt_profile, opt_output, opt_fileset);
 
-	if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: begin to add files" << endl;
+	if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": begin to add files" << endl;
 
     xml_index xi(&CERR);
     xml_index::singleton_ptr = &xi;
@@ -868,13 +868,13 @@ int main(int argc, char *argv[])
             {
                 fnbuf[0] = '\0';
                 char *dir = NULL, *pfn = NULL;
+				DWORD cbWritten = 0, cbToWrite = 0;
+                cbToWrite = sprintf_s(last_file_name, "bind %d %s", clientId, opt_directory); // last_file_name: <client_pid> <study_uid>
                 while(true)
                 {
-                    DWORD cbRead = 0, cbWritten = 0, cbToWrite = 0, gle = 0;
-
-                    cbToWrite = sprintf_s(fnbuf, "bind %d %s", clientId, opt_directory); // fnbuf: <client_pid> <study_uid>
+                    DWORD cbRead = 0, gle = 0;
                     // pull loop: write last_file_name, indicate that dcmmkdir is ready to read next file.
-                    if(!WriteFile(hPipe, fnbuf, cbToWrite, &cbWritten, NULL))
+                    if(!WriteFile(hPipe, last_file_name, cbToWrite, &cbWritten, NULL))
                     {
                         char msg[32];
                         gle = GetLastError();
@@ -882,7 +882,7 @@ int main(int argc, char *argv[])
                         displayErrorToCerr(msg, gle);
                         break;
                     }
-                    time_header_out(CERR) << "dcmmkdir WriteFile(): " << fnbuf << endl;
+                    if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << " WriteFile(): " << last_file_name << endl;
 
                     gle = 0;
                     do
@@ -896,7 +896,7 @@ int main(int argc, char *argv[])
                     {
                         if(gle == ERROR_PIPE_NOT_CONNECTED)
                         {
-                            if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": named pipe has been closed" << endl;
+                            time_header_out(CERR) << "dcmmkdir " << clientId << ": named pipe has been closed" << endl;
                         }
                         else
                         {
@@ -907,7 +907,7 @@ int main(int argc, char *argv[])
                         break;  // while(true)
                     }
                     fnbuf[cbRead] = '\0';
-                    time_header_out(CERR) << "dcmmkdir ReadFile(): " << fnbuf << endl;
+                    if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << " ReadFile(): " << fnbuf << endl;
                     
                     if(strncmp(COMMAND_CLOSE_PIPE, fnbuf, sizeof(COMMAND_CLOSE_PIPE) - 1) == 0)  // server close pipe
                     {
@@ -917,7 +917,7 @@ int main(int argc, char *argv[])
                             ++p_lock_filename;
                             lock_filename = p_lock_filename; // lock file is orders_study/<lock_filename>.txt
                         }
-                        time_header_out(CERR) << "dcmmkdir : server close named pipe, study end at " << lock_filename << endl;
+                        if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": server close named pipe, study end at " << lock_filename << endl;
                         DisconnectNamedPipe(hPipe);
                         break;  // while(true)
                     }
@@ -947,7 +947,6 @@ int main(int argc, char *argv[])
                         {
                             *receive_size++ = '\0';
                             nfc.file.file_size_receive = _atoi64(receive_size);
-                            if(ddir.verboseMode()) time_header_out(CERR) << fnbuf << "|" << pfn << "|" << receive_size << endl;
                         }
 					}
 					else pfn = fnbuf;
@@ -965,7 +964,7 @@ int main(int argc, char *argv[])
 							/* ignore inconsistent file, just warn (already done inside "ddir") */
 							result = EC_Normal;
 						}
-                        time_header_out(CERR) << "dcmmkdir add bad file " << pfn << endl;
+                        time_header_out(CERR) << "dcmmkdir " << clientId << " add bad file " << pfn << endl;
 					}
                     else
                     {
@@ -973,9 +972,9 @@ int main(int argc, char *argv[])
                         xi.make_index(nfc);
                         DcmXfer dcmxfer(nfc.file.xfer_new);
                         // save filename for response message that is written to sender
-                        sprintf_s(last_file_name, "%s|%s", pfn, dcmxfer.getXferShortName());
+                        cbToWrite = sprintf_s(last_file_name, "%s|%s", pfn, dcmxfer.getXferShortName());
 						++goodFiles;
-                        time_header_out(CERR) << "dcmmkdir add good file " << pfn << endl;
+						if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << " add good file " << pfn << endl;
                     }
                 } // while(true)
                 CloseHandle(hPipe);
@@ -1005,7 +1004,7 @@ int main(int argc, char *argv[])
 					} else
 						++goodFiles;
 				}
-				if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: no more files, stop waiting for stdin" << endl;
+				if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": no more files, stop waiting for stdin" << endl;
 			}
 			else
 			{
