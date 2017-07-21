@@ -329,12 +329,6 @@ static void fill_notify_from_dcmdataset(DcmDataset *dataset)
     NotifyFileContextStorePath(&nfc.file);
 }
 
-static bool com_init = false;
-static void exitHook()
-{
-    if(com_init) CoUninitialize();
-}
-
 int main(int argc, char *argv[])
 {
 	int opt_debug = 0;
@@ -758,26 +752,15 @@ int main(int argc, char *argv[])
 	int clientId = _getpid();
     HANDLE hPipe = INVALID_HANDLE_VALUE;
 
-    if(FAILED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED)))
+    char buff[MAX_PATH];
+    sprintf_s(buff, "%s\\etc\\settings.ini", GetPacsBase());
+    if(LoadSettings(buff, CERR, ddir.verboseMode()))
     {
-        time_header_out(CERR) << "dicomdir maker: CoInitializeEx() failed." << endl;
-        return -3;
-    }
-    else
-    {
-        com_init = true;
-        atexit(exitHook);
-
-        char buff[MAX_PATH];
-        sprintf_s(buff, "%s\\etc\\settings.ini", GetPacsBase());
-        if(LoadSettings(buff, CERR, ddir.verboseMode()))
+        if(GetSetting("DicomdirImplClassUID", buff, sizeof(buff)))
         {
-            if(GetSetting("DicomdirImplClassUID", buff, sizeof(buff)))
-            {
-                GE_ImplementationClassUID = buff;
-                GE_MediaStorageSOPInstanceUID = buff;
-                GE_MediaStorageSOPInstanceUID += ".%Y%m%d.%H%M%S.";
-            }
+            GE_ImplementationClassUID = buff;
+            GE_MediaStorageSOPInstanceUID = buff;
+            GE_MediaStorageSOPInstanceUID += ".%Y%m%d.%H%M%S.";
         }
     }
 
@@ -845,9 +828,6 @@ int main(int argc, char *argv[])
 
 	if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": begin to add files" << endl;
 
-    xml_index xi(&CERR);
-    xml_index::singleton_ptr = &xi;
-
 	// If scu split study into series and one association per series,
 	// dcmmkdir must collect csv files as fileNameList, otherwise xml index will be incorrect.
 	OFList<OFString> fileNameList;
@@ -862,8 +842,6 @@ int main(int argc, char *argv[])
 			/* collect 'bad' files */
 			OFList<OFString> badFiles;
 			unsigned int goodFiles = 0;
-            bool publish_jdf = false;
-            OFString lock_filename;
             if(readPipe)
             {
                 fnbuf[0] = '\0';
@@ -911,20 +889,12 @@ int main(int argc, char *argv[])
                     
                     if(strncmp(COMMAND_CLOSE_PIPE, fnbuf, sizeof(COMMAND_CLOSE_PIPE) - 1) == 0)  // server close pipe
                     {
-                        const char *p_lock_filename = strchr(fnbuf, ' ');
-                        if(p_lock_filename)
-                        {
-                            ++p_lock_filename;
-                            lock_filename = p_lock_filename; // lock file is orders_study/<lock_filename>.txt
-                        }
-                        if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": server close named pipe, study end at " << lock_filename << endl;
+                        if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << ": server close named pipe" << endl;
                         DisconnectNamedPipe(hPipe);
                         break;  // while(true)
                     }
 
                     memset(&nfc, 0, sizeof(nfc));
-
-                    //todo: command per file, is assoc info necessary?
 
                     // fnbuf: <study uid>|<unique filename>|<file size receive><LF><assoc_text>
                     char *assoc_text = strchr(fnbuf, '\n');
@@ -969,10 +939,9 @@ int main(int argc, char *argv[])
                     else
                     {
                         if(ddir.verboseMode()) time_header_out(CERR) << "file size receive: " << nfc.file.file_size_receive << endl;
-                        xi.make_index(nfc);
                         DcmXfer dcmxfer(nfc.file.xfer_new);
                         // save filename for response message that is written to sender
-                        cbToWrite = sprintf_s(last_file_name, "%s|%s", pfn, dcmxfer.getXferShortName());
+						cbToWrite = sprintf_s(last_file_name, "%s|%s|%s", pfn, dcmxfer.getXferShortName(),nfc.patient.patientsName);
 						++goodFiles;
 						if(ddir.verboseMode()) time_header_out(CERR) << "dcmmkdir " << clientId << " add good file " << pfn << endl;
                     }
@@ -1067,35 +1036,6 @@ int main(int argc, char *argv[])
             else if(result.bad())
                 time_header_out(CERR) << "skip writing dicomdir, reason: " << result.text() << endl;
 
-            if(readPipe)
-            {
-                bool unloadOK = true;
-                list<string> uids_from_pipe;
-                xi.find_all_study_uid(uids_from_pipe);
-                for(list<string>::iterator it = uids_from_pipe.begin(); it != uids_from_pipe.end(); ++it) //only one study shall exist
-                {
-                    time_header_out(CERR) << "unload study " << *it << endl;
-                    unloadOK &= xi.unload_and_sync_study(*it);
-                    if(publish_jdf && result.good() && 0 == generateStudyTxt(it->c_str(), CERR))
-                    {
-                        if(opt_verbose) time_header_out(CERR) << "study txt OK: " << *it << endl;
-                    }
-                }
-			    string unlock_file_name(GetPacsBase());
-                unlock_file_name.append("\\orders_study\\").append(lock_filename).append(".txt");
-                ofstream ofs_complete(unlock_file_name, ios_base::out | ios_base::app);
-                if(ofs_complete.fail())
-                {
-                    char file_error[1024];
-                    strerror_s(file_error, errno);
-                    time_header_out(CERR) << "create complete file " << unlock_file_name << " failed: " << file_error << endl;
-                }
-                else
-                {
-                    ofs_complete << (unloadOK ? "OK" : "FAIL") << endl;
-                    ofs_complete.close();
-                }
-            }
 			if(ddir.verboseMode()) time_header_out(CERR) << "dicomdir maker: DICOMDIR is written" << endl;
 		}
 	}
